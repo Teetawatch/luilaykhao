@@ -871,7 +871,11 @@ class BookingService
         });
     }
 
-    public function cancelBooking(Booking $booking, ?string $reason = null): Booking
+    /**
+     * @param  bool  $notify  false = ผู้เรียกแจ้งลูกค้าเอง (เช่นขอคืนเงินเพราะรอบคนไม่ครบ
+     *                        ซึ่งอีเมลยกเลิกปกติจะแสดงนโยบายคืนเงินที่ไม่ตรงกับกรณีนั้น)
+     */
+    public function cancelBooking(Booking $booking, ?string $reason = null, bool $notify = true): Booking
     {
         $bookedBefore = null;
 
@@ -897,18 +901,20 @@ class BookingService
         });
 
         // Send cancellation email outside of DB transaction
-        $this->mailService->sendBookingCancelledEmail($cancelled, $reason);
-        $this->smsService->sendBookingCancelled($cancelled, $reason);
-        SmartNotification::send(
-            $cancelled->user_id,
-            'booking_cancelled',
-            'การจองถูกยกเลิก',
-            "เลขการจอง {$cancelled->booking_ref} ถูกยกเลิกแล้ว",
-            [
-                'booking_ref' => $cancelled->booking_ref,
-                'route' => 'booking',
-            ],
-        );
+        if ($notify) {
+            $this->mailService->sendBookingCancelledEmail($cancelled, $reason);
+            $this->smsService->sendBookingCancelled($cancelled, $reason);
+            SmartNotification::send(
+                $cancelled->user_id,
+                'booking_cancelled',
+                'การจองถูกยกเลิก',
+                "เลขการจอง {$cancelled->booking_ref} ถูกยกเลิกแล้ว",
+                [
+                    'booking_ref' => $cancelled->booking_ref,
+                    'route' => 'booking',
+                ],
+            );
+        }
 
         // Notify next users in the waitlist now that seats are freed
         ProcessWaitlistJob::dispatch($cancelled->schedule_id);
@@ -950,7 +956,7 @@ class BookingService
 
             if ($forceMajeure) {
                 if (! $booking->canChooseForceMajeureRound()) {
-                    throw new \Exception('เลยกำหนดเลือกรอบเดินทางใหม่แล้ว (ภายใน '.ThaiDate::full($booking->force_majeure_until).') กรุณาติดต่อทีมงาน');
+                    throw new \Exception('เลยกำหนดเลือกรอบเดินทางใหม่แล้ว (ภายใน '.ThaiDate::full($booking->forceMajeureDeadline()).') กรุณาติดต่อทีมงาน');
                 }
             } else {
                 if (! in_array($booking->status, Booking::MODIFIABLE_STATUSES, true)) {
@@ -1397,6 +1403,16 @@ class BookingService
     {
         $paidAmount = (float) $booking->paid_amount;
         $paymentType = $booking->payment_type ?? 'full';
+
+        // รอบไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ — เราเป็นฝ่ายยกเลิก คืนทุกบาทรวมมัดจำ
+        if ($booking->owesUnderfilledFullRefund()) {
+            return [
+                'refund_percent' => 100,
+                'refund_amount' => round($paidAmount, 2),
+                'paid_amount' => $paidAmount,
+                'policy_note' => 'รอบไม่ได้ออกเดินทางเพราะผู้ร่วมทริปไม่ครบ คืนเต็มจำนวนรวมมัดจำ',
+            ];
+        }
 
         if ($paymentType === 'deposit') {
             // มัดจำไม่คืนทุกกรณี — คืนแค่ส่วนที่เหลือ ถ้าชำระแล้ว

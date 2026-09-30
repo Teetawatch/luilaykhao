@@ -151,6 +151,15 @@
               <span class="material-symbols-rounded">interests</span>
               ยื่น Flexi-Price
             </button>
+            <button
+              class="btn-secondary btn-cancel-round"
+              :disabled="busyId === row.id || row.bookings_count === 0"
+              title="ยกเลิกรอบนี้ ลูกค้าเลือกเองว่าจะไปรอบใหม่ (ราคาเดิม) หรือรับเงินคืนเต็มจำนวน"
+              @click="cancelUnderfilled(row)"
+            >
+              <span class="material-symbols-rounded">group_off</span>
+              ยกเลิกรอบ · ให้ลูกค้าเลือก
+            </button>
             <router-link class="btn-secondary" to="/admin/schedules">
               <span class="material-symbols-rounded">calendar_month</span>
               จัดการรอบเดินทาง
@@ -459,6 +468,31 @@ async function submitFlexi() {
   }
 }
 
+/**
+ * ทางสุดท้ายเมื่อทุกวิธีข้างบนไม่ได้ผล — ยกเลิกรอบแต่ไม่ยกเลิกใบจอง ลูกค้าเลือกเองว่า
+ * ไปรอบใหม่ราคาเดิม หรือรับเงินคืนเต็มจำนวน (ForceMajeureService kind=underfilled)
+ */
+async function cancelUnderfilled(row) {
+  const ok = window.confirm(
+    `ยกเลิกรอบ ${row.departure_label} ของ ${row.trip_title} เพราะผู้ร่วมทริปไม่ครบ?\n\n`
+    + `ลูกค้า ${row.bookings_count} รายการจะได้รับแจ้งทาง push, LINE, SMS และอีเมล ให้เลือกภายใน 14 วันว่า`
+    + 'จะไปรอบใหม่ (ราคาเดิม) หรือรับเงินคืนเต็มจำนวน เลยกำหนดแล้วระบบคืนเงินให้เอง\n\n'
+    + 'ทำแล้วเปิดรอบนี้กลับไม่ได้',
+  );
+  if (!ok) return;
+
+  busyId.value = row.id;
+  try {
+    const res = await api.post(`/admin/schedules/${row.id}/force-majeure`, { kind: 'underfilled' });
+    toast.success(res.data.message || 'ยกเลิกรอบและแจ้งลูกค้าแล้ว');
+    await load();
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ยกเลิกรอบไม่สำเร็จ');
+  } finally {
+    busyId.value = null;
+  }
+}
+
 async function confirmMerge(row, candidate) {
   const ok = window.confirm(
     `ย้ายผู้เดินทางทั้ง ${row.booked_seats} ท่านจากรอบ ${row.departure_label} `
@@ -487,6 +521,7 @@ onMounted(load);
 
 <style scoped>
 .spin { animation: spin 0.8s linear infinite; }
+.btn-cancel-round { color: #b45309; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

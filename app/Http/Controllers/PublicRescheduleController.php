@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Api\V1\BookingController;
 use App\Models\Booking;
 use App\Services\BookingService;
 use App\Services\ForceMajeureService;
@@ -61,6 +62,34 @@ class PublicRescheduleController extends Controller
         }
 
         return redirect()->route('public.reschedule.show', $token)->with('moved', true);
+    }
+
+    /**
+     * รอบไม่ได้ออกเพราะคนไม่ครบ — ขอรับเงินคืนเต็มจำนวนแทนการเลือกรอบใหม่
+     */
+    public function refund(Request $request, string $token): RedirectResponse
+    {
+        $validated = $request->validate([
+            'bank' => ['nullable', 'string', 'max:60'],
+            'account_number' => ['nullable', 'string', 'max:30'],
+            'account_name' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $booking = $this->resolveBooking($token);
+
+        if (! $booking->canRequestUnderfilledRefund()) {
+            return redirect()->route('public.reschedule.show', $token);
+        }
+
+        try {
+            $this->forceMajeure->requestRefund($booking, BookingController::refundAccountFrom($validated));
+        } catch (\Exception $e) {
+            return redirect()->route('public.reschedule.show', $token)
+                ->withErrors(['refund' => $e->getMessage()])
+                ->withInput();
+        }
+
+        return redirect()->route('public.reschedule.show', $token)->with('refunded', true);
     }
 
     /**

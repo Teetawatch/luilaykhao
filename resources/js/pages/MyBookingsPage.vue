@@ -171,27 +171,64 @@
                 class="mt-4" />
             </div>
 
-            <!-- รอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย — สิทธิ์เลือกรอบใหม่ (เงื่อนไขข้อ 6) -->
+            <!-- รอบเดิมถูกยกเลิก (เหตุสุดวิสัย หรือผู้ร่วมทริปไม่ครบ) — สิทธิ์เลือกรอบใหม่ -->
             <div v-if="awaitsNewRound(b)" class="mb-5 rounded-[16px] bg-[#FFFBEB] border border-[#FDE68A] p-4">
               <p class="font-bold text-[#78350F] text-sm flex items-center gap-1.5">
-                <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">thunderstorm</span>
-                รอบเดินทางนี้ออกไม่ได้<template v-if="b.force_majeure.reason"> เนื่องจาก{{ b.force_majeure.reason }}</template>
+                <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">{{ isUnderfilled(b) ? 'groups' : 'thunderstorm' }}</span>
+                {{ isUnderfilled(b) ? 'รอบเดินทางนี้ไม่ได้ออก' : 'รอบเดินทางนี้ออกไม่ได้' }}<template v-if="b.force_majeure.reason"> เนื่องจาก{{ b.force_majeure.reason }}</template>
               </p>
               <template v-if="b.force_majeure.can_choose">
-                <p class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
+                <p v-if="isUnderfilled(b)" class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
+                  เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม หรือขอรับเงินคืนเต็มจำนวน
+                  <template v-if="b.force_majeure.refund_amount > 0">฿{{ Number(b.force_majeure.refund_amount).toLocaleString('th-TH') }}</template>
+                  ภายใน <strong>{{ b.force_majeure.decide_by_label }}</strong>
+                  <template v-if="b.force_majeure.days_left != null"> (เหลือ {{ b.force_majeure.days_left }} วัน)</template>
+                </p>
+                <p v-else class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
                   ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม
                   ภายใน <strong>{{ b.force_majeure.until_label }}</strong>
                   <template v-if="b.force_majeure.days_left != null"> (เหลือ {{ b.force_majeure.days_left }} วัน)</template>
                 </p>
                 <p v-if="b.viewer_is_owner === false" class="text-[12px] text-[#92400E] mt-2">ผู้จองเป็นคนเลือกรอบใหม่ให้ทั้งกลุ่มครับ</p>
-                <button v-else-if="b.can_reschedule" @click="openReschedule(b)"
+                <div v-else class="mt-3 flex flex-col sm:flex-row gap-2">
+                  <button v-if="b.can_reschedule" @click="openReschedule(b)"
+                    class="w-full sm:w-auto bg-[#D97706] text-white py-2.5 px-5 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all inline-flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-rounded text-[18px]">event_repeat</span>
+                    เลือกรอบใหม่
+                  </button>
+                  <button v-if="b.force_majeure.can_request_refund" @click="openRefund(b)"
+                    class="w-full sm:w-auto bg-white text-[#B45309] border border-[#FCD34D] py-2.5 px-5 rounded-[12px] font-bold text-sm hover:bg-[#FFFBEB] transition-all inline-flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-rounded text-[18px]">currency_exchange</span>
+                    {{ b.force_majeure.refund_amount > 0 ? 'ขอรับเงินคืน' : 'ยกเลิกการจอง' }}
+                  </button>
+                </div>
+              </template>
+              <template v-else-if="isUnderfilled(b)">
+                <p class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
+                  เลยกำหนดเลือกรอบใหม่แล้ว ({{ b.force_majeure.decide_by_label }}) เราจะคืนเงินเต็มจำนวนให้ครับ
+                  กรอกบัญชีรับเงินไว้ได้เลย จะได้เร็วขึ้น
+                </p>
+                <button v-if="b.force_majeure.can_request_refund && b.viewer_is_owner !== false" @click="openRefund(b)"
                   class="mt-3 w-full sm:w-auto bg-[#D97706] text-white py-2.5 px-5 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all inline-flex items-center justify-center gap-1.5">
-                  <span class="material-symbols-rounded text-[18px]">event_repeat</span>
-                  เลือกรอบใหม่
+                  <span class="material-symbols-rounded text-[18px]">currency_exchange</span>
+                  {{ b.force_majeure.refund_amount > 0 ? 'กรอกบัญชีรับเงินคืน' : 'ยกเลิกการจอง' }}
                 </button>
               </template>
               <p v-else class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
                 เลยกำหนดเลือกรอบใหม่แล้ว ({{ b.force_majeure.until_label }}) ทักทีมงานเพื่อช่วยดูแลต่อได้เลยครับ
+              </p>
+            </div>
+
+            <!-- รอบคนไม่ครบ — ขอคืนเงินแล้ว/โอนคืนแล้ว -->
+            <div v-else-if="refundState(b)" class="mb-5 rounded-[16px] bg-[#F0FAFA] border border-[#BCDFDF] p-4 text-[13px] text-[#0F3D3E]">
+              <p class="font-bold text-sm flex items-center gap-1.5">
+                <span class="material-symbols-rounded text-[18px]">currency_exchange</span>
+                {{ refundState(b) === 'refunded' ? 'โอนเงินคืนแล้ว' : 'รับเรื่องคืนเงินแล้ว' }}
+                <template v-if="b.force_majeure.refund_amount > 0">· ฿{{ Number(b.force_majeure.refund_amount).toLocaleString('th-TH') }}</template>
+              </p>
+              <p v-if="refundState(b) === 'refund_requested'" class="mt-1 leading-relaxed">
+                <template v-if="b.force_majeure.refund_account_label">โอนเข้า {{ b.force_majeure.refund_account_label }} ภายใน 3–7 วันทำการครับ</template>
+                <template v-else>ทีมงานจะติดต่อขอเลขบัญชีรับเงินคืนครับ</template>
               </p>
             </div>
 
@@ -478,7 +515,14 @@
       v-if="rescheduleTarget"
       :booking="rescheduleTarget"
       @close="rescheduleTarget = null"
+      @refund="switchToRefund"
       @done="onRescheduled" />
+
+    <PostponementRefundModal
+      v-if="refundTarget"
+      :booking="refundTarget"
+      @close="refundTarget = null"
+      @done="onRefundRequested" />
 
   </div>
 </template>
@@ -496,6 +540,7 @@ import MyWaitlist from '../components/MyWaitlist.vue';
 import SplitPaymentPanel from '../components/SplitPaymentPanel.vue';
 import InstallmentPlanPanel from '../components/InstallmentPlanPanel.vue';
 import RescheduleModal from '../components/RescheduleModal.vue';
+import PostponementRefundModal from '../components/PostponementRefundModal.vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const swal = useSwal();
@@ -561,9 +606,20 @@ function reviewState(b) {
   if (b.status !== 'pending' || !b.slip_ocr_status) return null;
   return b.slip_ocr_status === 'rejected' ? 'rejected' : 'under_review';
 }
-/** รอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย และยังไม่ได้เลือกรอบใหม่ */
+/** รอบเดิมถูกยกเลิก (เหตุสุดวิสัย/คนไม่ครบ) และยังไม่ได้เลือกรอบใหม่ */
 function awaitsNewRound(b) {
   return !!b.force_majeure?.awaiting;
+}
+
+/** รอบเดิมไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ — เลือกรับเงินคืนแทนได้ */
+function isUnderfilled(b) {
+  return b.force_majeure?.kind === 'underfilled';
+}
+
+/** ขอคืนเงินแล้ว (refund_requested) หรือโอนคืนแล้ว (refunded) — null ถ้าไม่ใช่ */
+function refundState(b) {
+  const state = b.force_majeure?.state;
+  return isUnderfilled(b) && (state === 'refund_requested' || state === 'refunded') ? state : null;
 }
 
 function displayStatusLabel(b) {
@@ -881,6 +937,28 @@ function openReschedule(b) {
   rescheduleTarget.value = b;
 }
 
+// ── ขอรับเงินคืน (รอบคนไม่ครบ) ────────────────────────────────────────
+const refundTarget = ref(null);
+
+function openRefund(b) {
+  refundTarget.value = b;
+}
+
+function switchToRefund() {
+  refundTarget.value = rescheduleTarget.value;
+  rescheduleTarget.value = null;
+}
+
+async function onRefundRequested(updated) {
+  refundTarget.value = null;
+  await load(currentPage.value);
+  const amount = Number(updated?.force_majeure?.refund_amount || 0);
+  swal.success(
+    amount > 0 ? 'รับเรื่องคืนเงินแล้ว' : 'ยกเลิกการจองแล้ว',
+    amount > 0 ? `เราจะโอนคืน ฿${amount.toLocaleString('th-TH')} ภายใน 3–7 วันทำการครับ` : '',
+  );
+}
+
 async function onRescheduled(updated) {
   rescheduleTarget.value = null;
   const date = updated?.schedule?.departure_date;
@@ -903,9 +981,14 @@ async function openFromLink() {
     const booking = res.data?.data;
     if (booking?.can_reschedule && booking.viewer_is_owner !== false) {
       openReschedule(booking);
+    } else if (booking?.force_majeure?.can_request_refund && booking.viewer_is_owner !== false) {
+      // คนไม่ครบที่เลยกำหนดเลือกรอบ — ทางเดียวที่เหลือคือกรอกบัญชีรับเงินคืน
+      openRefund(booking);
     } else if (booking?.force_majeure?.expired) {
       swal.warning('เลยกำหนดเลือกรอบใหม่แล้ว', 'ทักทีมงานเพื่อช่วยดูแลต่อได้เลยครับ');
-    } else if (booking?.force_majeure && !booking.force_majeure.awaiting) {
+    } else if (booking && refundState(booking)) {
+      toast.success('การจองนี้ขอรับเงินคืนเรียบร้อยแล้ว');
+    } else if (booking?.force_majeure?.state === 'moved') {
       toast.success('การจองนี้เลือกรอบใหม่เรียบร้อยแล้ว');
     }
   } catch {

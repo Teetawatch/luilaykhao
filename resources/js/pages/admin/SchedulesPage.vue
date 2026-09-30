@@ -184,8 +184,13 @@
                     <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                       <span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span>
                       <button v-if="sch.force_majeure_at" type="button" class="status-badge badge-force-majeure"
-                        @click="openForceMajeure(sch)" title="ดูว่าใครเลือกรอบใหม่แล้วบ้าง">
-                        <span class="material-symbols-rounded icon-xs">thunderstorm</span> เหตุสุดวิสัย
+                        @click="openForceMajeure(sch)" title="ดูว่าใครเลือกรอบใหม่/ขอคืนเงินแล้วบ้าง">
+                        <template v-if="sch.postpone_kind === 'underfilled'">
+                          <span class="material-symbols-rounded icon-xs">group_off</span> คนไม่ครบ
+                        </template>
+                        <template v-else>
+                          <span class="material-symbols-rounded icon-xs">thunderstorm</span> เหตุสุดวิสัย
+                        </template>
                       </button>
                       <span v-if="sch.is_charter" class="status-badge badge-charter">
                         <span class="material-symbols-rounded icon-xs">lock</span> รอบเหมา
@@ -242,7 +247,7 @@
                         <span class="material-symbols-rounded">swap_horiz</span>
                       </button>
                       <button class="btn-icon btn-force-majeure" @click="openForceMajeure(sch)"
-                        :title="sch.force_majeure_at ? 'ลูกค้าที่รอเลือกรอบใหม่ (เหตุสุดวิสัย)' : 'ยกเลิกรอบเพราะเหตุสุดวิสัย ให้ลูกค้าเลือกรอบใหม่เอง'">
+                        :title="sch.force_majeure_at ? 'ลูกค้าที่รอเลือกรอบใหม่' : 'ยกเลิกรอบ (เหตุสุดวิสัย/คนไม่ครบ) ให้ลูกค้าเลือกรอบใหม่เอง'">
                         <span class="material-symbols-rounded">thunderstorm</span>
                       </button>
                       <span class="action-divider"></span>
@@ -1420,7 +1425,10 @@
       <div class="modal-card modal-lg">
         <div class="modal-header">
           <div>
-            <h2><span class="material-symbols-rounded" style="color:#d97706;margin-right:8px;">thunderstorm</span>ยกเลิกรอบเพราะเหตุสุดวิสัย</h2>
+            <h2>
+              <span class="material-symbols-rounded" style="color:#d97706;margin-right:8px;">{{ fmActiveKind === 'underfilled' ? 'group_off' : 'thunderstorm' }}</span>
+              {{ fmActiveKind === 'underfilled' ? 'ยกเลิกรอบเพราะผู้ร่วมทริปไม่ครบ' : 'ยกเลิกรอบเพราะเหตุสุดวิสัย' }}
+            </h2>
             <p class="modal-subtitle" v-if="fmSchedule">
               {{ fmSchedule.trip?.title }} — {{ fmSchedule.departure_date }}
             </p>
@@ -1432,9 +1440,28 @@
 
           <!-- ยังไม่เคยกด: ฟอร์มยืนยัน -->
           <template v-else-if="!fmOverview?.force_majeure_at">
+            <div class="fm-kinds">
+              <button type="button" class="fm-kind" :class="{ active: fmKind === 'force_majeure' }" @click="setFmKind('force_majeure')">
+                <span class="material-symbols-rounded">thunderstorm</span>
+                <span><strong>เหตุสุดวิสัย</strong><small>น้ำป่า พายุ อุทยานปิด — ไม่คืนเงิน ให้เลือกรอบใหม่</small></span>
+              </button>
+              <button type="button" class="fm-kind" :class="{ active: fmKind === 'underfilled' }"
+                :disabled="!!fmUnderfilledBlocked" :title="fmUnderfilledBlocked || ''" @click="setFmKind('underfilled')">
+                <span class="material-symbols-rounded">group_off</span>
+                <span><strong>ผู้ร่วมทริปไม่ครบ</strong><small>{{ fmUnderfilledBlocked || 'เลือกรอบใหม่ หรือรับเงินคืนเต็มจำนวน' }}</small></span>
+              </button>
+            </div>
             <div class="fm-explain">
               <p><strong>กดแล้วจะเกิดอะไรขึ้น</strong></p>
-              <ul>
+              <ul v-if="fmKind === 'underfilled'">
+                <li>รอบนี้เปลี่ยนเป็น "ยกเลิก" ทันที และเปิดกลับไม่ได้</li>
+                <li>ทุกการจองในรอบ ({{ fmSchedule?.booked_seats || 0 }} ที่นั่ง) <strong>ไม่ถูกยกเลิกทันที</strong> ลูกค้าเลือกเองในแอป เว็บ และ LINE ว่าจะ<strong>ไปรอบใหม่ (ราคาเดิม)</strong> หรือ<strong>รับเงินคืนเต็มจำนวนรวมมัดจำ</strong></li>
+                <li>ต้องตัดสินใจภายใน <strong>{{ fmDecideByPreview }}</strong> (14 วัน) รอบใหม่ที่เลือกได้ต้องออกไม่เกิน {{ fmUntilPreview }} · เลยกำหนดแล้วยังไม่เลือก ระบบคืนเงินให้เอง</li>
+                <li>คนที่ขอคืนเงินกรอกเลขบัญชีเอง แล้วขึ้นคิวงาน "เงินคืนที่ต้องโอนให้ลูกค้า" ให้ทีมงานโอนและกดคืนเงินที่หน้าการจอง</li>
+                <li>ลูกค้าได้รับแจ้งทาง push, LINE, SMS และอีเมล (ไม่มีคำว่าเหตุสุดวิสัย) · เตือนอีกครั้งตอนเหลือ 3 และ 1 วัน</li>
+                <li>คิวรอที่นั่งของรอบนี้ถูกปิด และสตาฟที่ประจำรอบได้รับแจ้ง</li>
+              </ul>
+              <ul v-else>
                 <li>รอบนี้เปลี่ยนเป็น "ยกเลิก" ทันที และเปิดกลับไม่ได้</li>
                 <li>ทุกการจองในรอบ ({{ fmSchedule?.booked_seats || 0 }} ที่นั่ง) <strong>ไม่ถูกยกเลิก เงินยังอยู่</strong> และได้สิทธิ์เลือกรอบใหม่ของทริปนี้เองในแอป เว็บ และ LINE</li>
                 <li>ราคาเดิม ไม่มีค่าธรรมเนียม เลือกรอบที่ออกเดินทางได้ถึง <strong>{{ fmUntilPreview }}</strong> (6 เดือนนับจากวันเดินทางเดิม) และไม่กินสิทธิ์เลื่อนปกติ</li>
@@ -1443,12 +1470,16 @@
               </ul>
             </div>
             <div class="form-group">
-              <label>เหตุผล (ลูกค้าจะเห็นข้อความนี้ต่อท้ายคำว่า "เนื่องจาก")</label>
+              <label>
+                เหตุผล (ลูกค้าจะเห็นข้อความนี้ต่อท้ายคำว่า "เนื่องจาก")
+                <template v-if="fmKind === 'underfilled'"> — เว้นว่างได้</template>
+              </label>
               <div class="fm-chips">
-                <button v-for="r in fmReasonPresets" :key="r" type="button" class="fm-chip"
+                <button v-for="r in fmActivePresets" :key="r" type="button" class="fm-chip"
                   :class="{ active: fmReason === r }" @click="fmReason = r">{{ r }}</button>
               </div>
-              <input v-model="fmReason" type="text" maxlength="120" class="form-input" placeholder="เช่น น้ำป่าไหลหลาก อุทยานประกาศปิดพื้นที่" />
+              <input v-model="fmReason" type="text" maxlength="120" class="form-input"
+                :placeholder="fmKind === 'underfilled' ? 'ผู้ร่วมเดินทางไม่ครบตามจำนวนขั้นต่ำ' : 'เช่น น้ำป่าไหลหลาก อุทยานประกาศปิดพื้นที่'" />
             </div>
           </template>
 
@@ -1456,18 +1487,29 @@
           <template v-else>
             <div class="fm-summary">
               <div><span class="fm-num">{{ fmOverview.counts.awaiting }}</span> รอเลือก</div>
-              <div><span class="fm-num fm-ok">{{ fmOverview.counts.moved }}</span> เลือกแล้ว</div>
-              <div><span class="fm-num fm-warn">{{ fmOverview.counts.expired }}</span> หมดสิทธิ์</div>
-              <div><span class="fm-num fm-muted">{{ fmOverview.counts.cancelled }}</span> ยกเลิก/คืนเงิน</div>
+              <div><span class="fm-num fm-ok">{{ fmOverview.counts.moved }}</span> เลือกรอบแล้ว</div>
+              <template v-if="fmOverview.kind === 'underfilled'">
+                <div><span class="fm-num fm-warn">{{ fmOverview.counts.refund_requested }}</span> รอโอนคืน</div>
+                <div><span class="fm-num fm-muted">{{ fmOverview.counts.refunded + fmOverview.counts.cancelled }}</span> คืนแล้ว/ยกเลิก</div>
+              </template>
+              <template v-else>
+                <div><span class="fm-num fm-warn">{{ fmOverview.counts.expired }}</span> หมดสิทธิ์</div>
+                <div><span class="fm-num fm-muted">{{ fmOverview.counts.cancelled + fmOverview.counts.refunded + fmOverview.counts.refund_requested }}</span> ยกเลิก/คืนเงิน</div>
+              </template>
             </div>
-            <p class="text-muted-sm" style="margin:8px 0 12px;">
+            <p v-if="fmOverview.kind === 'underfilled'" class="text-muted-sm" style="margin:8px 0 12px;">
+              เหตุผล: {{ fmOverview.reason }} · ลูกค้าตัดสินใจได้ถึง {{ fmOverview.decide_by }} (เลยแล้วระบบคืนเงินให้เอง)
+              · รอบใหม่ต้องออกไม่เกิน {{ fmOverview.until }}
+              · โอนคืนแล้วกด "เปลี่ยนสถานะ → คืนเงินแล้ว" ที่หน้าการจอง
+            </p>
+            <p v-else class="text-muted-sm" style="margin:8px 0 12px;">
               เหตุผล: {{ fmOverview.reason }} · เลือกรอบที่ออกได้ถึง {{ fmOverview.until }}
               · ย้ายให้ลูกค้าเองได้ที่ปุ่ม "ย้ายการจอง" (สิทธิ์จะปิดให้อัตโนมัติ)
               · เปิดรอบใหม่ของทริปนี้เมื่อไหร่ ระบบกันที่นั่งให้คนที่ยังรอเลือก 48 ชั่วโมงแรก
             </p>
             <div class="fm-revert">
               <template v-if="fmOverview.can_revert">
-                <span>กดเลื่อนผิดรอบ? ย้อนกลับได้ตราบใดที่ยังไม่มีลูกค้าคนไหนเลือกรอบใหม่ — ระบบจะแจ้งลูกค้าว่าเดินทางตามเดิม</span>
+                <span>กดเลื่อนผิดรอบ? ย้อนกลับได้ตราบใดที่ยังไม่มีลูกค้าคนไหนเลือกรอบใหม่หรือขอคืนเงิน — ระบบจะแจ้งลูกค้าว่าเดินทางตามเดิม</span>
                 <button type="button" class="btn-sm btn-secondary" :disabled="fmSubmitting" @click="revertForceMajeure">
                   ยกเลิกการเลื่อน
                 </button>
@@ -1499,6 +1541,13 @@
                   <td>
                     <span class="status-badge" :class="fmStateClass(b.state)">{{ fmStateLabels[b.state] || b.state }}</span>
                     <div v-if="b.moved_to" class="text-muted-sm">→ {{ b.moved_to.label }}</div>
+                    <div v-if="b.refund_amount" class="text-muted-sm">คืน ฿{{ Number(b.refund_amount).toLocaleString() }}</div>
+                    <div v-if="b.refund_account" class="fm-account">
+                      {{ b.refund_account.bank }} · <span style="font-family:monospace;">{{ b.refund_account.number }}</span><br>
+                      {{ b.refund_account.name }}
+                      <button type="button" class="btn-sm btn-secondary fm-copy" @click="copyRefundAccount(b)">คัดลอกเลขบัญชี</button>
+                    </div>
+                    <div v-else-if="b.state === 'refund_requested'" class="text-muted-sm" style="color:#dc2626;">ยังไม่มีเลขบัญชี — โทรขอลูกค้า</div>
                     <button v-if="b.choose_url" type="button" class="btn-sm btn-secondary fm-copy"
                       @click="copyChooseLink(b)" title="ลิงก์เลือกรอบใหม่ — ลูกค้าเปิดได้โดยไม่ต้องล็อกอิน">
                       คัดลอกลิงก์เลือกรอบ
@@ -1512,7 +1561,7 @@
         <div class="modal-footer">
           <button class="btn-secondary" @click="closeForceMajeure" :disabled="fmSubmitting">ปิด</button>
           <button v-if="!fmLoading && !fmOverview?.force_majeure_at" class="btn-primary btn-fm-confirm"
-            @click="submitForceMajeure" :disabled="fmSubmitting || !fmReason.trim()">
+            @click="submitForceMajeure" :disabled="fmSubmitting || (fmKind === 'force_majeure' && !fmReason.trim()) || (fmKind === 'underfilled' && !!fmUnderfilledBlocked)">
             {{ fmSubmitting ? 'กำลังดำเนินการ…' : 'ยืนยันยกเลิกรอบ และแจ้งลูกค้า' }}
           </button>
         </div>
@@ -3082,18 +3131,70 @@ const fmReasonPresets = [
   'อุทยานประกาศปิดพื้นที่',
   'หน่วยงานราชการประกาศเตือนภัย',
 ];
+const fmUnderfilledPresets = [
+  'ผู้ร่วมเดินทางไม่ครบตามจำนวนขั้นต่ำ',
+];
+const fmKind = ref('force_majeure');
 const fmStateLabels = {
-  awaiting: 'รอลูกค้าเลือกรอบ',
+  awaiting: 'รอลูกค้าเลือก',
   moved: 'เลือกรอบใหม่แล้ว',
   expired: 'หมดสิทธิ์ ต้องติดต่อ',
-  cancelled: 'ยกเลิก/คืนเงินแล้ว',
+  refund_requested: 'ขอคืนเงิน · รอโอน',
+  refunded: 'โอนคืนแล้ว',
+  cancelled: 'ยกเลิกแล้ว',
 };
 const fmStateClass = (state) => ({
   awaiting: 'status-full',
   moved: 'status-open',
   expired: 'status-cancelled',
+  refund_requested: 'status-cancelled',
+  refunded: 'status-closed',
   cancelled: 'status-closed',
 }[state] || 'status-closed');
+
+// ประเภทที่กำลังดู — ก่อนกดคือที่เลือกในฟอร์ม หลังกดคือของจริงจากหลังบ้าน
+const fmActiveKind = computed(() => fmOverview.value?.kind || fmKind.value);
+const fmActivePresets = computed(() => (fmKind.value === 'underfilled' ? fmUnderfilledPresets : fmReasonPresets));
+
+// หลังบ้านปฏิเสธรอบที่ครบขั้นต่ำแล้ว/ผ่านวันไปแล้ว — บอกตั้งแต่ก่อนกด
+const fmUnderfilledBlocked = computed(() => {
+  const sch = fmSchedule.value;
+  if (!sch) return null;
+  const min = fmOverview.value?.underfilled_min_seats;
+  if (sch.status === 'cancelled') return 'รอบนี้ถูกยกเลิกไปแล้ว';
+  if (sch.departure_date && sch.departure_date.slice(0, 10) < bangkokTodayIso()) return 'รอบนี้ผ่านวันเดินทางไปแล้ว';
+  if (min && Number(sch.booked_seats || 0) >= min) return `จองครบขั้นต่ำ ${min} ที่แล้ว`;
+  return null;
+});
+
+function bangkokTodayIso() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+}
+
+// วันสุดท้ายที่ลูกค้าตัดสินใจ = วันนี้ (เวลาไทย) + 14 วัน ตรงกับ ForceMajeureService::decideByFromToday
+const fmDecideByPreview = computed(() => {
+  const [y, m, d] = bangkokTodayIso().split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 14))
+    .toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+});
+
+const setFmKind = (kind) => {
+  fmKind.value = kind;
+  // สลับประเภทแล้วเหตุผลเดิมของอีกแบบไม่ใช่ของแบบนี้
+  if (kind === 'underfilled' && fmReasonPresets.includes(fmReason.value)) fmReason.value = '';
+  if (kind === 'force_majeure' && fmUnderfilledPresets.includes(fmReason.value)) fmReason.value = '';
+};
+
+const copyRefundAccount = async (b) => {
+  const a = b.refund_account;
+  const text = `${a.bank} ${a.number} ${a.name} ฿${Number(b.refund_amount || 0).toLocaleString()} (${b.booking_ref})`;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(`คัดลอกบัญชีของ ${b.booking_ref} แล้ว`);
+  } catch {
+    window.prompt('คัดลอกข้อมูลนี้', text);
+  }
+};
 
 // วันสุดท้ายของสิทธิ์ — เดือนที่วันไม่พอ (31 ส.ค. + 6 = ก.พ.) ใช้วันสุดท้ายของเดือน ตรงกับหลังบ้าน
 const fmUntilPreview = computed(() => {
@@ -3105,9 +3206,10 @@ const fmUntilPreview = computed(() => {
   return until.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 });
 
-const openForceMajeure = async (sch) => {
+const openForceMajeure = async (sch, kind = 'force_majeure') => {
   fmSchedule.value = sch;
   fmOverview.value = null;
+  fmKind.value = kind;
   fmReason.value = sch.force_majeure_reason || '';
   showForceMajeure.value = true;
   fmLoading.value = true;
@@ -3128,11 +3230,18 @@ const closeForceMajeure = () => {
 };
 
 const submitForceMajeure = async () => {
-  if (!fmSchedule.value || !fmReason.value.trim()) return;
-  if (!window.confirm(`ยืนยันยกเลิกรอบ ${fmSchedule.value.departure_date} และแจ้งลูกค้าทุกคนให้เลือกรอบใหม่?\nทำแล้วย้อนกลับไม่ได้`)) return;
+  const underfilled = fmKind.value === 'underfilled';
+  if (!fmSchedule.value || (!underfilled && !fmReason.value.trim())) return;
+  const question = underfilled
+    ? `ยืนยันยกเลิกรอบ ${fmSchedule.value.departure_date} เพราะผู้ร่วมทริปไม่ครบ?\nลูกค้าทุกคนจะเลือกได้ว่าไปรอบใหม่หรือรับเงินคืนเต็มจำนวน — ทำแล้วเปิดรอบนี้กลับไม่ได้`
+    : `ยืนยันยกเลิกรอบ ${fmSchedule.value.departure_date} และแจ้งลูกค้าทุกคนให้เลือกรอบใหม่?\nทำแล้วย้อนกลับไม่ได้`;
+  if (!window.confirm(question)) return;
   fmSubmitting.value = true;
   try {
-    const res = await api.post(`/admin/schedules/${fmSchedule.value.id}/force-majeure`, { reason: fmReason.value.trim() });
+    const res = await api.post(`/admin/schedules/${fmSchedule.value.id}/force-majeure`, {
+      kind: fmKind.value,
+      reason: fmReason.value.trim() || null,
+    });
     fmOverview.value = res.data.data;
     toast.success(res.data.message || 'ยกเลิกรอบและแจ้งลูกค้าแล้ว');
     fetchData();
@@ -3145,8 +3254,11 @@ const submitForceMajeure = async () => {
 
 // ลูกค้าที่ทีมงานจองให้ (บัญชีเงา) ล็อกอินไม่ได้ — ส่งลิงก์นี้ทางไลน์ให้เลือกรอบเองได้เลย
 const copyChooseLink = async (b) => {
-  const text = `รอบ ${fmSchedule.value?.departure_date || ''} ของทริป ${fmSchedule.value?.trip?.title || ''} ออกเดินทางไม่ได้ครับ `
-    + `เลือกรอบใหม่ได้ฟรี ราคาเดิม ที่ลิงก์นี้ได้เลย (ไม่ต้องล็อกอิน)\n${b.choose_url}`;
+  const text = fmOverview.value?.kind === 'underfilled'
+    ? `รอบ ${fmSchedule.value?.departure_date || ''} ของทริป ${fmSchedule.value?.trip?.title || ''} ไม่ได้ออกเดินทางเพราะผู้ร่วมทริปไม่ครบครับ `
+      + `เลือกรอบใหม่ได้ฟรี ราคาเดิม หรือขอรับเงินคืนเต็มจำนวน ภายใน ${fmOverview.value?.decide_by || ''} ที่ลิงก์นี้ได้เลย (ไม่ต้องล็อกอิน)\n${b.choose_url}`
+    : `รอบ ${fmSchedule.value?.departure_date || ''} ของทริป ${fmSchedule.value?.trip?.title || ''} ออกเดินทางไม่ได้ครับ `
+      + `เลือกรอบใหม่ได้ฟรี ราคาเดิม ที่ลิงก์นี้ได้เลย (ไม่ต้องล็อกอิน)\n${b.choose_url}`;
   try {
     await navigator.clipboard.writeText(text);
     toast.success(`คัดลอกข้อความพร้อมลิงก์ของ ${b.booking_ref} แล้ว`);
@@ -6507,6 +6619,37 @@ onMounted(async () => {
 }
 .fm-explain li {
   margin-bottom: 3px;
+}
+.fm-kinds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.fm-kind {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+.fm-kind strong { display: block; font-size: 14px; color: #111827; }
+.fm-kind small { display: block; font-size: 12px; color: #6b7280; margin-top: 2px; line-height: 1.4; }
+.fm-kind .material-symbols-rounded { color: #d97706; }
+.fm-kind.active { border-color: #d97706; background: #fffbeb; }
+.fm-kind:disabled { opacity: .55; cursor: not-allowed; }
+.fm-account {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .fm-kinds { grid-template-columns: 1fr; }
 }
 .fm-chips {
   display: flex;

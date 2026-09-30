@@ -285,6 +285,9 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/cancel', [BookingController::class, 'cancel']);
         Route::post('bookings/{ref}/story-link', [BookingController::class, 'storyLink']);
         Route::post('bookings/{ref}/reschedule', [BookingController::class, 'reschedule']);
+        // รอบไม่ได้ออกเพราะคนไม่ครบ — ขอรับเงินคืนเต็มจำนวนแทนการเลือกรอบใหม่
+        Route::post('bookings/{ref}/postponement/refund', [BookingController::class, 'requestPostponementRefund'])
+            ->middleware('throttle:10,1');
         Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
         // ลูกค้ากดบอกสถานะตัวเองที่จุดนัด (กำลังไป/ถึงแล้ว/อาจสาย) — ให้กดซ้ำได้
         // เรื่อย ๆ ตามสถานการณ์จริง แต่ไม่ถี่จนกลายเป็นช่องยิงแจ้งเตือนใส่สตาฟ

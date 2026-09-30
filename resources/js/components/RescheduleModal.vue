@@ -23,15 +23,20 @@
           <!-- กติกาของสิทธิ์ที่กำลังใช้ -->
           <div v-if="isForceMajeure" class="rounded-[16px] bg-[#FFFBEB] border border-[#FDE68A] p-4 text-sm text-[#78350F] space-y-1.5">
             <p class="font-bold flex items-center gap-1.5">
-              <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">thunderstorm</span>
-              รอบเดิม{{ fm.original_departure_label ? ` ${fm.original_departure_label}` : '' }} ออกเดินทางไม่ได้
+              <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">{{ isUnderfilled ? 'groups' : 'thunderstorm' }}</span>
+              รอบเดิม{{ fm.original_departure_label ? ` ${fm.original_departure_label}` : '' }} {{ isUnderfilled ? 'ไม่ได้ออกเดินทาง' : 'ออกเดินทางไม่ได้' }}
             </p>
             <p v-if="fm.reason" class="text-[13px]">เนื่องจาก{{ fm.reason }}</p>
             <ul class="text-[13px] list-disc pl-5 space-y-0.5">
               <li>ยอดที่ชำระไว้ยังอยู่ครบ <strong>ราคาเดิม ไม่มีค่าธรรมเนียม</strong></li>
               <li>เลือกรอบที่ออกเดินทางได้ถึง <strong>{{ fm.until_label }}</strong></li>
+              <li v-if="isUnderfilled">ตัดสินใจได้ถึง <strong>{{ fm.decide_by_label }}</strong></li>
               <li>ไม่นับรวมกับสิทธิ์เลื่อนวันเดินทางตามปกติ</li>
             </ul>
+            <button v-if="fm.can_request_refund" type="button" @click="emit('refund')" :disabled="submitting"
+              class="text-[13px] font-bold underline text-[#B45309] pt-1">
+              ไม่สะดวกรอบไหนเลย? ขอรับเงินคืนเต็มจำนวนแทน
+            </button>
           </div>
           <div v-else class="rounded-[16px] bg-[#F0FAFA] border border-[#BCDFDF] p-4 text-[13px] text-[#0F3D3E]">
             <ul class="list-disc pl-5 space-y-0.5">
@@ -165,7 +170,8 @@ import { bangkokToday } from '../lib/bangkokDate';
 
 /**
  * เลื่อนรอบเดินทางเอง — ใช้ทั้งเลื่อนปกติ (ครั้งเดียว ก่อน 20 วัน) และสิทธิ์เลือกรอบใหม่
- * เมื่อรอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย (booking.reschedule_mode === 'force_majeure')
+ * เมื่อรอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัยหรือคนไม่ครบ (booking.reschedule_mode === 'force_majeure')
+ * รอบคนไม่ครบ emit('refund') ให้หน้าที่เปิดสลับไปหน้าต่างขอรับเงินคืน
  *
  * ไม่ใช้ SeatMap.vue เพราะผูกกับ seats store ของการจองที่อาจค้างอยู่ในอีกแท็บ
  * การเลือกที่นั่งที่นี่ไม่ล็อกที่นั่ง — เซิร์ฟเวอร์ตรวจซ้ำตอนยืนยันอยู่แล้ว
@@ -173,7 +179,7 @@ import { bangkokToday } from '../lib/bangkokDate';
 const props = defineProps({
   booking: { type: Object, required: true },
 });
-const emit = defineEmits(['close', 'done']);
+const emit = defineEmits(['close', 'done', 'refund']);
 
 const loading = ref(true);
 const loadError = ref('');
@@ -187,6 +193,8 @@ const submitting = ref(false);
 const submitError = ref('');
 
 const isForceMajeure = computed(() => props.booking.reschedule_mode === 'force_majeure');
+/** รอบเดิมไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ (ไม่ใช่เหตุสุดวิสัย) — รับเงินคืนแทนได้ */
+const isUnderfilled = computed(() => props.booking.force_majeure?.kind === 'underfilled');
 const fm = computed(() => props.booking.force_majeure || {});
 const passengerCount = computed(() => props.booking.passengers?.length || 1);
 const latestDeparture = computed(() => props.booking.reschedule_latest_departure || null);

@@ -88,14 +88,49 @@ class SmsService
             // ผูกกับครั้งที่เลื่อน — ย้อนแล้วเลื่อนใหม่ (หรือรอบใหม่ถูกเลื่อนซ้ำ) ต้องส่งได้อีก
             dedupeKey: 's'.($booking->force_majeure_schedule_id ?? $booking->schedule_id)
                 .':'.$booking->force_majeure_at?->timestamp,
-            message: sprintf(
-                'ทริป %s %s ต้องเลื่อนเนื่องจาก%s ยอดที่ชำระยังอยู่ครบ เลือกรอบใหม่ได้ฟรีถึง %s %s',
-                $this->tripTitle($booking),
-                ThaiDate::short($booking->schedule?->departure_date),
-                $this->clip($booking->force_majeure_reason, 40),
-                ThaiDate::short($booking->force_majeure_until),
-                ForceMajeureService::chooseUrl($booking),
-            ),
+            message: $booking->isUnderfilledPostponement()
+                ? sprintf(
+                    'ทริป %s %s ไม่ได้ออกเดินทางเนื่องจาก%s เลือกรอบใหม่ฟรีหรือรับเงินคืนเต็มจำนวน ภายใน %s %s',
+                    $this->tripTitle($booking),
+                    ThaiDate::short($booking->schedule?->departure_date),
+                    $this->clip($booking->force_majeure_reason, 40),
+                    ThaiDate::short($booking->postpone_decide_by),
+                    ForceMajeureService::chooseUrl($booking),
+                )
+                : sprintf(
+                    'ทริป %s %s ต้องเลื่อนเนื่องจาก%s ยอดที่ชำระยังอยู่ครบ เลือกรอบใหม่ได้ฟรีถึง %s %s',
+                    $this->tripTitle($booking),
+                    ThaiDate::short($booking->schedule?->departure_date),
+                    $this->clip($booking->force_majeure_reason, 40),
+                    ThaiDate::short($booking->force_majeure_until),
+                    ForceMajeureService::chooseUrl($booking),
+                ),
+        );
+    }
+
+    /**
+     * รอบไม่ได้ออกเพราะคนไม่ครบ — ลูกค้าขอคืนเงิน (หรือเลยกำหนดแล้วระบบคืนให้)
+     * แยกจาก booking_cancelled เพราะต้องบอกยอดคืนเต็มจำนวน ไม่ใช่นโยบายยกเลิกปกติ
+     */
+    public function sendUnderfilledRefund(Booking $booking): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        $amount = (float) ($booking->refund_amount ?? 0);
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'trip_refund_requested',
+            dedupeKey: 'fm:'.$booking->force_majeure_at?->timestamp,
+            message: $amount > 0
+                ? sprintf(
+                    'การจอง %s ยกเลิกแล้ว เราจะคืนเงิน %s บาทเต็มจำนวน%s',
+                    $booking->booking_ref,
+                    number_format($amount, 0),
+                    $booking->refundAccountSummary()
+                        ? ' เข้าบัญชีที่แจ้งไว้ภายใน 3-7 วันทำการ'
+                        : ' ทีมงานจะติดต่อขอเลขบัญชีรับเงินคืน',
+                )
+                : sprintf('การจอง %s ยกเลิกแล้ว ไม่มียอดที่ต้องคืน', $booking->booking_ref),
         );
     }
 
@@ -126,13 +161,22 @@ class SmsService
         return $this->queueOrSend(
             booking: $booking,
             type: 'trip_postponed_reminder',
-            dedupeKey: 'until:'.$booking->force_majeure_until?->toDateString(),
-            message: sprintf(
-                'การจอง %s ยังไม่ได้เลือกรอบใหม่ เลือกได้ถึง %s ราคาเดิม %s',
-                $booking->booking_ref,
-                ThaiDate::short($booking->force_majeure_until),
-                ForceMajeureService::chooseUrl($booking),
-            ),
+            dedupeKey: $booking->isUnderfilledPostponement()
+                ? 'decide:'.$booking->postpone_decide_by?->toDateString()
+                : 'until:'.$booking->force_majeure_until?->toDateString(),
+            message: $booking->isUnderfilledPostponement()
+                ? sprintf(
+                    'การจอง %s ยังไม่ได้เลือกรอบใหม่ เลือกรอบฟรีหรือรับเงินคืนได้ถึง %s ถ้าไม่เลือกเราจะคืนเงินให้ %s',
+                    $booking->booking_ref,
+                    ThaiDate::short($booking->postpone_decide_by),
+                    ForceMajeureService::chooseUrl($booking),
+                )
+                : sprintf(
+                    'การจอง %s ยังไม่ได้เลือกรอบใหม่ เลือกได้ถึง %s ราคาเดิม %s',
+                    $booking->booking_ref,
+                    ThaiDate::short($booking->force_majeure_until),
+                    ForceMajeureService::chooseUrl($booking),
+                ),
         );
     }
 
@@ -472,6 +516,7 @@ class SmsService
             'trip_postponed',
             'trip_postponed_reminder',
             'trip_resumed',
+            'trip_refund_requested',
         ];
     }
 

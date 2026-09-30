@@ -108,6 +108,8 @@ class TripScheduleResource extends JsonResource
             // ยกเลิกเพราะเหตุสุดวิสัย — ลูกค้าในรอบได้สิทธิ์เลือกรอบใหม่ (ForceMajeureService)
             'force_majeure_at' => $this->force_majeure_at?->toISOString(),
             'force_majeure_reason' => $this->force_majeure_reason,
+            // force_majeure | underfilled (ยกเลิกเพราะผู้ร่วมทริปไม่ครบ)
+            'postpone_kind' => $this->force_majeure_at ? ($this->postpone_kind ?: 'force_majeure') : null,
             'price' => $this->effective_price,
             // Pre-discount price (struck through in the UI) and the live flash-sale
             // block, present only when the admin has enabled a flash sale.

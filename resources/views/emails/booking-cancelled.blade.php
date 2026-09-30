@@ -77,14 +77,27 @@
     </div>
     @endif
 
+    @php
+      // รอบไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ — เราเป็นฝ่ายยกเลิก คืนเต็มจำนวน ไม่ใช่นโยบายปกติ
+      $underfilledRefund = $booking->owesUnderfilledFullRefund();
+      $refundAccount = $booking->refundAccountSummary();
+    @endphp
+
     @if($booking->refund_amount > 0)
     <div class="highlight-box hl-green">
-      <div class="amount-label">💸 ยอดคืนเงิน</div>
+      <div class="amount-label">💸 ยอดคืนเงิน{{ $underfilledRefund ? ' (เต็มจำนวน)' : '' }}</div>
       <div class="amount">฿{{ number_format($booking->refund_amount, 0) }}</div>
+      @if($underfilledRefund && $refundAccount)
+      <div class="amount-note">โอนเข้า {{ $refundAccount }} ภายใน 3&ndash;7 วันทำการครับ ไม่ต้องทำอะไรเพิ่มเลย</div>
+      @elseif($underfilledRefund)
+      <div class="amount-note">ทีมงานจะติดต่อขอเลขบัญชีสำหรับรับเงินคืน แล้วโอนให้ภายใน 3&ndash;7 วันทำการครับ</div>
+      @else
       <div class="amount-note">ทีมงานจะโอนคืนให้ภายใน 3&ndash;7 วันทำการครับ ไม่ต้องทำอะไรเพิ่มเลย</div>
+      @endif
     </div>
     @endif
 
+    @unless($underfilledRefund)
     <div class="alert-box alert-neutral">
       <p class="alert-title">📋 นโยบายการคืนเงิน (ขออนุญาตแจ้งไว้เป็นข้อมูลครับ)</p>
       <p class="alert-text">
@@ -92,6 +105,7 @@
         มัดจำ: ไม่คืนทุกกรณี
       </p>
     </div>
+    @endunless
 
     <div class="contact-bar">
       อยากจองรอบใหม่หรือมีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)

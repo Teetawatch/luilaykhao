@@ -8,6 +8,7 @@ use App\Models\ForceMajeureSeatHold;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\WaitlistEntry;
+use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -16,10 +17,15 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * รอบที่ออกไม่ได้เพราะเหตุสุดวิสัย (น้ำป่า พายุ อุทยานสั่งปิด) — เงื่อนไขการจองข้อ 6
+ * และรอบที่ไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบขั้นต่ำ (postpone_kind = underfilled)
  *
  * แทนที่จะคืนเงิน ทีมงานกดปุ่มเดียว รอบถูกยกเลิก และทุกใบจองในรอบได้ "สิทธิ์เลือก
  * รอบใหม่ของทริปเดิม" ที่ออกเดินทางได้ภายใน force_majeure_postpone_months เดือน
  * นับจากวันเดินทางเดิม ราคาเดิม ไม่มีค่าธรรมเนียม และไม่กินสิทธิ์เลื่อนปกติ
+ *
+ * แบบ "คนไม่ครบ" ต่างจากเหตุสุดวิสัยสามข้อ เพราะเป็นการตัดสินใจของเราเอง ไม่ใช่เหตุสุดวิสัย:
+ * ลูกค้าเลือกรับเงินคืนเต็มจำนวน (รวมมัดจำ) แทนรอบใหม่ได้เสมอ, ต้องตัดสินใจภายใน
+ * UNDERFILLED_DECIDE_DAYS วัน (เลยแล้วระบบคืนเงินให้เอง) และทุกข้อความห้ามพูดว่าเหตุสุดวิสัย
  *
  * ใบจองยัง confirmed/pending อยู่บนรอบที่ยกเลิก (เงินยังอยู่กับเรา) จนกว่าลูกค้าจะ
  * เลือกเองผ่าน BookingService::rescheduleBooking() หรือทีมงานย้ายให้ ระหว่างนั้น
@@ -30,6 +36,41 @@ class ForceMajeureService
 {
     /** เตือนลูกค้าที่ยังไม่เลือกรอบ เมื่อเหลือเวลาเท่านี้วัน */
     public const REMIND_DAYS_LEFT = [30, 7, 1];
+
+    public const KIND_FORCE_MAJEURE = 'force_majeure';
+
+    public const KIND_UNDERFILLED = 'underfilled';
+
+    /** รอบไม่ออกเพราะคนไม่ครบ: ให้เวลาตัดสินใจกี่วัน เลยแล้วคืนเงินให้เอง */
+    public const UNDERFILLED_DECIDE_DAYS = 14;
+
+    /** รอบไม่ออกเพราะคนไม่ครบ: เตือนเมื่อเหลือเวลาตัดสินใจเท่านี้วัน */
+    public const UNDERFILLED_REMIND_DAYS_LEFT = [3, 1];
+
+    /** เหตุผลตั้งต้นของรอบที่คนไม่ครบ — ลูกค้าเห็นต่อท้ายคำว่า "เนื่องจาก" */
+    public const UNDERFILLED_REASON = 'ผู้ร่วมเดินทางไม่ครบตามจำนวนขั้นต่ำ';
+
+    /** refund_status ของใบที่ขอคืนเงินแล้ว รอทีมงานโอน (processRefund เปลี่ยนเป็น refunded) */
+    public const REFUND_REQUESTED = 'requested';
+
+    /** ตัวเลือกช่องทางรับเงินคืน — ทุกหน้าจอ (เว็บ แอป LIFF ลิงก์) ใช้รายการเดียวกันจากที่นี่ */
+    public const REFUND_BANKS = [
+        'พร้อมเพย์',
+        'กสิกรไทย',
+        'ไทยพาณิชย์',
+        'กรุงเทพ',
+        'กรุงไทย',
+        'กรุงศรีอยุธยา',
+        'ทหารไทยธนชาต (ttb)',
+        'ออมสิน',
+        'ธ.ก.ส.',
+        'อาคารสงเคราะห์',
+        'ยูโอบี',
+        'ซีไอเอ็มบี ไทย',
+        'เกียรตินาคินภัทร',
+        'แลนด์ แอนด์ เฮ้าส์',
+        'อื่น ๆ',
+    ];
 
     public const TIMEZONE = 'Asia/Bangkok';
 
@@ -116,30 +157,45 @@ class ForceMajeureService
     }
 
     /**
-     * ยกเลิกรอบเพราะเหตุสุดวิสัย และมอบสิทธิ์เลือกรอบใหม่ให้ทุกใบจองในรอบ
+     * ยกเลิกรอบเพราะเหตุสุดวิสัย (หรือเพราะคนไม่ครบ) และมอบสิทธิ์เลือกรอบใหม่ให้ทุกใบจองในรอบ
      *
-     * ใช้ย้อนหลังกับรอบที่ผ่านไปแล้วได้ (ทีมงานมักยกเลิกหน้างาน) และกับรอบที่
-     * ถูกตั้งเป็น "ยกเลิก" ไว้ก่อนหน้าด้วยมือ
+     * เหตุสุดวิสัยใช้ย้อนหลังกับรอบที่ผ่านไปแล้วได้ (ทีมงานมักยกเลิกหน้างาน) และกับรอบที่
+     * ถูกตั้งเป็น "ยกเลิก" ไว้ก่อนหน้าด้วยมือ ส่วนคนไม่ครบต้องตัดสินก่อนวันเดินทาง
      *
-     * @return array{bookings: int, until: string}
+     * @return array{bookings: int, until: string, decide_by: string|null}
      */
-    public function postponeSchedule(TripSchedule $schedule, string $reason): array
+    public function postponeSchedule(TripSchedule $schedule, string $reason, string $kind = self::KIND_FORCE_MAJEURE): array
     {
+        if (! in_array($kind, [self::KIND_FORCE_MAJEURE, self::KIND_UNDERFILLED], true)) {
+            throw new \Exception('ประเภทการยกเลิกรอบไม่ถูกต้อง');
+        }
+
+        $underfilled = $kind === self::KIND_UNDERFILLED;
         $reason = trim($reason);
+
+        if ($reason === '' && $underfilled) {
+            $reason = self::UNDERFILLED_REASON;
+        }
 
         if ($reason === '') {
             throw new \Exception('กรุณาระบุเหตุผล เช่น น้ำป่า อุทยานประกาศปิด');
         }
 
-        [$schedule, $bookings, $waitlist] = DB::transaction(function () use ($schedule, $reason) {
+        $decideBy = $underfilled ? self::decideByFromToday()->toDateString() : null;
+
+        [$schedule, $bookings, $waitlist] = DB::transaction(function () use ($schedule, $reason, $kind, $underfilled, $decideBy) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($schedule->id);
 
             if ($schedule->force_majeure_at !== null) {
-                throw new \Exception('รอบนี้ถูกเลื่อนเพราะเหตุสุดวิสัยไปแล้ว');
+                throw new \Exception('รอบนี้ถูกยกเลิกให้ลูกค้าเลือกรอบใหม่ไปแล้ว');
             }
 
             if (! $schedule->departure_date) {
                 throw new \Exception('รอบนี้ยังไม่มีวันเดินทาง');
+            }
+
+            if ($underfilled) {
+                $this->assertUnderfilled($schedule);
             }
 
             $until = self::windowEndFor($schedule)->toDateString();
@@ -150,6 +206,7 @@ class ForceMajeureService
                 'status' => 'cancelled',
                 'force_majeure_at' => now(),
                 'force_majeure_reason' => $reason,
+                'postpone_kind' => $kind,
             ])->save();
 
             $bookings = $schedule->bookings()
@@ -164,6 +221,8 @@ class ForceMajeureService
                     'force_majeure_until' => $until,
                     'force_majeure_schedule_id' => $schedule->id,
                     'force_majeure_resolved_at' => null,
+                    'postpone_kind' => $kind,
+                    'postpone_decide_by' => $decideBy,
                 ])->save();
             }
 
@@ -187,12 +246,49 @@ class ForceMajeureService
 
         $this->notifyWaitlist($schedule, $waitlist);
         $this->notifyStaff($schedule, $bookings->count());
-        $this->chatEvents->roundPostponed($schedule, ThaiDate::full(self::windowEndFor($schedule)));
+        $this->chatEvents->roundPostponed(
+            $schedule,
+            ThaiDate::full($decideBy ? Carbon::parse($decideBy, self::TIMEZONE) : self::windowEndFor($schedule)),
+        );
 
         return [
             'bookings' => $bookings->count(),
             'until' => self::windowEndFor($schedule)->toDateString(),
+            'decide_by' => $decideBy,
         ];
+    }
+
+    /** วันสุดท้ายที่ลูกค้าตัดสินใจได้ ถ้ากดยกเลิกรอบเพราะคนไม่ครบวันนี้ */
+    public static function decideByFromToday(): Carbon
+    {
+        return Carbon::now(self::TIMEZONE)->startOfDay()->addDays(self::UNDERFILLED_DECIDE_DAYS);
+    }
+
+    public static function underfilledMinSeats(): int
+    {
+        return max(1, SiteSettings::int('underfilled_min_seats'));
+    }
+
+    /**
+     * ยกเลิกเพราะคนไม่ครบได้เฉพาะรอบที่ยังไม่ถึงวันเดินทาง และจองยังไม่ถึงขั้นต่ำจริง
+     * — กันกดผิดปุ่มกับรอบที่ครบแล้ว (ลูกค้าจะได้สิทธิ์คืนเงินเต็มจำนวนทั้งรอบ)
+     */
+    private function assertUnderfilled(TripSchedule $schedule): void
+    {
+        if ($schedule->status === 'cancelled') {
+            throw new \Exception('รอบนี้ถูกยกเลิกไปแล้ว');
+        }
+
+        if ($schedule->departure_date->toDateString() < now(self::TIMEZONE)->toDateString()) {
+            throw new \Exception('รอบนี้ผ่านวันเดินทางไปแล้ว');
+        }
+
+        $schedule->syncBookedSeats();
+        $min = self::underfilledMinSeats();
+
+        if ((int) $schedule->booked_seats >= $min) {
+            throw new \Exception("รอบนี้มีผู้จองครบขั้นต่ำ {$min} ที่แล้ว ยกเลิกเพราะคนไม่ครบไม่ได้");
+        }
     }
 
     /**
@@ -211,6 +307,14 @@ class ForceMajeureService
         // ที่ไม่ออก — แจ้งลูกค้าว่า "เดินทางตามเดิม" ไม่ได้ และใบจองจะค้างไร้สิทธิ์
         if ($schedule->force_majeure_prev_status === 'cancelled') {
             return 'รอบนี้ถูกตั้งเป็น "ยกเลิก" ไว้ตั้งแต่ก่อนกดเลื่อน ย้อนแล้วลูกค้าจะค้างในรอบที่ไม่ออก — ย้ายการจองหรือติดต่อลูกค้าเป็นรายคนแทน';
+        }
+
+        $refunds = Booking::where('force_majeure_schedule_id', $schedule->id)
+            ->whereIn('refund_status', [self::REFUND_REQUESTED, 'refunded'])
+            ->count();
+
+        if ($refunds > 0) {
+            return "มีลูกค้า {$refunds} รายการขอคืนเงินไปแล้ว ย้อนการเลื่อนไม่ได้ — ติดต่อลูกค้าที่เหลือเป็นรายคนแทน";
         }
 
         $moved = Booking::where('force_majeure_schedule_id', $schedule->id)
@@ -263,6 +367,8 @@ class ForceMajeureService
                     'force_majeure_until' => null,
                     'force_majeure_schedule_id' => null,
                     'force_majeure_resolved_at' => null,
+                    'postpone_kind' => null,
+                    'postpone_decide_by' => null,
                 ])->save();
             }
 
@@ -273,6 +379,7 @@ class ForceMajeureService
                 'force_majeure_at' => null,
                 'force_majeure_reason' => null,
                 'force_majeure_prev_status' => null,
+                'postpone_kind' => null,
             ])->saveQuietly();
             $schedule->syncBookedSeats();
 
@@ -390,6 +497,9 @@ class ForceMajeureService
             ->whereIn('status', Booking::MODIFIABLE_STATUSES)
             ->whereNotNull('user_id')
             ->whereDate('force_majeure_until', '>=', $date)
+            // คนไม่ครบที่เลยกำหนดตัดสินใจแล้ว — กำลังจะได้เงินคืน ไม่ต้องกันที่ให้
+            ->where(fn ($q) => $q->whereNull('postpone_decide_by')
+                ->orWhereDate('postpone_decide_by', '>=', now(self::TIMEZONE)->toDateString()))
             ->whereHas('forceMajeureSchedule', fn ($q) => $q->where('trip_id', $schedule->trip_id))
             ->withCount('passengers')
             ->orderBy('force_majeure_at')
@@ -455,11 +565,17 @@ class ForceMajeureService
     }
 
     /**
-     * เตือนคนที่ยังไม่ได้เลือกรอบ เมื่อเหลือ 30 / 7 / 1 วัน (งานรายวัน)
+     * เตือนคนที่ยังไม่ได้เลือกรอบ เมื่อเหลือ 30 / 7 / 1 วัน (งานรายวัน) — รอบที่คนไม่ครบ
+     * เตือนเมื่อเหลือเวลาตัดสินใจ 3 / 1 วัน
      *
      * @return array{reminded: int}
      */
     public function sendDeadlineReminders(): array
+    {
+        return ['reminded' => $this->remindForceMajeure() + $this->remindUnderfilled()];
+    }
+
+    private function remindForceMajeure(): int
     {
         $today = Carbon::now(self::TIMEZONE)->startOfDay();
         $reminded = 0;
@@ -471,6 +587,7 @@ class ForceMajeureService
                 ->awaitingNewRound()
                 ->whereIn('status', Booking::MODIFIABLE_STATUSES)
                 ->whereNotNull('user_id')
+                ->where(fn ($q) => $q->whereNull('postpone_kind')->orWhere('postpone_kind', self::KIND_FORCE_MAJEURE))
                 ->whereDate('force_majeure_until', $target)
                 ->with(['user', 'passengers', 'schedule.trip'])
                 ->get();
@@ -512,7 +629,176 @@ class ForceMajeureService
             }
         }
 
-        return ['reminded' => $reminded];
+        return $reminded;
+    }
+
+    private function remindUnderfilled(): int
+    {
+        $today = Carbon::now(self::TIMEZONE)->startOfDay();
+        $reminded = 0;
+
+        foreach (self::UNDERFILLED_REMIND_DAYS_LEFT as $daysLeft) {
+            $target = $today->copy()->addDays($daysLeft)->toDateString();
+
+            $bookings = Booking::query()
+                ->awaitingNewRound()
+                ->whereIn('status', Booking::MODIFIABLE_STATUSES)
+                ->whereNotNull('user_id')
+                ->where('postpone_kind', self::KIND_UNDERFILLED)
+                ->whereDate('postpone_decide_by', $target)
+                ->with(['user', 'passengers', 'schedule.trip'])
+                ->get();
+
+            foreach ($bookings as $booking) {
+                $alreadySent = SmartNotification::where('user_id', $booking->user_id)
+                    ->where('type', 'trip_postponed_reminder')
+                    ->where('data->booking_ref', $booking->booking_ref)
+                    ->where('data->days_left', $daysLeft)
+                    ->where('data->episode', $booking->force_majeure_at?->timestamp)
+                    ->exists();
+
+                if ($alreadySent) {
+                    continue;
+                }
+
+                $decideBy = ThaiDate::full($booking->postpone_decide_by);
+                $paid = (float) $booking->paid_amount;
+
+                SmartNotification::send(
+                    $booking->user_id,
+                    'trip_postponed_reminder',
+                    $daysLeft === 1 ? 'พรุ่งนี้วันสุดท้าย เลือกรอบใหม่หรือรับเงินคืน' : "อีก {$daysLeft} วัน เลือกรอบใหม่หรือรับเงินคืน",
+                    'การจอง '.$booking->booking_ref.' ทริป '.($booking->schedule?->trip?->title ?? '')
+                        .' ยังไม่ได้เลือก เลือกรอบใหม่ได้ฟรี ราคาเดิม หรือขอรับเงินคืนเต็มจำนวน ภายใน '.$decideBy
+                        .($paid > 0 ? ' ถ้าไม่ได้เลือก เราจะคืนเงินเต็มจำนวนให้ครับ' : ''),
+                    [
+                        'booking_ref' => $booking->booking_ref,
+                        'days_left' => $daysLeft,
+                        'episode' => $booking->force_majeure_at?->timestamp,
+                        'route' => 'booking',
+                    ],
+                );
+
+                // SMS เฉพาะรอบ 3 วัน — คนที่ไม่มีแอปและไม่ได้ผูก LINE จะได้รู้ก่อนสาย
+                if ($daysLeft === 3) {
+                    $this->sms->sendTripPostponedReminder($booking);
+                }
+
+                $reminded++;
+            }
+        }
+
+        return $reminded;
+    }
+
+    /**
+     * ลูกค้าขอรับเงินคืนเต็มจำนวนแทนการเลือกรอบใหม่ (เฉพาะรอบที่ไม่ออกเพราะคนไม่ครบ)
+     *
+     * ใบจองถูกยกเลิกทันที และ refund_status = requested ให้ทีมงานเห็นในคิวงานแล้วโอนคืน
+     * ผ่านปุ่มคืนเงินเดิม (processRefund) ยอดคืน = ทุกบาทที่จ่ายมา รวมมัดจำ
+     *
+     * @param  array{bank: string, number: string, name: string}|null  $account  บัญชีรับเงินคืน
+     *                                                                           (null = ระบบคืนเองเพราะเลยกำหนด ทีมงานติดต่อขอเลขบัญชี)
+     */
+    public function requestRefund(Booking $booking, ?array $account, bool $auto = false): Booking
+    {
+        $account = $account ? self::normalizeRefundAccount($account) : null;
+
+        $refunded = DB::transaction(function () use ($booking, $account, $auto) {
+            $locked = Booking::whereKey($booking->id)->lockForUpdate()->first();
+
+            if (! $locked || ! $locked->canRequestUnderfilledRefund()) {
+                throw new \Exception('การจองนี้ขอรับเงินคืนแบบนี้ไม่ได้แล้ว');
+            }
+
+            $paid = round((float) $locked->paid_amount, 2);
+
+            if ($paid > 0 && ! $account && ! $auto) {
+                throw new \Exception('กรุณากรอกบัญชีสำหรับรับเงินคืน');
+            }
+
+            $reason = $auto
+                ? 'รอบเดินทางไม่ได้ออกเพราะผู้ร่วมเดินทางไม่ครบ และไม่ได้เลือกรอบใหม่ภายในกำหนด — คืนเงินเต็มจำนวน'
+                : 'รอบเดินทางไม่ได้ออกเพราะผู้ร่วมเดินทางไม่ครบ — ลูกค้าขอรับเงินคืนเต็มจำนวน';
+
+            $cancelled = app(BookingService::class)->cancelBooking($locked, $reason, notify: false);
+
+            $cancelled->forceFill([
+                'force_majeure_resolved_at' => now(),
+                'refund_status' => $paid > 0 ? self::REFUND_REQUESTED : null,
+                'refund_amount' => $paid > 0 ? $paid : null,
+                'refund_account' => $paid > 0 ? $account : null,
+            ])->save();
+
+            return $cancelled;
+        });
+
+        $this->notifyRefundRequested($refunded->fresh(['user', 'passengers', 'schedule.trip']), $auto);
+
+        return $refunded;
+    }
+
+    /**
+     * เลยกำหนดตัดสินใจแล้วยังเงียบ — คืนเงินเต็มจำนวนให้เอง (งานรายวัน)
+     * ใบที่ไม่มีเลขบัญชีขึ้นคิวงานให้ทีมงานติดต่อขอเลขบัญชี
+     */
+    public function refundExpiredUnderfilled(): int
+    {
+        $today = Carbon::now(self::TIMEZONE)->toDateString();
+
+        $bookings = Booking::query()
+            ->awaitingNewRound()
+            ->whereIn('status', Booking::MODIFIABLE_STATUSES)
+            ->where('postpone_kind', self::KIND_UNDERFILLED)
+            ->whereDate('postpone_decide_by', '<', $today)
+            ->orderBy('id')
+            ->get();
+
+        $count = 0;
+
+        foreach ($bookings as $booking) {
+            try {
+                $this->requestRefund($booking, null, auto: true);
+                $count++;
+            } catch (\Throwable $e) {
+                Log::warning('Underfilled auto refund failed', [
+                    'booking_ref' => $booking->booking_ref,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * เลขบัญชีที่ลูกค้าพิมพ์มา — ตัดขีด/ช่องว่างออก เก็บแต่ตัวเลข
+     *
+     * @param  array<string, mixed>  $account
+     * @return array{bank: string, number: string, name: string}
+     */
+    public static function normalizeRefundAccount(array $account): array
+    {
+        $bank = trim((string) ($account['bank'] ?? ''));
+        $number = preg_replace('/\D+/', '', (string) ($account['number'] ?? ''));
+        $name = trim(preg_replace('/\s+/u', ' ', (string) ($account['name'] ?? '')));
+
+        if (! in_array($bank, self::REFUND_BANKS, true)) {
+            throw new \Exception('กรุณาเลือกธนาคารหรือพร้อมเพย์');
+        }
+
+        // พร้อมเพย์ = เบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน 13 หลัก
+        if ($bank === 'พร้อมเพย์' ? ! in_array(strlen($number), [10, 13], true) : (strlen($number) < 9 || strlen($number) > 15)) {
+            throw new \Exception($bank === 'พร้อมเพย์'
+                ? 'พร้อมเพย์ต้องเป็นเบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน 13 หลัก'
+                : 'เลขบัญชีไม่ถูกต้อง');
+        }
+
+        if ($name === '' || mb_strlen($name) > 120) {
+            throw new \Exception('กรุณากรอกชื่อบัญชี');
+        }
+
+        return ['bank' => $bank, 'number' => $number, 'name' => $name];
     }
 
     /**
@@ -534,7 +820,11 @@ class ForceMajeureService
         return [
             'schedule_id' => $schedule->id,
             'force_majeure_at' => $schedule->force_majeure_at?->toISOString(),
+            'kind' => $schedule->force_majeure_at ? ($schedule->postpone_kind ?: self::KIND_FORCE_MAJEURE) : null,
             'reason' => $schedule->force_majeure_reason,
+            // ยกเลิกเพราะคนไม่ครบ: วันสุดท้ายที่ลูกค้าตัดสินใจ (ทุกใบได้วันเดียวกัน)
+            'decide_by' => $bookings->first()?->postpone_decide_by?->toDateString(),
+            'underfilled_min_seats' => self::underfilledMinSeats(),
             'until' => $schedule->departure_date && $schedule->force_majeure_at
                 ? self::windowEndFor($schedule)->toDateString()
                 : null,
@@ -546,10 +836,28 @@ class ForceMajeureService
                 'awaiting' => $rows->where('state', 'awaiting')->count(),
                 'moved' => $rows->where('state', 'moved')->count(),
                 'expired' => $rows->where('state', 'expired')->count(),
+                'refund_requested' => $rows->where('state', 'refund_requested')->count(),
+                'refunded' => $rows->where('state', 'refunded')->count(),
                 'cancelled' => $rows->where('state', 'cancelled')->count(),
             ],
             'bookings' => $rows,
         ];
+    }
+
+    /**
+     * ตอนนี้ใบนี้อยู่ตรงไหนของเรื่อง — ใช้ทั้งหน้าทีมงานและหน้าจอลูกค้า
+     * awaiting | expired | moved | refund_requested | refunded | cancelled
+     */
+    public static function stateOf(Booking $booking): string
+    {
+        return match (true) {
+            $booking->refund_status === 'refunded' || $booking->status === 'refunded' => 'refunded',
+            $booking->refund_status === self::REFUND_REQUESTED => 'refund_requested',
+            ! in_array($booking->status, Booking::MODIFIABLE_STATUSES, true) => 'cancelled',
+            $booking->force_majeure_resolved_at !== null => 'moved',
+            $booking->canChooseForceMajeureRound() => 'awaiting',
+            default => 'expired',
+        };
     }
 
     /**
@@ -565,26 +873,46 @@ class ForceMajeureService
 
         $awaiting = $booking->awaitsNewRound();
         $until = $booking->force_majeure_until;
-        $daysLeft = $until
+        // วันสุดท้ายที่ต้องตัดสินใจ = วันเดียวกับ until ของเหตุสุดวิสัย แต่สั้นกว่ามากเมื่อคนไม่ครบ
+        $deadline = $booking->forceMajeureDeadline();
+        $daysLeft = $deadline
             ? (int) Carbon::now(self::TIMEZONE)->startOfDay()
-                ->diffInDays(Carbon::parse($until->toDateString(), self::TIMEZONE), false)
+                ->diffInDays($deadline->copy()->startOfDay(), false)
             : null;
+        $underfilled = $booking->isUnderfilledPostponement();
+        $state = self::stateOf($booking);
         $original = $booking->relationLoaded('forceMajeureSchedule')
             ? $booking->forceMajeureSchedule
             : $booking->forceMajeureSchedule()->first();
 
         return [
+            // force_majeure = เหตุสุดวิสัย (ไม่คืนเงิน) · underfilled = คนไม่ครบ (เลือกรับเงินคืนได้)
+            'kind' => $booking->postponeKind(),
+            // awaiting | expired | moved | refund_requested | refunded | cancelled
+            'state' => $state,
             'reason' => $booking->force_majeure_reason,
             'original_departure_date' => $original?->departure_date?->toDateString(),
             'original_departure_label' => $original ? ThaiDate::full($original->departure_date) : null,
             // เลือกรอบที่ออกเดินทางได้ไม่เกินวันนี้
             'until' => $until?->toDateString(),
             'until_label' => $until ? ThaiDate::full($until) : null,
+            // ต้องตัดสินใจ (เลือกรอบ/ขอคืนเงิน) ภายในวันนี้ — เหตุสุดวิสัยคือวันเดียวกับ until
+            'decide_by' => $deadline?->toDateString(),
+            'decide_by_label' => $deadline ? ThaiDate::full($deadline) : null,
             'awaiting' => $awaiting,
             'can_choose' => $booking->canChooseForceMajeureRound(),
             'expired' => $awaiting && ! $booking->canChooseForceMajeureRound(),
             'days_left' => $awaiting ? $daysLeft : null,
             'resolved_at' => $booking->force_majeure_resolved_at?->toISOString(),
+            // คนไม่ครบ: ขอรับเงินคืนเต็มจำนวนแทนได้ (ยอด = ทุกบาทที่จ่ายมา รวมมัดจำ)
+            'can_request_refund' => $booking->canRequestUnderfilledRefund(),
+            'refund_amount' => $underfilled
+                ? round((float) ($state === 'awaiting' || $state === 'expired'
+                    ? $booking->paid_amount
+                    : ($booking->refund_amount ?? 0)), 2)
+                : null,
+            'refund_account_label' => $underfilled ? $booking->refundAccountSummary() : null,
+            'refund_banks' => $booking->canRequestUnderfilledRefund() ? self::REFUND_BANKS : [],
             // รอบใหม่ที่กันที่นั่งไว้ให้ใบนี้ — หน้าจอบวกกลับเข้าไปในที่ว่างของรอบนั้น
             // (ตัวเลขที่นั่งสาธารณะหักที่ที่กันไว้ออกแล้ว รวมของเจ้าของเองด้วย)
             'holds' => $awaiting
@@ -606,12 +934,8 @@ class ForceMajeureService
     /** @return array<string, mixed> */
     private function overviewRow(Booking $booking): array
     {
-        $state = match (true) {
-            ! in_array($booking->status, Booking::MODIFIABLE_STATUSES, true) => 'cancelled',
-            $booking->force_majeure_resolved_at !== null => 'moved',
-            $booking->canChooseForceMajeureRound() => 'awaiting',
-            default => 'expired',
-        };
+        $state = self::stateOf($booking);
+        $account = $booking->refund_account;
 
         return [
             'booking_ref' => $booking->booking_ref,
@@ -625,7 +949,11 @@ class ForceMajeureService
             'total_amount' => (float) $booking->total_amount,
             'paid_amount' => (float) $booking->paid_amount,
             'until' => $booking->force_majeure_until?->toDateString(),
+            'decide_by' => $booking->postpone_decide_by?->toDateString(),
             'resolved_at' => $booking->force_majeure_resolved_at?->toISOString(),
+            'refund_amount' => $booking->refund_amount !== null ? (float) $booking->refund_amount : null,
+            // ทีมงานต้องใช้เลขเต็มเพื่อโอน — หน้านี้เปิดได้เฉพาะแอดมิน/โอเปอเรเตอร์
+            'refund_account' => is_array($account) && ! empty($account['number']) ? $account : null,
             'moved_to' => $state === 'moved' && $booking->schedule
                 ? [
                     'schedule_id' => $booking->schedule->id,
@@ -641,16 +969,30 @@ class ForceMajeureService
         $schedule = $booking->schedule;
         $tripTitle = $schedule?->trip?->title ?? 'ทริป';
         $until = ThaiDate::full($booking->force_majeure_until);
+        $underfilled = $booking->isUnderfilledPostponement();
+
+        [$title, $body] = $underfilled
+            ? [
+                'รอบเดินทางไม่ได้ออก · เลือกรอบใหม่หรือรับเงินคืน',
+                $tripTitle.' วันที่ '.ThaiDate::short($schedule?->departure_date)
+                    .' ไม่ได้ออกเดินทาง เนื่องจาก'.$booking->force_majeure_reason
+                    .' เลือกรอบใหม่ได้ฟรี ราคาเดิม หรือขอรับเงินคืนเต็มจำนวน ภายใน '
+                    .ThaiDate::full($booking->postpone_decide_by),
+            ]
+            : [
+                'รอบเดินทางต้องเลื่อน · เลือกรอบใหม่ได้เลย',
+                $tripTitle.' วันที่ '.ThaiDate::short($schedule?->departure_date)
+                    .' ออกเดินทางไม่ได้ เนื่องจาก'.$booking->force_majeure_reason
+                    .' ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ได้ฟรี ราคาเดิม ภายใน '.$until,
+            ];
 
         if ($booking->user_id) {
             try {
                 SmartNotification::send(
                     $booking->user_id,
                     'trip_postponed',
-                    'รอบเดินทางต้องเลื่อน · เลือกรอบใหม่ได้เลย',
-                    $tripTitle.' วันที่ '.ThaiDate::short($schedule?->departure_date)
-                        .' ออกเดินทางไม่ได้ เนื่องจาก'.$booking->force_majeure_reason
-                        .' ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ได้ฟรี ราคาเดิม ภายใน '.$until,
+                    $title,
+                    $body,
                     [
                         'booking_ref' => $booking->booking_ref,
                         'schedule_id' => $schedule?->id,
@@ -667,6 +1009,47 @@ class ForceMajeureService
 
         $this->mail->sendTripPostponedEmail($booking);
         $this->sms->sendTripPostponed($booking);
+    }
+
+    /**
+     * ยืนยันกับลูกค้าว่ารับเรื่องคืนเงินแล้ว (หรือระบบคืนให้เองเพราะเลยกำหนด)
+     * ไม่ใช้อีเมล/SMS ยกเลิกปกติ เพราะมันพ่วงนโยบายคืน 80/50/0% ที่ไม่ใช่กรณีนี้
+     */
+    private function notifyRefundRequested(Booking $booking, bool $auto): void
+    {
+        $amount = (float) ($booking->refund_amount ?? 0);
+        $tripTitle = $booking->schedule?->trip?->title ?? 'ทริป';
+        $hasAccount = $booking->refundAccountSummary() !== null;
+
+        $body = $amount > 0
+            ? 'การจอง '.$booking->booking_ref.' ทริป '.$tripTitle.' ยกเลิกแล้ว เราจะโอนคืน ฿'
+                .number_format($amount, 0).' เต็มจำนวน'
+                .($hasAccount ? ' เข้าบัญชีที่แจ้งไว้ภายใน 3–7 วันทำการครับ' : ' ทีมงานจะติดต่อขอเลขบัญชีรับเงินคืนครับ')
+            : 'การจอง '.$booking->booking_ref.' ทริป '.$tripTitle.' ยกเลิกแล้ว ไม่มียอดที่ต้องคืนครับ';
+
+        if ($booking->user_id) {
+            try {
+                SmartNotification::send(
+                    $booking->user_id,
+                    'trip_refund_requested',
+                    $auto ? 'คืนเงินให้แล้ว · ไม่ได้เลือกรอบใหม่ภายในกำหนด' : 'รับเรื่องคืนเงินแล้ว',
+                    $body,
+                    [
+                        'booking_ref' => $booking->booking_ref,
+                        'refund_amount' => $amount,
+                        'route' => 'booking',
+                    ],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Underfilled refund push failed', [
+                    'booking_ref' => $booking->booking_ref,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $this->mail->sendBookingCancelledEmail($booking, $booking->cancellation_reason);
+        $this->sms->sendUnderfilledRefund($booking);
     }
 
     private function notifyResumed(Booking $booking, int $postponedAt): void
@@ -772,7 +1155,8 @@ class ForceMajeureService
                     'รอบเดินทางถูกยกเลิก',
                     ($schedule->trip?->title ?? 'ทริป').' รอบ '.ThaiDate::short($schedule->departure_date)
                         .' ยกเลิกเนื่องจาก'.$schedule->force_majeure_reason
-                        ." ลูกค้า {$bookingCount} รายการได้รับแจ้งให้เลือกรอบใหม่แล้ว",
+                        ." ลูกค้า {$bookingCount} รายการได้รับแจ้งให้เลือกรอบใหม่"
+                        .($schedule->postpone_kind === self::KIND_UNDERFILLED ? 'หรือรับเงินคืน' : '').'แล้ว',
                     ['schedule_id' => $schedule->id],
                 );
             } catch (\Throwable $e) {

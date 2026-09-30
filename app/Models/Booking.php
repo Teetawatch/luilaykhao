@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ForceMajeureService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -79,15 +80,19 @@ class Booking extends Model
         'cancellation_reason', 'cancelled_at', 'rescheduled_at',
         'force_majeure_at', 'force_majeure_reason', 'force_majeure_until',
         'force_majeure_schedule_id', 'force_majeure_resolved_at',
+        'postpone_kind', 'postpone_decide_by',
         'was_auto_expired', 'winback_sent_at',
         'hold_until', 'hold_note', 'hold_by_id',
-        'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path',
+        'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path', 'refund_account',
         'promotion_id', 'promotion_code', 'discount_amount',
         'sale_campaign_id', 'campaign_discount',
         'is_join_trip', 'flexi_surcharge',
         'is_gift', 'gift_code', 'gift_from_name', 'gift_message',
         'gifted_by_user_id', 'gift_claimed_at',
     ];
+
+    /** บัญชีรับเงินคืนอ่านผ่าน refundAccountSummary() / ภาพรวมของทีมงานเท่านั้น */
+    protected $hidden = ['refund_account'];
 
     protected function casts(): array
     {
@@ -104,6 +109,9 @@ class Booking extends Model
             'force_majeure_at' => 'datetime',
             'force_majeure_until' => 'date',
             'force_majeure_resolved_at' => 'datetime',
+            'postpone_decide_by' => 'date',
+            // เลขบัญชีรับเงินคืน {bank, number, name} — ข้อมูลการเงินส่วนตัว เข้ารหัสไว้
+            'refund_account' => 'encrypted:array',
             'was_auto_expired' => 'boolean',
             'winback_sent_at' => 'datetime',
             'hold_until' => 'datetime',
@@ -727,12 +735,72 @@ class Booking extends Model
             && in_array($this->status, self::MODIFIABLE_STATUSES, true);
     }
 
-    /** เลือกรอบใหม่เองได้ถึงสิ้นวันนี้ (เวลาไทย) */
+    /**
+     * เลือกรอบใหม่เองได้ถึงสิ้นวันนี้ (เวลาไทย)
+     *
+     * รอบที่ไม่ออกเพราะคนไม่ครบมีกำหนดตัดสินใจ (postpone_decide_by) ที่สั้นกว่ากรอบ
+     * รอบใหม่ — ต้องตัดสินใจภายในวันนั้น แม้รอบที่เลือกจะออกหลังจากนั้นก็ได้
+     */
     public function forceMajeureDeadline(): ?Carbon
     {
-        return $this->force_majeure_until
-            ? Carbon::parse($this->force_majeure_until->toDateString(), 'Asia/Bangkok')->endOfDay()
+        $dates = array_filter([
+            $this->force_majeure_until?->toDateString(),
+            $this->postpone_decide_by?->toDateString(),
+        ]);
+
+        return $dates
+            ? Carbon::parse(min($dates), 'Asia/Bangkok')->endOfDay()
             : null;
+    }
+
+    /**
+     * การเลื่อนครั้งนี้เป็นแบบไหน — null เมื่อไม่เคยถูกเลื่อน
+     * ใบเก่าก่อนมีคอลัมน์ postpone_kind เป็นเหตุสุดวิสัยทั้งหมด
+     */
+    public function postponeKind(): ?string
+    {
+        if ($this->force_majeure_at === null) {
+            return null;
+        }
+
+        return $this->postpone_kind ?: ForceMajeureService::KIND_FORCE_MAJEURE;
+    }
+
+    /** รอบเดิมไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ (ไม่ใช่เหตุสุดวิสัย) */
+    public function isUnderfilledPostponement(): bool
+    {
+        return $this->postponeKind() === ForceMajeureService::KIND_UNDERFILLED;
+    }
+
+    /**
+     * ใบนี้มีสิทธิ์ได้เงินคืนเต็มจำนวน — รอบไม่ออกเพราะคนไม่ครบเป็นการตัดสินใจของเรา
+     * จึงคืนทุกบาทที่จ่ายมา (รวมมัดจำ) ตราบใดที่ใบยังค้างอยู่บนรอบนั้น ใบที่เลือกรอบใหม่
+     * ไปแล้วกลับไปใช้นโยบายยกเลิกปกติของรอบใหม่
+     */
+    public function owesUnderfilledFullRefund(): bool
+    {
+        return $this->isUnderfilledPostponement()
+            && (int) $this->schedule_id === (int) $this->force_majeure_schedule_id;
+    }
+
+    /** ขอรับเงินคืนเต็มจำนวนแทนการเลือกรอบใหม่ได้ไหม */
+    public function canRequestUnderfilledRefund(): bool
+    {
+        return $this->isUnderfilledPostponement() && $this->awaitsNewRound();
+    }
+
+    /** บัญชีรับเงินคืนแบบปิดเลขกลาง สำหรับแสดงให้ลูกค้าเห็นว่ากรอกอะไรไว้ */
+    public function refundAccountSummary(): ?string
+    {
+        $account = $this->refund_account;
+
+        if (! is_array($account) || empty($account['number'])) {
+            return null;
+        }
+
+        $number = (string) $account['number'];
+
+        return trim(($account['bank'] ?? '').' ••••'.substr($number, -4));
     }
 
     /** ยังอยู่ในกรอบเวลาที่ลูกค้าเลือกรอบใหม่เองได้ไหม */

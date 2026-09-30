@@ -13,6 +13,7 @@ use App\Models\SosAlert;
 use App\Models\SupportConversation;
 use App\Models\TripPost;
 use App\Services\AtRiskScheduleService;
+use App\Services\ForceMajeureService;
 use App\Services\ScheduleFinanceService;
 use App\Services\ShoppingListService;
 use App\Services\SlipOcrService;
@@ -46,6 +47,7 @@ class AdminActionQueueController extends Controller
             $this->atRiskScheduleGroup(),
             $this->financeCloseGroup(),
             $this->shoppingReportGroup(),
+            $this->refundRequestGroup(),
             $this->slipGroup(),
             $this->customPickupGroup(),
             $this->supportGroup(),
@@ -153,6 +155,29 @@ class AdminActionQueueController extends Controller
                     .' · จบมาแล้ว '.$row['days_since_end'].' วัน'
                     .($row['expense_items_count'] === 0 ? ' · ยังไม่มีรายการค่าใช้จ่ายเลย' : ''),
                 'at' => null,
+            ])->values(),
+        );
+    }
+
+    /**
+     * เงินที่ต้องโอนคืนลูกค้า — รอบไม่ได้ออกเพราะคนไม่ครบแล้วลูกค้าขอคืน (หรือเลยกำหนด
+     * ตัดสินใจแล้วระบบคืนให้) กดคืนเงินที่หน้าการจองแล้วการ์ดนี้หายไปเอง
+     * ใบที่ไม่มีเลขบัญชีต้องโทรขอก่อน จึงบอกไว้ในรายการ
+     */
+    private function refundRequestGroup(): array
+    {
+        $query = Booking::where('refund_status', ForceMajeureService::REFUND_REQUESTED);
+        $recent = (clone $query)->with(['user', 'schedule.trip'])->oldest('cancelled_at')->limit(5)->get();
+
+        return $this->group(
+            'refund_requests', 'เงินคืนที่ต้องโอนให้ลูกค้า', 'currency_exchange', 'high',
+            $query->count(),
+            '/admin/bookings?refund_status='.ForceMajeureService::REFUND_REQUESTED,
+            $recent->map(fn (Booking $b) => [
+                'title' => $b->booking_ref.' · ฿'.number_format((float) $b->refund_amount, 0),
+                'detail' => ($b->user?->name ?? 'ลูกค้า')
+                    .($b->refundAccountSummary() ? ' · '.$b->refundAccountSummary() : ' · ยังไม่มีเลขบัญชี ต้องติดต่อ'),
+                'at' => $b->cancelled_at?->toISOString(),
             ])->values(),
         );
     }

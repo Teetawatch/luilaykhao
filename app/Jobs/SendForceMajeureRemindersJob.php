@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * เตือนลูกค้าที่รอบถูกเลื่อนเพราะเหตุสุดวิสัยแต่ยังไม่ได้เลือกรอบใหม่ เมื่อสิทธิ์
- * เหลือ 30 / 7 / 1 วัน — ทุกวัน 10:00 (Asia/Bangkok) ดู ForceMajeureService
+ * เหลือ 30 / 7 / 1 วัน (รอบคนไม่ครบ 3 / 1 วัน) และคืนเงินให้ใบคนไม่ครบที่เลยกำหนด
+ * ตัดสินใจ — ทุกวัน 10:00 (Asia/Bangkok) ดู ForceMajeureService
  */
 class SendForceMajeureRemindersJob implements ShouldQueue
 {
@@ -22,8 +23,10 @@ class SendForceMajeureRemindersJob implements ShouldQueue
     public function handle(ForceMajeureService $forceMajeure): void
     {
         $result = $forceMajeure->sendDeadlineReminders();
+        // รอบที่คนไม่ครบ: เลยกำหนดตัดสินใจแล้วยังเงียบ — คืนเงินเต็มจำนวนให้เอง
+        $result['auto_refunded'] = $forceMajeure->refundExpiredUnderfilled();
 
-        if ($result['reminded'] > 0) {
+        if ($result['reminded'] > 0 || $result['auto_refunded'] > 0) {
             Log::info('SendForceMajeureRemindersJob completed', $result);
         }
     }

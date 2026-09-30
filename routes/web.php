@@ -304,6 +304,10 @@ Route::post('/reschedule/{token}', [PublicRescheduleController::class, 'choose']
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:20,1')
     ->name('public.reschedule.choose');
+Route::post('/reschedule/{token}/refund', [PublicRescheduleController::class, 'refund'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:10,1')
+    ->name('public.reschedule.refund');
 
 // Beam returnUrl — ปลายทางหลังลูกค้าจ่ายผ่านแอปธนาคารแล้วเด้งกลับ (ไม่ต้องล็อกอิน
 // เพราะเบราว์เซอร์บนมือถืออาจกลับมาโดยไม่มี session เดิม) หน้านี้แค่รอผลจาก webhook

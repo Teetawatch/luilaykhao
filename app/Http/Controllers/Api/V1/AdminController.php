@@ -1432,6 +1432,10 @@ class AdminController extends Controller
         if ($request->filled('date')) {
             $query->whereDate('created_at', $request->date);
         }
+        // คิวงาน "คืนเงินรอโอน" ลิงก์มาที่ ?refund_status=requested
+        if ($request->filled('refund_status')) {
+            $query->where('refund_status', $request->refund_status);
+        }
         if ($request->filled('payment_type')) {
             $query->where('payment_type', $request->payment_type);
         }
@@ -1501,7 +1505,13 @@ class AdminController extends Controller
         if ($request->status === 'cancelled' || $request->status === 'refunded') {
             $booking = $this->bookingService->cancelBooking($booking, $request->cancellation_reason);
             if ($request->status === 'refunded') {
-                $booking->update(['status' => 'refunded']);
+                $booking->update([
+                    'status' => 'refunded',
+                    // ลูกค้าขอคืนเงินไว้ (รอบคนไม่ครบ) — ปิดเรื่องในคิวงาน "เงินคืนที่ต้องโอน" ด้วย
+                    ...($booking->refund_status === ForceMajeureService::REFUND_REQUESTED
+                        ? ['refund_status' => 'refunded', 'refunded_at' => now()]
+                        : []),
+                ]);
             }
         } else {
             $oldStatus = $booking->status;
@@ -1547,6 +1557,7 @@ class AdminController extends Controller
         }
 
         $preview = $this->bookingService->calculateRefundAmount($booking);
+        $account = $booking->refund_account;
 
         return $this->success([
             'booking_ref' => $booking->booking_ref,
@@ -1555,6 +1566,9 @@ class AdminController extends Controller
             'refund_percent' => $preview['refund_percent'],
             'refund_amount' => $preview['refund_amount'],
             'policy_note' => $preview['policy_note'],
+            // ลูกค้าขอคืนเงินเองจากรอบที่คนไม่ครบ — บัญชีที่เขากรอกไว้ให้โอนเข้า
+            'refund_status' => $booking->refund_status,
+            'refund_account' => is_array($account) && ! empty($account['number']) ? $account : null,
         ]);
     }
 

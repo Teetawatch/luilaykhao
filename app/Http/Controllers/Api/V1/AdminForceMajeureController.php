@@ -8,10 +8,12 @@ use App\Services\ForceMajeureService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
- * ยกเลิกรอบเพราะเหตุสุดวิสัย (น้ำป่า พายุ อุทยานสั่งปิด) แล้วให้ลูกค้าเลือกรอบใหม่เอง
- * — ปุ่มในหน้ารอบเดินทางของแอดมิน ดู ForceMajeureService
+ * ยกเลิกรอบเพราะเหตุสุดวิสัย (น้ำป่า พายุ อุทยานสั่งปิด) หรือเพราะผู้ร่วมทริปไม่ครบ
+ * แล้วให้ลูกค้าเลือกรอบใหม่เอง (คนไม่ครบเลือกรับเงินคืนแทนได้) — ปุ่มในหน้ารอบเดินทาง
+ * และหน้าเรดาร์รอบเสี่ยงของแอดมิน ดู ForceMajeureService
  */
 class AdminForceMajeureController extends Controller
 {
@@ -31,20 +33,25 @@ class AdminForceMajeureController extends Controller
     public function store(Request $request, int $id): JsonResponse
     {
         $data = $request->validate([
-            'reason' => ['required', 'string', 'max:120'],
+            'kind' => ['nullable', Rule::in([ForceMajeureService::KIND_FORCE_MAJEURE, ForceMajeureService::KIND_UNDERFILLED])],
+            // คนไม่ครบใช้เหตุผลตั้งต้นได้ เหตุสุดวิสัยต้องบอกเสมอว่าเกิดอะไร
+            'reason' => ['required_unless:kind,'.ForceMajeureService::KIND_UNDERFILLED, 'nullable', 'string', 'max:120'],
         ]);
 
         $schedule = TripSchedule::findOrFail($id);
+        $kind = $data['kind'] ?? ForceMajeureService::KIND_FORCE_MAJEURE;
 
         try {
-            $result = $this->forceMajeure->postponeSchedule($schedule, $data['reason']);
+            $result = $this->forceMajeure->postponeSchedule($schedule, (string) ($data['reason'] ?? ''), $kind);
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
 
         return $this->success(
             $this->forceMajeure->overview($schedule->fresh()),
-            "ยกเลิกรอบแล้ว แจ้งลูกค้า {$result['bookings']} รายการให้เลือกรอบใหม่",
+            $kind === ForceMajeureService::KIND_UNDERFILLED
+                ? "ยกเลิกรอบแล้ว แจ้งลูกค้า {$result['bookings']} รายการให้เลือกรอบใหม่หรือรับเงินคืน"
+                : "ยกเลิกรอบแล้ว แจ้งลูกค้า {$result['bookings']} รายการให้เลือกรอบใหม่",
         );
     }
 

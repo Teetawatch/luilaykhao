@@ -16,6 +16,7 @@ use App\Models\SchedulePhoto;
 use App\Models\TripPost;
 use App\Models\TripSchedule;
 use App\Services\BookingService;
+use App\Services\ForceMajeureService;
 use App\Services\ModerationService;
 use App\Services\PickupStatusService;
 use App\Services\WeatherService;
@@ -308,6 +309,53 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
+    }
+
+    /**
+     * รอบไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ — ลูกค้าขอรับเงินคืนเต็มจำนวนแทนการเลือกรอบใหม่
+     * (บัญชีรับเงินจำเป็นเมื่อมียอดที่จ่ายแล้ว ทีมงานจะได้โอนได้ทันที)
+     */
+    public function requestPostponementRefund(Request $request, string $ref): JsonResponse
+    {
+        $validated = $request->validate([
+            'bank' => ['nullable', 'string', 'max:60'],
+            'account_number' => ['nullable', 'string', 'max:30'],
+            'account_name' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $booking = Booking::where('booking_ref', $ref)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        try {
+            $booking = app(ForceMajeureService::class)->requestRefund(
+                $booking,
+                self::refundAccountFrom($validated),
+            );
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success(
+            new BookingResource($booking->fresh(['schedule.trip', 'passengers', 'forceMajeureSchedule'])),
+            (float) $booking->refund_amount > 0 ? 'รับเรื่องคืนเงินแล้ว' : 'ยกเลิกการจองแล้ว',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array{bank: string, number: string, name: string}|null
+     */
+    public static function refundAccountFrom(array $input): ?array
+    {
+        $any = trim((string) ($input['bank'] ?? '')).trim((string) ($input['account_number'] ?? ''))
+            .trim((string) ($input['account_name'] ?? ''));
+
+        return $any === '' ? null : [
+            'bank' => (string) ($input['bank'] ?? ''),
+            'number' => (string) ($input['account_number'] ?? ''),
+            'name' => (string) ($input['account_name'] ?? ''),
+        ];
     }
 
     public function changePickup(ChangePickupRequest $request, string $ref): JsonResponse

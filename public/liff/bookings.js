@@ -61,13 +61,26 @@ async function showMyBookings(scope) {
   render(node);
 }
 
-/** รอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย และยังไม่ได้เลือกรอบใหม่ */
+/** รอบเดิมถูกยกเลิก (เหตุสุดวิสัย/คนไม่ครบ) และยังไม่ได้เลือกรอบใหม่ */
 function awaitsNewRound(booking) {
   return !!booking.force_majeure?.awaiting;
 }
 
+/** รอบเดิมไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ — เลือกรับเงินคืนเต็มจำนวนแทนได้ */
+function isUnderfilled(booking) {
+  return booking.force_majeure?.kind === 'underfilled';
+}
+
+/** ขอคืนเงินแล้ว/โอนคืนแล้ว (รอบคนไม่ครบ) — null ถ้าไม่ใช่ */
+function refundState(booking) {
+  const state = booking.force_majeure?.state;
+  return isUnderfilled(booking) && (state === 'refund_requested' || state === 'refunded') ? state : null;
+}
+
 function bookingStatusTag(booking) {
   if (awaitsNewRound(booking)) return '<span class="tag warn">รอเลือกรอบใหม่</span>';
+  if (refundState(booking) === 'refund_requested') return '<span class="tag">ยกเลิก · รอโอนคืน</span>';
+  if (refundState(booking) === 'refunded') return '<span class="tag">คืนเงินแล้ว</span>';
   if (booking.status === 'confirmed') return '<span class="tag ok">ยืนยันแล้ว</span>';
   if (booking.status === 'cancelled') return '<span class="tag">ยกเลิกแล้ว</span>';
   if (booking.slip_ocr_status === 'failed') return '<span class="tag warn">กำลังตรวจสอบยอด</span>';
@@ -91,18 +104,31 @@ function bookingCard(booking) {
 
   card.querySelector('.body').onclick = () => showBookingDetail(booking.booking_ref);
 
-  // รอบเดิมออกไม่ได้ (เหตุสุดวิสัย) — เรื่องเดียวที่ต้องทำคือเลือกรอบใหม่
+  // รอบเดิมออกไม่ได้ (เหตุสุดวิสัย/คนไม่ครบ) — เรื่องเดียวที่ต้องทำคือเลือกรอบใหม่ (หรือรับเงินคืน)
   if (awaitsNewRound(booking)) {
     const fm = booking.force_majeure;
+    const underfilled = isUnderfilled(booking);
+    const note = fm.can_choose
+      ? (underfilled
+        ? `· เลือกรอบใหม่ฟรี หรือรับเงินคืนเต็มจำนวน ภายใน ${esc(fm.decide_by_label || '')}`
+        : `· เลือกรอบใหม่ได้ฟรีถึง ${esc(fm.until_label || '')}`)
+      : (underfilled ? '· เลยกำหนดเลือกรอบแล้ว เราจะคืนเงินให้ครับ' : '· เลยกำหนดเลือกรอบแล้ว ทักทีมงานได้เลยครับ');
     card.querySelector('.body').appendChild(el(`<div class="banner warn" style="margin-top:8px">
-      ⛈️ รอบนี้ออกเดินทางไม่ได้${fm.reason ? ' เนื่องจาก' + esc(fm.reason) : ''}
-      ${fm.can_choose ? `· เลือกรอบใหม่ได้ฟรีถึง ${esc(fm.until_label || '')}` : '· เลยกำหนดเลือกรอบแล้ว ทักทีมงานได้เลยครับ'}
+      ${underfilled ? '🌿 รอบนี้ไม่ได้ออกเดินทาง' : '⛈️ รอบนี้ออกเดินทางไม่ได้'}${fm.reason ? ' เนื่องจาก' + esc(fm.reason) : ''}
+      ${note}
     </div>`));
-    if (fm.can_choose && booking.can_reschedule && booking.viewer_is_owner !== false) {
-      const btn = el(`<button class="btn" style="margin:0 14px 14px">เลือกรอบใหม่</button>`);
-      btn.onclick = () => openReschedule(booking, () => showMyBookings());
-      card.appendChild(btn);
-      return card;
+    if (booking.viewer_is_owner !== false) {
+      if (fm.can_choose && booking.can_reschedule) {
+        const btn = el(`<button class="btn" style="margin:0 14px ${fm.can_request_refund ? '8px' : '14px'}">เลือกรอบใหม่</button>`);
+        btn.onclick = () => openReschedule(booking, () => showMyBookings());
+        card.appendChild(btn);
+      }
+      if (fm.can_request_refund) {
+        const btn = el(`<button class="btn secondary" style="margin:0 14px 14px">${refundButtonLabel(booking)}</button>`);
+        btn.onclick = () => openRefund(booking, () => showMyBookings());
+        card.appendChild(btn);
+      }
+      if ((fm.can_choose && booking.can_reschedule) || fm.can_request_refund) return card;
     }
   }
 
@@ -1129,7 +1155,9 @@ function renderBookingManage(pane, booking) {
   }
   if (booking.can_reschedule && booking.reschedule_mode === 'force_majeure') {
     actions.push(['เลือกรอบใหม่ (รอบเดิมยกเลิก)', () => openReschedule(booking),
-      'ฟรี ราคาเดิม · เลือกรอบที่ออกได้ถึง ' + (booking.force_majeure?.until_label || '')]);
+      isUnderfilled(booking)
+        ? 'ฟรี ราคาเดิม · ตัดสินใจได้ถึง ' + (booking.force_majeure?.decide_by_label || '')
+        : 'ฟรี ราคาเดิม · เลือกรอบที่ออกได้ถึง ' + (booking.force_majeure?.until_label || '')]);
   } else if (booking.can_reschedule) {
     actions.push(['เลื่อนไปรอบอื่น', () => openReschedule(booking),
       booking.reschedule_deadline ? 'เลื่อนได้ถึง ' + thaiDate(booking.reschedule_deadline.slice(0, 10)) : '']);
@@ -1137,7 +1165,13 @@ function renderBookingManage(pane, booking) {
   if ((booking.share_token || booking.status === 'confirmed') && !awaitsNewRound(booking)) {
     actions.push(['แชร์ลิงก์ติดตามให้ที่บ้าน', () => shareTracking(booking), 'ครอบครัวดูตำแหน่งรถได้โดยไม่ต้องล็อกอิน']);
   }
-  if (['pending', 'confirmed'].includes(booking.status)) {
+  if (booking.force_majeure?.can_request_refund && booking.viewer_is_owner !== false) {
+    // รอบคนไม่ครบ — ยกเลิกทางนี้ได้เงินคืนเต็มจำนวน ไม่ใช่ตามนโยบายยกเลิกปกติ
+    actions.push([refundButtonLabel(booking), () => openRefund(booking),
+      Number(booking.force_majeure.refund_amount || 0) > 0
+        ? 'คืนเต็มจำนวน ' + baht(booking.force_majeure.refund_amount) + ' รวมมัดจำ'
+        : 'ยังไม่มียอดที่ชำระ']);
+  } else if (['pending', 'confirmed'].includes(booking.status)) {
     actions.push(['ยกเลิกการจอง', () => openCancel(booking), 'เงื่อนไขคืนเงินเป็นไปตามนโยบายของทริป']);
   }
 
@@ -1228,7 +1262,13 @@ async function openReschedule(booking, onDone) {
   sheet.body.innerHTML = '';
   if (forceMajeure) {
     sheet.body.appendChild(el(`<div class="banner warn">ราคาเดิม ไม่มีค่าธรรมเนียม · เลือกรอบที่ออกเดินทางได้ถึง
-      ${esc(booking.force_majeure?.until_label || '')} · ไม่นับรวมสิทธิ์เลื่อนปกติ</div>`));
+      ${esc(booking.force_majeure?.until_label || '')}${isUnderfilled(booking)
+        ? ' · ตัดสินใจได้ถึง ' + esc(booking.force_majeure?.decide_by_label || '') : ''} · ไม่นับรวมสิทธิ์เลื่อนปกติ</div>`));
+  }
+  if (booking.force_majeure?.can_request_refund) {
+    const link = el(`<button type="button" class="btn secondary" style="margin-bottom:10px">ไม่สะดวกรอบไหนเลย? ขอรับเงินคืนเต็มจำนวน</button>`);
+    link.onclick = () => { sheet.close(); openRefund(booking, onDone); };
+    sheet.body.appendChild(link);
   }
   if (!schedules.length) {
     sheet.body.appendChild(el(`<div class="empty">${forceMajeure
@@ -1270,40 +1310,152 @@ async function openReschedule(booking, onDone) {
   });
 }
 
-/* --------- รอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย --------- */
+/* --------- รอบเดิมถูกยกเลิก (เหตุสุดวิสัย / ผู้ร่วมทริปไม่ครบ) --------- */
 
 function forceMajeureBlock(booking) {
   const fm = booking.force_majeure;
+  const underfilled = isUnderfilled(booking);
+  const icon = underfilled ? '🌿' : '⛈️';
   const wrap = el(`<div class="card fm-card"><div class="body"></div></div>`);
   const body = wrap.querySelector('.body');
 
-  if (!fm.awaiting) {
-    body.appendChild(el(`<p class="muted" style="margin:0">⛈️ รอบเดิม${fm.original_departure_label ? ' ' + esc(fm.original_departure_label) : ''}
-      ออกเดินทางไม่ได้${fm.reason ? ' เนื่องจาก' + esc(fm.reason) : ''} · ย้ายมารอบนี้เรียบร้อยแล้ว</p>`));
+  const refund = refundState(booking);
+  if (refund) {
+    const amount = Number(fm.refund_amount || 0);
+    body.appendChild(el(`<p class="title">${refund === 'refunded' ? 'โอนเงินคืนแล้ว' : 'รับเรื่องคืนเงินแล้ว'}${amount > 0 ? ' · ' + baht(amount) : ''}</p>`));
+    if (refund === 'refund_requested') {
+      body.appendChild(el(`<p class="muted" style="margin:4px 0 0">${fm.refund_account_label
+        ? 'โอนเข้า ' + esc(fm.refund_account_label) + ' ภายใน 3–7 วันทำการครับ'
+        : 'ทีมงานจะติดต่อขอเลขบัญชีรับเงินคืนในแชทนี้ครับ'}</p>`));
+    }
     return wrap;
   }
 
-  body.appendChild(el(`<p class="title">⛈️ รอบนี้ออกเดินทางไม่ได้</p>`));
+  if (!fm.awaiting) {
+    body.appendChild(el(`<p class="muted" style="margin:0">${icon} รอบเดิม${fm.original_departure_label ? ' ' + esc(fm.original_departure_label) : ''}
+      ${underfilled ? 'ไม่ได้ออกเดินทาง' : 'ออกเดินทางไม่ได้'}${fm.reason ? ' เนื่องจาก' + esc(fm.reason) : ''}${(fm.state ?? 'moved') === 'moved' ? ' · ย้ายมารอบนี้เรียบร้อยแล้ว' : ''}</p>`));
+    return wrap;
+  }
+
+  body.appendChild(el(`<p class="title">${icon} ${underfilled ? 'รอบนี้ไม่ได้ออกเดินทาง' : 'รอบนี้ออกเดินทางไม่ได้'}</p>`));
   if (fm.reason) body.appendChild(el(`<p style="margin:4px 0">เนื่องจาก${esc(fm.reason)}</p>`));
 
+  const isOwner = booking.viewer_is_owner !== false;
+
   if (!fm.can_choose) {
-    body.appendChild(el(`<p class="muted">เลยกำหนดเลือกรอบใหม่แล้ว (${esc(fm.until_label || '')}) ทักทีมงานในแชทนี้ได้เลยครับ เราจะช่วยดูแลต่อ</p>`));
+    body.appendChild(el(`<p class="muted">${underfilled
+      ? `เลยกำหนดเลือกรอบใหม่แล้ว (${esc(fm.decide_by_label || '')}) เราจะคืนเงินเต็มจำนวนให้ครับ กรอกบัญชีรับเงินไว้ได้เลย จะได้เร็วขึ้น`
+      : `เลยกำหนดเลือกรอบใหม่แล้ว (${esc(fm.until_label || '')}) ทักทีมงานในแชทนี้ได้เลยครับ เราจะช่วยดูแลต่อ`}</p>`));
+    if (fm.can_request_refund && isOwner) {
+      const btn = el(`<button class="btn" style="margin-top:8px">${refundButtonLabel(booking, true)}</button>`);
+      btn.onclick = () => openRefund(booking);
+      body.appendChild(btn);
+    }
     return wrap;
   }
 
-  body.appendChild(el(`<p style="margin:4px 0">ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม
-    ภายใน <strong>${esc(fm.until_label || '')}</strong>${fm.days_left != null ? ` (เหลือ ${fm.days_left} วัน)` : ''}</p>`));
+  body.appendChild(el(underfilled
+    ? `<p style="margin:4px 0">เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม หรือขอรับเงินคืนเต็มจำนวน${Number(fm.refund_amount || 0) > 0 ? ' ' + baht(fm.refund_amount) : ''}
+      ภายใน <strong>${esc(fm.decide_by_label || '')}</strong>${fm.days_left != null ? ` (เหลือ ${fm.days_left} วัน)` : ''}</p>`
+    : `<p style="margin:4px 0">ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม
+      ภายใน <strong>${esc(fm.until_label || '')}</strong>${fm.days_left != null ? ` (เหลือ ${fm.days_left} วัน)` : ''}</p>`));
 
-  if (booking.viewer_is_owner === false) {
+  if (!isOwner) {
     body.appendChild(el(`<p class="muted">ผู้จองเป็นคนเลือกรอบใหม่ให้ทั้งกลุ่มครับ</p>`));
-  } else if (booking.can_reschedule) {
-    const btn = el(`<button class="btn" style="margin-top:8px">เลือกรอบใหม่</button>`);
-    btn.onclick = () => openReschedule(booking);
-    body.appendChild(btn);
+  } else {
+    if (booking.can_reschedule) {
+      const btn = el(`<button class="btn" style="margin-top:8px">เลือกรอบใหม่</button>`);
+      btn.onclick = () => openReschedule(booking);
+      body.appendChild(btn);
+    }
+    if (fm.can_request_refund) {
+      const btn = el(`<button class="btn secondary" style="margin-top:8px">${refundButtonLabel(booking)}</button>`);
+      btn.onclick = () => openRefund(booking);
+      body.appendChild(btn);
+    }
   }
 
   appInviteInto(body);
   return wrap;
+}
+
+function refundButtonLabel(booking, afterDeadline = false) {
+  if (Number(booking.force_majeure?.refund_amount || 0) <= 0) return 'ยกเลิกการจอง';
+  return afterDeadline ? 'กรอกบัญชีรับเงินคืน' : 'ขอรับเงินคืนเต็มจำนวน';
+}
+
+/**
+ * รอบไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ — ยกเลิกและขอรับเงินคืนเต็มจำนวน
+ * ยอดคืนและรายการธนาคารมาจากเซิร์ฟเวอร์ (booking.force_majeure) เหมือนเว็บและแอป
+ */
+function openRefund(booking, onDone) {
+  if (booking.viewer_is_owner === false) return alert('ผู้จองเป็นคนตัดสินใจให้ทั้งกลุ่มครับ');
+
+  const fm = booking.force_majeure || {};
+  const amount = Number(fm.refund_amount || 0);
+  const sheet = openSheet(amount > 0 ? 'ขอรับเงินคืนเต็มจำนวน' : 'ยกเลิกการจอง');
+
+  sheet.body.appendChild(el(amount > 0
+    ? `<div class="banner">คืนเต็มจำนวน <strong>${baht(amount)}</strong> (รวมมัดจำ) การจองนี้จะถูกยกเลิก
+      และเราจะโอนคืนเข้าบัญชีด้านล่างภายใน 3–7 วันทำการ</div>`
+    : `<div class="banner">การจองนี้ยังไม่มียอดที่ชำระ กดยืนยันเพื่อยกเลิกได้เลยครับ</div>`));
+
+  if (amount > 0) {
+    const options = (fm.refund_banks || []).map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
+    sheet.body.appendChild(el(`<div>
+      <label class="field"><span>ธนาคาร / พร้อมเพย์</span>
+        <select id="refundBank"><option value="">เลือก…</option>${options}</select></label>
+      <label class="field"><span id="refundNumberLabel">เลขบัญชี</span>
+        <input id="refundNumber" inputmode="numeric" autocomplete="off" placeholder="เช่น 123-4-56789-0"></label>
+      <label class="field"><span>ชื่อบัญชี</span>
+        <input id="refundName" maxlength="120" placeholder="ชื่อ-นามสกุลตามบัญชี"></label>
+    </div>`));
+    sheet.body.querySelector('#refundBank').onchange = (e) => {
+      const promptPay = e.target.value === 'พร้อมเพย์';
+      sheet.body.querySelector('#refundNumberLabel').textContent = promptPay ? 'เบอร์มือถือ / เลขบัตรประชาชน' : 'เลขบัญชี';
+      sheet.body.querySelector('#refundNumber').placeholder = promptPay ? 'เช่น 081-234-5678' : 'เช่น 123-4-56789-0';
+    };
+  }
+  sheet.body.appendChild(el(`<p class="muted">ยกเลิกแล้วย้อนกลับไม่ได้ ถ้าอยากไปรอบอื่นแทน ปิดแผ่นนี้แล้วกด "เลือกรอบใหม่" ได้เลยครับ</p>`));
+
+  const confirmBtn = el(`<button class="btn">${amount > 0 ? 'ยกเลิกและขอรับเงินคืน' : 'ยืนยันยกเลิก'}</button>`);
+  confirmBtn.onclick = async () => {
+    sheet.body.querySelector('.banner.error')?.remove();
+    const body = {};
+    if (amount > 0) {
+      body.bank = sheet.body.querySelector('#refundBank').value;
+      body.account_number = sheet.body.querySelector('#refundNumber').value.trim();
+      body.account_name = sheet.body.querySelector('#refundName').value.trim();
+      if (!body.bank || !body.account_number || !body.account_name) {
+        return sheet.error('กรอกธนาคาร เลขบัญชี และชื่อบัญชีให้ครบก่อนนะครับ');
+      }
+    }
+    const ok = await askConfirm(amount > 0 ? 'ยืนยันขอรับเงินคืน' : 'ยืนยันยกเลิกการจอง',
+      amount > 0
+        ? `ยกเลิกการจองและขอรับเงินคืน ${baht(amount)} เข้า ${body.bank} ${body.account_number} ใช่ไหมครับ`
+        : 'ยกเลิกแล้วย้อนกลับไม่ได้ครับ',
+      'ยืนยัน', 'ไม่ใช่');
+    if (!ok) return;
+
+    // ไม่ใช้ sheet.busy() — ถ้าเซิร์ฟเวอร์ปฏิเสธเลขบัญชี ลูกค้าต้องแก้ในฟอร์มเดิมได้
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'กำลังส่งเรื่อง…';
+    try {
+      await api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/postponement/refund', {
+        method: 'POST', body,
+      });
+      sheet.close();
+      alert(amount > 0
+        ? `รับเรื่องแล้วครับ เราจะโอนคืน ${baht(amount)} ภายใน 3–7 วันทำการ`
+        : 'ยกเลิกการจองแล้วครับ');
+      if (onDone) onDone(); else reloadBookingDetail();
+    } catch (e) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = amount > 0 ? 'ยกเลิกและขอรับเงินคืน' : 'ยืนยันยกเลิก';
+      sheet.error(e.message);
+    }
+  };
+  sheet.foot.appendChild(confirmBtn);
 }
 
 let liffMeCache = null;

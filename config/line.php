@@ -41,6 +41,8 @@ return [
         'trip_postponed_reminder',
         'trip_postponed_new_round',
         'trip_resumed',
+        // รอบไม่ได้ออกเพราะคนไม่ครบ — ลูกค้าขอคืนเงิน/เลยกำหนดแล้วระบบคืนให้
+        'trip_refund_requested',
         'booking_transferred',
         'booking_refunded',
         // เงิน

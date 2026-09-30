@@ -8,6 +8,9 @@
     $active = in_array($booking->status, \App\Models\Booking::MODIFIABLE_STATUSES, true);
     $justMoved = session('moved') === true;
     $resolved = $fm && ! $fm['awaiting'] && $active;
+    // รอบไม่ได้ออกเพราะคนไม่ครบ — เลือกรอบใหม่ หรือรับเงินคืนเต็มจำนวน
+    $underfilled = $fm && $fm['kind'] === \App\Services\ForceMajeureService::KIND_UNDERFILLED;
+    $refundState = $fm && in_array($fm['state'], ['refund_requested', 'refunded'], true);
     $lineUrl = config('app.support_line_url');
     $lineId = config('app.support_line_id');
 
@@ -43,14 +46,25 @@
     .btn[disabled] { opacity: .5; cursor: not-allowed; }
     .btn-line { background: #06c755; margin-top: 12px; text-decoration: none; text-align: center; }
     .card-header.amber { background: #d97706; }
+    .refund-box { margin-top: 22px; border-top: 1px dashed #cbd5e1; padding-top: 18px; }
+    .refund-box summary { cursor: pointer; font-weight: 700; color: #0f172a; font-size: 15px; }
+    .refund-box .field { margin-top: 12px; }
+    .refund-box label { display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 4px; }
+    .refund-box select, .refund-box input { width: 100%; box-sizing: border-box; border: 1.5px solid #cbd5e1; border-radius: 10px;
+                                            padding: 10px 12px; font-size: 15px; font-family: inherit; background: #fff; }
+    .btn-outline { background: #fff; color: #b45309; border: 2px solid #f59e0b; }
 </style>
 
 <div class="card">
     <div class="card-header {{ $fm && $fm['awaiting'] ? 'amber' : '' }}">
         <div class="brand">LUILAYKHAO</div>
         <h1>
-            @if ($justMoved || $resolved)
+            @if ($refundState)
+                รับเรื่องคืนเงินแล้ว
+            @elseif ($justMoved || $resolved)
                 ได้รอบเดินทางใหม่แล้ว
+            @elseif ($fm && $fm['awaiting'] && $underfilled)
+                เลือกรอบใหม่ หรือรับเงินคืน
             @elseif ($fm && $fm['awaiting'])
                 เลือกรอบเดินทางใหม่
             @else
@@ -61,7 +75,28 @@
     </div>
     <div class="card-body">
 
-        @if (! $active)
+        @if ($refundState)
+            {{-- รอบคนไม่ครบ — ขอคืนเงินแล้ว (หรือเลยกำหนดแล้วระบบคืนให้) --}}
+            <div class="alert alert-success">
+                @if ($fm['state'] === 'refunded')
+                    ✅ โอนเงินคืนเรียบร้อยแล้วครับ
+                @else
+                    ✅ ยกเลิกการจองแล้ว เราจะคืนเงินเต็มจำนวนให้ภายใน 3–7 วันทำการครับ
+                @endif
+            </div>
+            <div class="info-list">
+                <div class="info-row"><span class="label">ทริป</span><span class="value">{{ $tripTitle }}</span></div>
+                @if ($fm['refund_amount'])
+                    <div class="info-row"><span class="label">ยอดคืน</span><span class="value">฿{{ number_format($fm['refund_amount'], 0) }}</span></div>
+                @endif
+                @if ($fm['refund_account_label'])
+                    <div class="info-row"><span class="label">เข้าบัญชี</span><span class="value">{{ $fm['refund_account_label'] }}</span></div>
+                @elseif ($fm['refund_amount'])
+                    <div class="info-row"><span class="label">บัญชีรับเงิน</span><span class="value">ทีมงานจะติดต่อขอเลขบัญชี</span></div>
+                @endif
+            </div>
+
+        @elseif (! $active)
             {{-- ยกเลิก/คืนเงินไปแล้ว --}}
             <div class="alert alert-error">การจองนี้ถูกยกเลิกแล้ว หากมีข้อสงสัยทักหาทีมงานได้เลยครับ</div>
 
@@ -90,25 +125,52 @@
 
         @elseif (! $fm['can_choose'])
             <div class="alert alert-error">
-                เลยกำหนดเลือกรอบใหม่แล้ว ({{ $fm['until_label'] }})<br>
-                ทักหาทีมงานได้เลยครับ เราจะช่วยดูแลต่อ
+                @if ($underfilled)
+                    เลยกำหนดเลือกรอบใหม่แล้ว ({{ $fm['decide_by_label'] }})<br>
+                    เราจะคืนเงินเต็มจำนวนให้ครับ กรอกบัญชีรับเงินด้านล่างได้เลย จะได้เร็วขึ้น
+                @else
+                    เลยกำหนดเลือกรอบใหม่แล้ว ({{ $fm['until_label'] }})<br>
+                    ทักหาทีมงานได้เลยครับ เราจะช่วยดูแลต่อ
+                @endif
             </div>
+            @if ($fm['can_request_refund'])
+                @include('reschedule.refund-form', ['open' => true])
+            @endif
 
         @else
             <div class="fm-box">
-                <strong>⛈️ รอบ {{ $fm['original_departure_label'] }} ออกเดินทางไม่ได้</strong>
-                @if ($fm['reason'])
-                    <div>เนื่องจาก{{ $fm['reason'] }}</div>
+                @if ($underfilled)
+                    <strong>🌿 รอบ {{ $fm['original_departure_label'] }} ไม่ได้ออกเดินทาง</strong>
+                    @if ($fm['reason'])
+                        <div>เนื่องจาก{{ $fm['reason'] }}</div>
+                    @endif
+                    <ul>
+                        <li>เลือกรอบใหม่ของทริปนี้ได้ <strong>ราคาเดิม ไม่มีค่าธรรมเนียม</strong> (รอบที่ออกได้ถึง {{ $fm['until_label'] }})</li>
+                        <li>
+                            หรือ<strong>รับเงินคืนเต็มจำนวน</strong>
+                            @if ($fm['refund_amount']) ฿{{ number_format($fm['refund_amount'], 0) }} (รวมมัดจำ) @endif
+                        </li>
+                        <li>
+                            ตัดสินใจได้ถึง <strong>{{ $fm['decide_by_label'] }}</strong>
+                            @if ($fm['days_left'] !== null) (เหลือ {{ $fm['days_left'] }} วัน) @endif
+                            @if ($fm['refund_amount']) ถ้าไม่ได้เลือก เราจะคืนเงินให้เอง @endif
+                        </li>
+                    </ul>
+                @else
+                    <strong>⛈️ รอบ {{ $fm['original_departure_label'] }} ออกเดินทางไม่ได้</strong>
+                    @if ($fm['reason'])
+                        <div>เนื่องจาก{{ $fm['reason'] }}</div>
+                    @endif
+                    <ul>
+                        <li>ยอดที่ชำระไว้ยังอยู่ครบ <strong>ราคาเดิม ไม่มีค่าธรรมเนียม</strong></li>
+                        <li>เลือกรอบที่ออกเดินทางได้ถึง <strong>{{ $fm['until_label'] }}</strong>@if ($fm['days_left'] !== null) (เหลือ {{ $fm['days_left'] }} วัน)@endif</li>
+                        <li>ไม่นับรวมกับสิทธิ์เลื่อนวันเดินทางตามปกติ</li>
+                    </ul>
                 @endif
-                <ul>
-                    <li>ยอดที่ชำระไว้ยังอยู่ครบ <strong>ราคาเดิม ไม่มีค่าธรรมเนียม</strong></li>
-                    <li>เลือกรอบที่ออกเดินทางได้ถึง <strong>{{ $fm['until_label'] }}</strong>@if ($fm['days_left'] !== null) (เหลือ {{ $fm['days_left'] }} วัน)@endif</li>
-                    <li>ไม่นับรวมกับสิทธิ์เลื่อนวันเดินทางตามปกติ</li>
-                </ul>
             </div>
 
-            @if ($errors->any())
-                <div class="alert alert-error">{{ $errors->first() }}</div>
+            @if ($errors->has('target_schedule_id'))
+                <div class="alert alert-error">{{ $errors->first('target_schedule_id') }}</div>
             @endif
 
             <div class="info-list">
@@ -157,6 +219,10 @@
                     <button type="submit" class="btn" id="choose-btn" style="margin-top:16px;" disabled>ยืนยันรอบใหม่</button>
                 </form>
             @endif
+
+            @if ($fm['can_request_refund'])
+                @include('reschedule.refund-form', ['open' => $errors->has('refund')])
+            @endif
         @endif
 
         @if ($lineUrl)
@@ -179,6 +245,20 @@
         form.addEventListener('submit', function () {
             btn.disabled = true;
             btn.textContent = 'กำลังย้ายรอบ…';
+        });
+    })();
+    (function () {
+        var form = document.getElementById('refund-form');
+        if (!form) return;
+        var btn = document.getElementById('refund-btn');
+        form.addEventListener('submit', function (e) {
+            // ยกเลิกการจองย้อนกลับไม่ได้ — ถามก่อนหนึ่งครั้ง
+            if (!window.confirm(form.getAttribute('data-confirm'))) {
+                e.preventDefault();
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = 'กำลังส่งเรื่อง…';
         });
     })();
 </script>

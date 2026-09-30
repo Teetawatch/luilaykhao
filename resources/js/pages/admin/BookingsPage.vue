@@ -101,6 +101,12 @@
 
         <input v-model="filters.date" type="date" @change="fetchData()" />
 
+        <select v-model="filters.refund_status" @change="fetchData()">
+          <option value="">การคืนเงินทั้งหมด</option>
+          <option value="requested">ขอคืนเงิน · รอโอน</option>
+          <option value="refunded">โอนคืนแล้ว</option>
+        </select>
+
         <button class="btn-secondary compact" :disabled="!hasActiveFilters" @click="resetFilters">
           <span class="material-symbols-rounded">filter_alt_off</span>
           ล้างตัวกรอง
@@ -174,6 +180,10 @@
                   <span class="status-badge" :class="`status-${booking.status}`">
                     {{ statusLabels[booking.status] || booking.status || '-' }}
                   </span>
+                  <button v-if="booking.refund_status === 'requested'" type="button" class="status-badge status-pending"
+                    title="ลูกค้าขอคืนเงิน (รอบคนไม่ครบ) — กดเพื่อบันทึกการโอนคืน" @click.stop="openStatusModal(booking)">
+                    รอโอนคืน
+                  </button>
                   <span v-if="booking.checked_in" class="checkin-badge checked">
                     <span class="material-symbols-rounded">task_alt</span>
                     {{ formatDate(booking.checked_in_at) }}
@@ -1471,6 +1481,14 @@
                 นโยบาย: {{ refundPreview.policy_note }} — แนะนำคืน ฿{{ Number(refundPreview.refund_amount).toLocaleString() }}
                 (ชำระมาแล้ว ฿{{ Number(refundPreview.paid_amount).toLocaleString() }})
               </p>
+              <p v-if="refundPreview?.refund_account" class="field-hint refund-account-hint">
+                ลูกค้าขอให้โอนเข้า: <strong>{{ refundPreview.refund_account.bank }}</strong>
+                <span style="font-family:monospace;">{{ refundPreview.refund_account.number }}</span>
+                · {{ refundPreview.refund_account.name }}
+              </p>
+              <p v-else-if="refundPreview?.refund_status === 'requested'" class="field-hint" style="color:#dc2626;">
+                ลูกค้ายังไม่ได้แจ้งเลขบัญชี — โทรขอก่อนโอน
+              </p>
             </div>
             <div class="form-group">
               <label>หลักฐานการโอนคืน (สลิป)</label>
@@ -1956,6 +1974,8 @@ const filters = reactive({
   date: '',
   booking_type: '',
   payment_type: '',
+  // คิวงาน "เงินคืนที่ต้องโอนให้ลูกค้า" ลิงก์มาด้วย ?refund_status=requested
+  refund_status: '',
 });
 
 const showDetail = ref(false);
@@ -2150,7 +2170,7 @@ const manualForm = reactive({
 });
 
 const bookings = computed(() => Array.isArray(admin.bookings.data) ? admin.bookings.data : []);
-const hasActiveFilters = computed(() => Boolean(filters.search || filters.status || filters.date || filters.booking_type || filters.payment_type));
+const hasActiveFilters = computed(() => Boolean(filters.search || filters.status || filters.date || filters.booking_type || filters.payment_type || filters.refund_status));
 
 // ตัวเลือกประเภทการชำระในฟอร์มแก้ไข (full / deposit / installment)
 const paymentTypeOptions = [
@@ -2331,6 +2351,7 @@ function resetFilters() {
   filters.date = '';
   filters.booking_type = '';
   filters.payment_type = '';
+  filters.refund_status = '';
   fetchData();
 }
 
@@ -2939,12 +2960,15 @@ async function doUpdateHold() {
 
 function openStatusModal(booking) {
   statusBooking.value = booking;
-  statusForm.status = booking.status;
+  // ลูกค้าขอคืนเงินไว้แล้ว (รอบคนไม่ครบ) — สิ่งเดียวที่ต้องทำคือบันทึกการโอนคืน
+  const refundRequested = booking.refund_status === 'requested' && booking.status !== 'refunded';
+  statusForm.status = refundRequested ? 'refunded' : booking.status;
   statusForm.reason = '';
   statusForm.refundAmount = null;
   statusForm.refundSlip = null;
   refundPreview.value = null;
   showStatusModal.value = true;
+  if (refundRequested) loadRefundPreview();
 }
 
 function onRefundSlipPick(e) {
@@ -2953,20 +2977,23 @@ function onRefundSlipPick(e) {
 
 // When the admin switches the target status to "refunded", pull the policy
 // preview so we can prefill the recommended amount.
+async function loadRefundPreview() {
+  if (!statusBooking.value || statusBooking.value.status === 'refunded') return;
+  try {
+    const preview = await admin.refundPreview(statusBooking.value.booking_ref);
+    refundPreview.value = preview;
+    if (statusForm.refundAmount === null) {
+      statusForm.refundAmount = Number(preview.refund_amount ?? 0);
+    }
+  } catch {
+    refundPreview.value = null;
+  }
+}
+
 watch(
   () => statusForm.status,
-  async (status) => {
-    if (status !== 'refunded' || !statusBooking.value) return;
-    if (statusBooking.value.status === 'refunded') return;
-    try {
-      const preview = await admin.refundPreview(statusBooking.value.booking_ref);
-      refundPreview.value = preview;
-      if (statusForm.refundAmount === null) {
-        statusForm.refundAmount = Number(preview.refund_amount ?? 0);
-      }
-    } catch {
-      refundPreview.value = null;
-    }
+  (status) => {
+    if (status === 'refunded') loadRefundPreview();
   },
 );
 
@@ -3748,6 +3775,7 @@ watch(splitTargetSearch, () => {
 onMounted(() => {
   // เปิดมาจากหน้าอื่นพร้อมรหัสจองใน query (เช่นหน้าผ่อนชำระ) — กรองให้เลย
   if (route.query.search) filters.search = String(route.query.search);
+  if (route.query.refund_status) filters.refund_status = String(route.query.refund_status);
   fetchData();
 });
 
