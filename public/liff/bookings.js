@@ -61,7 +61,13 @@ async function showMyBookings(scope) {
   render(node);
 }
 
+/** รอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย และยังไม่ได้เลือกรอบใหม่ */
+function awaitsNewRound(booking) {
+  return !!booking.force_majeure?.awaiting;
+}
+
 function bookingStatusTag(booking) {
+  if (awaitsNewRound(booking)) return '<span class="tag warn">รอเลือกรอบใหม่</span>';
   if (booking.status === 'confirmed') return '<span class="tag ok">ยืนยันแล้ว</span>';
   if (booking.status === 'cancelled') return '<span class="tag">ยกเลิกแล้ว</span>';
   if (booking.slip_ocr_status === 'failed') return '<span class="tag warn">กำลังตรวจสอบยอด</span>';
@@ -84,6 +90,21 @@ function bookingCard(booking) {
   </div></div>`);
 
   card.querySelector('.body').onclick = () => showBookingDetail(booking.booking_ref);
+
+  // รอบเดิมออกไม่ได้ (เหตุสุดวิสัย) — เรื่องเดียวที่ต้องทำคือเลือกรอบใหม่
+  if (awaitsNewRound(booking)) {
+    const fm = booking.force_majeure;
+    card.querySelector('.body').appendChild(el(`<div class="banner warn" style="margin-top:8px">
+      ⛈️ รอบนี้ออกเดินทางไม่ได้${fm.reason ? ' เนื่องจาก' + esc(fm.reason) : ''}
+      ${fm.can_choose ? `· เลือกรอบใหม่ได้ฟรีถึง ${esc(fm.until_label || '')}` : '· เลยกำหนดเลือกรอบแล้ว ทักทีมงานได้เลยครับ'}
+    </div>`));
+    if (fm.can_choose && booking.can_reschedule && booking.viewer_is_owner !== false) {
+      const btn = el(`<button class="btn" style="margin:0 14px 14px">เลือกรอบใหม่</button>`);
+      btn.onclick = () => openReschedule(booking, () => showMyBookings());
+      card.appendChild(btn);
+      return card;
+    }
+  }
 
   // ปุ่มจ่ายมีเฉพาะใบที่ "ยังจ่ายครั้งแรกไม่ได้จบ" — ใบที่ส่งสลิปแล้วรอตรวจไม่ต้องจ่ายซ้ำ
   if (booking.status === 'pending' && !booking.slip_ocr_status) {
@@ -262,6 +283,9 @@ async function showBookingDetail(ref, tab) {
     </div>
     ${earlyDepartureHtml(schedule)}
   </div></div>`));
+
+  // รอบเดิมออกไม่ได้ (เหตุสุดวิสัย) — มาก่อนทุกอย่าง รวมถึงยอดค้าง
+  if (booking.force_majeure) content.appendChild(forceMajeureBlock(booking));
 
   // สิ่งที่ต้องทำต่อ (ถ้ามี) อยู่บนสุดเสมอ — เงินค้างคือเรื่องที่ต้องเห็นก่อนอย่างอื่น
   const todo = outstandingBlock(booking);
@@ -505,13 +529,13 @@ function renderBookingTrip(pane, booking) {
 
   // วันเดินทาง: "คันไหนคือคันของเรา" กับปุ่มบอกทีมงานว่าอยู่ตรงไหน มาก่อนทุกอย่าง
   // เซิร์ฟเวอร์ตัดสินหน้าต่างเวลา (pickup_status_open) — ไม่คิดวันเวลาไทยเองที่นี่
-  if (booking.pickup_status_open) {
+  if (booking.pickup_status_open && !awaitsNewRound(booking)) {
     if (schedule.transport_type !== 'flight') pane.appendChild(findMyVanBlock(booking));
     pane.appendChild(pickupStatusBlock(booking));
   }
 
-  // QR เช็คอิน — ของที่ต้องเปิดหน้างาน ควรหาเจอในสองแตะ
-  if (booking.status === 'confirmed') {
+  // QR เช็คอิน — ของที่ต้องเปิดหน้างาน ควรหาเจอในสองแตะ (รอบที่ยกเลิกไม่มีหน้างาน)
+  if (booking.status === 'confirmed' && !awaitsNewRound(booking)) {
     const qrBox = el(`<div class="qr-wrap"><div class="loading-inline"><div class="spinner"></div></div></div>`);
     pane.appendChild(qrBox);
     api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/check-in-qr')
@@ -528,7 +552,7 @@ function renderBookingTrip(pane, booking) {
 
   // ใบเดินทาง — ส่งให้ก่อนเดินทาง 2 วัน รวมทุกอย่างของรอบไว้หน้าเดียว
   // (ปฏิทิน ประกาศ ข้อมูลที่ยังขาด ปุ่มรับทราบ) ลิงก์มีเมื่อระบบส่งไปแล้วเท่านั้น
-  if (booking.brief_url && booking.status === 'confirmed') {
+  if (booking.brief_url && booking.status === 'confirmed' && !awaitsNewRound(booking)) {
     const brief = el(`<button type="button" class="pick brief-link">
       <div class="pick-body">
         <div class="pick-name">📋 ใบเดินทาง</div>
@@ -1103,11 +1127,14 @@ function renderBookingManage(pane, booking) {
     actions.push(['เปลี่ยนจุดขึ้นรถ', () => openChangePickup(booking),
       booking.modification_deadline ? 'เปลี่ยนได้ถึง ' + thaiDate(booking.modification_deadline.slice(0, 10)) : '']);
   }
-  if (booking.can_reschedule) {
+  if (booking.can_reschedule && booking.reschedule_mode === 'force_majeure') {
+    actions.push(['เลือกรอบใหม่ (รอบเดิมยกเลิก)', () => openReschedule(booking),
+      'ฟรี ราคาเดิม · เลือกรอบที่ออกได้ถึง ' + (booking.force_majeure?.until_label || '')]);
+  } else if (booking.can_reschedule) {
     actions.push(['เลื่อนไปรอบอื่น', () => openReschedule(booking),
       booking.reschedule_deadline ? 'เลื่อนได้ถึง ' + thaiDate(booking.reschedule_deadline.slice(0, 10)) : '']);
   }
-  if (booking.share_token || booking.status === 'confirmed') {
+  if ((booking.share_token || booking.status === 'confirmed') && !awaitsNewRound(booking)) {
     actions.push(['แชร์ลิงก์ติดตามให้ที่บ้าน', () => shareTracking(booking), 'ครอบครัวดูตำแหน่งรถได้โดยไม่ต้องล็อกอิน']);
   }
   if (['pending', 'confirmed'].includes(booking.status)) {
@@ -1163,56 +1190,145 @@ function openChangePickup(booking) {
   sheet.body.appendChild(el(`<p class="muted">ราคาต่างกันระหว่างจุด ทีมงานจะแจ้งส่วนต่าง (ถ้ามี) ให้อีกครั้ง</p>`));
 }
 
-async function openReschedule(booking) {
+async function openReschedule(booking, onDone) {
   const slug = booking.schedule?.trip?.slug;
   if (!slug) return alert('ไม่พบข้อมูลทริปของการจองนี้');
+  if (booking.viewer_is_owner === false) return alert('ผู้จองเป็นคนเลือกรอบใหม่ให้ทั้งกลุ่มครับ');
 
-  const sheet = openSheet('เลื่อนไปรอบอื่น');
+  const forceMajeure = booking.reschedule_mode === 'force_majeure';
+  const latest = booking.reschedule_latest_departure || null;
+  const pax = (booking.passengers || []).length || 1;
+
+  const sheet = openSheet(forceMajeure ? 'เลือกรอบเดินทางใหม่' : 'เลื่อนไปรอบอื่น');
   sheet.busy('กำลังโหลดรอบที่เปิดจอง…');
 
   let schedules;
   try {
     const res = await api('/trips/' + encodeURIComponent(slug) + '/schedules');
     schedules = (Array.isArray(res.data) ? res.data : (res.data?.data ?? []))
+      // รอบที่ผ่านไปแล้วเซิร์ฟเวอร์ตัดออกให้ตั้งแต่ต้น ที่นี่กรองเฉพาะกรอบของสิทธิ์
       .filter((s) => s.id !== booking.schedule.id && s.status === 'open'
-        && (s.bookable_seats == null || s.bookable_seats > 0));
+        && (!latest || s.departure_date <= latest))
+      .map((s) => ({
+        ...s,
+        seatsLeft: booking.is_join_trip
+          ? (s.join_trip_enabled ? (s.join_trip_available_seats ?? pax) : 0)
+          : (s.bookable_seats ?? s.available_seats ?? 0),
+      }))
+      .filter((s) => s.seatsLeft >= pax);
   } catch (e) {
     return sheet.error(e.message);
   }
 
   sheet.body.innerHTML = '';
+  if (forceMajeure) {
+    sheet.body.appendChild(el(`<div class="banner warn">ราคาเดิม ไม่มีค่าธรรมเนียม · เลือกรอบที่ออกเดินทางได้ถึง
+      ${esc(booking.force_majeure?.until_label || '')} · ไม่นับรวมสิทธิ์เลื่อนปกติ</div>`));
+  }
   if (!schedules.length) {
-    sheet.body.appendChild(el(`<div class="empty">ยังไม่มีรอบอื่นที่ว่างให้เลื่อนไป</div>`));
+    sheet.body.appendChild(el(`<div class="empty">${forceMajeure
+      ? 'ตอนนี้ยังไม่มีรอบที่เปิดในช่วงนี้ เปิดรอบใหม่เมื่อไหร่เราจะแจ้งในแชทนี้ทันทีครับ'
+      : 'ยังไม่มีรอบอื่นที่ว่างให้เลื่อนไป'}</div>`));
     return;
   }
 
-  sheet.body.appendChild(el(`<p class="muted">เลื่อนได้ 1 ครั้ง · ที่นั่งของรอบใหม่ทีมงานจะจัดให้ ถ้าอยากเลือกเองแจ้งทีมงานได้ครับ</p>`));
+  sheet.body.appendChild(el(`<p class="muted">${forceMajeure ? '' : 'เลื่อนได้ 1 ครั้ง · '}ที่นั่งของรอบใหม่ระบบจัดให้อัตโนมัติ ถ้าอยากเปลี่ยนแจ้งทีมงานได้ครับ</p>`));
   schedules.forEach((s) => {
     const row = el(`<div class="pick">
       <div class="pick-body">
         <div class="pick-name">${thaiDate(s.departure_date)}</div>
-        <div class="pick-sub">${s.bookable_seats != null ? 'เหลือ ' + s.bookable_seats + ' ที่ · ' : ''}${baht(s.price)}</div>
+        ${earlyDepartureHtml(s)}
+        <div class="pick-sub">เหลือ ${s.seatsLeft} ที่${forceMajeure ? ' · ราคาเดิม' : ''}</div>
       </div>
       <span class="tag">เลือก</span>
     </div>`);
     row.onclick = async () => {
-      const ok = await askConfirm('ยืนยันการเลื่อนรอบ',
-        `เลื่อนการจองไปวันที่ ${thaiDate(s.departure_date)} ใช่ไหมครับ`, 'เลื่อนเลย');
+      const ok = await askConfirm(forceMajeure ? 'ยืนยันรอบใหม่' : 'ยืนยันการเลื่อนรอบ',
+        `ย้ายการจองไปวันที่ ${thaiDate(s.departure_date)} ใช่ไหมครับ`, forceMajeure ? 'เลือกรอบนี้' : 'เลื่อนเลย');
       if (!ok) return;
-      sheet.busy('กำลังเลื่อนรอบ…');
+      sheet.busy('กำลังย้ายรอบ…');
       try {
         await api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/reschedule', {
           method: 'POST', body: { target_schedule_id: s.id },
         });
         sheet.close();
-        alert('เลื่อนรอบสำเร็จแล้ว');
-        reloadBookingDetail();
+        alert(forceMajeure ? `ได้รอบใหม่แล้ว วันที่ ${thaiDate(s.departure_date)} ครับ` : 'เลื่อนรอบสำเร็จแล้ว');
+        if (onDone) onDone(); else reloadBookingDetail();
       } catch (e) {
-        sheet.error(e.message);
+        // รอบอาจเต็มไประหว่างนั้น — ปิดแผ่นแล้วบอกเหตุผล กดเลือกใหม่ได้ทันที
+        sheet.close();
+        alert(e.message);
       }
     };
     sheet.body.appendChild(row);
   });
+}
+
+/* --------- รอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย --------- */
+
+function forceMajeureBlock(booking) {
+  const fm = booking.force_majeure;
+  const wrap = el(`<div class="card fm-card"><div class="body"></div></div>`);
+  const body = wrap.querySelector('.body');
+
+  if (!fm.awaiting) {
+    body.appendChild(el(`<p class="muted" style="margin:0">⛈️ รอบเดิม${fm.original_departure_label ? ' ' + esc(fm.original_departure_label) : ''}
+      ออกเดินทางไม่ได้${fm.reason ? ' เนื่องจาก' + esc(fm.reason) : ''} · ย้ายมารอบนี้เรียบร้อยแล้ว</p>`));
+    return wrap;
+  }
+
+  body.appendChild(el(`<p class="title">⛈️ รอบนี้ออกเดินทางไม่ได้</p>`));
+  if (fm.reason) body.appendChild(el(`<p style="margin:4px 0">เนื่องจาก${esc(fm.reason)}</p>`));
+
+  if (!fm.can_choose) {
+    body.appendChild(el(`<p class="muted">เลยกำหนดเลือกรอบใหม่แล้ว (${esc(fm.until_label || '')}) ทักทีมงานในแชทนี้ได้เลยครับ เราจะช่วยดูแลต่อ</p>`));
+    return wrap;
+  }
+
+  body.appendChild(el(`<p style="margin:4px 0">ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม
+    ภายใน <strong>${esc(fm.until_label || '')}</strong>${fm.days_left != null ? ` (เหลือ ${fm.days_left} วัน)` : ''}</p>`));
+
+  if (booking.viewer_is_owner === false) {
+    body.appendChild(el(`<p class="muted">ผู้จองเป็นคนเลือกรอบใหม่ให้ทั้งกลุ่มครับ</p>`));
+  } else if (booking.can_reschedule) {
+    const btn = el(`<button class="btn" style="margin-top:8px">เลือกรอบใหม่</button>`);
+    btn.onclick = () => openReschedule(booking);
+    body.appendChild(btn);
+  }
+
+  appInviteInto(body);
+  return wrap;
+}
+
+let liffMeCache = null;
+
+/**
+ * ชวนโหลดแอปให้คนที่ยังไม่มี — แจ้งเตือนเปิดรอบใหม่เด้งถึงมือทันที ไม่ต้องรอเปิด LINE
+ * คนที่มีแอปแล้วต้องไม่เห็น (กติกาเดียวกับเว็บ: App\Support\AppLinks::hasApp)
+ */
+async function appInviteInto(host) {
+  try {
+    if (!liffMeCache) liffMeCache = (await api('/auth/me')).data;
+  } catch {
+    return;
+  }
+  const me = liffMeCache?.user || liffMeCache;
+  if (!me || me.has_app) return;
+
+  const ua = navigator.userAgent || '';
+  const links = me.app_links || {};
+  const url = /iPhone|iPad|iPod/i.test(ua) ? links.ios : (/Android/i.test(ua) ? links.android : (links.android || links.ios));
+  if (!url || !host.isConnected) return;
+
+  const box = el(`<div class="app-invite">
+    <div class="pick-body">
+      <div class="pick-name">📱 โหลดแอป Luilaykhao</div>
+      <div class="pick-sub">รู้ทันทีเมื่อเปิดรอบใหม่ · เลือกที่นั่งเองได้ · ติดตามรถและแชทกลุ่มในวันเดินทาง</div>
+    </div>
+    <button type="button" class="btn secondary">โหลดแอป</button>
+  </div>`);
+  box.querySelector('button').onclick = () => liff.openWindow({ url, external: true });
+  host.appendChild(box);
 }
 
 function openCancel(booking) {

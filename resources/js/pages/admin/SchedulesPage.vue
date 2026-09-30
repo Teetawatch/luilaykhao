@@ -183,6 +183,10 @@
                   <td>
                     <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
                       <span class="status-badge" :class="`status-${sch.status}`">{{ statusLabels[sch.status] }}</span>
+                      <button v-if="sch.force_majeure_at" type="button" class="status-badge badge-force-majeure"
+                        @click="openForceMajeure(sch)" title="ดูว่าใครเลือกรอบใหม่แล้วบ้าง">
+                        <span class="material-symbols-rounded icon-xs">thunderstorm</span> เหตุสุดวิสัย
+                      </button>
                       <span v-if="sch.is_charter" class="status-badge badge-charter">
                         <span class="material-symbols-rounded icon-xs">lock</span> รอบเหมา
                       </span>
@@ -236,6 +240,10 @@
                       </button>
                       <button v-if="sch.booked_seats > 0" class="btn-icon btn-move" @click="openMoveBookingsModal(sch)" title="ย้ายการจองไปยังรอบอื่น">
                         <span class="material-symbols-rounded">swap_horiz</span>
+                      </button>
+                      <button class="btn-icon btn-force-majeure" @click="openForceMajeure(sch)"
+                        :title="sch.force_majeure_at ? 'ลูกค้าที่รอเลือกรอบใหม่ (เหตุสุดวิสัย)' : 'ยกเลิกรอบเพราะเหตุสุดวิสัย ให้ลูกค้าเลือกรอบใหม่เอง'">
+                        <span class="material-symbols-rounded">thunderstorm</span>
                       </button>
                       <span class="action-divider"></span>
                       <button class="btn-icon btn-edit" @click="openForm(sch)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
@@ -1403,6 +1411,94 @@
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" @click="showWaitlistModal = false">ปิด</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- เหตุสุดวิสัย: ยกเลิกรอบ → ลูกค้าเลือกรอบใหม่เอง -->
+    <div class="modal-overlay" v-if="showForceMajeure">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <div>
+            <h2><span class="material-symbols-rounded" style="color:#d97706;margin-right:8px;">thunderstorm</span>ยกเลิกรอบเพราะเหตุสุดวิสัย</h2>
+            <p class="modal-subtitle" v-if="fmSchedule">
+              {{ fmSchedule.trip?.title }} — {{ fmSchedule.departure_date }}
+            </p>
+          </div>
+          <button class="modal-close" @click="closeForceMajeure" :disabled="fmSubmitting"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <p v-if="fmLoading" class="text-muted-sm">กำลังโหลด…</p>
+
+          <!-- ยังไม่เคยกด: ฟอร์มยืนยัน -->
+          <template v-else-if="!fmOverview?.force_majeure_at">
+            <div class="fm-explain">
+              <p><strong>กดแล้วจะเกิดอะไรขึ้น</strong></p>
+              <ul>
+                <li>รอบนี้เปลี่ยนเป็น "ยกเลิก" ทันที และเปิดกลับไม่ได้</li>
+                <li>ทุกการจองในรอบ ({{ fmSchedule?.booked_seats || 0 }} ที่นั่ง) <strong>ไม่ถูกยกเลิก เงินยังอยู่</strong> และได้สิทธิ์เลือกรอบใหม่ของทริปนี้เองในแอป เว็บ และ LINE</li>
+                <li>ราคาเดิม ไม่มีค่าธรรมเนียม เลือกรอบที่ออกเดินทางได้ถึง <strong>{{ fmUntilPreview }}</strong> (6 เดือนนับจากวันเดินทางเดิม) และไม่กินสิทธิ์เลื่อนปกติ</li>
+                <li>ลูกค้าได้รับแจ้งทาง push, LINE, SMS และอีเมล · เปิดรอบใหม่ของทริปนี้เมื่อไหร่ ระบบแจ้งคนที่ยังไม่เลือกให้เอง</li>
+                <li>คิวรอที่นั่งของรอบนี้ถูกปิด และสตาฟที่ประจำรอบได้รับแจ้ง</li>
+              </ul>
+            </div>
+            <div class="form-group">
+              <label>เหตุผล (ลูกค้าจะเห็นข้อความนี้ต่อท้ายคำว่า "เนื่องจาก")</label>
+              <div class="fm-chips">
+                <button v-for="r in fmReasonPresets" :key="r" type="button" class="fm-chip"
+                  :class="{ active: fmReason === r }" @click="fmReason = r">{{ r }}</button>
+              </div>
+              <input v-model="fmReason" type="text" maxlength="120" class="form-input" placeholder="เช่น น้ำป่าไหลหลาก อุทยานประกาศปิดพื้นที่" />
+            </div>
+          </template>
+
+          <!-- กดแล้ว: ติดตามว่าใครเลือกรอบแล้วบ้าง -->
+          <template v-else>
+            <div class="fm-summary">
+              <div><span class="fm-num">{{ fmOverview.counts.awaiting }}</span> รอเลือก</div>
+              <div><span class="fm-num fm-ok">{{ fmOverview.counts.moved }}</span> เลือกแล้ว</div>
+              <div><span class="fm-num fm-warn">{{ fmOverview.counts.expired }}</span> หมดสิทธิ์</div>
+              <div><span class="fm-num fm-muted">{{ fmOverview.counts.cancelled }}</span> ยกเลิก/คืนเงิน</div>
+            </div>
+            <p class="text-muted-sm" style="margin:8px 0 12px;">
+              เหตุผล: {{ fmOverview.reason }} · เลือกรอบที่ออกได้ถึง {{ fmOverview.until }}
+              · ย้ายให้ลูกค้าเองได้ที่ปุ่ม "ย้ายการจอง" (สิทธิ์จะปิดให้อัตโนมัติ)
+            </p>
+            <p v-if="!fmOverview.bookings.length" class="text-muted-sm">รอบนี้ไม่มีการจองที่ได้รับสิทธิ์</p>
+            <table v-else class="data-table">
+              <thead>
+                <tr>
+                  <th>การจอง</th>
+                  <th>ลูกค้า</th>
+                  <th style="width:70px;">คน</th>
+                  <th style="width:110px;">ชำระแล้ว</th>
+                  <th style="width:190px;">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="b in fmOverview.bookings" :key="b.booking_ref">
+                  <td style="font-family:monospace;font-weight:700;">{{ b.booking_ref }}</td>
+                  <td>
+                    <div style="font-weight:700;">{{ b.customer_name || '—' }}</div>
+                    <div class="text-muted-sm">{{ b.customer_phone || '' }}</div>
+                  </td>
+                  <td>{{ b.passengers_count }}</td>
+                  <td>฿{{ Number(b.paid_amount || 0).toLocaleString() }}</td>
+                  <td>
+                    <span class="status-badge" :class="fmStateClass(b.state)">{{ fmStateLabels[b.state] || b.state }}</span>
+                    <div v-if="b.moved_to" class="text-muted-sm">→ {{ b.moved_to.label }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </template>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="closeForceMajeure" :disabled="fmSubmitting">ปิด</button>
+          <button v-if="!fmLoading && !fmOverview?.force_majeure_at" class="btn-primary btn-fm-confirm"
+            @click="submitForceMajeure" :disabled="fmSubmitting || !fmReason.trim()">
+            {{ fmSubmitting ? 'กำลังดำเนินการ…' : 'ยืนยันยกเลิกรอบ และแจ้งลูกค้า' }}
+          </button>
         </div>
       </div>
     </div>
@@ -2952,6 +3048,82 @@ const openWaitlist = async (sch) => {
     waitlistEntries.value = [];
   } finally {
     waitlistLoading.value = false;
+  }
+};
+
+// ─── เหตุสุดวิสัย (น้ำป่า พายุ อุทยานปิด) ──────────────────────────
+// ยกเลิกรอบแต่ไม่ยกเลิกใบจอง — ลูกค้าเลือกรอบใหม่ของทริปเดิมเองภายใน 6 เดือน
+// (เงื่อนไขการจองข้อ 6) หลังบ้านคือ ForceMajeureService
+const showForceMajeure = ref(false);
+const fmSchedule = ref(null);
+const fmOverview = ref(null);
+const fmLoading = ref(false);
+const fmSubmitting = ref(false);
+const fmReason = ref('');
+const fmReasonPresets = [
+  'น้ำป่าไหลหลาก',
+  'พายุและคลื่นลมแรง',
+  'อุทยานประกาศปิดพื้นที่',
+  'หน่วยงานราชการประกาศเตือนภัย',
+];
+const fmStateLabels = {
+  awaiting: 'รอลูกค้าเลือกรอบ',
+  moved: 'เลือกรอบใหม่แล้ว',
+  expired: 'หมดสิทธิ์ ต้องติดต่อ',
+  cancelled: 'ยกเลิก/คืนเงินแล้ว',
+};
+const fmStateClass = (state) => ({
+  awaiting: 'status-full',
+  moved: 'status-open',
+  expired: 'status-cancelled',
+  cancelled: 'status-closed',
+}[state] || 'status-closed');
+
+// วันสุดท้ายของสิทธิ์ — เดือนที่วันไม่พอ (31 ส.ค. + 6 = ก.พ.) ใช้วันสุดท้ายของเดือน ตรงกับหลังบ้าน
+const fmUntilPreview = computed(() => {
+  const date = fmSchedule.value?.departure_date;
+  if (!date) return '—';
+  const [y, m, d] = date.slice(0, 10).split('-').map(Number);
+  const lastDay = new Date(Date.UTC(y, m - 1 + 6 + 1, 0)).getUTCDate();
+  const until = new Date(Date.UTC(y, m - 1 + 6, Math.min(d, lastDay)));
+  return until.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+});
+
+const openForceMajeure = async (sch) => {
+  fmSchedule.value = sch;
+  fmOverview.value = null;
+  fmReason.value = sch.force_majeure_reason || '';
+  showForceMajeure.value = true;
+  fmLoading.value = true;
+  try {
+    const res = await api.get(`/admin/schedules/${sch.id}/force-majeure`);
+    fmOverview.value = res.data.data;
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'โหลดข้อมูลไม่สำเร็จ');
+    showForceMajeure.value = false;
+  } finally {
+    fmLoading.value = false;
+  }
+};
+
+const closeForceMajeure = () => {
+  if (fmSubmitting.value) return;
+  showForceMajeure.value = false;
+};
+
+const submitForceMajeure = async () => {
+  if (!fmSchedule.value || !fmReason.value.trim()) return;
+  if (!window.confirm(`ยืนยันยกเลิกรอบ ${fmSchedule.value.departure_date} และแจ้งลูกค้าทุกคนให้เลือกรอบใหม่?\nทำแล้วย้อนกลับไม่ได้`)) return;
+  fmSubmitting.value = true;
+  try {
+    const res = await api.post(`/admin/schedules/${fmSchedule.value.id}/force-majeure`, { reason: fmReason.value.trim() });
+    fmOverview.value = res.data.data;
+    toast.success(res.data.message || 'ยกเลิกรอบและแจ้งลูกค้าแล้ว');
+    fetchData();
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'ดำเนินการไม่สำเร็จ');
+  } finally {
+    fmSubmitting.value = false;
   }
 };
 
@@ -6257,5 +6429,82 @@ onMounted(async () => {
   .ride-item-grid {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ── เหตุสุดวิสัย ── */
+.badge-force-majeure {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  font-size: 9px;
+  cursor: pointer;
+}
+.btn-force-majeure {
+  color: #d97706;
+}
+.btn-force-majeure:hover {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+.fm-explain {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #78350f;
+}
+.fm-explain ul {
+  margin: 6px 0 0 18px;
+  list-style: disc;
+}
+.fm-explain li {
+  margin-bottom: 3px;
+}
+.fm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+.fm-chip {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.fm-chip.active {
+  border-color: #d97706;
+  background: #fffbeb;
+  color: #b45309;
+  font-weight: 700;
+}
+.fm-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+.fm-summary > div {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+}
+.fm-num {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  color: #d97706;
+}
+.fm-num.fm-ok { color: #059669; }
+.fm-num.fm-warn { color: #dc2626; }
+.fm-num.fm-muted { color: #9ca3af; }
+.btn-fm-confirm {
+  background: #d97706;
 }
 </style>

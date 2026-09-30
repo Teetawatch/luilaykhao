@@ -737,6 +737,8 @@ class AuthController extends Controller
             // เคยเปิดแอปแล้วหรือยัง — เว็บใช้ค่านี้ตัดสินว่าจะชวนโหลดแอปไหม
             // คนที่มีแล้วต้องไม่เห็นคำชวน (ดู App\Support\AppLinks)
             'has_app' => AppLinks::hasApp($user),
+            // ลิงก์ร้านแอปสำหรับหน้าที่ไม่มี shell ของเว็บ (LIFF) — เว็บอ่านจาก <meta> อยู่แล้ว
+            'app_links' => ['ios' => AppLinks::ios(), 'android' => AppLinks::android()],
             'created_at' => $user->created_at?->toISOString(),
         ];
     }

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AdminBroadcastController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminFinanceController;
+use App\Http\Controllers\Api\V1\AdminForceMajeureController;
 use App\Http\Controllers\Api\V1\AdminInstallmentController;
 use App\Http\Controllers\Api\V1\AdminIntakeController;
 use App\Http\Controllers\Api\V1\AdminPageContentController;
@@ -663,6 +664,9 @@ Route::prefix('v1')->group(function () {
         Route::get('schedules/{id}/staff', [AdminController::class, 'scheduleStaff']);
         Route::put('schedules/{id}/staff', [AdminController::class, 'syncScheduleStaff']);
         Route::post('schedules/{id}/staff/release', [AdminController::class, 'releaseScheduleStaff']);
+        // ยกเลิกรอบเพราะเหตุสุดวิสัย → ลูกค้าเลือกรอบใหม่ของทริปเดิมได้เอง
+        Route::get('schedules/{id}/force-majeure', [AdminForceMajeureController::class, 'show']);
+        Route::post('schedules/{id}/force-majeure', [AdminForceMajeureController::class, 'store']);
 
         // ราคาทริป — ทริป/รอบ/ราคาของช่วงเวลาหนึ่งไว้ที่เดียวสำหรับทำสื่อโปรโมท
         Route::get('price-sheet', [AdminPriceSheetController::class, 'index']);

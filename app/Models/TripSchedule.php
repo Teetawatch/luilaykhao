@@ -120,6 +120,7 @@ class TripSchedule extends Model
             'finance_budget' => 'decimal:2',
             'photo_views_count' => 'integer',
             'shopping_seeded_at' => 'datetime',
+            'force_majeure_at' => 'datetime',
         ];
     }
 
@@ -931,6 +932,12 @@ class TripSchedule extends Model
 
     public function isReviewAvailable(): bool
     {
+        // รอบที่ยกเลิกไม่มีใครได้ไป — ใบจองที่ถูกเลื่อนเพราะเหตุสุดวิสัยยัง
+        // confirmed ค้างอยู่บนรอบนี้จนกว่าลูกค้าจะเลือกรอบใหม่ ห้ามชวนรีวิว
+        if ($this->status === 'cancelled') {
+            return false;
+        }
+
         return now(self::REVIEW_AVAILABLE_TIMEZONE)->greaterThanOrEqualTo($this->reviewAvailableAt());
     }
 

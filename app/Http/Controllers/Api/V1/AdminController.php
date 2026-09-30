@@ -42,6 +42,7 @@ use App\Services\AccountClaimService;
 use App\Services\BookingService;
 use App\Services\ChatRoomEventService;
 use App\Services\DriverLoginCodeService;
+use App\Services\ForceMajeureService;
 use App\Services\MailService;
 use App\Services\RouteTrackService;
 use App\Services\ScheduleFinanceService;
@@ -559,6 +560,13 @@ class AdminController extends Controller
             ...StoreScheduleRequest::flightPlanRules(),
         ]);
 
+        // ลูกค้าของรอบนี้กำลังเลือกรอบใหม่อยู่ — เปิดรอบเดิมกลับมาจะมีใบจองสองสถานะ
+        // ในรอบเดียว (ย้ายไปแล้ว / ยังค้าง) ให้สร้างรอบใหม่แทน
+        if ($schedule->force_majeure_at !== null
+            && isset($validated['status']) && $validated['status'] !== 'cancelled') {
+            return $this->error('รอบนี้ถูกยกเลิกเพราะเหตุสุดวิสัยและลูกค้ากำลังเลือกรอบใหม่ เปิดกลับไม่ได้ — สร้างรอบใหม่แทน', 422);
+        }
+
         $schedule->update($validated);
 
         return $this->success(
@@ -574,6 +582,12 @@ class AdminController extends Controller
             'ids.*' => ['integer', 'exists:trip_schedules,id'],
             'data' => ['required', 'array'],
         ]);
+
+        $status = $request->input('data.status');
+        if ($status !== null && $status !== 'cancelled'
+            && TripSchedule::whereIn('id', $request->ids)->whereNotNull('force_majeure_at')->exists()) {
+            return $this->error('มีรอบที่ถูกยกเลิกเพราะเหตุสุดวิสัยอยู่ในรายการ เปิดกลับไม่ได้ — สร้างรอบใหม่แทน', 422);
+        }
 
         TripSchedule::whereIn('id', $request->ids)->update($request->data);
 
@@ -759,6 +773,7 @@ class AdminController extends Controller
                     );
 
                     $booking->update($updateData);
+                    $this->settleMovedBooking($booking, $source, $target);
 
                     // จุดรับรายคนก็ผูกกับรอบเดิม ต้องย้ายตามด้วย ไม่งั้นสตาฟจะเห็นเวลารับของทริปเดิม
                     $this->remapPassengerPickupPoints($booking, $pickupMap);
@@ -770,6 +785,7 @@ class AdminController extends Controller
                     ]));
                 } else {
                     $newBooking = $this->splitBookingForMove($booking, $selectedInBooking, $source, $target, $pickupMap);
+                    $this->settleMovedBooking($newBooking, $source, $target);
 
                     $selectedInBooking
                         ->each(fn ($passenger) => $passenger->update([
@@ -814,6 +830,16 @@ class AdminController extends Controller
         }
 
         return $this->success(null, "ย้ายผู้โดยสาร $totalPassengers ท่าน จาก $bookingsCount รายการจอง ไปยังรอบเดินทางวันที่ ".ThaiDate::full($target->departure_date).' สำเร็จ');
+    }
+
+    /**
+     * ใบที่ย้ายไปรอบอื่นแล้ว: ปิดสิทธิ์เลือกรอบจากเหตุสุดวิสัย (ทีมงานเลือกให้แล้ว)
+     * และเลื่อนวันครบกำหนดชำระตามรอบใหม่ — กติกาเดียวกับที่ลูกค้าเลือกรอบเอง
+     */
+    private function settleMovedBooking(Booking $booking, TripSchedule $source, TripSchedule $target): void
+    {
+        app(ForceMajeureService::class)->markResolved($booking);
+        $this->bookingService->realignPaymentDueDates($booking, $source, $target);
     }
 
     private function seatMovesForBooking(Booking $booking, $selectedPassengerIds, $seatAssignments)

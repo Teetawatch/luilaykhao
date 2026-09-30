@@ -18,10 +18,13 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\CustomPickupPricing;
 use App\Support\LegalPolicy;
+use App\Support\PaymentQuote;
 use App\Support\TermsConsent;
 use App\Support\ThaiDate;
 use App\Support\TripRentalItems;
 use App\Traits\RemapsBookingPickup;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -929,16 +932,35 @@ class BookingService
     public function rescheduleBooking(Booking $booking, int $targetScheduleId, array $seatIds = [], ?int $pickupPointId = null): Booking
     {
         $originalScheduleId = $booking->schedule_id;
+        $forceMajeure = false;
 
-        $rescheduled = DB::transaction(function () use ($booking, $targetScheduleId, $seatIds, $pickupPointId) {
-            $booking->loadMissing(['schedule.trip', 'passengers', 'seats']);
+        $rescheduled = DB::transaction(function () use ($booking, $targetScheduleId, $seatIds, $pickupPointId, &$forceMajeure) {
+            // ล็อกแถวแล้วอ่านค่าล่าสุด — กดยืนยันซ้ำ (หรือสองเครื่องพร้อมกัน) ต้องไม่ย้าย
+            // ซ้ำ หรือใช้สิทธิ์เหตุสุดวิสัยสองครั้ง
+            Booking::whereKey($booking->id)->lockForUpdate()->first();
+            $booking->refresh();
+            $booking->load(['schedule.trip', 'passengers', 'seats']);
 
-            if ($booking->rescheduled_at !== null) {
-                throw new \Exception('การจองนี้เปลี่ยนวันเดินทางได้เพียงครั้งเดียว (ใช้สิทธิ์ไปแล้ว)');
-            }
+            // รอบเดิมถูกเลื่อนเพราะเหตุสุดวิสัย (เงื่อนไขข้อ 6) — สิทธิ์แยกจากการเลื่อนปกติ:
+            // ไม่ติดกติกา 20 วัน ไม่นับเป็น "ได้ครั้งเดียว" แต่ต้องเลือกรอบภายในกรอบเวลา
+            $forceMajeure = $booking->awaitsNewRound();
 
-            if (! $booking->canBeRescheduled()) {
-                throw new \Exception('เปลี่ยนวันเดินทางได้ก่อนเดินทางอย่างน้อย '.Booking::RESCHEDULE_LEAD_DAYS.' วันเท่านั้น');
+            if ($forceMajeure) {
+                if (! $booking->canChooseForceMajeureRound()) {
+                    throw new \Exception('เลยกำหนดเลือกรอบเดินทางใหม่แล้ว (ภายใน '.ThaiDate::full($booking->force_majeure_until).') กรุณาติดต่อทีมงาน');
+                }
+            } else {
+                if (! in_array($booking->status, Booking::MODIFIABLE_STATUSES, true)) {
+                    throw new \Exception('การจองนี้ไม่สามารถเปลี่ยนวันเดินทางได้');
+                }
+
+                if ($booking->rescheduled_at !== null) {
+                    throw new \Exception('การจองนี้เปลี่ยนวันเดินทางได้เพียงครั้งเดียว (ใช้สิทธิ์ไปแล้ว)');
+                }
+
+                if (! $booking->canBeRescheduled()) {
+                    throw new \Exception('เปลี่ยนวันเดินทางได้ก่อนเดินทางอย่างน้อย '.Booking::RESCHEDULE_LEAD_DAYS.' วันเท่านั้น');
+                }
             }
 
             $source = TripSchedule::lockForUpdate()->findOrFail($booking->schedule_id);
@@ -958,6 +980,12 @@ class BookingService
 
             if ($target->departure_date->lt(now()->startOfDay())) {
                 throw new \Exception('ไม่สามารถเปลี่ยนไปยังรอบเดินทางที่ผ่านมาแล้ว');
+            }
+
+            // สิทธิ์เหตุสุดวิสัยครอบคลุมรอบที่ออกเดินทางภายในกรอบเวลาเท่านั้น
+            if ($forceMajeure
+                && $target->departure_date->toDateString() > $booking->force_majeure_until->toDateString()) {
+                throw new \Exception('เลือกได้เฉพาะรอบที่ออกเดินทางภายใน '.ThaiDate::full($booking->force_majeure_until));
             }
 
             $source->syncBookedSeats();
@@ -1002,6 +1030,18 @@ class BookingService
                     ->map(fn ($id) => trim((string) $id))
                     ->filter()
                     ->values();
+
+                // ไม่ได้เลือกที่นั่งมาเลย (LIFF ไม่มีผังให้เลือก / ลูกค้าให้ทีมงานจัดให้)
+                // — จัดที่ว่างของรอบใหม่ให้เอง แทนที่จะปฏิเสธจนลูกค้าเลื่อนรอบไม่ได้
+                if ($newSeatIds->isEmpty()) {
+                    $newSeatIds = $this->freeSeatIds($target, $targetOption, $targetOptionId, $booking->user_id)
+                        ->take($passengerCount)
+                        ->values();
+
+                    if ($newSeatIds->count() < $passengerCount) {
+                        throw new \Exception("ที่นั่งในรอบปลายทางไม่เพียงพอ (ต้องการ {$passengerCount}, ว่าง {$newSeatIds->count()})");
+                    }
+                }
 
                 if ($newSeatIds->count() !== $passengerCount) {
                     throw new \Exception("กรุณาเลือกที่นั่งใหม่ให้ครบ {$passengerCount} ที่นั่ง");
@@ -1067,17 +1107,35 @@ class BookingService
 
             // จุดรับผูกกับรอบ — จุดรับรายคนที่ค้างจากรอบเดิมต้องย้ายตาม (จับคู่จากชื่อจุด)
             // ไม่งั้นสตาฟจะเห็นจุดรับ/เวลารับของรอบเดิมตอนเช็คอิน
-            $this->remapPassengerPickupPoints($booking, $this->pickupPointMap($source, $target));
+            $pickupMap = $this->pickupPointMap($source, $target);
+            $this->remapPassengerPickupPoints($booking, $pickupMap);
+
+            // ไม่ได้เลือกจุดรับใหม่มา — ใช้จุดชื่อเดียวกันของรอบใหม่ (เดิมล้างทิ้งจนลูกค้า
+            // ที่เลื่อนรอบกลายเป็น "ไม่มีจุดรับ" ทั้งที่รอบใหม่มีจุดเดิมอยู่)
+            $pickupFields = $pickupPoint
+                ? ['pickup_point_id' => $pickupPoint->id, 'pickup_region' => $pickupPoint->region]
+                : array_merge(
+                    ['pickup_point_id' => null, 'pickup_region' => null],
+                    $this->resolveMovedPickup($booking, $source, $target, $pickupMap),
+                );
 
             $booking->update([
                 'schedule_id' => $target->id,
-                'pickup_point_id' => $pickupPoint?->id,
-                'pickup_region' => $pickupPoint?->region,
+                ...$pickupFields,
                 // ชี้ไปที่คันของรอบปลายทาง (null เมื่อไม่มีคันชื่อเดียวกัน) — ปล่อยให้
                 // ชี้ค้างที่คันของรอบเดิมไม่ได้ โควตาที่นั่งจะนับข้ามรอบ
                 'vehicle_option_id' => $targetOption?->id,
-                'rescheduled_at' => now(),
+                // สิทธิ์เหตุสุดวิสัยไม่กินสิทธิ์เลื่อนปกติ — ปิดเรื่องแทนการประทับ rescheduled_at
+                ...($forceMajeure
+                    ? ['force_majeure_resolved_at' => now()]
+                    : ['rescheduled_at' => now()]),
+                // "กำลังไป / ถึงแล้ว" ที่เคยกดไว้เป็นของรอบเดิม
+                'pickup_status' => null,
+                'pickup_status_at' => null,
+                'pickup_status_eta_minutes' => null,
             ]);
+
+            $this->realignPaymentDueDates($booking, $source, $target);
 
             $source->syncBookedSeats();
             $target->syncBookedSeats();
@@ -1091,7 +1149,7 @@ class BookingService
         SmartNotification::send(
             $rescheduled->user_id,
             'booking_rescheduled',
-            'เปลี่ยนวันเดินทางสำเร็จ',
+            $forceMajeure ? 'ได้รอบเดินทางใหม่แล้ว' : 'เปลี่ยนวันเดินทางสำเร็จ',
             "การจอง {$rescheduled->booking_ref} ย้ายไปวันที่ ".$rescheduled->schedule->departureLabelShort().' แล้ว',
             [
                 'booking_ref' => $rescheduled->booking_ref,
@@ -1103,6 +1161,81 @@ class BookingService
         ProcessWaitlistJob::dispatch($originalScheduleId);
 
         return $rescheduled;
+    }
+
+    /**
+     * ที่นั่งที่ยังว่างจริงของรอบ/คันหนึ่ง เรียงตามผัง (หน้าไปหลัง) — ไม่นับที่จองแล้ว
+     * และที่มีคนอื่นกำลังล็อกอยู่
+     */
+    private function freeSeatIds(TripSchedule $schedule, ?ScheduleVehicleOption $option, int $optionId, ?int $userId): Collection
+    {
+        $layoutIds = collect($schedule->resolveSeatLayout($option)['seats'] ?? [])
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->filter()
+            ->values();
+
+        $taken = BookingSeat::where('schedule_id', $schedule->id)
+            ->where('vehicle_option_id', $optionId)
+            ->pluck('seat_id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        $statuses = $this->seatLockService->getSeatStatus($schedule->id, $layoutIds->all(), $userId, $optionId);
+
+        return $layoutIds->filter(function (string $id) use ($taken, $statuses) {
+            if (in_array($id, $taken, true)) {
+                return false;
+            }
+
+            $status = $statuses[$id] ?? ['status' => 'available'];
+
+            return $status['status'] === 'available'
+                || ($status['status'] === 'locked' && ! empty($status['locked_by_current_user']));
+        })->values();
+    }
+
+    /**
+     * ย้ายรอบแล้ววันครบกำหนดชำระต้องย้ายตาม — ยอดคงเหลือของใบมัดจำและค่างวด
+     * ผ่อนคิดจากวันเดินทาง ปล่อยวันเดิมไว้ คนที่เลื่อนไปรอบหลังจะโดนทวงเร็วเกินจริง
+     * (ใบที่เลื่อนเพราะเหตุสุดวิสัยโดนทวงยอดที่ "เลยกำหนด" ไปแล้วทันที) ส่วนคน
+     * ที่ย้ายมารอบที่เร็วขึ้นจะมีกำหนดจ่ายหลังวันเดินทาง
+     *
+     * ยอดคงเหลือใช้สูตรเดียวกับตอนจอง (วันเดินทาง − BALANCE_DUE_LEAD_DAYS) งวดผ่อน
+     * เลื่อนตามจำนวนวันที่รอบขยับ เพื่อคงระยะห่างที่ตกลงกันไว้ ไม่มีวันไหนถูกดันไป
+     * อยู่ในอดีต — อย่างเร็วสุดคือวันนี้ (เวลาไทย)
+     */
+    public function realignPaymentDueDates(Booking $booking, TripSchedule $from, TripSchedule $to): void
+    {
+        if (! $from->departure_date || ! $to->departure_date || (int) $from->id === (int) $to->id) {
+            return;
+        }
+
+        $today = now('Asia/Bangkok')->toDateString();
+        $notPast = fn (string $date) => max($date, $today);
+
+        if ($booking->payment_type === 'deposit' && $booking->balance_paid_at === null && $booking->balance_due_at !== null) {
+            $booking->forceFill([
+                'balance_due_at' => $notPast(PaymentQuote::balanceDueAt($to)->toDateString()),
+            ])->save();
+        }
+
+        $shiftDays = (int) Carbon::parse($from->departure_date->toDateString())
+            ->diffInDays(Carbon::parse($to->departure_date->toDateString()), false);
+
+        if ($shiftDays === 0) {
+            return;
+        }
+
+        $booking->installmentPayments()
+            ->whereIn('status', ['pending', 'overdue'])
+            ->whereNotNull('due_date')
+            ->get()
+            ->each(fn ($installment) => $installment->update([
+                'due_date' => $notPast($installment->due_date->copy()->addDays($shiftDays)->toDateString()),
+                // วันใหม่ไม่อยู่ในอดีตแล้ว — งวดที่เลยกำหนดเพราะรอบเดิมกลับมารอชำระ
+                'status' => 'pending',
+            ]));
     }
 
     /**

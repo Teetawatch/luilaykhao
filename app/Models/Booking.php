@@ -77,6 +77,8 @@ class Booking extends Model
         'payment_ref', 'paid_at', 'slip_path', 'transfer_datetime',
         'slip_ocr_status', 'slip_ocr_result',
         'cancellation_reason', 'cancelled_at', 'rescheduled_at',
+        'force_majeure_at', 'force_majeure_reason', 'force_majeure_until',
+        'force_majeure_schedule_id', 'force_majeure_resolved_at',
         'was_auto_expired', 'winback_sent_at',
         'hold_until', 'hold_note', 'hold_by_id',
         'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path',
@@ -99,6 +101,9 @@ class Booking extends Model
             'paid_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'rescheduled_at' => 'datetime',
+            'force_majeure_at' => 'datetime',
+            'force_majeure_until' => 'date',
+            'force_majeure_resolved_at' => 'datetime',
             'was_auto_expired' => 'boolean',
             'winback_sent_at' => 'datetime',
             'hold_until' => 'datetime',
@@ -633,9 +638,16 @@ class Booking extends Model
 
     /**
      * เส้นตายการเปลี่ยนวันเดินทาง — ก่อนวันออกเดินทางจริงอย่างน้อย RESCHEDULE_LEAD_DAYS วัน
+     *
+     * ใบที่ถูกเลื่อนเพราะเหตุสุดวิสัยใช้กรอบของสิทธิ์นั้นแทน: เลือกรอบที่ออกได้ถึง
+     * `force_majeure_until` (ไม่ติดกติกา 20 วัน เพราะรอบเดิมไม่ได้ออกอยู่แล้ว)
      */
     public function rescheduleDeadline(): ?Carbon
     {
+        if ($this->awaitsNewRound()) {
+            return $this->forceMajeureDeadline();
+        }
+
         $schedule = $this->relationLoaded('schedule') ? $this->schedule : $this->schedule()->first();
 
         return $schedule?->effectiveDepartureDate()?->subDays(self::RESCHEDULE_LEAD_DAYS)->endOfDay();
@@ -651,6 +663,12 @@ class Booking extends Model
             return false;
         }
 
+        // สิทธิ์เลือกรอบใหม่จากเหตุสุดวิสัยแยกขาดจากสิทธิ์เลื่อนปกติ (เงื่อนไขข้อ 6)
+        // — ไม่นับรวมกับ "ได้ครั้งเดียว" และไม่ติดเส้นตาย 20 วัน
+        if ($this->awaitsNewRound()) {
+            return $this->canChooseForceMajeureRound();
+        }
+
         if ($this->rescheduled_at !== null) {
             return false;
         }
@@ -658,5 +676,71 @@ class Booking extends Model
         $deadline = $this->rescheduleDeadline();
 
         return $deadline !== null && now()->lte($deadline);
+    }
+
+    /**
+     * ครั้งล่าสุดที่ใบนี้ถูกย้ายไปรอบอื่น (ลูกค้าเลื่อนวันเอง หรือเลือกรอบใหม่หลัง
+     * เหตุสุดวิสัย) — การแจ้งเตือนก่อนเดินทางที่ส่งไปก่อนหน้านี้เป็นของรอบเดิม
+     * จึงไม่นับเป็น "ส่งแล้ว" สำหรับรอบใหม่
+     */
+    public function roundChangedAt(): ?Carbon
+    {
+        $times = array_filter([$this->rescheduled_at, $this->force_majeure_resolved_at]);
+
+        return $times ? max($times) : null;
+    }
+
+    // ── เลื่อนเพราะเหตุสุดวิสัย (น้ำป่า พายุ อุทยานสั่งปิด) ─────────────────────
+
+    /**
+     * รอบของใบนี้ถูกยกเลิกเพราะเหตุสุดวิสัย และลูกค้ายังไม่ได้เลือกรอบใหม่
+     *
+     * ไม่ดูเส้นตาย — ใบที่หมดสิทธิ์แล้วก็ยัง "รอ" อยู่ (ทีมงานต้องปิดเรื่องเอง)
+     * แค่เลือกเองไม่ได้แล้ว ดู [canChooseForceMajeureRound]
+     */
+    public function awaitsNewRound(): bool
+    {
+        return $this->force_majeure_at !== null
+            && $this->force_majeure_resolved_at === null
+            && in_array($this->status, self::MODIFIABLE_STATUSES, true);
+    }
+
+    /** เลือกรอบใหม่เองได้ถึงสิ้นวันนี้ (เวลาไทย) */
+    public function forceMajeureDeadline(): ?Carbon
+    {
+        return $this->force_majeure_until
+            ? Carbon::parse($this->force_majeure_until->toDateString(), 'Asia/Bangkok')->endOfDay()
+            : null;
+    }
+
+    /** ยังอยู่ในกรอบเวลาที่ลูกค้าเลือกรอบใหม่เองได้ไหม */
+    public function canChooseForceMajeureRound(): bool
+    {
+        $deadline = $this->forceMajeureDeadline();
+
+        return $this->awaitsNewRound()
+            && $deadline !== null
+            && now('Asia/Bangkok')->lte($deadline);
+    }
+
+    /**
+     * ใบที่ยังรอลูกค้าเลือกรอบใหม่ — ระหว่างนี้หยุดทวงยอดค้างชำระไว้ก่อน
+     * (วันครบกำหนดคิดจากวันเดินทางเดิมที่ไม่มีแล้ว) แล้วค่อยเลื่อนตามรอบใหม่
+     */
+    public function scopeAwaitingNewRound($query)
+    {
+        return $query->whereNotNull('bookings.force_majeure_at')
+            ->whereNull('bookings.force_majeure_resolved_at');
+    }
+
+    public function scopeNotAwaitingNewRound($query)
+    {
+        return $query->where(fn ($q) => $q->whereNull('bookings.force_majeure_at')
+            ->orWhereNotNull('bookings.force_majeure_resolved_at'));
+    }
+
+    public function forceMajeureSchedule(): BelongsTo
+    {
+        return $this->belongsTo(TripSchedule::class, 'force_majeure_schedule_id');
     }
 }

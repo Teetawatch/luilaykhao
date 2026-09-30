@@ -548,3 +548,14 @@ ul.bullets li { margin-bottom: 4px; }
   font-size: 30px; font-weight: 800; letter-spacing: 3px;
   margin: 4px 0 8px; color: var(--green-dark);
 }
+
+/* รอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย — เลือกรอบใหม่ */
+.fm-card { border: 1px solid #f3d19c; background: #fffaf0; }
+.fm-card .title { color: #8a5300; }
+.app-invite {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 12px; padding: 10px 12px; border-radius: 12px;
+  background: #fff; border: 1px solid #eadfcc;
+}
+.app-invite .pick-body { flex: 1; min-width: 0; }
+.app-invite .btn { width: auto; margin: 0; padding: 8px 14px; white-space: nowrap; }

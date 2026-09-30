@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Booking;
 use App\Services\BookingDocumentService;
+use App\Services\ForceMajeureService;
 use App\Services\PickupStatusService;
 use App\Services\TravelDocumentService;
 use App\Support\MediaDisk;
@@ -175,6 +176,14 @@ class BookingResource extends JsonResource
                 ? $this->rescheduleDeadline()?->toISOString()
                 : null,
             'rescheduled_at' => $this->rescheduled_at?->toISOString(),
+            // "standard" = เลื่อนวันปกติ (ครั้งเดียว ก่อน 20 วัน) · "force_majeure" = รอบเดิม
+            // ถูกยกเลิกเพราะเหตุสุดวิสัย เลือกรอบใหม่ได้ฟรีภายในกรอบเวลา ไม่กินสิทธิ์ปกติ
+            'reschedule_mode' => $this->awaitsNewRound() ? 'force_majeure' : 'standard',
+            // รอบใหม่ต้องออกเดินทางไม่เกินวันนี้ — null = ไม่จำกัด (หน้าจอใช้กรองรายการรอบ)
+            'reschedule_latest_departure' => $this->awaitsNewRound()
+                ? $this->force_majeure_until?->toDateString()
+                : null,
+            'force_majeure' => ForceMajeureService::customerPayload($this->resource),
             'total_amount' => $this->total_amount,
             // ยอดที่ต้องโอน "ตอนนี้" ของแต่ละรูปแบบการชำระ คำนวณจากหลังบ้านที่เดียว
             // (เว็บ/แอปเคยคำนวณเองคนละสูตร ลูกค้าจึงโอนมาไม่เท่ากัน) ส่งเฉพาะรายการ

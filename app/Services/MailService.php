@@ -21,6 +21,7 @@ use App\Mail\PassportInfoNeededMail;
 use App\Mail\PasswordResetMail;
 use App\Mail\PaymentConfirmedMail;
 use App\Mail\TripBriefMail;
+use App\Mail\TripPostponedMail;
 use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
 use App\Models\Booking;
@@ -418,6 +419,23 @@ class MailService
             $this->sendToCustomerEmails($booking, fn () => new BookingCancelledMail($booking, $reason));
         } catch (\Throwable $e) {
             Log::error('Failed to send booking cancelled email', [
+                'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * รอบถูกเลื่อนเพราะเหตุสุดวิสัย — ลิงก์เลือกรอบใหม่ (ForceMajeureService)
+     */
+    public function sendTripPostponedEmail(Booking $booking): void
+    {
+        $booking->load(['user', 'schedule.trip', 'passengers']);
+
+        try {
+            $this->sendToCustomerEmails($booking, fn () => new TripPostponedMail($booking));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send trip postponed email', [
                 'booking_ref' => $booking->booking_ref,
                 'error' => $e->getMessage(),
             ]);

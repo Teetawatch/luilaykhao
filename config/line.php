@@ -36,6 +36,10 @@ return [
         'booking_cancelled',
         'booking_expired',
         'booking_rescheduled',
+        // รอบถูกเลื่อนเพราะเหตุสุดวิสัย — ลูกค้าจาก LINE ต้องรู้ก่อนมายืนรอรถที่ไม่มา
+        'trip_postponed',
+        'trip_postponed_reminder',
+        'trip_postponed_new_round',
         'booking_transferred',
         'booking_refunded',
         // เงิน

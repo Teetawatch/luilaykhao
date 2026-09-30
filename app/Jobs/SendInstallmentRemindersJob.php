@@ -27,7 +27,7 @@ class SendInstallmentRemindersJob implements ShouldQueue
         // 1. Mark overdue + notify
         $overdue = InstallmentPayment::where('status', 'pending')
             ->whereDate('due_date', '<', $today)
-            ->whereHas('booking', fn ($q) => $q->where('payment_type', 'installment'))
+            ->whereHas('booking', fn ($q) => $q->where('payment_type', 'installment')->notAwaitingNewRound())
             ->with('booking.user')
             ->get();
 
@@ -55,7 +55,7 @@ class SendInstallmentRemindersJob implements ShouldQueue
         // 2. Remind 2 days before due
         $upcoming = InstallmentPayment::where('status', 'pending')
             ->whereDate('due_date', now()->addDays(self::DUE_SOON_DAYS)->toDateString())
-            ->whereHas('booking', fn ($q) => $q->where('payment_type', 'installment'))
+            ->whereHas('booking', fn ($q) => $q->where('payment_type', 'installment')->notAwaitingNewRound())
             ->with('booking.user')
             ->get();
 
@@ -76,7 +76,7 @@ class SendInstallmentRemindersJob implements ShouldQueue
         // 3. Remind on due date
         $dueToday = InstallmentPayment::where('status', 'pending')
             ->whereDate('due_date', $today)
-            ->whereHas('booking', fn ($q) => $q->where('payment_type', 'installment'))
+            ->whereHas('booking', fn ($q) => $q->where('payment_type', 'installment')->notAwaitingNewRound())
             ->with('booking.user')
             ->get();
 

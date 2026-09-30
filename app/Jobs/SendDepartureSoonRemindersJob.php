@@ -103,6 +103,7 @@ class SendDepartureSoonRemindersJob implements ShouldQueue
         return SmartNotification::where('user_id', $booking->user_id)
             ->where('type', 'trip_departure_soon')
             ->where('data->booking_ref', $booking->booking_ref)
+            ->when($booking->roundChangedAt(), fn ($q, $since) => $q->where('created_at', '>=', $since))
             ->exists();
     }
 

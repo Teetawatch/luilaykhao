@@ -145,6 +145,8 @@ class HomeWidgetService
             ->where('user_id', $userId)
             ->where('status', 'confirmed')
             ->whereIn('payment_type', ['deposit', 'installment'])
+            // ใบที่รอเลือกรอบใหม่ (เหตุสุดวิสัย) — วันครบกำหนดยังผูกกับรอบที่ไม่ได้ออก
+            ->notAwaitingNewRound()
             ->with(['installmentPayments', 'schedule.trip'])
             ->get();
 

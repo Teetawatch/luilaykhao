@@ -119,8 +119,8 @@
               </h2>
               <div class="flex flex-col items-start sm:items-end gap-2 shrink-0 w-full sm:w-auto">
                 <span class="px-2.5 py-1 text-xs font-bold rounded-[8px] flex items-center gap-1.5 whitespace-nowrap"
-                  :class="statusClass(b.status)">
-                  <span class="w-1.5 h-1.5 rounded-full" :class="statusDotClass(b.status)"></span>
+                  :class="awaitsNewRound(b) ? statusClass('pending') : statusClass(b.status)">
+                  <span class="w-1.5 h-1.5 rounded-full" :class="awaitsNewRound(b) ? statusDotClass('pending') : statusDotClass(b.status)"></span>
                   {{ displayStatusLabel(b) }}
                 </span>
                 <CountdownTimer
@@ -137,7 +137,8 @@
                   <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-[#E8EEEF] shrink-0">
                     <span class="material-symbols-rounded text-[16px] text-[#006565]">calendar_month</span>
                   </div>
-                  <span class="font-medium text-[#1a1c1c]">{{ formatDate(b.schedule?.departure_date) }}</span>
+                  <span class="font-medium text-[#1a1c1c]" :class="{ 'line-through text-[#889696]': awaitsNewRound(b) }">{{ formatDate(b.schedule?.departure_date) }}</span>
+                  <span v-if="awaitsNewRound(b)" class="text-[11px] font-bold text-[#B45309]">รอบนี้ยกเลิก</span>
                 </div>
                 <div class="text-right shrink-0">
                   <span class="text-[10px] text-[#889696] font-bold block mb-0.5 uppercase tracking-wider">หมายเลขการจอง</span>
@@ -168,6 +169,30 @@
                 v-if="b.status === 'confirmed' && b.payment_type === 'deposit' && !b.balance_paid_at && Number(b.balance_amount) > 0"
                 :booking-ref="b.booking_ref"
                 class="mt-4" />
+            </div>
+
+            <!-- รอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย — สิทธิ์เลือกรอบใหม่ (เงื่อนไขข้อ 6) -->
+            <div v-if="awaitsNewRound(b)" class="mb-5 rounded-[16px] bg-[#FFFBEB] border border-[#FDE68A] p-4">
+              <p class="font-bold text-[#78350F] text-sm flex items-center gap-1.5">
+                <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">thunderstorm</span>
+                รอบเดินทางนี้ออกไม่ได้<template v-if="b.force_majeure.reason"> เนื่องจาก{{ b.force_majeure.reason }}</template>
+              </p>
+              <template v-if="b.force_majeure.can_choose">
+                <p class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
+                  ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม
+                  ภายใน <strong>{{ b.force_majeure.until_label }}</strong>
+                  <template v-if="b.force_majeure.days_left != null"> (เหลือ {{ b.force_majeure.days_left }} วัน)</template>
+                </p>
+                <p v-if="b.viewer_is_owner === false" class="text-[12px] text-[#92400E] mt-2">ผู้จองเป็นคนเลือกรอบใหม่ให้ทั้งกลุ่มครับ</p>
+                <button v-else-if="b.can_reschedule" @click="openReschedule(b)"
+                  class="mt-3 w-full sm:w-auto bg-[#D97706] text-white py-2.5 px-5 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all inline-flex items-center justify-center gap-1.5">
+                  <span class="material-symbols-rounded text-[18px]">event_repeat</span>
+                  เลือกรอบใหม่
+                </button>
+              </template>
+              <p v-else class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
+                เลยกำหนดเลือกรอบใหม่แล้ว ({{ b.force_majeure.until_label }}) ทักทีมงานเพื่อช่วยดูแลต่อได้เลยครับ
+              </p>
             </div>
 
             <!-- Actions -->
@@ -219,7 +244,7 @@
               </router-link>
 
               <router-link
-                v-if="b.status === 'confirmed'"
+                v-if="b.status === 'confirmed' && !awaitsNewRound(b)"
                 :to="{ name: 'trip-chat', params: { scheduleId: b.schedule.id }, query: { title: b.schedule?.trip?.title, date: b.schedule?.departure_date } }"
                 class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">chat</span>
@@ -242,7 +267,15 @@
               </button>
 
               <button
-                v-if="b.status === 'confirmed'"
+                v-if="b.can_reschedule && !awaitsNewRound(b) && b.viewer_is_owner !== false"
+                @click="openReschedule(b)"
+                class="flex-1 sm:flex-none bg-white text-[#006565] border border-[#BCDFDF] hover:bg-[#F0FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
+                <span class="material-symbols-rounded text-[18px]">event_repeat</span>
+                เปลี่ยนวันเดินทาง
+              </button>
+
+              <button
+                v-if="b.status === 'confirmed' && !awaitsNewRound(b)"
                 @click="addToCalendar(b)"
                 class="flex-1 sm:flex-none bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">event</span>
@@ -441,6 +474,12 @@
       </div>
     </Teleport>
 
+    <RescheduleModal
+      v-if="rescheduleTarget"
+      :booking="rescheduleTarget"
+      @close="rescheduleTarget = null"
+      @done="onRescheduled" />
+
   </div>
 </template>
 
@@ -456,9 +495,13 @@ import CountdownTimer from '../components/CountdownTimer.vue';
 import MyWaitlist from '../components/MyWaitlist.vue';
 import SplitPaymentPanel from '../components/SplitPaymentPanel.vue';
 import InstallmentPlanPanel from '../components/InstallmentPlanPanel.vue';
+import RescheduleModal from '../components/RescheduleModal.vue';
+import { useRoute, useRouter } from 'vue-router';
 
 const swal = useSwal();
 const toast = useToast();
+const route = useRoute();
+const router = useRouter();
 
 /** จำนวนการจองต่อหน้า — การ์ดสูงพอสมควร 8 ใบกำลังพอดีหนึ่งหน้าจอเลื่อน */
 const PER_PAGE = 8;
@@ -518,7 +561,13 @@ function reviewState(b) {
   if (b.status !== 'pending' || !b.slip_ocr_status) return null;
   return b.slip_ocr_status === 'rejected' ? 'rejected' : 'under_review';
 }
+/** รอบเดิมถูกยกเลิกเพราะเหตุสุดวิสัย และยังไม่ได้เลือกรอบใหม่ */
+function awaitsNewRound(b) {
+  return !!b.force_majeure?.awaiting;
+}
+
 function displayStatusLabel(b) {
+  if (awaitsNewRound(b)) return 'รอเลือกรอบใหม่';
   const rs = reviewState(b);
   if (rs === 'under_review') return 'กำลังตรวจสอบยอด';
   if (rs === 'rejected') return 'ต้องส่งสลิปใหม่';
@@ -672,7 +721,7 @@ async function submitStaffReview() {
 }
 
 function isOngoingTrip(b) {
-  if (b.status !== 'confirmed') return false;
+  if (b.status !== 'confirmed' || awaitsNewRound(b)) return false;
   const departure = b.schedule?.departure_date;
   const returnDate = b.schedule?.return_date;
   if (!departure) return false;
@@ -688,7 +737,7 @@ function isOngoingTrip(b) {
  * จนถึงวันสุดท้ายของทริป ไม่งั้นคนที่บ้านจะเปิดไปเจอแผนที่เปล่า ๆ
  */
 function canShareTracking(b) {
-  if (b.status !== 'confirmed') return false;
+  if (b.status !== 'confirmed' || awaitsNewRound(b)) return false;
 
   const days = daysUntil(b.schedule?.departure_date);
   if (days === null) return false;
@@ -825,5 +874,47 @@ async function handleCancel(b) {
   }
 }
 
-onMounted(() => load(1));
+// ── เปลี่ยนวันเดินทาง / เลือกรอบใหม่ ─────────────────────────────────────
+const rescheduleTarget = ref(null);
+
+function openReschedule(b) {
+  rescheduleTarget.value = b;
+}
+
+async function onRescheduled(updated) {
+  rescheduleTarget.value = null;
+  const date = updated?.schedule?.departure_date;
+  await load(currentPage.value);
+  swal.success('ย้ายรอบเรียบร้อยแล้ว', date ? `รอบใหม่ของคุณคือวันที่ ${formatDate(date)}` : '');
+}
+
+/**
+ * ลิงก์จากอีเมล/SMS "รอบต้องเลื่อน" (/my-bookings?reschedule=REF) — เปิดหน้าต่าง
+ * เลือกรอบให้เลย ใบนั้นอาจไม่อยู่หน้าแรกของรายการจึงถามเซิร์ฟเวอร์ตรง ๆ
+ */
+async function openFromLink() {
+  const ref = String(route.query.reschedule || '').trim();
+  if (!ref) return;
+
+  router.replace({ query: { ...route.query, reschedule: undefined } });
+
+  try {
+    const res = await api.get(`/bookings/${encodeURIComponent(ref)}`);
+    const booking = res.data?.data;
+    if (booking?.can_reschedule && booking.viewer_is_owner !== false) {
+      openReschedule(booking);
+    } else if (booking?.force_majeure?.expired) {
+      swal.warning('เลยกำหนดเลือกรอบใหม่แล้ว', 'ทักทีมงานเพื่อช่วยดูแลต่อได้เลยครับ');
+    } else if (booking?.force_majeure && !booking.force_majeure.awaiting) {
+      toast.success('การจองนี้เลือกรอบใหม่เรียบร้อยแล้ว');
+    }
+  } catch {
+    toast.error('ไม่พบการจองนี้ในบัญชีของคุณ');
+  }
+}
+
+onMounted(async () => {
+  await load(1);
+  openFromLink();
+});
 </script>

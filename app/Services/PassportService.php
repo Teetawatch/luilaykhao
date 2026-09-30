@@ -145,7 +145,8 @@ class PassportService
             $schedule = $booking->schedule;
             $trip = $schedule?->trip;
 
-            if (! $schedule || ! $trip) {
+            // รอบที่ยกเลิก (เช่น เลื่อนเพราะน้ำป่า รอเลือกรอบใหม่) ไม่ได้ไปจริง
+            if (! $schedule || ! $trip || $schedule->status === 'cancelled') {
                 continue;
             }
 

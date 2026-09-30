@@ -70,7 +70,8 @@ class ScheduleSeatNotifier
         }
 
         $schedule = TripSchedule::with('trip')->find($scheduleId);
-        if (! $schedule) {
+        // รอบที่ยกเลิกแล้ว ที่นั่งที่คืนมาไม่ใช่ข่าว — ห้ามประกาศให้คนมาจองรอบที่ไม่ออก
+        if (! $schedule || $schedule->status === 'cancelled') {
             return;
         }
 

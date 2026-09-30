@@ -140,7 +140,9 @@ class WaitlistService
 
         $offered = DB::transaction(function () use ($scheduleId, $ttlMinutes) {
             $schedule = TripSchedule::lockForUpdate()->find($scheduleId);
-            if (! $schedule) {
+            // รอบที่ยกเลิกแล้วไม่มีที่ให้แจก — ใบที่ถูกเลื่อนเพราะเหตุสุดวิสัยย้ายออก
+            // ทีละใบจะทำให้ตัวเลขที่นั่ง "ว่าง" ขึ้น แต่ไม่มีใครจองรอบนี้ได้จริง
+            if (! $schedule || $schedule->status === 'cancelled') {
                 return [];
             }
 

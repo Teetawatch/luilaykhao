@@ -4,7 +4,9 @@ namespace App\Observers;
 
 use App\Models\TripSchedule;
 use App\Services\BroadcastNotificationService;
+use App\Services\ForceMajeureService;
 use App\Services\TripAlertService;
+use Illuminate\Support\Facades\Log;
 
 class TripScheduleObserver
 {
@@ -51,5 +53,15 @@ class TripScheduleObserver
     {
         $this->tripAlertService->notifyNewSchedule($schedule);
         $this->broadcast->broadcastNewSchedule($schedule);
+
+        // คนที่รอบเดิมถูกเลื่อนเพราะเหตุสุดวิสัยและยังรอเลือกรอบ — บอกเขาก่อนใคร
+        try {
+            app(ForceMajeureService::class)->announceNewRound($schedule);
+        } catch (\Throwable $e) {
+            Log::warning('Force majeure new-round notice failed', [
+                'schedule_id' => $schedule->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 }

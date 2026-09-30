@@ -33,6 +33,8 @@ class TripPostService
         return Booking::where('status', 'confirmed')
             ->whereHas('schedule', function ($q) use ($trip) {
                 $q->where('trip_id', $trip->id)
+                    // รอบที่ยกเลิก (เช่น เลื่อนเพราะน้ำป่า) ไม่มีใครได้ไปจริง
+                    ->where('status', '!=', 'cancelled')
                     ->whereDate('departure_date', '<=', now('Asia/Bangkok')->toDateString());
             })
             ->where(function ($q) use ($user) {
@@ -305,6 +307,8 @@ class TripPostService
         $booking = Booking::where('status', 'confirmed')
             ->whereHas('schedule', function ($q) use ($trip) {
                 $q->where('trip_id', $trip->id)
+                    // รอบที่ยกเลิก (เช่น เลื่อนเพราะน้ำป่า) ไม่มีใครได้ไปจริง
+                    ->where('status', '!=', 'cancelled')
                     ->whereDate('departure_date', '<=', now('Asia/Bangkok')->toDateString());
             })
             ->where(function ($q) use ($user) {

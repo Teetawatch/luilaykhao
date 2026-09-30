@@ -74,6 +74,46 @@ class SmsService
         );
     }
 
+    /**
+     * รอบถูกเลื่อนเพราะเหตุสุดวิสัย — ข่าวที่ลูกค้าต้องรู้แม้ไม่มีแอปและไม่ได้ผูก LINE
+     * (เคยจ่ายเงินไปแล้ว ถ้าไม่รู้ก็จะมายืนรอรถที่ไม่มา)
+     */
+    public function sendTripPostponed(Booking $booking): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'trip_postponed',
+            dedupeKey: 's'.($booking->force_majeure_schedule_id ?? $booking->schedule_id),
+            message: sprintf(
+                'ทริป %s %s ต้องเลื่อนเนื่องจาก%s ยอดที่ชำระยังอยู่ครบ เลือกรอบใหม่ได้ฟรีถึง %s %s',
+                $this->tripTitle($booking),
+                ThaiDate::short($booking->schedule?->departure_date),
+                $this->clip($booking->force_majeure_reason, 40),
+                ThaiDate::short($booking->force_majeure_until),
+                ForceMajeureService::chooseUrl($booking),
+            ),
+        );
+    }
+
+    public function sendTripPostponedReminder(Booking $booking): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'trip_postponed_reminder',
+            dedupeKey: 'until:'.$booking->force_majeure_until?->toDateString(),
+            message: sprintf(
+                'การจอง %s ยังไม่ได้เลือกรอบใหม่ เลือกได้ถึง %s ราคาเดิม %s',
+                $booking->booking_ref,
+                ThaiDate::short($booking->force_majeure_until),
+                ForceMajeureService::chooseUrl($booking),
+            ),
+        );
+    }
+
     public function sendInstallmentReminder(InstallmentPayment $installment, string $reminderType): ?SmsLog
     {
         $installment->loadMissing(['booking.user', 'booking.passengers']);
@@ -172,7 +212,9 @@ class SmsService
         return $this->queueOrSend(
             booking: $booking,
             type: 'departure_reminder',
-            dedupeKey: $daysBefore.'_days_before',
+            // ใบที่ย้ายรอบมาแล้วต้องได้เตือนของรอบใหม่ด้วย — ใบที่ไม่เคยย้ายคงคีย์เดิมไว้
+            dedupeKey: $daysBefore.'_days_before'
+                .($booking->roundChangedAt() ? ':s'.$booking->schedule_id : ''),
             message: sprintf(
                 'อีก %d วันถึงทริป %s %s จุดนัดพบ %s ติดตามรถ %s',
                 $daysBefore,
@@ -405,6 +447,8 @@ class SmsService
             'balance_paid',
             'account_claim',
             'trip_brief',
+            'trip_postponed',
+            'trip_postponed_reminder',
         ];
     }
 

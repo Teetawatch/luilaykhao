@@ -60,7 +60,7 @@ class SendCheckInRemindersJob implements ShouldQueue
         foreach ($schedules as $schedule) {
             $confirmed = Booking::where('schedule_id', $schedule->id)
                 ->where('status', 'confirmed')
-                ->get(['id', 'user_id', 'booking_ref', 'checked_in', 'schedule_id']);
+                ->get(['id', 'user_id', 'booking_ref', 'checked_in', 'schedule_id', 'rescheduled_at', 'force_majeure_resolved_at']);
 
             if ($confirmed->isEmpty()) {
                 continue;
@@ -174,6 +174,7 @@ class SendCheckInRemindersJob implements ShouldQueue
         return SmartNotification::where('user_id', $booking->user_id)
             ->where('type', 'checkin_reminder')
             ->where('data->booking_ref', $booking->booking_ref)
+            ->when($booking->roundChangedAt(), fn ($q, $since) => $q->where('created_at', '>=', $since))
             ->exists();
     }
 

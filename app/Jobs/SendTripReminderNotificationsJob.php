@@ -102,6 +102,9 @@ class SendTripReminderNotificationsJob implements ShouldQueue
             ->where('type', 'trip_reminder')
             ->where('data->booking_ref', $booking->booking_ref)
             ->where('data->days_before', $daysBefore)
+            // ใบที่ย้ายรอบมา (เลื่อนวัน/เลื่อนเพราะเหตุสุดวิสัย) ต้องได้เตือนของรอบใหม่
+            // ด้วย ไม่ใช่ถูกกันไว้เพราะเคยเตือนรอบเดิมไปแล้ว
+            ->when($booking->roundChangedAt(), fn ($q, $since) => $q->where('created_at', '>=', $since))
             ->exists();
     }
 

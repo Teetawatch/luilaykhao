@@ -33,6 +33,9 @@ class SendBalanceDueRemindersJob implements ShouldQueue
                 ->where('status', 'confirmed')
                 ->whereNull('balance_paid_at')
                 ->whereDate('balance_due_at', $targetDate)
+                // รอบถูกเลื่อนเพราะเหตุสุดวิสัย ลูกค้ายังไม่ได้เลือกรอบใหม่ — วันครบกำหนด
+                // คิดจากวันเดินทางที่ไม่มีแล้ว พักไว้ก่อน เลือกรอบเมื่อไหร่วันจะเลื่อนตาม
+                ->notAwaitingNewRound()
                 ->with(['user', 'passengers', 'schedule.trip'])
                 ->get();
 
