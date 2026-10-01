@@ -837,612 +837,883 @@
       </div>
     </div>
 
-    <div v-if="showEditModal" class="modal-overlay" @click.self="closeEditModal">
-      <div class="modal-card modal-xl">
-        <div class="modal-header">
-          <div>
-            <h2>แก้ไขข้อมูลการจอง</h2>
-            <p class="modal-subtitle">{{ editBooking?.booking_ref || '-' }}</p>
+    <!-- ไม่ปิดเมื่อคลิกนอกกรอบ — ฟอร์มยาว คลิกพลาดทีเดียวงานที่แก้ไว้หายหมด -->
+    <div v-if="showEditModal" class="modal-overlay">
+      <div class="modal-card bk-modal">
+        <div class="bk-header">
+          <div class="bk-header-main">
+            <div class="bk-header-icon">
+              <span class="material-symbols-rounded">edit_note</span>
+            </div>
+            <div class="bk-header-text">
+              <div class="bk-header-title">
+                <h2>แก้ไขข้อมูลการจอง</h2>
+                <span class="status-badge" :class="`status-${editForm.status}`">{{ statusLabels[editForm.status] || '-' }}</span>
+              </div>
+              <p>
+                <strong>{{ editBooking?.booking_ref || '-' }}</strong>
+                <template v-if="editTripTitle"> · {{ editTripTitle }}</template>
+                <template v-if="editForm.user.name"> · {{ editForm.user.name }}</template>
+              </p>
+            </div>
+            <button type="button" class="modal-close" @click="closeEditModal" aria-label="ปิด">
+              <span class="material-symbols-rounded">close</span>
+            </button>
           </div>
-          <button class="modal-close" @click="closeEditModal">
-            <span class="material-symbols-rounded">close</span>
-          </button>
+
+          <nav class="bk-nav" aria-label="ไปยังหัวข้อ">
+            <button
+              v-for="section in editSections"
+              :key="section.id"
+              type="button"
+              class="bk-nav-item"
+              :class="{ on: editActiveSection === section.id }"
+              @click="scrollToEditSection(section.id)"
+            >
+              <span class="material-symbols-rounded">{{ section.icon }}</span>
+              {{ section.label }}
+              <span v-if="section.count != null" class="bk-nav-count">{{ section.count }}</span>
+            </button>
+          </nav>
         </div>
 
-        <form class="modal-body edit-booking-form" @submit.prevent="doUpdateBooking">
-          <section class="edit-section">
-            <div class="section-heading">
-              <span class="material-symbols-rounded">event_note</span>
-              ข้อมูลการจอง
-            </div>
-            <div class="form-grid">
+        <form class="bk-form" @submit.prevent="doUpdateBooking">
+          <div ref="editBodyRef" class="bk-body" @scroll.passive="onEditBodyScroll">
+
+            <!-- ① ข้อมูลการจอง -->
+            <section id="bk-sec-info" class="bk-section">
+              <header class="bk-section-head">
+                <span class="bk-section-icon"><span class="material-symbols-rounded">event_note</span></span>
+                <div>
+                  <h3>ข้อมูลการจอง</h3>
+                  <p>สถานะ รอบเดินทาง คันที่นั่ง และการเช็คอิน</p>
+                </div>
+              </header>
+
               <div class="form-group">
-                <label>สถานะ</label>
-                <select v-model="editForm.status">
-                  <option value="pending">รอดำเนินการ</option>
-                  <option value="confirmed">ยืนยันแล้ว</option>
-                  <option value="cancelled">ยกเลิก</option>
-                  <option value="refunded">คืนเงินแล้ว</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>รอบเดินทาง</label>
-                <select v-model.number="editForm.schedule_id" @change="onEditScheduleChange">
-                  <option v-for="schedule in editScheduleOptions" :key="schedule.id" :value="schedule.id">
-                    {{ formatScheduleRange(schedule) }}
-                    <template v-if="schedule.available_seats != null"> · ว่าง {{ schedule.available_seats }} ที่</template>
-                  </option>
-                </select>
-                <small v-if="editSchedulesLoading" class="field-hint">กำลังโหลดรอบเดินทาง...</small>
-              </div>
-              <div v-if="editVehicleOptions.length" class="form-group">
-                <label>ประเภทรถ</label>
-                <select
-                  v-model.number="editForm.vehicle_option_id"
-                  @change="onEditVehicleOptionChange"
-                  :disabled="editForm.is_join_trip"
-                >
-                  <option value="">— ไม่ระบุคัน —</option>
-                  <option v-for="option in editVehicleOptions" :key="option.id" :value="option.id">
+                <label>สถานะการจอง</label>
+                <div class="bk-status" role="radiogroup">
+                  <label
+                    v-for="option in editStatusOptions"
+                    :key="option.value"
+                    :class="[`is-${option.value}`, { on: editForm.status === option.value }]"
+                  >
+                    <input v-model="editForm.status" type="radio" :value="option.value" />
+                    <span class="material-symbols-rounded">{{ option.icon }}</span>
                     {{ option.label }}
-                    <template v-if="Number(option.price_adjustment)">
-                      ({{ Number(option.price_adjustment) > 0 ? '+' : '−' }}{{ formatMoney(Math.abs(Number(option.price_adjustment))) }}/คน)
-                    </template>
-                    <template v-if="option.is_active === false"> · ปิดรับแล้ว</template>
-                    <template v-else-if="option.available_seats != null"> · ว่าง {{ option.available_seats }} ที่</template>
-                  </option>
-                </select>
-                <small class="field-hint">
-                  ย้ายคันแล้วยอดรวมจะปรับตามส่วนต่างให้ — ที่นั่งของคันเดิมใช้ต่อไม่ได้
-                  (A1 ของบัสกับ A1 ของตู้เป็นคนละที่) กรอกที่นั่งใหม่ในส่วนผู้เดินทางด้วย
-                </small>
-              </div>
-              <div class="form-group">
-                <label>ประเภทการจอง</label>
-                <select v-model="editForm.is_join_trip">
-                  <option :value="false">จองปกติ</option>
-                  <option :value="true">จอยทริป</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>QR เช็คอิน</label>
-                <input v-model.trim="editForm.qr_code" type="text" />
-              </div>
-              <label class="check-row">
-                <input v-model="editForm.is_group" type="checkbox" />
-                <span>การจองแบบกลุ่ม</span>
-              </label>
-              <label class="check-row">
-                <input v-model="editForm.checked_in" type="checkbox" />
-                <span>เช็คอินแล้ว</span>
-              </label>
-              <div class="form-group">
-                <label>ชื่อกลุ่ม</label>
-                <input v-model.trim="editForm.group_name" type="text" />
-              </div>
-              <div class="form-group">
-                <label>เวลาเช็คอิน</label>
-                <input v-model="editForm.checked_in_at" type="datetime-local" />
-              </div>
-              <div class="form-group full-span">
-                <label>หมายเหตุกลุ่ม</label>
-                <textarea v-model="editForm.group_notes" rows="2"></textarea>
-              </div>
-              <div class="form-group full-span" v-if="editForm.status === 'cancelled' || editForm.status === 'refunded'">
-                <label>เหตุผลยกเลิก/คืนเงิน</label>
-                <textarea v-model="editForm.cancellation_reason" rows="2"></textarea>
-              </div>
-            </div>
-          </section>
-
-          <section class="edit-section">
-            <div class="section-heading">
-              <span class="material-symbols-rounded">person</span>
-              ผู้จอง
-            </div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>ชื่อผู้จอง</label>
-                <input v-model.trim="editForm.user.name" type="text" />
-              </div>
-              <div class="form-group">
-                <label>อีเมล</label>
-                <input v-model.trim="editForm.user.email" type="email" />
-              </div>
-              <div class="form-group">
-                <label>เบอร์โทร</label>
-                <input v-model.trim="editForm.user.phone" type="tel" />
-              </div>
-            </div>
-          </section>
-
-          <section class="edit-section">
-            <div class="section-heading">
-              <span class="material-symbols-rounded">payments</span>
-              การชำระเงินและสลิปหลัก
-            </div>
-
-            <div class="pay-type-tabs">
-              <label v-for="opt in paymentTypeOptions" :key="opt.value" class="pay-type-tab" :class="{ active: editForm.payment_type === opt.value }">
-                <input type="radio" v-model="editForm.payment_type" :value="opt.value" />
-                <span class="material-symbols-rounded">{{ opt.icon }}</span>
-                {{ opt.label }}
-              </label>
-            </div>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <label>ยอดรวม</label>
-                <input v-model.number="editForm.total_amount" type="number" min="0" step="0.01" />
-              </div>
-              <div class="form-group">
-                <label>ชำระแล้ว</label>
-                <input v-model.number="editForm.paid_amount" type="number" min="0" step="0.01" />
-              </div>
-              <div class="form-group">
-                <label>คงเหลือ</label>
-                <input :value="formatMoney(editRemaining)" type="text" readonly class="readonly-field" />
-              </div>
-              <div class="form-group">
-                <label>ช่องทางชำระ</label>
-                <select v-model="editForm.payment_method">
-                  <option value="">— ไม่ระบุ —</option>
-                  <option value="promptpay">พร้อมเพย์</option>
-                  <option value="mobile_banking">Mobile Banking</option>
-                  <option value="bank_transfer">โอนผ่านธนาคาร</option>
-                  <option value="credit_card">บัตรเครดิต</option>
-                  <option value="cash">เงินสด</option>
-                  <option value="manual">แอดมินสร้างให้</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>รหัสอ้างอิง</label>
-                <input v-model.trim="editForm.payment_ref" type="text" />
-              </div>
-              <div class="form-group">
-                <label>ชำระเมื่อ</label>
-                <input v-model="editForm.paid_at" type="datetime-local" />
-              </div>
-              <div class="form-group">
-                <label>วันเวลาโอน</label>
-                <input v-model="editForm.transfer_datetime" type="datetime-local" />
-              </div>
-              <div class="form-group full-span">
-                <label>{{ editForm.payment_type === 'deposit' ? 'แนบสลิปมัดจำใหม่' : 'แนบสลิปหลักใหม่' }}</label>
-                <input type="file" accept="image/*,.pdf" @change="onMainSlipChange" />
-                <div class="slip-edit-row">
-                  <a v-if="editForm.current_slip_url" :href="editForm.current_slip_url" target="_blank">เปิดสลิปปัจจุบัน</a>
-                  <label v-if="editForm.current_slip_url" class="check-row inline">
-                    <input v-model="editForm.delete_slip" type="checkbox" />
-                    <span>ลบสลิปเดิม</span>
                   </label>
-                  <span v-if="editForm.slip_image">{{ editForm.slip_image.name }}</span>
                 </div>
               </div>
-            </div>
 
-            <!-- ผ่อนชำระ: ตั้งค่าจำนวนงวด -->
-            <div v-if="editForm.payment_type === 'installment'" class="pay-subsection">
-              <p class="pay-subsection-title">ตั้งค่าการผ่อน</p>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>จำนวนงวด</label>
-                  <input v-model.number="editForm.installment_count" type="number" min="1" max="12" />
-                </div>
-                <div class="form-group">
-                  <label>ระยะห่างงวด (วัน)</label>
-                  <input v-model.number="editForm.installment_interval_days" type="number" min="1" />
-                </div>
-              </div>
-            </div>
-
-            <!-- มัดจำ: ยอดมัดจำ + ยอดส่วนที่เหลือ + สลิปยอดคงเหลือ -->
-            <div v-if="editForm.payment_type === 'deposit'" class="pay-subsection">
-              <p class="pay-subsection-title">ยอดมัดจำและส่วนที่เหลือ</p>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>ยอดมัดจำ</label>
-                  <input v-model.number="editForm.deposit_amount" type="number" min="0" step="0.01" />
-                </div>
-                <div class="form-group">
-                  <label>ยอดส่วนที่เหลือ</label>
-                  <input v-model.number="editForm.balance_amount" type="number" min="0" step="0.01" />
-                  <small class="field-hint">ยอดที่ลูกค้าต้องชำระเพิ่มหลังมัดจำ</small>
-                </div>
-                <div class="form-group">
-                  <label>กำหนดชำระส่วนที่เหลือ</label>
-                  <input v-model="editForm.balance_due_at" type="date" />
-                </div>
-                <div class="form-group">
-                  <label>รหัสอ้างอิง (ส่วนที่เหลือ)</label>
-                  <input v-model.trim="editForm.balance_payment_ref" type="text" />
-                </div>
-                <div class="form-group">
-                  <label>ชำระส่วนที่เหลือเมื่อ</label>
-                  <input v-model="editForm.balance_paid_at" type="datetime-local" />
-                </div>
-                <div class="form-group">
-                  <label>วันเวลาโอน (ส่วนที่เหลือ)</label>
-                  <input v-model="editForm.balance_transfer_datetime" type="datetime-local" />
-                </div>
-                <div class="form-group full-span">
-                  <label>แนบสลิปยอดส่วนที่เหลือใหม่</label>
-                  <input type="file" accept="image/*,.pdf" @change="onBalanceSlipChange" />
-                  <div class="slip-edit-row">
-                    <a v-if="editForm.current_balance_slip_url" :href="editForm.current_balance_slip_url" target="_blank">เปิดสลิปปัจจุบัน</a>
-                    <label v-if="editForm.current_balance_slip_url" class="check-row inline">
-                      <input v-model="editForm.delete_balance_slip" type="checkbox" />
-                      <span>ลบสลิปเดิม</span>
-                    </label>
-                    <span v-if="editForm.balance_slip_image">{{ editForm.balance_slip_image.name }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- อุปกรณ์เช่า — แอดมินเพิ่มของที่ลูกค้าขอเช่าทีหลังได้ (เต็นท์ ถุงนอน หมอน) -->
-          <section class="edit-section">
-            <div class="section-heading">
-              <span class="material-symbols-rounded">camping</span>
-              อุปกรณ์เช่า
-            </div>
-
-            <div v-if="editRentalCatalog.length" class="rental-picker">
-              <button
-                v-for="item in editRentalCatalog"
-                :key="item.key"
-                type="button"
-                class="rental-chip"
-                @click="addRentalFromCatalog(item)"
+              <div
+                v-if="editForm.status === 'cancelled' || editForm.status === 'refunded'"
+                class="form-group bk-gap-top"
               >
-                <span class="material-symbols-rounded">add</span>
-                {{ item.name }}
-                <span class="rental-chip-price">{{ formatMoney(item.price) }}</span>
-              </button>
-            </div>
-            <p v-else class="field-hint">ทริปนี้ยังไม่ได้ตั้งรายการอุปกรณ์ให้เช่า — เพิ่มรายการเองได้ด้านล่าง</p>
+                <label>เหตุผลยกเลิก/คืนเงิน</label>
+                <textarea v-model="editForm.cancellation_reason" rows="2" placeholder="เช่น ลูกค้าขอยกเลิกเพราะติดธุระ"></textarea>
+              </div>
 
-            <div v-if="editForm.rentals.length" class="rental-rows">
-              <div v-for="(rental, index) in editForm.rentals" :key="rental.local_key" class="rental-row">
-                <img v-if="rental.image_url" :src="rental.image_url" :alt="rental.name" class="rental-thumb" />
-                <span v-else class="rental-thumb placeholder">
-                  <span class="material-symbols-rounded">backpack</span>
-                </span>
-
-                <div class="rental-fields">
-                  <input v-model.trim="rental.name" type="text" placeholder="ชื่ออุปกรณ์ เช่น เต็นท์ 2 คน" />
-                  <div class="rental-price">
-                    <label>ราคา/ชิ้น</label>
-                    <input v-model.number="rental.unit_price" type="number" min="0" step="1" />
-                  </div>
+              <div class="form-grid bk-gap-top">
+                <div class="form-group" :class="{ 'full-span': !editVehicleOptions.length }">
+                  <label>
+                    รอบเดินทาง
+                    <span v-if="editSchedulesLoading" class="bk-optional">กำลังโหลด…</span>
+                  </label>
+                  <select v-model.number="editForm.schedule_id" @change="onEditScheduleChange">
+                    <option v-for="schedule in editScheduleOptions" :key="schedule.id" :value="schedule.id">
+                      {{ formatScheduleRange(schedule) }}
+                      <template v-if="schedule.available_seats != null"> · ว่าง {{ schedule.available_seats }} ที่</template>
+                    </option>
+                  </select>
                 </div>
-
-                <div class="rental-qty">
-                  <button type="button" @click="stepRental(index, -1)" :disabled="moneyNumber(rental.quantity) <= 1">
-                    <span class="material-symbols-rounded">remove</span>
-                  </button>
-                  <input v-model.number="rental.quantity" type="number" min="1" max="50" />
-                  <button type="button" @click="stepRental(index, 1)">
-                    <span class="material-symbols-rounded">add</span>
-                  </button>
+                <div v-if="editVehicleOptions.length" class="form-group">
+                  <label>ประเภทรถ</label>
+                  <select
+                    v-model.number="editForm.vehicle_option_id"
+                    @change="onEditVehicleOptionChange"
+                    :disabled="editForm.is_join_trip"
+                  >
+                    <option value="">— ไม่ระบุคัน —</option>
+                    <option v-for="option in editVehicleOptions" :key="option.id" :value="option.id">
+                      {{ option.label }}
+                      <template v-if="Number(option.price_adjustment)">
+                        ({{ Number(option.price_adjustment) > 0 ? '+' : '−' }}{{ formatMoney(Math.abs(Number(option.price_adjustment))) }}/คน)
+                      </template>
+                      <template v-if="option.is_active === false"> · ปิดรับแล้ว</template>
+                      <template v-else-if="option.available_seats != null"> · ว่าง {{ option.available_seats }} ที่</template>
+                    </option>
+                  </select>
                 </div>
-
-                <strong class="rental-line-total">
-                  {{ formatMoney(moneyNumber(rental.unit_price) * moneyNumber(rental.quantity)) }}
-                </strong>
-
-                <button type="button" class="rental-remove" @click="removeRental(index)">
-                  <span class="material-symbols-rounded">close</span>
-                </button>
               </div>
-            </div>
-            <p v-else class="rental-empty">ยังไม่มีอุปกรณ์เช่าในการจองนี้</p>
-
-            <div class="rental-footer">
-              <button type="button" class="btn-secondary compact" @click="addCustomRental">
-                <span class="material-symbols-rounded">add</span>
-                เพิ่มรายการเอง
-              </button>
-              <div class="rental-total">
-                <span>รวมค่าเช่าอุปกรณ์</span>
-                <strong>{{ formatMoney(editRentalsTotal) }}</strong>
-              </div>
-            </div>
-            <small class="field-hint">แก้จำนวนหรือเพิ่มรายการแล้ว ยอดรวม (และยอดคงเหลือกรณีมัดจำ) จะปรับให้อัตโนมัติ</small>
-          </section>
-
-          <section class="edit-section">
-            <div class="section-heading">
-              <span class="material-symbols-rounded">location_on</span>
-              จุดรับ / ที่นั่ง
-            </div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>จุดรับของการจอง</label>
-                <select v-model.number="editForm.pickup_point_id" @change="onEditPickupChange" :disabled="!editPickupPoints.length">
-                  <option value="">— ไม่ระบุจุดรับ —</option>
-                  <option v-for="point in editPickupPoints" :key="point.id" :value="point.id">
-                    {{ point.region_label || point.region }} · {{ point.pickup_location }}
-                  </option>
-                </select>
-                <small v-if="!editPickupPoints.length" class="field-hint">รอบเดินทางนี้ยังไม่มีจุดรับให้เลือก</small>
-                <small v-else class="field-hint">ใช้กับคนที่ไม่ได้ระบุจุดของตัวเองไว้ด้านล่าง</small>
-              </div>
-              <div class="form-group" v-if="editForm.is_join_trip">
-                <label>ภูมิภาคจุดรับ (จอยทริป)</label>
-                <input v-model.trim="editForm.pickup_region" type="text" placeholder="เช่น กรุงเทพฯ" />
-                <small class="field-hint">ใช้กรณีจอยทริปที่ระบุเฉพาะภูมิภาค ไม่มีจุดรับตายตัว</small>
-              </div>
-
-              <!-- จุดรับปักหมุดเอง — แอดมินปักหมุด/แก้ไข/ลบจากแผนที่ได้ -->
-              <div class="form-group full-span">
-                <label>จุดรับปักหมุดเอง (จากแผนที่)</label>
-                <div v-if="editCustomPickup" class="cp-edit-card">
-                  <div class="cp-edit-body">
-                    <span class="material-symbols-rounded cp-edit-icon">add_location_alt</span>
-                    <div class="cp-edit-text">
-                      <p class="cp-edit-label">{{ editCustomPickup.label }}</p>
-                      <p v-if="editCustomPickup.note" class="cp-edit-note">{{ editCustomPickup.note }}</p>
-                      <p class="cp-edit-coords">{{ Number(editCustomPickup.lat).toFixed(5) }}, {{ Number(editCustomPickup.lng).toFixed(5) }}</p>
-                    </div>
-                  </div>
-                  <div class="cp-edit-actions">
-                    <button type="button" class="cp-edit-btn" @click="openEditCustomPickup">
-                      <span class="material-symbols-rounded">edit_location_alt</span> แก้ไขหมุด
-                    </button>
-                    <button type="button" class="cp-edit-btn danger" @click="clearEditCustomPickup">
-                      <span class="material-symbols-rounded">delete</span> ลบ
-                    </button>
-                  </div>
-                </div>
-                <button v-else type="button" class="cp-edit-add" @click="openEditCustomPickup">
-                  <span class="material-symbols-rounded">add_location_alt</span> ปักหมุดจุดรับจากแผนที่
-                </button>
-                <small class="field-hint">ลูกค้าปักหมุดเองในหน้าจอง แอดมินปักหมุด/แก้ไขได้จากที่นี่</small>
-              </div>
-            </div>
-
-            <!-- จุดรับ/ที่นั่งรายคน — คนในกลุ่มเดียวกันขึ้นคนละจุดได้
-                 สตาฟกับคนขับอ่านจุดรายคนก่อนจุดของการจองเสมอ -->
-            <div class="pax-pickup">
-              <div class="pax-pickup-head">
-                <strong>จุดรับและที่นั่งรายคน</strong>
-                <button
-                  v-if="editForm.passengers.length && editForm.pickup_point_id && !editCustomPickup"
-                  type="button"
-                  class="btn-secondary compact"
-                  @click="applyBookingPickupToAll"
-                >
-                  <span class="material-symbols-rounded">group</span>
-                  ใช้จุดของการจองกับทุกคน
-                </button>
-              </div>
-
-              <p v-if="editCustomPickup" class="pax-pickup-note">
+              <p v-if="editVehicleOptions.length" class="bk-callout bk-callout--info">
                 <span class="material-symbols-rounded">info</span>
-                การจองนี้ใช้หมุดที่ปักเอง — จุดรับรายคนจะถูกล้างทั้งหมดเมื่อบันทึก
+                <span>
+                  ย้ายคันแล้วยอดรวมจะปรับตามส่วนต่างให้ — ที่นั่งของคันเดิมใช้ต่อไม่ได้
+                  (A1 ของบัสกับ A1 ของตู้เป็นคนละที่) กรอกที่นั่งใหม่ในหัวข้อ "จุดรับ / ที่นั่ง" ด้วย
+                </span>
               </p>
 
-              <div v-if="!editForm.passengers.length" class="pax-pickup-empty">
-                ยังไม่มีผู้โดยสารในการจองนี้ — เพิ่มผู้โดยสารในหัวข้อถัดไปก่อน
+              <div class="form-grid bk-gap-top">
+                <div class="form-group">
+                  <label>ประเภทการจอง</label>
+                  <div class="bk-seg" role="radiogroup">
+                    <label :class="{ on: !editForm.is_join_trip }">
+                      <input v-model="editForm.is_join_trip" type="radio" :value="false" />
+                      <span class="material-symbols-rounded">airport_shuttle</span>
+                      จองปกติ
+                    </label>
+                    <label :class="{ on: editForm.is_join_trip }">
+                      <input v-model="editForm.is_join_trip" type="radio" :value="true" />
+                      <span class="material-symbols-rounded">group_add</span>
+                      จอยทริป
+                    </label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>QR เช็คอิน</label>
+                  <div class="bk-affix bk-affix--pre">
+                    <span class="material-symbols-rounded">qr_code_2</span>
+                    <input v-model.trim="editForm.qr_code" type="text" />
+                  </div>
+                </div>
               </div>
 
-              <div v-else class="pax-pickup-list">
-                <div v-for="(passenger, index) in editForm.passengers" :key="passenger.local_key" class="pax-pickup-row">
-                  <div class="pax-pickup-who">
-                    <span class="pax-pickup-no">{{ index + 1 }}</span>
-                    <span class="pax-pickup-name">
-                      {{ passenger.name || `ผู้โดยสาร ${index + 1}` }}
-                      <small v-if="passenger.nickname">({{ passenger.nickname }})</small>
+              <div class="bk-toggles">
+                <div class="bk-toggle" :class="{ on: editForm.is_group }" style="--opt:#4f46e5;--opt-bg:#eef2ff;">
+                  <label class="bk-toggle-head">
+                    <span class="bk-toggle-icon"><span class="material-symbols-rounded">groups</span></span>
+                    <span class="bk-toggle-text">
+                      <strong>การจองแบบกลุ่ม</strong>
+                      <small>ตั้งชื่อกลุ่มและหมายเหตุให้ทีมงานเห็น</small>
                     </span>
-                  </div>
-
-                  <div class="form-group">
-                    <label>จุดรับ</label>
-                    <select
-                      v-model.number="passenger.pickup_point_id"
-                      :disabled="!editPickupPoints.length || Boolean(editCustomPickup)"
-                    >
-                      <option value="">— ตามจุดของการจอง —</option>
-                      <option v-for="point in editPickupPoints" :key="point.id" :value="point.id">
-                        {{ point.region_label || point.region }} · {{ point.pickup_location }}
-                      </option>
-                    </select>
-                  </div>
-
-                  <div class="form-group pax-pickup-seat">
-                    <label>{{ editScheduleIsFlight ? 'ที่นั่งบนเครื่อง' : 'ที่นั่ง' }}</label>
-                    <input
-                      v-model.trim="passenger.seat_id"
-                      type="text"
-                      :placeholder="editScheduleIsFlight ? '12A' : 'A1'"
-                      :disabled="editForm.is_join_trip"
-                    />
+                    <input v-model="editForm.is_group" type="checkbox" class="bk-switch-input" />
+                    <span class="bk-switch" aria-hidden="true"></span>
+                  </label>
+                  <div v-if="editForm.is_group || editForm.group_name || editForm.group_notes" class="bk-toggle-body">
+                    <div class="form-group">
+                      <label>ชื่อกลุ่ม</label>
+                      <input v-model.trim="editForm.group_name" type="text" placeholder="เช่น ทีมออฟฟิศ ABC" />
+                    </div>
+                    <div class="form-group">
+                      <label>หมายเหตุกลุ่ม</label>
+                      <textarea v-model="editForm.group_notes" rows="2"></textarea>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <small class="field-hint">
-                {{ editForm.is_join_trip
-                  ? 'จอยทริปไม่ต้องระบุที่นั่ง — ระบุเฉพาะจุดรับรายคนได้'
-                  : editScheduleIsFlight
-                    ? 'รอบนี้บินไป ลูกค้าเลือกที่นั่งเองไม่ได้ — กรอกเลขที่นั่งจากสายการบินให้ทีละคน แล้วลูกค้าจะเห็นในแอป'
-                    : 'เว้นที่นั่งว่างไว้ได้ถ้ายังไม่ได้จัดผัง' }}
-              </small>
-              <small v-if="editSeatDuplicateWarning" class="pax-pickup-warning">
-                <span class="material-symbols-rounded">warning</span>
-                {{ editSeatDuplicateWarning }}
-              </small>
-            </div>
-          </section>
-
-          <section class="edit-section">
-            <div class="section-heading with-action">
-              <span class="material-symbols-rounded">group</span>
-              ผู้โดยสาร
-              <button type="button" class="btn-secondary compact" @click="addPassenger">
-                <span class="material-symbols-rounded">person_add</span>
-                เพิ่มผู้โดยสาร
-              </button>
-            </div>
-            <div class="edit-list">
-              <div v-for="(passenger, index) in editForm.passengers" :key="passenger.local_key" class="edit-list-card">
-                <div class="edit-list-head">
-                  <strong>ผู้โดยสาร {{ index + 1 }}</strong>
-                  <button type="button" class="btn-icon btn-delete" @click="removePassenger(index)">
-                    <span class="material-symbols-rounded">delete</span>
-                  </button>
-                </div>
-                <div class="form-grid">
-                  <div class="form-group">
-                    <label>คำนำหน้า</label>
-                    <input v-model.trim="passenger.title" type="text" />
-                  </div>
-                  <div class="form-group">
-                    <label>ชื่อ-นามสกุล *</label>
-                    <input v-model.trim="passenger.name" type="text" required />
-                  </div>
-                  <div class="form-group">
-                    <label>ชื่อเล่น</label>
-                    <input v-model.trim="passenger.nickname" type="text" />
-                  </div>
-                  <div class="form-group">
-                    <label>เบอร์โทร</label>
-                    <input v-model.trim="passenger.phone" type="tel" />
-                  </div>
-                  <div class="form-group">
-                    <label>อีเมล</label>
-                    <input v-model.trim="passenger.email" type="email" />
-                  </div>
-                  <div class="form-group">
-                    <label>บัตรประชาชน/พาสปอร์ต</label>
-                    <input v-model.trim="passenger.id_card" type="text" />
-                  </div>
-                  <div class="form-group">
-                    <label>กรุ๊ปเลือด</label>
-                    <input v-model.trim="passenger.blood_group" type="text" />
-                  </div>
-                  <div class="form-group">
-                    <label>น้ำหนัก</label>
-                    <input v-model.number="passenger.weight" type="number" min="0" step="0.01" />
-                  </div>
-                  <div class="form-group">
-                    <label>อาหารฮาลาล</label>
-                    <select v-model="passenger.halal_food">
-                      <option :value="null">ไม่ระบุ</option>
-                      <option :value="true">ใช่</option>
-                      <option :value="false">ไม่ใช่</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>ผู้ติดต่อฉุกเฉิน</label>
-                    <input v-model.trim="passenger.emergency_contact" type="text" />
-                  </div>
-                  <div class="form-group">
-                    <label>เบอร์ฉุกเฉิน</label>
-                    <input v-model.trim="passenger.emergency_phone" type="tel" />
-                  </div>
-                  <div class="form-group">
-                    <label>ระดับใบดำน้ำ</label>
-                    <input v-model.trim="passenger.dive_cert_level" type="text" />
-                  </div>
-                  <div class="form-group">
-                    <label>เลขใบรับรอง</label>
-                    <input v-model.trim="passenger.cert_number" type="text" />
-                  </div>
-                  <div class="form-group full-span">
-                    <label>การแพ้ / อาหาร</label>
-                    <textarea v-model="passenger.allergies" rows="2"></textarea>
-                  </div>
-                  <div class="form-group full-span">
-                    <label>หมายเหตุสุขภาพ</label>
-                    <textarea v-model="passenger.health_notes" rows="2"></textarea>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section v-if="editForm.payment_type === 'installment'" class="edit-section">
-            <div class="section-heading with-action">
-              <span class="material-symbols-rounded">pending_actions</span>
-              งวดผ่อนชำระ
-              <button type="button" class="btn-secondary compact" @click="addInstallment">
-                <span class="material-symbols-rounded">add</span>
-                เพิ่มงวด
-              </button>
-            </div>
-            <div class="edit-list">
-              <div v-for="(payment, index) in editForm.installments" :key="payment.local_key" class="edit-list-card">
-                <div class="edit-list-head">
-                  <strong>งวดที่ {{ payment.installment_no || index + 1 }}</strong>
-                  <button type="button" class="btn-icon btn-delete" @click="removeInstallment(index)">
-                    <span class="material-symbols-rounded">delete</span>
-                  </button>
-                </div>
-                <div class="form-grid">
-                  <div class="form-group">
-                    <label>เลขงวด</label>
-                    <input v-model.number="payment.installment_no" type="number" min="1" max="12" />
-                  </div>
-                  <div class="form-group">
-                    <label>ยอดงวด</label>
-                    <input v-model.number="payment.amount" type="number" min="0" step="0.01" />
-                  </div>
-                  <div class="form-group">
-                    <label>ครบกำหนด</label>
-                    <input v-model="payment.due_date" type="date" />
-                  </div>
-                  <div class="form-group">
-                    <label>สถานะ</label>
-                    <select v-model="payment.status">
-                      <option value="pending">รอชำระ</option>
-                      <option value="paid">ชำระแล้ว</option>
-                      <option value="failed">ไม่สำเร็จ</option>
-                      <option value="cancelled">ยกเลิก</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>ช่องทาง</label>
-                    <input v-model.trim="payment.payment_method" type="text" />
-                  </div>
-                  <div class="form-group">
-                    <label>รหัสอ้างอิง</label>
-                    <input v-model.trim="payment.payment_ref" type="text" />
-                  </div>
-                  <div class="form-group">
-                    <label>ชำระเมื่อ</label>
-                    <input v-model="payment.paid_at" type="datetime-local" />
-                  </div>
-                  <div class="form-group">
-                    <label>วันเวลาโอน</label>
-                    <input v-model="payment.transfer_datetime" type="datetime-local" />
-                  </div>
-                  <div class="form-group full-span">
-                    <label>สลิปงวดนี้</label>
-                    <input type="file" accept="image/*,.pdf" @change="onInstallmentSlipChange(index, $event)" />
-                    <div class="slip-edit-row">
-                      <a v-if="payment.current_slip_url" :href="payment.current_slip_url" target="_blank">เปิดสลิปปัจจุบัน</a>
-                      <label v-if="payment.current_slip_url" class="check-row inline">
-                        <input v-model="payment.delete_slip" type="checkbox" />
-                        <span>ลบสลิปเดิม</span>
-                      </label>
-                      <span v-if="payment.slip_image">{{ payment.slip_image.name }}</span>
+                <div class="bk-toggle" :class="{ on: editForm.checked_in }" style="--opt:#059669;--opt-bg:#ecfdf5;">
+                  <label class="bk-toggle-head">
+                    <span class="bk-toggle-icon"><span class="material-symbols-rounded">how_to_reg</span></span>
+                    <span class="bk-toggle-text">
+                      <strong>เช็คอินแล้ว</strong>
+                      <small>ลูกค้ามาถึงจุดรับและขึ้นรถแล้ว</small>
+                    </span>
+                    <input v-model="editForm.checked_in" type="checkbox" class="bk-switch-input" />
+                    <span class="bk-switch" aria-hidden="true"></span>
+                  </label>
+                  <div v-if="editForm.checked_in || editForm.checked_in_at" class="bk-toggle-body">
+                    <div class="form-group">
+                      <label>เวลาเช็คอิน</label>
+                      <input v-model="editForm.checked_in_at" type="datetime-local" />
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" @click="closeEditModal">ยกเลิก</button>
-            <button type="submit" class="btn-primary" :disabled="submitting">
-              <span v-if="submitting" class="material-symbols-rounded animate-spin">sync</span>
-              <span v-else class="material-symbols-rounded">save</span>
-              บันทึกข้อมูลการจอง
-            </button>
+            <!-- ② ผู้จอง -->
+            <section id="bk-sec-customer" class="bk-section">
+              <header class="bk-section-head">
+                <span class="bk-section-icon"><span class="material-symbols-rounded">person</span></span>
+                <div>
+                  <h3>ผู้จอง</h3>
+                  <p>เจ้าของบัญชีที่ทำการจองนี้</p>
+                </div>
+              </header>
+              <div class="form-grid bk-grid-3">
+                <div class="form-group">
+                  <label>ชื่อผู้จอง</label>
+                  <input v-model.trim="editForm.user.name" type="text" />
+                </div>
+                <div class="form-group">
+                  <label>อีเมล</label>
+                  <input v-model.trim="editForm.user.email" type="email" />
+                </div>
+                <div class="form-group">
+                  <label>เบอร์โทร</label>
+                  <input v-model.trim="editForm.user.phone" type="tel" />
+                </div>
+              </div>
+            </section>
+
+            <!-- ③ การชำระเงิน -->
+            <section id="bk-sec-payment" class="bk-section">
+              <header class="bk-section-head">
+                <span class="bk-section-icon"><span class="material-symbols-rounded">payments</span></span>
+                <div>
+                  <h3>การชำระเงิน</h3>
+                  <p>รูปแบบการจ่าย ยอดเงิน และสลิป</p>
+                </div>
+              </header>
+
+              <div class="bk-seg bk-seg--wide" role="radiogroup">
+                <label v-for="opt in paymentTypeOptions" :key="opt.value" :class="{ on: editForm.payment_type === opt.value }">
+                  <input v-model="editForm.payment_type" type="radio" :value="opt.value" />
+                  <span class="material-symbols-rounded">{{ opt.icon }}</span>
+                  {{ opt.label }}
+                </label>
+              </div>
+
+              <div class="bk-money">
+                <div class="bk-money-cell">
+                  <label for="bk-total">ยอดรวม</label>
+                  <div class="bk-affix bk-affix--pre">
+                    <span>฿</span>
+                    <input id="bk-total" v-model.number="editForm.total_amount" type="number" min="0" step="0.01" />
+                  </div>
+                </div>
+                <div class="bk-money-cell">
+                  <label for="bk-paid">ชำระแล้ว</label>
+                  <div class="bk-affix bk-affix--pre">
+                    <span>฿</span>
+                    <input id="bk-paid" v-model.number="editForm.paid_amount" type="number" min="0" step="0.01" />
+                  </div>
+                </div>
+                <div class="bk-money-cell bk-money-remaining" :class="{ settled: editRemaining <= 0 }">
+                  <span class="bk-money-label">คงเหลือ</span>
+                  <strong>{{ formatMoney(editRemaining) }}</strong>
+                  <small>{{ editRemaining <= 0 ? 'ชำระครบแล้ว' : `จ่ายแล้ว ${editPaidPercent}%` }}</small>
+                </div>
+                <div class="bk-progress" aria-hidden="true">
+                  <span :style="{ width: `${editPaidPercent}%` }"></span>
+                </div>
+              </div>
+
+              <div class="form-grid bk-gap-top">
+                <div class="form-group">
+                  <label>ช่องทางชำระ</label>
+                  <select v-model="editForm.payment_method">
+                    <option value="">— ไม่ระบุ —</option>
+                    <option value="promptpay">พร้อมเพย์</option>
+                    <option value="mobile_banking">Mobile Banking</option>
+                    <option value="bank_transfer">โอนผ่านธนาคาร</option>
+                    <option value="credit_card">บัตรเครดิต</option>
+                    <option value="cash">เงินสด</option>
+                    <option value="manual">แอดมินสร้างให้</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>รหัสอ้างอิง</label>
+                  <input v-model.trim="editForm.payment_ref" type="text" />
+                </div>
+                <div class="form-group">
+                  <label>ชำระเมื่อ</label>
+                  <input v-model="editForm.paid_at" type="datetime-local" />
+                </div>
+                <div class="form-group">
+                  <label>วันเวลาโอน</label>
+                  <input v-model="editForm.transfer_datetime" type="datetime-local" />
+                </div>
+                <div class="form-group full-span">
+                  <label>{{ editForm.payment_type === 'deposit' ? 'สลิปมัดจำ' : 'สลิปหลัก' }}</label>
+                  <div class="bk-slip">
+                    <label class="bk-slip-pick" :class="{ picked: editForm.slip_image }">
+                      <input type="file" accept="image/*,.pdf" @change="onMainSlipChange" />
+                      <span class="material-symbols-rounded">{{ editForm.slip_image ? 'task' : 'upload_file' }}</span>
+                      <span class="bk-slip-text">
+                        <strong>{{ editForm.slip_image ? editForm.slip_image.name : 'แนบสลิปใหม่' }}</strong>
+                        <small>{{ editForm.slip_image ? 'จะอัปโหลดเมื่อบันทึก · คลิกเพื่อเปลี่ยนไฟล์' : 'รูปภาพหรือ PDF' }}</small>
+                      </span>
+                    </label>
+                    <div v-if="editForm.current_slip_url" class="bk-slip-current" :class="{ removing: editForm.delete_slip }">
+                      <a :href="editForm.current_slip_url" target="_blank" rel="noopener">
+                        <span class="material-symbols-rounded">receipt_long</span>
+                        เปิดสลิปปัจจุบัน
+                      </a>
+                      <label class="bk-check">
+                        <input v-model="editForm.delete_slip" type="checkbox" />
+                        ลบสลิปเดิม
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ผ่อนชำระ: ตั้งค่าจำนวนงวด -->
+              <div v-if="editForm.payment_type === 'installment'" class="bk-sub">
+                <div class="bk-sub-head">
+                  <span class="material-symbols-rounded">calendar_month</span>
+                  ตั้งค่าการผ่อน
+                </div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>จำนวนงวด</label>
+                    <div class="bk-affix">
+                      <input v-model.number="editForm.installment_count" type="number" min="1" max="12" />
+                      <span>งวด</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>ระยะห่างงวด</label>
+                    <div class="bk-affix">
+                      <input v-model.number="editForm.installment_interval_days" type="number" min="1" />
+                      <span>วัน</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="bk-help bk-gap-top-sm">แก้ยอดและกำหนดชำระทีละงวดได้ในหัวข้อ "งวดผ่อนชำระ" ด้านล่าง</p>
+              </div>
+
+              <!-- มัดจำ: ยอดมัดจำ + ยอดส่วนที่เหลือ + สลิปยอดคงเหลือ -->
+              <div v-if="editForm.payment_type === 'deposit'" class="bk-sub">
+                <div class="bk-sub-head">
+                  <span class="material-symbols-rounded">savings</span>
+                  ยอดมัดจำและส่วนที่เหลือ
+                </div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>ยอดมัดจำ</label>
+                    <div class="bk-affix bk-affix--pre">
+                      <span>฿</span>
+                      <input v-model.number="editForm.deposit_amount" type="number" min="0" step="0.01" />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>ยอดส่วนที่เหลือ</label>
+                    <div class="bk-affix bk-affix--pre">
+                      <span>฿</span>
+                      <input v-model.number="editForm.balance_amount" type="number" min="0" step="0.01" />
+                    </div>
+                    <p class="bk-help">ยอดที่ลูกค้าต้องชำระเพิ่มหลังมัดจำ</p>
+                  </div>
+                  <div class="form-group">
+                    <label>กำหนดชำระส่วนที่เหลือ</label>
+                    <input v-model="editForm.balance_due_at" type="date" />
+                  </div>
+                  <div class="form-group">
+                    <label>รหัสอ้างอิง <span class="bk-optional">ส่วนที่เหลือ</span></label>
+                    <input v-model.trim="editForm.balance_payment_ref" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label>ชำระส่วนที่เหลือเมื่อ</label>
+                    <input v-model="editForm.balance_paid_at" type="datetime-local" />
+                  </div>
+                  <div class="form-group">
+                    <label>วันเวลาโอน <span class="bk-optional">ส่วนที่เหลือ</span></label>
+                    <input v-model="editForm.balance_transfer_datetime" type="datetime-local" />
+                  </div>
+                  <div class="form-group full-span">
+                    <label>สลิปยอดส่วนที่เหลือ</label>
+                    <div class="bk-slip">
+                      <label class="bk-slip-pick" :class="{ picked: editForm.balance_slip_image }">
+                        <input type="file" accept="image/*,.pdf" @change="onBalanceSlipChange" />
+                        <span class="material-symbols-rounded">{{ editForm.balance_slip_image ? 'task' : 'upload_file' }}</span>
+                        <span class="bk-slip-text">
+                          <strong>{{ editForm.balance_slip_image ? editForm.balance_slip_image.name : 'แนบสลิปใหม่' }}</strong>
+                          <small>{{ editForm.balance_slip_image ? 'จะอัปโหลดเมื่อบันทึก · คลิกเพื่อเปลี่ยนไฟล์' : 'รูปภาพหรือ PDF' }}</small>
+                        </span>
+                      </label>
+                      <div v-if="editForm.current_balance_slip_url" class="bk-slip-current" :class="{ removing: editForm.delete_balance_slip }">
+                        <a :href="editForm.current_balance_slip_url" target="_blank" rel="noopener">
+                          <span class="material-symbols-rounded">receipt_long</span>
+                          เปิดสลิปปัจจุบัน
+                        </a>
+                        <label class="bk-check">
+                          <input v-model="editForm.delete_balance_slip" type="checkbox" />
+                          ลบสลิปเดิม
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ④ งวดผ่อนชำระ -->
+            <section v-if="editForm.payment_type === 'installment'" id="bk-sec-installments" class="bk-section">
+              <header class="bk-section-head">
+                <span class="bk-section-icon"><span class="material-symbols-rounded">pending_actions</span></span>
+                <div>
+                  <h3>งวดผ่อนชำระ</h3>
+                  <p>ยอด กำหนดชำระ และสลิปของแต่ละงวด</p>
+                </div>
+                <button type="button" class="btn-secondary compact bk-head-action" @click="addInstallment">
+                  <span class="material-symbols-rounded">add</span>
+                  เพิ่มงวด
+                </button>
+              </header>
+
+              <div v-if="!editForm.installments.length" class="bk-empty">
+                <span class="material-symbols-rounded">event_busy</span>
+                ยังไม่มีงวดผ่อน — กด "เพิ่มงวด" เพื่อเริ่มวางแผนการผ่อน
+              </div>
+
+              <div v-else class="bk-cards">
+                <div v-for="(payment, index) in editForm.installments" :key="payment.local_key" class="bk-card">
+                  <div class="bk-card-head">
+                    <span class="bk-card-no">{{ payment.installment_no || index + 1 }}</span>
+                    <div class="bk-card-title">
+                      <strong>งวดที่ {{ payment.installment_no || index + 1 }}</strong>
+                      <small>
+                        {{ formatMoney(payment.amount) }}
+                        <template v-if="payment.due_date"> · ครบกำหนด {{ formatDate(payment.due_date) }}</template>
+                      </small>
+                    </div>
+                    <span class="bk-pill" :class="`is-${payment.status}`">{{ installmentStatusLabels[payment.status] || payment.status }}</span>
+                    <button type="button" class="bk-icon-btn danger" @click="removeInstallment(index)" title="ลบงวดนี้" aria-label="ลบงวดนี้">
+                      <span class="material-symbols-rounded">delete</span>
+                    </button>
+                  </div>
+                  <div class="bk-card-body">
+                    <div class="form-grid bk-grid-4">
+                      <div class="form-group">
+                        <label>เลขงวด</label>
+                        <input v-model.number="payment.installment_no" type="number" min="1" max="12" />
+                      </div>
+                      <div class="form-group">
+                        <label>ยอดงวด</label>
+                        <div class="bk-affix bk-affix--pre">
+                          <span>฿</span>
+                          <input v-model.number="payment.amount" type="number" min="0" step="0.01" />
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <label>ครบกำหนด</label>
+                        <input v-model="payment.due_date" type="date" />
+                      </div>
+                      <div class="form-group">
+                        <label>สถานะ</label>
+                        <select v-model="payment.status">
+                          <option value="pending">รอชำระ</option>
+                          <option value="paid">ชำระแล้ว</option>
+                          <option value="failed">ไม่สำเร็จ</option>
+                          <option value="cancelled">ยกเลิก</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label>ช่องทาง</label>
+                        <input v-model.trim="payment.payment_method" type="text" />
+                      </div>
+                      <div class="form-group">
+                        <label>รหัสอ้างอิง</label>
+                        <input v-model.trim="payment.payment_ref" type="text" />
+                      </div>
+                      <div class="form-group">
+                        <label>ชำระเมื่อ</label>
+                        <input v-model="payment.paid_at" type="datetime-local" />
+                      </div>
+                      <div class="form-group">
+                        <label>วันเวลาโอน</label>
+                        <input v-model="payment.transfer_datetime" type="datetime-local" />
+                      </div>
+                      <div class="form-group full-span">
+                        <label>สลิปงวดนี้</label>
+                        <div class="bk-slip">
+                          <label class="bk-slip-pick" :class="{ picked: payment.slip_image }">
+                            <input type="file" accept="image/*,.pdf" @change="onInstallmentSlipChange(index, $event)" />
+                            <span class="material-symbols-rounded">{{ payment.slip_image ? 'task' : 'upload_file' }}</span>
+                            <span class="bk-slip-text">
+                              <strong>{{ payment.slip_image ? payment.slip_image.name : 'แนบสลิปใหม่' }}</strong>
+                              <small>{{ payment.slip_image ? 'จะอัปโหลดเมื่อบันทึก · คลิกเพื่อเปลี่ยนไฟล์' : 'รูปภาพหรือ PDF' }}</small>
+                            </span>
+                          </label>
+                          <div v-if="payment.current_slip_url" class="bk-slip-current" :class="{ removing: payment.delete_slip }">
+                            <a :href="payment.current_slip_url" target="_blank" rel="noopener">
+                              <span class="material-symbols-rounded">receipt_long</span>
+                              เปิดสลิปปัจจุบัน
+                            </a>
+                            <label class="bk-check">
+                              <input v-model="payment.delete_slip" type="checkbox" />
+                              ลบสลิปเดิม
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ⑤ อุปกรณ์เช่า — แอดมินเพิ่มของที่ลูกค้าขอเช่าทีหลังได้ (เต็นท์ ถุงนอน หมอน) -->
+            <section id="bk-sec-rentals" class="bk-section">
+              <header class="bk-section-head">
+                <span class="bk-section-icon"><span class="material-symbols-rounded">camping</span></span>
+                <div>
+                  <h3>อุปกรณ์เช่า</h3>
+                  <p>แก้จำนวนหรือเพิ่มรายการแล้ว ยอดรวม (และยอดคงเหลือกรณีมัดจำ) จะปรับให้อัตโนมัติ</p>
+                </div>
+              </header>
+
+              <div v-if="editRentalCatalog.length" class="rental-picker">
+                <span class="bk-picker-label">เพิ่มจากรายการของทริป</span>
+                <button
+                  v-for="item in editRentalCatalog"
+                  :key="item.key"
+                  type="button"
+                  class="rental-chip"
+                  @click="addRentalFromCatalog(item)"
+                >
+                  <span class="material-symbols-rounded">add</span>
+                  {{ item.name }}
+                  <span class="rental-chip-price">{{ formatMoney(item.price) }}</span>
+                </button>
+              </div>
+              <p v-else class="bk-help bk-gap-bottom">ทริปนี้ยังไม่ได้ตั้งรายการอุปกรณ์ให้เช่า — เพิ่มรายการเองได้ด้านล่าง</p>
+
+              <div v-if="editForm.rentals.length" class="rental-rows">
+                <div v-for="(rental, index) in editForm.rentals" :key="rental.local_key" class="rental-row">
+                  <img v-if="rental.image_url" :src="rental.image_url" :alt="rental.name" class="rental-thumb" />
+                  <span v-else class="rental-thumb placeholder">
+                    <span class="material-symbols-rounded">backpack</span>
+                  </span>
+
+                  <div class="rental-fields">
+                    <input v-model.trim="rental.name" type="text" placeholder="ชื่ออุปกรณ์ เช่น เต็นท์ 2 คน" />
+                    <div class="bk-affix bk-affix--pre rental-price">
+                      <span>฿</span>
+                      <input v-model.number="rental.unit_price" type="number" min="0" step="1" aria-label="ราคาต่อชิ้น" />
+                      <span>/ชิ้น</span>
+                    </div>
+                  </div>
+
+                  <div class="rental-qty">
+                    <button type="button" @click="stepRental(index, -1)" :disabled="moneyNumber(rental.quantity) <= 1" aria-label="ลดจำนวน">
+                      <span class="material-symbols-rounded">remove</span>
+                    </button>
+                    <input v-model.number="rental.quantity" type="number" min="1" max="50" aria-label="จำนวน" />
+                    <button type="button" @click="stepRental(index, 1)" aria-label="เพิ่มจำนวน">
+                      <span class="material-symbols-rounded">add</span>
+                    </button>
+                  </div>
+
+                  <strong class="rental-line-total">
+                    {{ formatMoney(moneyNumber(rental.unit_price) * moneyNumber(rental.quantity)) }}
+                  </strong>
+
+                  <button type="button" class="bk-icon-btn danger" @click="removeRental(index)" title="ลบรายการ" aria-label="ลบรายการ">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
+                </div>
+              </div>
+              <div v-else class="bk-empty">
+                <span class="material-symbols-rounded">backpack</span>
+                ยังไม่มีอุปกรณ์เช่าในการจองนี้
+              </div>
+
+              <div class="rental-footer">
+                <button type="button" class="bk-link-btn" @click="addCustomRental">
+                  <span class="material-symbols-rounded">add</span>
+                  เพิ่มรายการเอง
+                </button>
+                <div class="rental-total">
+                  <span>รวมค่าเช่าอุปกรณ์</span>
+                  <strong>{{ formatMoney(editRentalsTotal) }}</strong>
+                </div>
+              </div>
+            </section>
+
+            <!-- ⑥ จุดรับ / ที่นั่ง -->
+            <section id="bk-sec-pickup" class="bk-section">
+              <header class="bk-section-head">
+                <span class="bk-section-icon"><span class="material-symbols-rounded">location_on</span></span>
+                <div>
+                  <h3>จุดรับ / ที่นั่ง</h3>
+                  <p>สตาฟกับคนขับอ่านจุดรายคนก่อนจุดของการจองเสมอ</p>
+                </div>
+              </header>
+
+              <div class="form-grid">
+                <div class="form-group" :class="{ 'full-span': !editForm.is_join_trip }">
+                  <label>จุดรับของการจอง</label>
+                  <select v-model.number="editForm.pickup_point_id" @change="onEditPickupChange" :disabled="!editPickupPoints.length">
+                    <option value="">— ไม่ระบุจุดรับ —</option>
+                    <option v-for="point in editPickupPoints" :key="point.id" :value="point.id">
+                      {{ point.region_label || point.region }} · {{ point.pickup_location }}
+                    </option>
+                  </select>
+                  <p class="bk-help">
+                    {{ editPickupPoints.length ? 'ใช้กับคนที่ไม่ได้ระบุจุดของตัวเองไว้ด้านล่าง' : 'รอบเดินทางนี้ยังไม่มีจุดรับให้เลือก' }}
+                  </p>
+                </div>
+                <div class="form-group" v-if="editForm.is_join_trip">
+                  <label>ภูมิภาคจุดรับ <span class="bk-optional">จอยทริป</span></label>
+                  <input v-model.trim="editForm.pickup_region" type="text" placeholder="เช่น กรุงเทพฯ" />
+                  <p class="bk-help">ใช้กรณีจอยทริปที่ระบุเฉพาะภูมิภาค ไม่มีจุดรับตายตัว</p>
+                </div>
+
+                <!-- จุดรับปักหมุดเอง — แอดมินปักหมุด/แก้ไข/ลบจากแผนที่ได้ -->
+                <div class="form-group full-span">
+                  <label>จุดรับปักหมุดเอง <span class="bk-optional">ลูกค้าปักในหน้าจอง หรือแอดมินปักให้</span></label>
+                  <div v-if="editCustomPickup" class="cp-edit-card">
+                    <div class="cp-edit-body">
+                      <span class="material-symbols-rounded cp-edit-icon">add_location_alt</span>
+                      <div class="cp-edit-text">
+                        <p class="cp-edit-label">{{ editCustomPickup.label }}</p>
+                        <p v-if="editCustomPickup.note" class="cp-edit-note">{{ editCustomPickup.note }}</p>
+                        <p class="cp-edit-coords">{{ Number(editCustomPickup.lat).toFixed(5) }}, {{ Number(editCustomPickup.lng).toFixed(5) }}</p>
+                      </div>
+                    </div>
+                    <div class="cp-edit-actions">
+                      <button type="button" class="cp-edit-btn" @click="openEditCustomPickup">
+                        <span class="material-symbols-rounded">edit_location_alt</span> แก้ไขหมุด
+                      </button>
+                      <button type="button" class="cp-edit-btn danger" @click="clearEditCustomPickup">
+                        <span class="material-symbols-rounded">delete</span> ลบ
+                      </button>
+                    </div>
+                  </div>
+                  <button v-else type="button" class="cp-edit-add" @click="openEditCustomPickup">
+                    <span class="material-symbols-rounded">add_location_alt</span> ปักหมุดจุดรับจากแผนที่
+                  </button>
+                </div>
+              </div>
+
+              <!-- จุดรับ/ที่นั่งรายคน — คนในกลุ่มเดียวกันขึ้นคนละจุดได้
+                   สตาฟกับคนขับอ่านจุดรายคนก่อนจุดของการจองเสมอ -->
+              <div class="pax-pickup">
+                <div class="pax-pickup-head">
+                  <strong>จุดรับและที่นั่งรายคน</strong>
+                  <button
+                    v-if="editForm.passengers.length && editForm.pickup_point_id && !editCustomPickup"
+                    type="button"
+                    class="bk-link-btn"
+                    @click="applyBookingPickupToAll"
+                  >
+                    <span class="material-symbols-rounded">done_all</span>
+                    ใช้จุดของการจองกับทุกคน
+                  </button>
+                </div>
+
+                <p v-if="editCustomPickup" class="bk-callout bk-callout--warn">
+                  <span class="material-symbols-rounded">info</span>
+                  <span>การจองนี้ใช้หมุดที่ปักเอง — จุดรับรายคนจะถูกล้างทั้งหมดเมื่อบันทึก</span>
+                </p>
+
+                <div v-if="!editForm.passengers.length" class="bk-empty">
+                  <span class="material-symbols-rounded">person_off</span>
+                  ยังไม่มีผู้โดยสารในการจองนี้ — เพิ่มผู้โดยสารในหัวข้อ "ผู้โดยสาร" ก่อน
+                </div>
+
+                <div v-else class="pax-pickup-list">
+                  <div class="pax-pickup-row pax-pickup-labels" aria-hidden="true">
+                    <span>ผู้โดยสาร</span>
+                    <span>จุดรับ</span>
+                    <span>{{ editScheduleIsFlight ? 'ที่นั่งบนเครื่อง' : 'ที่นั่ง' }}</span>
+                  </div>
+                  <div v-for="(passenger, index) in editForm.passengers" :key="passenger.local_key" class="pax-pickup-row">
+                    <div class="pax-pickup-who">
+                      <span class="pax-pickup-no">{{ index + 1 }}</span>
+                      <span class="pax-pickup-name">
+                        {{ passenger.name || `ผู้โดยสาร ${index + 1}` }}
+                        <small v-if="passenger.nickname">({{ passenger.nickname }})</small>
+                      </span>
+                    </div>
+
+                    <div class="form-group">
+                      <select
+                        v-model.number="passenger.pickup_point_id"
+                        :disabled="!editPickupPoints.length || Boolean(editCustomPickup)"
+                        :aria-label="`จุดรับของผู้โดยสาร ${index + 1}`"
+                      >
+                        <option value="">— ตามจุดของการจอง —</option>
+                        <option v-for="point in editPickupPoints" :key="point.id" :value="point.id">
+                          {{ point.region_label || point.region }} · {{ point.pickup_location }}
+                        </option>
+                      </select>
+                    </div>
+
+                    <div class="form-group pax-pickup-seat">
+                      <input
+                        v-model.trim="passenger.seat_id"
+                        type="text"
+                        :placeholder="editScheduleIsFlight ? '12A' : 'A1'"
+                        :disabled="editForm.is_join_trip"
+                        :aria-label="`ที่นั่งของผู้โดยสาร ${index + 1}`"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <p class="bk-help bk-gap-top-sm">
+                  {{ editForm.is_join_trip
+                    ? 'จอยทริปไม่ต้องระบุที่นั่ง — ระบุเฉพาะจุดรับรายคนได้'
+                    : editScheduleIsFlight
+                      ? 'รอบนี้บินไป ลูกค้าเลือกที่นั่งเองไม่ได้ — กรอกเลขที่นั่งจากสายการบินให้ทีละคน แล้วลูกค้าจะเห็นในแอป'
+                      : 'เว้นที่นั่งว่างไว้ได้ถ้ายังไม่ได้จัดผัง' }}
+                </p>
+                <p v-if="editSeatDuplicateWarning" class="bk-callout bk-callout--danger">
+                  <span class="material-symbols-rounded">warning</span>
+                  <span>{{ editSeatDuplicateWarning }}</span>
+                </p>
+              </div>
+            </section>
+
+            <!-- ⑦ ผู้โดยสาร -->
+            <section id="bk-sec-passengers" class="bk-section">
+              <header class="bk-section-head">
+                <span class="bk-section-icon"><span class="material-symbols-rounded">group</span></span>
+                <div>
+                  <h3>ผู้โดยสาร <span v-if="editForm.passengers.length" class="bk-count">{{ editForm.passengers.length }} คน</span></h3>
+                  <p>ข้อมูลส่วนตัว ผู้ติดต่อฉุกเฉิน และสุขภาพของแต่ละคน</p>
+                </div>
+                <button type="button" class="btn-secondary compact bk-head-action" @click="addPassenger">
+                  <span class="material-symbols-rounded">person_add</span>
+                  เพิ่มผู้โดยสาร
+                </button>
+              </header>
+
+              <div v-if="!editForm.passengers.length" class="bk-empty">
+                <span class="material-symbols-rounded">person_add</span>
+                ยังไม่มีผู้โดยสาร — กด "เพิ่มผู้โดยสาร" เพื่อเริ่ม
+              </div>
+
+              <div v-else class="bk-cards">
+                <div v-for="(passenger, index) in editForm.passengers" :key="passenger.local_key" class="bk-card">
+                  <div class="bk-card-head">
+                    <span class="bk-card-no">{{ index + 1 }}</span>
+                    <div class="bk-card-title">
+                      <strong>{{ passenger.name || `ผู้โดยสาร ${index + 1}` }}</strong>
+                      <small>
+                        <template v-if="passenger.nickname">{{ passenger.nickname }}</template>
+                        <template v-if="passenger.nickname && passenger.phone"> · </template>
+                        <template v-if="passenger.phone">{{ passenger.phone }}</template>
+                        <template v-if="!passenger.nickname && !passenger.phone">ยังไม่ได้กรอกข้อมูลติดต่อ</template>
+                      </small>
+                    </div>
+                    <span v-if="passenger.seat_id" class="bk-pill is-seat">
+                      <span class="material-symbols-rounded">event_seat</span>{{ passenger.seat_id }}
+                    </span>
+                    <button type="button" class="bk-icon-btn danger" @click="removePassenger(index)" title="ลบผู้โดยสาร" aria-label="ลบผู้โดยสาร">
+                      <span class="material-symbols-rounded">delete</span>
+                    </button>
+                  </div>
+
+                  <div class="bk-card-body">
+                    <p class="bk-group-label">ข้อมูลส่วนตัว</p>
+                    <div class="form-grid bk-grid-3">
+                      <div class="form-group">
+                        <label>คำนำหน้า</label>
+                        <input v-model.trim="passenger.title" type="text" placeholder="นาย / นาง / นางสาว" />
+                      </div>
+                      <div class="form-group">
+                        <label>ชื่อ-นามสกุล <span class="bk-req">*</span></label>
+                        <input v-model.trim="passenger.name" type="text" required />
+                      </div>
+                      <div class="form-group">
+                        <label>ชื่อเล่น</label>
+                        <input v-model.trim="passenger.nickname" type="text" />
+                      </div>
+                      <div class="form-group">
+                        <label>เบอร์โทร</label>
+                        <input v-model.trim="passenger.phone" type="tel" />
+                      </div>
+                      <div class="form-group">
+                        <label>อีเมล</label>
+                        <input v-model.trim="passenger.email" type="email" />
+                      </div>
+                      <div class="form-group">
+                        <label>บัตรประชาชน/พาสปอร์ต</label>
+                        <input v-model.trim="passenger.id_card" type="text" />
+                      </div>
+                    </div>
+
+                    <p class="bk-group-label">ผู้ติดต่อฉุกเฉิน</p>
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label>ชื่อผู้ติดต่อ</label>
+                        <input v-model.trim="passenger.emergency_contact" type="text" />
+                      </div>
+                      <div class="form-group">
+                        <label>เบอร์ฉุกเฉิน</label>
+                        <input v-model.trim="passenger.emergency_phone" type="tel" />
+                      </div>
+                    </div>
+
+                    <p class="bk-group-label">สุขภาพและอาหาร</p>
+                    <div class="form-grid bk-grid-3">
+                      <div class="form-group">
+                        <label>กรุ๊ปเลือด</label>
+                        <input v-model.trim="passenger.blood_group" type="text" placeholder="A / B / O / AB" />
+                      </div>
+                      <div class="form-group">
+                        <label>น้ำหนัก</label>
+                        <div class="bk-affix">
+                          <input v-model.number="passenger.weight" type="number" min="0" step="0.01" />
+                          <span>กก.</span>
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <label>อาหารฮาลาล</label>
+                        <div class="bk-seg bk-seg--sm" role="radiogroup">
+                          <label :class="{ on: passenger.halal_food == null }">
+                            <input v-model="passenger.halal_food" type="radio" :value="null" />ไม่ระบุ
+                          </label>
+                          <label :class="{ on: passenger.halal_food === true }">
+                            <input v-model="passenger.halal_food" type="radio" :value="true" />ใช่
+                          </label>
+                          <label :class="{ on: passenger.halal_food === false }">
+                            <input v-model="passenger.halal_food" type="radio" :value="false" />ไม่ใช่
+                          </label>
+                        </div>
+                      </div>
+                      <div class="form-group full-span">
+                        <label>การแพ้ / อาหาร</label>
+                        <textarea v-model="passenger.allergies" rows="2" placeholder="เช่น แพ้กุ้ง ไม่ทานเนื้อ"></textarea>
+                      </div>
+                      <div class="form-group full-span">
+                        <label>หมายเหตุสุขภาพ</label>
+                        <textarea v-model="passenger.health_notes" rows="2" placeholder="โรคประจำตัว ยาที่ต้องใช้"></textarea>
+                      </div>
+                    </div>
+
+                    <p class="bk-group-label">ดำน้ำ <span class="bk-optional">เฉพาะทริปดำน้ำ</span></p>
+                    <div class="form-grid">
+                      <div class="form-group">
+                        <label>ระดับใบดำน้ำ</label>
+                        <input v-model.trim="passenger.dive_cert_level" type="text" placeholder="เช่น Open Water" />
+                      </div>
+                      <div class="form-group">
+                        <label>เลขใบรับรอง</label>
+                        <input v-model.trim="passenger.cert_number" type="text" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="button" class="bk-add-row" @click="addPassenger">
+                  <span class="material-symbols-rounded">person_add</span>
+                  เพิ่มผู้โดยสารอีกคน
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div class="bk-footer">
+            <div class="bk-summary">
+              <span class="bk-summary-item">
+                <span class="material-symbols-rounded">group</span>
+                {{ editForm.passengers.length }} คน
+              </span>
+              <span class="bk-summary-item">
+                ยอดรวม <strong>{{ formatMoney(editForm.total_amount) }}</strong>
+              </span>
+              <span class="bk-summary-item" :class="editRemaining > 0 ? 'is-due' : 'is-settled'">
+                <template v-if="editRemaining > 0">ค้างชำระ <strong>{{ formatMoney(editRemaining) }}</strong></template>
+                <template v-else>
+                  <span class="material-symbols-rounded">check_circle</span>
+                  ชำระครบแล้ว
+                </template>
+              </span>
+            </div>
+            <div class="bk-footer-actions">
+              <button type="button" class="btn-secondary" @click="closeEditModal">ยกเลิก</button>
+              <button type="submit" class="btn-primary" :disabled="submitting">
+                <span v-if="submitting" class="material-symbols-rounded animate-spin">sync</span>
+                <span v-else class="material-symbols-rounded">save</span>
+                บันทึกการเปลี่ยนแปลง
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -2186,6 +2457,71 @@ const editRemaining = computed(() => {
   return Math.max(total - paid, 0);
 });
 
+const editPaidPercent = computed(() => {
+  const total = moneyNumber(editForm.total_amount);
+  if (total <= 0) return moneyNumber(editForm.paid_amount) > 0 ? 100 : 0;
+  return Math.min(100, Math.round((moneyNumber(editForm.paid_amount) / total) * 100));
+});
+
+const editStatusOptions = [
+  { value: 'pending', label: 'รอดำเนินการ', icon: 'schedule' },
+  { value: 'confirmed', label: 'ยืนยันแล้ว', icon: 'verified' },
+  { value: 'cancelled', label: 'ยกเลิก', icon: 'cancel' },
+  { value: 'refunded', label: 'คืนเงินแล้ว', icon: 'currency_exchange' },
+];
+
+const installmentStatusLabels = {
+  pending: 'รอชำระ',
+  paid: 'ชำระแล้ว',
+  failed: 'ไม่สำเร็จ',
+  cancelled: 'ยกเลิก',
+};
+
+const editTripTitle = computed(() => editBooking.value?.schedule?.trip?.title || '');
+
+// แถบหัวข้อด้านบน modal แก้ไข — กดเพื่อเลื่อนไป และไฮไลต์หัวข้อที่กำลังดูอยู่
+const editBodyRef = ref(null);
+const editActiveSection = ref('info');
+
+const editSections = computed(() => [
+  { id: 'info', label: 'การจอง', icon: 'event_note' },
+  { id: 'customer', label: 'ผู้จอง', icon: 'person' },
+  { id: 'payment', label: 'ชำระเงิน', icon: 'payments' },
+  ...(editForm.payment_type === 'installment'
+    ? [{ id: 'installments', label: 'งวดผ่อน', icon: 'pending_actions', count: editForm.installments.length }]
+    : []),
+  { id: 'rentals', label: 'อุปกรณ์เช่า', icon: 'camping', count: editForm.rentals.length || null },
+  { id: 'pickup', label: 'จุดรับ / ที่นั่ง', icon: 'location_on' },
+  { id: 'passengers', label: 'ผู้โดยสาร', icon: 'group', count: editForm.passengers.length },
+]);
+
+function scrollToEditSection(id) {
+  const body = editBodyRef.value;
+  const target = body?.querySelector(`#bk-sec-${id}`);
+  if (!body || !target) return;
+
+  editActiveSection.value = id;
+  body.scrollTo({ top: target.offsetTop - 12, behavior: 'smooth' });
+}
+
+function onEditBodyScroll() {
+  const body = editBodyRef.value;
+  if (!body) return;
+
+  // เลื่อนจนสุดแล้ว หัวข้อสุดท้ายอาจสั้นเกินกว่าจะขึ้นไปถึงขอบบน — ให้ถือว่าอยู่หัวข้อสุดท้าย
+  if (body.scrollTop + body.clientHeight >= body.scrollHeight - 4) {
+    editActiveSection.value = editSections.value[editSections.value.length - 1].id;
+    return;
+  }
+
+  let current = editSections.value[0].id;
+  for (const section of editSections.value) {
+    const el = body.querySelector(`#bk-sec-${section.id}`);
+    if (el && el.offsetTop - 80 <= body.scrollTop) current = section.id;
+  }
+  editActiveSection.value = current;
+}
+
 // รายการอุปกรณ์ให้เช่าของทริปนี้ (catalog) — ใช้เป็นปุ่มลัดเพิ่มเข้าการจอง
 const editRentalCatalog = computed(() => {
   const items = editBooking.value?.schedule?.trip?.rental_items;
@@ -2377,6 +2713,7 @@ function closeDetail() {
 
 async function openEditModal(booking) {
   editBooking.value = booking;
+  editActiveSection.value = 'info';
   showEditModal.value = true;
   editSchedules.value = [];
 
@@ -5106,11 +5443,6 @@ async function reverifySlip(bookingRef, slipType) {
   padding: 12px;
 }
 
-.edit-booking-form {
-  display: grid;
-  gap: 18px;
-}
-
 .edit-section {
   border-top: 1px solid #eeeeee;
   padding-top: 16px;
@@ -5126,69 +5458,6 @@ async function reverifySlip(bookingRef, slipType) {
 }
 
 /* ── ตัวเลือกประเภทการชำระแบบ segmented (full / deposit / installment) ── */
-.pay-type-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.pay-type-tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 8px;
-  border: 1.5px solid var(--color-sand-dark);
-  border-radius: 12px;
-  background: #fff;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: center;
-}
-
-.pay-type-tab:hover {
-  border-color: var(--color-accent-light);
-}
-
-.pay-type-tab.active {
-  border-color: var(--color-accent);
-  background: #ecfdf5;
-  color: var(--color-accent-mid);
-}
-
-.pay-type-tab input {
-  display: none;
-}
-
-.pay-type-tab .material-symbols-rounded {
-  font-size: 18px;
-}
-
-.pay-subsection {
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px solid #eeeeee;
-  border-radius: 12px;
-  background: #fafafa;
-}
-
-.pay-subsection-title {
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--color-text-mid);
-}
-
-.readonly-field {
-  background: #f5f5f5 !important;
-  color: var(--color-text-muted);
-  font-weight: 800;
-}
-
 .field-hint {
   display: block;
   margin-top: 4px;
@@ -5196,26 +5465,6 @@ async function reverifySlip(bookingRef, slipType) {
   font-size: 11px;
   font-weight: 600;
   line-height: 1.4;
-}
-
-.check-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-mid);
-  font-size: 13px;
-  font-weight: 800;
-  min-height: 38px;
-}
-
-.check-row input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-accent);
-}
-
-.check-row.inline {
-  min-height: auto;
 }
 
 .section-heading.with-action {
@@ -5243,36 +5492,6 @@ async function reverifySlip(bookingRef, slipType) {
   color: var(--color-text-dark);
   font-size: 13px;
   font-weight: 900;
-}
-
-.pax-pickup-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-sand-dark);
-  border-radius: 8px;
-  background: var(--color-sand);
-  color: var(--color-text-mid);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.5;
-}
-
-.pax-pickup-note .material-symbols-rounded {
-  font-size: 16px !important;
-  color: var(--color-text-muted);
-}
-
-.pax-pickup-empty {
-  padding: 14px;
-  border: 1px dashed var(--color-sand-dark);
-  border-radius: 8px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  text-align: center;
 }
 
 .pax-pickup-list {
@@ -5325,20 +5544,6 @@ async function reverifySlip(bookingRef, slipType) {
 .pax-pickup-name small {
   color: var(--color-text-muted);
   font-weight: 700;
-}
-
-.pax-pickup-warning {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  color: #dc2626;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.pax-pickup-warning .material-symbols-rounded {
-  font-size: 16px !important;
 }
 
 @media (max-width: 720px) {
@@ -5432,23 +5637,6 @@ async function reverifySlip(bookingRef, slipType) {
   min-width: 0;
 }
 
-.rental-price {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.rental-price label {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.rental-price input {
-  width: 90px;
-}
-
 .rental-qty {
   display: flex;
   align-items: center;
@@ -5497,29 +5685,6 @@ async function reverifySlip(bookingRef, slipType) {
   font-weight: 900;
 }
 
-.rental-remove {
-  flex-shrink: 0;
-  border: 0;
-  background: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 4px;
-}
-
-.rental-remove:hover {
-  color: #dc2626;
-}
-
-.rental-empty {
-  padding: 14px;
-  border: 1px dashed var(--color-sand-dark);
-  border-radius: 8px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  text-align: center;
-}
-
 .rental-footer {
   display: flex;
   align-items: center;
@@ -5558,48 +5723,6 @@ async function reverifySlip(bookingRef, slipType) {
     flex: 1;
     text-align: left;
   }
-}
-
-.edit-list {
-  display: grid;
-  gap: 12px;
-}
-
-.edit-list-card {
-  border: 1px solid var(--color-sand-dark);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--color-white);
-}
-
-.edit-list-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.edit-list-head strong {
-  color: var(--color-text-dark);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.slip-edit-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 8px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.slip-edit-row a {
-  color: #2563eb;
-  font-weight: 900;
 }
 
 .manual-status-options {
@@ -6341,5 +6464,1027 @@ async function reverifySlip(bookingRef, slipType) {
 .split-warning .material-symbols-rounded {
   font-size: 18px;
   flex-shrink: 0;
+}
+
+/* ── ฟอร์มแก้ไขการจอง (bk-*) ── */
+/* หัว (พร้อมแถบหัวข้อ) และท้ายค้างอยู่กับที่ เลื่อนเฉพาะเนื้อหา — ปุ่มบันทึกจึงเห็นเสมอ */
+.modal-card.bk-modal {
+  max-width: 1040px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.bk-header {
+  flex-shrink: 0;
+  border-bottom: 1px solid #eeeeee;
+  background: #ffffff;
+}
+
+.bk-header-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 24px 12px;
+}
+
+.bk-header-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #ecf5ef;
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bk-header-icon .material-symbols-rounded { font-size: 22px; }
+
+.bk-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.bk-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bk-header-title h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.bk-header-text p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bk-header-text p strong {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* แถบหัวข้อ */
+.bk-nav {
+  display: flex;
+  gap: 2px;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.bk-nav::-webkit-scrollbar { display: none; }
+
+.bk-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 10px 11px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.bk-nav-item .material-symbols-rounded { font-size: 18px; }
+
+.bk-nav-item:hover { color: #111827; }
+
+.bk-nav-item.on {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.bk-nav-count {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.bk-nav-item.on .bk-nav-count {
+  background: #ecf5ef;
+  color: var(--color-accent);
+}
+
+.bk-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.bk-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 24px;
+  background: #fafafa;
+}
+
+/* ── Section ── */
+.bk-section {
+  background: #ffffff;
+  border: 1px solid #ebebeb;
+  border-radius: 14px;
+  padding: 18px 20px 20px;
+  margin-top: 16px;
+}
+
+.bk-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.bk-section-head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.bk-section-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bk-section-icon .material-symbols-rounded { font-size: 18px; }
+
+.bk-section-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.bk-section-head p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #6b7280;
+}
+
+.bk-head-action {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.bk-head-action .material-symbols-rounded { font-size: 18px; }
+
+.bk-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #ecf5ef;
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── Spacing helpers ── */
+.bk-gap-top { margin-top: 16px; }
+.bk-gap-top-sm { margin-top: 10px; }
+.bk-gap-bottom { margin-bottom: 12px; }
+
+.bk-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bk-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* ── Label extras ── */
+.bk-req { color: #dc2626; }
+
+.bk-optional {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin-left: 4px;
+}
+
+.bk-help {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #9ca3af;
+}
+
+.bk-group-label {
+  margin: 18px 0 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #6b7280;
+}
+
+.bk-group-label:first-child { margin-top: 0; }
+
+/* ── สถานะการจอง (4 ปุ่ม แต่ละสถานะมีสีของตัวเอง) ── */
+.bk-status {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bk-status label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.bk-status label:hover { border-color: #cbd5e1; color: #111827; }
+.bk-status label .material-symbols-rounded { font-size: 18px; }
+
+.bk-status label.on.is-pending { border-color: #f59e0b; background: #fffbeb; color: #b45309; }
+.bk-status label.on.is-confirmed { border-color: #16a34a; background: #f0fdf4; color: #15803d; }
+.bk-status label.on.is-cancelled { border-color: #ef4444; background: #fef2f2; color: #b91c1c; }
+.bk-status label.on.is-refunded { border-color: #8b5cf6; background: #f5f3ff; color: #6d28d9; }
+
+/* ── Segmented control (radio) ── */
+.bk-seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+
+.bk-seg label {
+  position: relative;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.bk-seg label:hover { color: #111827; }
+
+.bk-seg label.on {
+  background: #ffffff;
+  color: #111827;
+  outline: 1px solid #e5e7eb;
+}
+
+.bk-seg label .material-symbols-rounded { font-size: 18px; }
+
+.bk-seg--wide { margin-bottom: 16px; }
+.bk-seg--wide label { padding: 9px 12px; }
+.bk-seg--wide label.on .material-symbols-rounded { color: var(--color-accent); }
+
+.bk-seg--sm { padding: 3px; }
+.bk-seg--sm label { padding: 6px 8px; font-size: 12.5px; }
+
+.bk-seg input,
+.bk-status input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  pointer-events: none;
+}
+
+.bk-seg label:has(input:focus-visible),
+.bk-status label:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* ── Inputs with prefix/suffix ── */
+.bk-affix {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  transition: border-color 0.15s;
+  overflow: hidden;
+}
+
+.bk-affix:focus-within {
+  border-color: #2d7a4f;
+  box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.08);
+}
+
+.bk-affix input,
+.bk-affix input:focus {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+.bk-affix > span {
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.bk-affix > span.material-symbols-rounded { font-size: 18px; color: #9ca3af; }
+
+.bk-affix--pre > span:first-child { padding-right: 0; }
+
+/* ── Callout ── */
+.bk-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.bk-callout .material-symbols-rounded { font-size: 17px; flex-shrink: 0; }
+.bk-callout--info { background: #eff6ff; color: #1e40af; }
+.bk-callout--warn { background: #fffbeb; color: #92400e; margin: 0 0 12px; }
+.bk-callout--danger { background: #fef2f2; color: #b91c1c; font-weight: 600; }
+
+/* ── Switch rows (กลุ่ม / เช็คอิน) ── */
+.bk-toggles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.bk-toggle {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: border-color 0.15s;
+}
+
+.bk-toggle.on { border-color: color-mix(in srgb, var(--opt) 45%, #ffffff); }
+
+.bk-toggle-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bk-toggle-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #f3f4f6;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.bk-toggle-icon .material-symbols-rounded { font-size: 19px; }
+
+.bk-toggle.on .bk-toggle-icon {
+  background: var(--opt-bg);
+  color: var(--opt);
+}
+
+.bk-toggle-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.bk-toggle-text strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.bk-toggle-text small {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.bk-toggle-body {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px dashed #e5e7eb;
+  background: #fcfcfc;
+  border-radius: 0 0 12px 12px;
+}
+
+/* Switch — checkbox จริงซ่อนไว้ให้ v-model/คีย์บอร์ดยังใช้ได้ */
+.bk-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.bk-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: #d1d5db;
+  flex-shrink: 0;
+  transition: background 0.18s;
+}
+
+.bk-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.18s;
+}
+
+.bk-switch-input:checked + .bk-switch { background: var(--opt, var(--color-accent)); }
+.bk-switch-input:checked + .bk-switch::after { transform: translateX(18px); }
+.bk-switch-input:focus-visible + .bk-switch {
+  outline: 2px solid var(--opt, var(--color-accent));
+  outline-offset: 2px;
+}
+
+/* ── ยอดเงิน: ยอดรวม / ชำระแล้ว / คงเหลือ + แถบความคืบหน้า ── */
+.bk-money {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #ebebeb;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.bk-money-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.bk-money-cell > label,
+.bk-money-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.bk-money-cell .bk-affix input {
+  padding: 9px 13px 9px 6px;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bk-money-remaining {
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: #fffbeb;
+}
+
+.bk-money-remaining .bk-money-label { color: #92400e; }
+
+.bk-money-remaining strong {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #b45309;
+  font-variant-numeric: tabular-nums;
+}
+
+.bk-money-remaining small {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.bk-money-remaining.settled { background: #f0fdf4; }
+.bk-money-remaining.settled .bk-money-label,
+.bk-money-remaining.settled strong,
+.bk-money-remaining.settled small { color: #15803d; }
+
+.bk-progress {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.bk-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transition: width 0.25s ease;
+}
+
+/* ── Sub-card (มัดจำ / ตั้งค่าผ่อน) ── */
+.bk-sub {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #ebebeb;
+  border-radius: 12px;
+  background: #fcfcfc;
+}
+
+.bk-sub-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.bk-sub-head .material-symbols-rounded { font-size: 18px; color: var(--color-accent); }
+
+/* ── แนบสลิป ── */
+.bk-slip {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bk-slip-pick {
+  position: relative;
+  flex: 1 1 260px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.bk-slip-pick:hover { border-color: var(--color-accent); background: #f7fbf8; }
+.bk-slip-pick:focus-within { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+
+.bk-slip-pick input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.bk-slip-pick > .material-symbols-rounded {
+  font-size: 24px;
+  color: #9ca3af;
+}
+
+.bk-slip-pick.picked {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--color-accent) 45%, #ffffff);
+  background: #f3faf6;
+}
+
+.bk-slip-pick.picked > .material-symbols-rounded { color: var(--color-accent); }
+
+.bk-slip-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bk-slip-text strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bk-slip-text small {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.bk-slip-current {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.bk-slip-current a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.bk-slip-current a:hover { text-decoration: underline; }
+.bk-slip-current a .material-symbols-rounded { font-size: 18px; }
+
+.bk-slip-current.removing { border-color: #fecaca; background: #fef2f2; }
+.bk-slip-current.removing a { color: #9ca3af; text-decoration: line-through; }
+
+.bk-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.bk-check input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  accent-color: #dc2626;
+}
+
+/* ── Cards (ผู้โดยสาร / งวดผ่อน) ── */
+.bk-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.bk-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.bk-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f1f1;
+  background: #fcfcfc;
+  border-radius: 12px 12px 0 0;
+}
+
+.bk-card-no {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ecf5ef;
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.bk-card-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bk-card-title strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bk-card-title small {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bk-card-body { padding: 16px; }
+
+.bk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bk-pill .material-symbols-rounded { font-size: 15px; }
+.bk-pill.is-pending { background: #fffbeb; color: #b45309; }
+.bk-pill.is-paid { background: #f0fdf4; color: #15803d; }
+.bk-pill.is-failed { background: #fef2f2; color: #b91c1c; }
+.bk-pill.is-cancelled { background: #f3f4f6; color: #6b7280; }
+.bk-pill.is-seat { background: #eff6ff; color: #1d4ed8; }
+
+.bk-icon-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.bk-icon-btn .material-symbols-rounded { font-size: 18px; }
+
+.bk-icon-btn.danger:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.bk-add-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bk-add-row:hover { border-color: var(--color-accent); background: #f7fbf8; }
+.bk-add-row .material-symbols-rounded { font-size: 19px; }
+
+.bk-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 14px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 10px;
+  background: #fcfcfc;
+  color: #6b7280;
+  font-size: 13px;
+  text-align: center;
+}
+
+.bk-empty .material-symbols-rounded { font-size: 20px; color: #9ca3af; }
+
+.bk-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.bk-link-btn:hover { background: #ecf5ef; }
+.bk-link-btn .material-symbols-rounded { font-size: 18px; }
+
+/* ── อุปกรณ์เช่า (ปรับจากสไตล์เดิมให้เข้ากับการ์ด) ── */
+.bk-section .rental-picker { align-items: center; }
+
+.bk-picker-label {
+  margin-right: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.bk-section .rental-row {
+  padding: 10px 12px;
+  border-color: #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.bk-section .rental-thumb { border-radius: 8px; }
+
+.rental-price {
+  flex: 0 0 170px;
+}
+
+.rental-price input { text-align: right; }
+
+.bk-section .rental-qty { border-color: #d1d5db; }
+
+.bk-section .rental-footer {
+  padding-top: 12px;
+  border-top: 1px solid #f1f1f1;
+}
+
+/* ── จุดรับ/ที่นั่งรายคน ── */
+.bk-section .pax-pickup {
+  border-top: 1px dashed #e5e7eb;
+}
+
+.bk-section .pax-pickup-list { gap: 8px; }
+
+.bk-section .pax-pickup-row {
+  grid-template-columns: minmax(160px, 1fr) minmax(0, 2fr) 120px;
+  align-items: center;
+  padding: 8px 10px;
+  border-color: #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.bk-section .pax-pickup-row .form-group { gap: 0; }
+
+.bk-section .pax-pickup-who { padding-bottom: 0; }
+
+.bk-section .pax-pickup-no {
+  width: 24px;
+  height: 24px;
+  background: #ecf5ef;
+  color: var(--color-accent);
+}
+
+.bk-section .pax-pickup-labels {
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+/* ── Footer ── */
+.bk-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid #eeeeee;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.bk-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  min-width: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.bk-summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.bk-summary-item strong {
+  color: #111827;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bk-summary-item .material-symbols-rounded { font-size: 17px; color: #9ca3af; }
+.bk-summary-item.is-due strong { color: #b45309; }
+.bk-summary-item.is-settled { color: #15803d; font-weight: 700; }
+.bk-summary-item.is-settled .material-symbols-rounded { color: #15803d; }
+
+.bk-footer-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.bk-footer-actions .material-symbols-rounded { font-size: 18px; }
+
+@media (max-width: 900px) {
+  .bk-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bk-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bk-status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .bk-header-main { padding: 14px 16px 10px; }
+  .bk-header-icon { display: none; }
+  .bk-nav { padding: 0 8px; }
+  .bk-body { padding: 0 12px 16px; }
+  .bk-section { padding: 16px 14px; border-radius: 12px; }
+  .bk-section-head { flex-wrap: wrap; }
+  .bk-head-action { margin-left: 44px; }
+
+  .bk-grid-3,
+  .bk-grid-4,
+  .bk-toggles,
+  .bk-money { grid-template-columns: minmax(0, 1fr); }
+
+  .bk-section .pax-pickup-row { grid-template-columns: minmax(0, 1fr); }
+  .bk-section .pax-pickup-labels { display: none; }
+
+  .rental-price { flex: 1 1 140px; }
+
+  .bk-footer {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 16px;
+  }
+
+  .bk-footer-actions { margin-left: 0; }
+  .bk-footer-actions > * { flex: 1; justify-content: center; }
 }
 </style>
