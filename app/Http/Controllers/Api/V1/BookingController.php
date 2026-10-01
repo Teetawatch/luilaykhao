@@ -24,6 +24,7 @@ use App\Support\TermsConsent;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -240,6 +241,7 @@ class BookingController extends Controller
 
         if (! isset($data['per_page'])) {
             $bookings = $query->get();
+            $this->attachNextTripWeather($bookings);
 
             return $this->success(
                 $bookings->map(fn ($b) => new BookingResource($b))->values(),
@@ -248,11 +250,37 @@ class BookingController extends Controller
         }
 
         $bookings = $query->paginate($data['per_page']);
+        $this->attachNextTripWeather($bookings->getCollection());
 
         return $this->paginated(
             $bookings->through(fn ($b) => new BookingResource($b)),
             meta: $meta,
         );
+    }
+
+    /**
+     * พยากรณ์อากาศของทริปถัดไป — หน้าแรกของแอปเอาไปแทนบรรทัดใต้ชื่อ
+     * ("ภูชี้ฟ้า เสาร์นี้ · ฝน 60%") แนบให้แค่ใบเดียวที่ออกเดินทางใกล้ที่สุด
+     * เพื่อให้รายการจองเรียก OpenWeather ได้ไม่เกินครั้งเดียวต่อคำขอ
+     * (และส่วนใหญ่ได้จากแคชในตาราง weather_forecasts)
+     *
+     * @param  Collection<int, Booking>  $bookings
+     */
+    private function attachNextTripWeather(Collection $bookings): void
+    {
+        $today = now()->startOfDay();
+
+        $next = $bookings
+            ->filter(fn (Booking $b) => in_array($b->status, self::UPCOMING_STATUSES, true)
+                && $b->schedule?->departure_date
+                && ! $b->schedule->departure_date->isBefore($today))
+            ->sortBy(fn (Booking $b) => $b->schedule->departure_date->timestamp)
+            ->first();
+
+        if ($next) {
+            // attach() คุมช่วงวันพยากรณ์ (วันนี้..+6 วัน) และไม่โยน exception เอง
+            $this->weatherService->attach($next->schedule, $next->schedule->trip);
+        }
     }
 
     public function cancel(CancelBookingRequest $request, string $ref): JsonResponse

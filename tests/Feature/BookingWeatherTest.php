@@ -117,4 +117,49 @@ class BookingWeatherTest extends TestCase
             ->assertJsonMissingPath('data.schedule.weather');
         Http::assertNothingSent();
     }
+
+    public function test_booking_list_attaches_weather_to_the_next_trip_only(): void
+    {
+        $departure = now()->addDays(2)->toDateString();
+        $this->fakeRainyForecast($departure);
+
+        $booking = $this->makeBooking(18.788, 98.985, $departure);
+
+        // A later round of the same user — outside the forecast window, so it
+        // must not trigger a second lookup or carry a forecast.
+        $laterSchedule = $booking->schedule->replicate();
+        $laterSchedule->departure_date = now()->addDays(20)->toDateString();
+        $laterSchedule->return_date = $laterSchedule->departure_date;
+        $laterSchedule->save();
+        $later = $booking->replicate();
+        $later->booking_ref = 'LLK-LATER-0001';
+        $later->qr_code = 'QR-LATER-0001';
+        $later->schedule_id = $laterSchedule->id;
+        $later->save();
+
+        $response = $this->actingAs($booking->user, 'sanctum')
+            ->getJson('/api/v1/bookings');
+
+        $response->assertOk();
+        $rows = collect($response->json('data'))->keyBy('booking_ref');
+
+        $this->assertSame('warning', $rows[$booking->booking_ref]['schedule']['weather']['severity']);
+        $this->assertArrayNotHasKey('weather', $rows['LLK-LATER-0001']['schedule']);
+        Http::assertSentCount(1);
+    }
+
+    public function test_booking_list_skips_weather_for_cancelled_bookings(): void
+    {
+        $departure = now()->addDays(2)->toDateString();
+        Http::fake();
+
+        $booking = $this->makeBooking(18.788, 98.985, $departure);
+        $booking->update(['status' => 'cancelled']);
+
+        $this->actingAs($booking->user, 'sanctum')
+            ->getJson('/api/v1/bookings')
+            ->assertOk()
+            ->assertJsonMissingPath('data.0.schedule.weather');
+        Http::assertNothingSent();
+    }
 }
