@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\AnnounceChatMemberReplacedJob;
 use App\Models\Booking;
 use App\Models\SmartNotification;
 use App\Models\User;
@@ -123,6 +124,9 @@ class GiftService
 
             return $booking->fresh(['schedule.trip', 'passengers', 'giftedBy']);
         });
+
+        // บอกเพื่อนร่วมรอบในห้องแชทว่ามีคนมาร่วมทริปแทน
+        AnnounceChatMemberReplacedJob::dispatch($claimed->id, $recipient->id);
 
         // แจ้งผู้ให้ว่าของขวัญถูกเปิดรับแล้ว — นอก transaction, best-effort
         $trip = $claimed->schedule?->trip;

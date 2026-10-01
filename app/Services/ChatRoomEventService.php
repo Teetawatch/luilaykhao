@@ -62,6 +62,48 @@ class ChatRoomEventService
     }
 
     /**
+     * มีคนมารับที่นั่งต่อจากคนเดิม (ตอนนี้คือผู้รับของขวัญทริป) — การจองเดิม
+     * แต่เจ้าของเปลี่ยน คีย์ member_joined ของการจองนี้จึงไม่เด้งซ้ำให้
+     *
+     * ตั้งใจพูดถึงแค่คนที่เข้ามา ไม่เอ่ยชื่อคนเดิม — คนเดิมอาจติดธุระ ป่วย หรือยกให้
+     * เพื่อน การประกาศชื่อเขาในห้องไม่ช่วยใคร และเดาเหตุผลแทนเขาก็ไม่ถูกเสมอ
+     */
+    public function memberReplaced(Booking $booking): void
+    {
+        $schedule = $booking->schedule;
+        if (! $schedule) {
+            return;
+        }
+
+        // ห้องไม่เคยได้ยินชื่อคนเดิม (เป็นคนแรกของรอบตอนจอง) — บอกว่า "แทน" จะงง
+        // ประกาศแบบคนเข้าร่วมใหม่ตามปกติแทน
+        $announced = ChatMessage::where('schedule_id', $schedule->id)
+            ->where('system_key', "member_joined:{$booking->id}")
+            ->exists();
+
+        if (! $announced) {
+            $this->memberJoined($booking);
+
+            return;
+        }
+
+        $seats = max(1, $booking->passengers()->count());
+        $name = $this->displayName($booking->user);
+        $travellers = BookingPassenger::whereHas(
+            'booking',
+            fn ($q) => $q->where('schedule_id', $schedule->id)
+                ->whereIn('status', ['pending', 'confirmed', 'completed']),
+        )->count();
+
+        $this->post(
+            $schedule,
+            "👋 ยินดีต้อนรับ {$this->joinerLabel($name, $seats)}ที่มาร่วมทริปแทนครับ\n"
+                ."เพื่อนร่วมทริปของเรายังครบ {$travellers} คนเหมือนเดิม ฝากทุกคนช่วยทักทายต้อนรับเพื่อนใหม่ด้วยนะครับ 🌿",
+            "member_replaced:{$booking->id}:{$booking->user_id}",
+        );
+    }
+
+    /**
      * ทีมงานประจำรอบคนใหม่ถูก assign เข้ามา
      */
     public function staffAssigned(TripSchedule $schedule, User $staff): void

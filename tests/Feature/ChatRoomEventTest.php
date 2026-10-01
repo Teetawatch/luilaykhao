@@ -134,6 +134,58 @@ class ChatRoomEventTest extends TestCase
         );
     }
 
+    /**
+     * ทำให้การจองเดิมกลายเป็นของขวัญที่ชำระครบ พร้อมให้คนอื่นกดรับ
+     */
+    private function makeGift(Booking $booking): Booking
+    {
+        $booking->forceFill([
+            'paid_amount' => $booking->total_amount,
+            'is_gift' => true,
+            'gift_code' => Booking::generateGiftCode(),
+            'gift_from_name' => 'พี่หมี',
+        ])->save();
+
+        return $booking;
+    }
+
+    public function test_claimed_gift_welcomes_the_new_traveller_without_naming_the_old_one(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->bookOnto($schedule, User::factory()->create(['nickname' => 'เอ']));
+        $buyer = User::factory()->create(['nickname' => 'หมี']);
+        $gift = $this->makeGift($this->bookOnto($schedule, $buyer, 2));
+        $recipient = User::factory()->create(['nickname' => 'มายด์']);
+
+        $this->actingAs($recipient, 'sanctum')
+            ->postJson("/api/v1/gifts/{$gift->gift_code}/claim")
+            ->assertOk();
+
+        $bodies = $this->systemBodies($schedule);
+        $key = "member_replaced:{$gift->id}:{$recipient->id}";
+        $this->assertArrayHasKey($key, $bodies);
+        $this->assertStringContainsString('ยินดีต้อนรับ มายด์ และเพื่อนอีก 1 คน ที่มาร่วมทริปแทนครับ', $bodies[$key]);
+        $this->assertStringContainsString('ยังครบ 3 คนเหมือนเดิม', $bodies[$key]);
+        $this->assertStringNotContainsString('หมี', $bodies[$key]);
+    }
+
+    public function test_claimed_gift_that_was_never_announced_gets_a_plain_join_message(): void
+    {
+        $schedule = $this->makeSchedule();
+        // ผู้ซื้อจองเป็นคนแรกของรอบ — ห้องไม่เคยได้ยินชื่อ
+        $gift = $this->makeGift($this->bookOnto($schedule, User::factory()->create(['nickname' => 'หมี'])));
+        $this->bookOnto($schedule, User::factory()->create(['nickname' => 'เอ']));
+        $recipient = User::factory()->create(['nickname' => 'มายด์']);
+
+        $this->actingAs($recipient, 'sanctum')
+            ->postJson("/api/v1/gifts/{$gift->gift_code}/claim")
+            ->assertOk();
+
+        $bodies = $this->systemBodies($schedule);
+        $this->assertArrayNotHasKey("member_replaced:{$gift->id}:{$recipient->id}", $bodies);
+        $this->assertStringContainsString('มายด์ เข้าร่วมทริปแล้วครับ', $bodies["member_joined:{$gift->id}"]);
+    }
+
     public function test_nothing_is_announced_for_a_cancelled_round(): void
     {
         $schedule = $this->makeSchedule(['status' => 'cancelled']);
