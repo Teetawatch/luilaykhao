@@ -613,6 +613,42 @@ class TripActivityService
     }
 
     /**
+     * ปิดการ์ดของผู้ใช้คนเดียวบนใบจองนี้ — คนที่ส่งต่อที่นั่งให้คนอื่นไปแล้วไม่ควร
+     * เห็นการ์ดนับถอยหลังไปยังทริปที่ตัวเองไม่ได้ไป ส่วนคนอื่นในใบเดียวกันยังไปต่อ
+     */
+    public function endForUser(Booking $booking, int $userId, ?string $reason = null): void
+    {
+        $activities = LiveActivity::live()
+            ->where('booking_id', $booking->id)
+            ->where('user_id', $userId)
+            ->get();
+
+        foreach ($activities as $activity) {
+            $this->apns->end($activity, $this->endState($activity, $reason), dismissAfterMinutes: 0);
+        }
+
+        $hasAndroid = FcmToken::where('user_id', $userId)
+            ->where('is_active', true)
+            ->where('platform', 'android')
+            ->exists();
+
+        if (! $hasAndroid) {
+            return;
+        }
+
+        try {
+            $this->fcm->sendDataToUser($userId, [
+                'type' => 'trip_activity',
+                'event' => 'end',
+                'booking_ref' => (string) $booking->booking_ref,
+                'state' => json_encode([], JSON_UNESCAPED_UNICODE),
+            ], platform: 'android');
+        } catch (\Throwable $e) {
+            Log::warning('Trip activity android end failed', ['message' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * Android ไม่มี ActivityKit — ส่ง state ก้อนเดิมไปเป็น data message แล้วให้แอป
      * วาด ongoing notification เอง (state === null แปลว่า "เก็บการ์ดออก")
      */

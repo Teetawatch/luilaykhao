@@ -292,6 +292,11 @@ class Booking extends Model
         return $this->hasMany(BookingMember::class);
     }
 
+    public function seatHandovers(): HasMany
+    {
+        return $this->hasMany(SeatHandover::class);
+    }
+
     /**
      * user id ที่เข้าถึงการจองนี้ได้ผ่านแอป = เจ้าของ + สมาชิกที่รับคำเชิญแล้ว (active)
      *

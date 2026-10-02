@@ -267,6 +267,8 @@ const routes = [
   // ปลายทางของลิงก์ "เชิญเพื่อนร่วมทริป" ที่แอปแชร์ออกไป (url('/join/{token}'))
   // requiresAuth พาไปล็อกอินแล้วเด้งกลับมาที่ลิงก์เดิมเอง
   { path: '/join/:token', name: 'join-booking', component: () => import('../pages/JoinBookingPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  // ปลายทางของลิงก์ "ส่งต่อที่นั่ง" (url('/handover/{token}')) — ล็อกอินก่อน ระบบเด้งกลับมาที่ลิงก์เดิมผ่าน ?redirect
+  { path: '/handover/:token', name: 'handover-claim', component: () => import('../pages/HandoverClaimPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
 
   { path: '/profile', name: 'profile', component: () => import('../pages/ProfilePage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/support', name: 'support', component: () => import('../pages/SupportPage.vue'), meta: { requiresAuth: true, title: 'ศูนย์ช่วยเหลือ', robots: 'noindex, nofollow' } },

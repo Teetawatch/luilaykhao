@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Services\BookingDocumentService;
 use App\Services\ForceMajeureService;
 use App\Services\PickupStatusService;
+use App\Services\SeatHandoverService;
 use App\Services\TravelDocumentService;
 use App\Support\MediaDisk;
 use App\Support\PaymentGateway;
@@ -184,6 +185,12 @@ class BookingResource extends JsonResource
                 ? $this->force_majeure_until?->toDateString()
                 : null,
             'force_majeure' => ForceMajeureService::customerPayload($this->resource),
+            // ส่งต่อที่นั่ง — ผู้เรียกส่งต่อได้ไหม (เจ้าของ = ทุกที่นั่ง, เพื่อนร่วมใบ =
+            // ที่นั่งตัวเอง) หน้าจอใช้ตัดสินว่าจะโชว์ปุ่มหรือไม่ null = ไม่เกี่ยวกับผู้เรียก
+            'seat_handover' => $this->when(
+                $request->user() !== null && $this->relationLoaded('schedule') && $this->schedule,
+                fn () => app(SeatHandoverService::class)->summaryFor($this->resource, $request->user()),
+            ),
             'total_amount' => $this->total_amount,
             // ยอดที่ต้องโอน "ตอนนี้" ของแต่ละรูปแบบการชำระ คำนวณจากหลังบ้านที่เดียว
             // (เว็บ/แอปเคยคำนวณเองคนละสูตร ลูกค้าจึงโอนมาไม่เท่ากัน) ส่งเฉพาะรายการ

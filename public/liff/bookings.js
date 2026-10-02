@@ -1165,6 +1165,13 @@ function renderBookingManage(pane, booking) {
   if ((booking.share_token || booking.status === 'confirmed') && !awaitsNewRound(booking)) {
     actions.push(['แชร์ลิงก์ติดตามให้ที่บ้าน', () => shareTracking(booking), 'ครอบครัวดูตำแหน่งรถได้โดยไม่ต้องล็อกอิน']);
   }
+  if (booking.seat_handover?.available) {
+    const open = Number(booking.seat_handover.open_count || 0);
+    actions.push(['ไปไม่ได้? ส่งต่อที่นั่ง', () => showSeatHandover(booking),
+      open > 0
+        ? `มีลิงก์รอคนรับ ${open} ที่`
+        : (booking.seat_handover.deadline_label ? 'ส่งต่อได้ถึง ' + booking.seat_handover.deadline_label : 'ส่งลิงก์ให้คนอื่นไปแทน')]);
+  }
   if (booking.force_majeure?.can_request_refund && booking.viewer_is_owner !== false) {
     // รอบคนไม่ครบ — ยกเลิกทางนี้ได้เงินคืนเต็มจำนวน ไม่ใช่ตามนโยบายยกเลิกปกติ
     actions.push([refundButtonLabel(booking), () => openRefund(booking),
@@ -1540,6 +1547,291 @@ async function shareTracking(booking) {
 /* --------------------------- แผ่นเลื่อนกลาง --------------------------- */
 
 /** แผ่นเลื่อนขึ้นมาตรฐาน คืน { body, foot, busy, error, close } ให้ผู้เรียกใช้ต่อ */
+/* --------- ส่งต่อที่นั่ง --------- */
+
+/**
+ * คนที่ไปไม่ได้ส่งลิงก์ให้คนอื่นมารับที่นั่งไปแทน กติกาทั้งหมด (เส้นตาย ใครส่ง
+ * ที่นั่งไหนได้ โอนสิทธิ์ดูแลการจองได้ไหม) มาจาก GET /bookings/{ref}/handovers
+ * ชุดเดียวกับเว็บและแอป — ดู SeatHandoverService
+ *
+ * ลิงก์ที่แชร์ในไลน์ชี้เข้า LIFF (?handover=) คนรับจึงล็อกอินด้วยไลน์อัตโนมัติ
+ * ไม่ต้องสมัครอะไรเพิ่ม
+ */
+function handoverShareUrl(open) {
+  if (CFG.liffId && !CFG.liffId.includes('__PUT_YOUR_LIFF_ID') && open.token) {
+    return `https://liff.line.me/${CFG.liffId}?handover=${encodeURIComponent(open.token)}`;
+  }
+  return open.url;
+}
+
+function handoverTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('th-TH', {
+    timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  }) + ' น.';
+}
+
+async function shareHandover(booking, open) {
+  const url = handoverShareUrl(open);
+  const tripTitle = booking.schedule?.trip?.title || 'ทริป';
+  const text = `ฝากไปทริป "${tripTitle}" แทนหน่อยนะ 🙏\nกดลิงก์นี้ กรอกข้อมูลของตัวเอง แล้วที่นั่งเป็นของคุณเลย\n${url}`;
+  await shareToLine(text, url, 'ส่งลิงก์ให้เพื่อนแล้ว', 'คัดลอกลิงก์ส่งต่อที่นั่งแล้ว');
+}
+
+async function showSeatHandover(booking) {
+  const ref = booking.booking_ref;
+  loading('กำลังโหลด…');
+  let data;
+  try {
+    data = (await api('/bookings/' + encodeURIComponent(ref) + '/handovers')).data;
+  } catch (e) {
+    return errorScreen(e.message, () => showSeatHandover(booking));
+  }
+
+  const backToBooking = () => { detail.booking = null; showBookingDetail(ref, 'manage'); };
+  const node = el(`<div></div>`);
+  node.appendChild(appbar('ส่งต่อที่นั่ง', backToBooking));
+  const content = el(`<div class="content"></div>`);
+
+  content.appendChild(el(`<div class="card"><div class="body">
+    <p class="title">ไปไม่ได้? ส่งที่นั่งให้คนอื่นไปแทน</p>
+    <p class="muted">ส่งลิงก์ให้คนที่จะไปแทน เขากรอกข้อมูลของตัวเอง แล้วที่นั่งเป็นของเขาทันที ได้เข้าแชทกลุ่มและดูกำหนดการเอง</p>
+    ${data.deadline_label ? `<p><strong>ส่งต่อได้ถึง ${esc(data.deadline_label)}</strong></p>` : ''}
+    <p class="muted">ค่าที่นั่งตกลงกันเองระหว่างคุณกับคนรับ ทางเราไม่คืนเงินและไม่เก็บเพิ่ม</p>
+  </div></div>`));
+
+  if (!data.available) {
+    content.appendChild(el(`<div class="banner warn">${esc(data.blocked_reason || 'การจองนี้ส่งต่อที่นั่งไม่ได้แล้ว')}</div>`));
+  }
+
+  (data.seats || []).forEach((seat) => {
+    const open = seat.open_handover;
+    const meta = [
+      seat.seat_label ? 'ที่นั่ง ' + seat.seat_label : '',
+      seat.is_mine ? 'ที่นั่งของคุณ' : (seat.member_name ? 'บัญชี ' + seat.member_name : ''),
+    ].filter(Boolean).join(' · ');
+    const card = el(`<div class="card handover-seat"><div class="body">
+      <div class="pax-head">${esc(seat.name || 'ผู้เดินทาง')}${seat.nickname ? ' (' + esc(seat.nickname) + ')' : ''}
+        ${open ? '<span class="tag warn">รอคนรับ</span>' : ''}</div>
+      ${meta ? `<p class="muted">${esc(meta)}</p>` : ''}
+    </div></div>`);
+    const body = card.querySelector('.body');
+
+    if (open) {
+      if (open.transfers_ownership) body.appendChild(el(`<p class="muted">คนรับจะได้ดูแลการจองนี้แทนคุณด้วย</p>`));
+      body.appendChild(el(`<p class="muted">ลิงก์ใช้ได้คนเดียว · หมดอายุ ${esc(handoverTime(open.expires_at))}</p>`));
+      const share = el(`<button class="btn">ส่งลิงก์ใน LINE</button>`);
+      share.onclick = () => shareHandover(booking, open);
+      const cancel = el(`<button class="btn secondary">ยกเลิกลิงก์</button>`);
+      cancel.onclick = async () => {
+        const ok = await askConfirm('ยกเลิกลิงก์นี้?', 'ลิงก์ที่ส่งไปแล้วจะใช้รับที่นั่งไม่ได้อีก', 'ยกเลิกลิงก์', 'ไม่ใช่ตอนนี้');
+        if (!ok) return;
+        try {
+          await api('/bookings/' + encodeURIComponent(ref) + '/handovers/' + open.id, { method: 'DELETE' });
+          showSeatHandover(booking);
+        } catch (e) {
+          alert(e.message);
+        }
+      };
+      body.appendChild(share);
+      body.appendChild(cancel);
+    } else if (seat.can_hand_over) {
+      const start = el(`<button class="btn secondary">ส่งต่อที่นั่งนี้</button>`);
+      start.onclick = () => openHandoverDraft(booking, data, seat);
+      body.appendChild(start);
+    }
+    content.appendChild(card);
+  });
+
+  if ((data.history || []).length) {
+    const list = el(`<div class="card"><div class="body"><div class="pax-head">ประวัติการส่งต่อ</div></div></div>`);
+    data.history.forEach((h) => {
+      list.querySelector('.body').appendChild(el(`<p class="muted">${h.status === 'claimed'
+        ? `✓ ${esc(h.previous_name || '')} → ${esc(h.new_name || '')} · ${esc(handoverTime(h.claimed_at))}`
+        : `ลิงก์ของ ${esc(h.previous_name || '')} ${h.status === 'expired' ? 'หมดอายุ' : 'ถูกยกเลิก'}`}</p>`));
+    });
+    content.appendChild(list);
+  }
+
+  node.appendChild(content);
+  render(node);
+}
+
+function openHandoverDraft(booking, data, seat) {
+  const sheet = openSheet('ส่งต่อที่นั่งของ ' + (seat.name || 'ผู้เดินทาง'));
+  const ownershipDisabled = !data.can_transfer_ownership && data.open_ownership_passenger_id !== seat.passenger_id;
+
+  if (data.viewer_role === 'owner') {
+    const own = el(`<label class="pick">
+      <input type="checkbox" name="ownership" ${!ownershipDisabled && seat.is_owner_seat_guess ? 'checked' : ''} ${ownershipDisabled ? 'disabled' : ''}>
+      <div class="pick-body">
+        <div class="pick-name">นี่คือที่นั่งของฉันเอง</div>
+        <div class="pick-sub">${esc(ownershipDisabled && data.ownership_blocked_reason
+          ? data.ownership_blocked_reason
+          : 'คนรับจะได้ดูแลการจองนี้แทนคุณ และการจองจะออกจากบัญชีของคุณ')}</div>
+      </div>
+    </label>`);
+    sheet.body.appendChild(own);
+  }
+  sheet.body.appendChild(el(field('ฝากข้อความถึงคนรับ (ไม่บังคับ)',
+    `<textarea name="note" maxlength="300" rows="2" placeholder="เช่น ฝากไปแทนด้วยนะ ค่าที่นั่งโอนมาที่เราได้เลย"></textarea>`)));
+
+  const go = el(`<button class="btn">สร้างลิงก์และส่งต่อ</button>`);
+  go.onclick = async () => {
+    const ownership = !!sheet.body.querySelector('input[name="ownership"]')?.checked;
+    const note = sheet.body.querySelector('textarea[name="note"]').value.trim();
+    go.disabled = true;
+    go.textContent = 'กำลังสร้างลิงก์…';
+    try {
+      const created = (await api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/handovers', {
+        method: 'POST',
+        body: { passenger_id: seat.passenger_id, transfers_ownership: ownership, note: note || null },
+      })).data;
+      sheet.close();
+      await shareHandover(booking, created);
+      showSeatHandover(booking);
+    } catch (e) {
+      go.disabled = false;
+      go.textContent = 'สร้างลิงก์และส่งต่อ';
+      sheet.error(e.message);
+    }
+  };
+  sheet.foot.appendChild(go);
+}
+
+/**
+ * ฝั่งคนรับ — เปิดจากลิงก์ ?handover=TOKEN กรอกข้อมูลของตัวเองแล้วรับที่นั่ง
+ *
+ * ด่านทั้งหมดตรวจที่เซิร์ฟเวอร์ (ClaimSeatHandoverRequest: ชื่อไทยตามบัตร เลขบัตร
+ * ทริปผู้หญิงล้วน พาสปอร์ต) หน้านี้ขึ้นข้อความใต้ช่องตามที่เซิร์ฟเวอร์ตอบ จะได้ไม่
+ * ต้องลอกกติกามาไว้ในไฟล์นี้อีกชุด
+ */
+async function showHandoverClaim(token, errors = {}, values = null) {
+  let preview;
+  if (!values) loading('กำลังเปิดลิงก์…');
+  try {
+    preview = (await api('/seat-handovers/' + encodeURIComponent(token))).data;
+  } catch (e) {
+    return errorScreen(e.message, () => showTrips());
+  }
+
+  const trip = preview.trip || {};
+  const schedule = preview.schedule || {};
+  const v = values || { ...(preview.prefill || {}), nationality: (preview.prefill || {}).nationality || 'TH' };
+  const titles = trip.is_women_only ? ['นาง', 'นางสาว'] : ['นาย', 'นาง', 'นางสาว'];
+  if (!titles.includes(v.title)) v.title = '';
+  const isThai = (v.nationality || 'TH') === 'TH';
+
+  const node = el(`<div></div>`);
+  node.appendChild(appbar('รับที่นั่งต่อ', () => showTrips()));
+  const content = el(`<div class="content"></div>`);
+
+  content.appendChild(el(`<div class="card"><div class="body">
+    <p class="muted">${esc(preview.from_name || 'เพื่อนของคุณ')} ส่งที่นั่งให้คุณ</p>
+    <p class="title">${esc(trip.title || 'ทริป')}</p>
+    <div class="meta"><span>📅 ${esc(schedule.departure_label || '')}</span></div>
+    ${schedule.early_departure_label ? `<p class="muted">${esc(schedule.early_departure_label)}</p>` : ''}
+    ${preview.seat_label ? `<p>💺 ที่นั่ง ${esc(preview.seat_label)}</p>` : ''}
+    ${preview.pickup ? `<p>📍 ขึ้นรถที่ ${esc(preview.pickup.label || '')}${preview.pickup.time ? ' · ' + esc(preview.pickup.time) + ' น.' : ''}</p>` : ''}
+    ${preview.note ? `<p><em>“${esc(preview.note)}”</em></p>` : ''}
+    ${preview.transfers_ownership ? '<p class="muted">คุณจะได้ดูแลการจองนี้แทนคนเดิมด้วย</p>' : ''}
+    ${preview.pending_share_amount ? `<div class="banner warn">ที่นั่งนี้ยังมีส่วนแบ่งค่าทริปค้างจ่าย ${baht(preview.pending_share_amount)} รับแล้วจะเป็นส่วนของคุณ</div>` : ''}
+    <p class="muted">ค่าที่นั่งตกลงกันเองกับคนที่ส่งให้คุณ ทางเราไม่เก็บเงินเพิ่มจากการรับที่นั่ง</p>
+  </div></div>`));
+
+  if (!preview.claimable) {
+    content.appendChild(el(`<div class="banner warn">${esc(preview.blocked_reason || 'ใช้ลิงก์นี้ไม่ได้แล้ว')}</div>`));
+    if (preview.claimed_by_viewer && preview.booking_ref) {
+      const go = el(`<button class="btn">ไปที่การจองของฉัน</button>`);
+      go.onclick = () => showBookingDetail(preview.booking_ref);
+      content.appendChild(go);
+    }
+    node.appendChild(content);
+    return render(node);
+  }
+
+  const opt = (list, cur) => list.map((x) => `<option value="${esc(x)}" ${cur === x ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  const input = (name, type = 'text', extra = '') => `<input name="${name}" type="${type}" value="${esc(v[name] || '')}" ${extra}>`;
+  const err = (name) => errors[name] ? (Array.isArray(errors[name]) ? errors[name][0] : errors[name]) : '';
+
+  const form = el(`<form class="card handover-form" novalidate><div class="body">
+    <div class="pax-head">ข้อมูลของคุณ</div>
+    <p class="muted">ใช้ทำประกันการเดินทางและให้ทีมงานติดต่อ — กรอกตามบัตรประชาชน</p>
+    ${trip.is_international ? field('สัญชาติ (รหัสประเทศ 2 ตัว เช่น TH, US)', input('nationality', 'text', 'maxlength="2"'), err('nationality')) : ''}
+    ${field('คำนำหน้า', `<select name="title"><option value="">เลือก</option>${opt(titles, v.title)}</select>`, err('title'))}
+    ${field(isThai ? 'ชื่อ-นามสกุล (ภาษาไทยตามบัตร)' : 'ชื่อ-นามสกุล', input('name'), err('name'))}
+    ${field('ชื่อเล่น', input('nickname'), err('nickname'))}
+    ${isThai ? field('เลขบัตรประชาชน', input('id_card', 'text', 'inputmode="numeric" maxlength="17"'), err('id_card')) : ''}
+    ${trip.is_international ? field('ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)', input('name_en'), err('name_en')) : ''}
+    ${trip.is_international ? field('เลขที่พาสปอร์ต', input('passport_no'), err('passport_no')) : ''}
+    ${trip.is_international ? field('วันหมดอายุพาสปอร์ต', input('passport_expires_at', 'date'), err('passport_expires_at')) : ''}
+    ${field('วันเกิด', input('birth_date', 'date'), err('birth_date'))}
+    ${field('กรุ๊ปเลือด', `<select name="blood_group"><option value="">เลือก</option>${opt(['A', 'B', 'O', 'AB'], v.blood_group)}</select>`, err('blood_group'))}
+    ${field('เบอร์โทร', input('phone', 'tel'), err('phone'))}
+    ${field('อีเมล (ไม่บังคับ)', input('email', 'email'), err('email'))}
+    ${field('ผู้ติดต่อฉุกเฉิน (ชื่อ / ความสัมพันธ์)', input('emergency_contact'), err('emergency_contact'))}
+    ${field('เบอร์ผู้ติดต่อฉุกเฉิน', input('emergency_phone', 'tel'), err('emergency_phone'))}
+    ${field('อาหารฮาลาล', `<select name="halal_food"><option value="">เลือก</option>
+      <option value="0" ${v.halal_food === '0' || v.halal_food === false ? 'selected' : ''}>ไม่ต้องการ</option>
+      <option value="1" ${v.halal_food === '1' || v.halal_food === true ? 'selected' : ''}>ต้องการ</option></select>`, err('halal_food'))}
+    ${field('แพ้อาหาร/ยา (ไม่บังคับ)', input('allergies'), err('allergies'))}
+    ${field('โรคประจำตัว / ข้อมูลสุขภาพ (ไม่บังคับ)', `<textarea name="health_notes" rows="2">${esc(v.health_notes || '')}</textarea>`, err('health_notes'))}
+    <label class="pick"><input type="checkbox" name="accept_terms" ${v.accept_terms ? 'checked' : ''}>
+      <div class="pick-body"><div class="pick-name">ฉันอ่านและยอมรับเงื่อนไขการเดินทาง</div>
+      <div class="pick-sub"><a href="${esc(preview.terms?.url || '/terms')}" target="_blank" rel="noopener">อ่านเงื่อนไข</a></div></div>
+    </label>
+    ${err('accept_terms') ? `<em class="field-error">${esc(err('accept_terms'))}</em>` : ''}
+    ${err('terms_version') ? `<div class="banner error">${esc(err('terms_version'))}</div>` : ''}
+    ${errors.__message ? `<div class="banner error">${esc(errors.__message)}</div>` : ''}
+    <button class="btn" type="submit">รับที่นั่งนี้</button>
+  </div></form>`);
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const next = Object.fromEntries(fd.entries());
+    next.accept_terms = !!form.querySelector('input[name="accept_terms"]').checked;
+    if (!trip.is_international) next.nationality = 'TH';
+
+    if (next.halal_food === '') {
+      return showHandoverClaim(token, { halal_food: 'กรุณาระบุว่าทานอาหารฮาลาลหรือไม่' }, next);
+    }
+
+    const payload = {
+      ...next,
+      nationality: (next.nationality || 'TH').toUpperCase(),
+      halal_food: next.halal_food === '1',
+      accept_terms: next.accept_terms,
+      terms_version: preview.terms?.version,
+      channel: 'liff',
+    };
+    if (!trip.is_international) {
+      delete payload.name_en;
+      delete payload.passport_no;
+      delete payload.passport_expires_at;
+    }
+    if (payload.nationality !== 'TH') delete payload.id_card;
+
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'กำลังรับที่นั่ง…';
+    try {
+      const res = (await api('/seat-handovers/' + encodeURIComponent(token) + '/claim', { method: 'POST', body: payload })).data;
+      alert('รับที่นั่งเรียบร้อย ยินดีต้อนรับสู่ทริปครับ');
+      detail = { booking: null, tab: 'trip' };
+      showBookingDetail(res.booking_ref);
+    } catch (ex) {
+      showHandoverClaim(token, ex.errors || { __message: ex.message }, next);
+    }
+  };
+
+  content.appendChild(form);
+  node.appendChild(content);
+  render(node);
+}
+
 function openSheet(title) {
   const node = el(`<div class="sheet-overlay"><div class="sheet">
     <div class="sheet-head"><strong>${esc(title)}</strong><button class="sheet-close" aria-label="ปิด">✕</button></div>

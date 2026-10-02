@@ -38,6 +38,8 @@ async function api(path, { method = 'GET', body, auth = true } = {}) {
     const msg = (json && (json.message || firstError(json))) || 'เกิดข้อผิดพลาด (' + res.status + ')';
     const err = new Error(msg);
     err.status = res.status;
+    // ข้อผิดพลาดรายช่อง (422) — ฟอร์มที่ตรวจที่เซิร์ฟเวอร์ใช้ขึ้นข้อความใต้ช่องนั้นได้
+    err.errors = (json && json.errors) || null;
     throw err;
   }
   return json;
@@ -231,7 +233,10 @@ function routeFromEntry() {
   const bookingRef = params.get('booking');
   const tripSlug = params.get('trip');
   const page = params.get('page');
+  const handover = params.get('handover');
 
+  // ลิงก์ส่งต่อที่นั่งที่เพื่อนแชร์มาในไลน์ — มาก่อนทุกอย่าง เพราะคนที่กดมาคือคนรับ
+  if (handover) return showHandoverClaim(handover);
   if (bookingRef) return showBookingDetail(bookingRef);
   if (page === 'bookings') return showMyBookings();
   if (page === 'referral') return showReferral();

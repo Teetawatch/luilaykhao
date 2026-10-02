@@ -312,6 +312,18 @@
               </button>
 
               <button
+                v-if="b.seat_handover?.available"
+                @click="handoverTarget = b"
+                class="flex-1 sm:flex-none bg-white text-[#006565] border border-[#BCDFDF] hover:bg-[#F0FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
+                <span class="material-symbols-rounded text-[18px]">swap_horiz</span>
+                ส่งต่อที่นั่ง
+                <span v-if="b.seat_handover.open_count > 0"
+                  class="ml-0.5 text-[11px] font-black bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] rounded-full px-1.5">
+                  รอรับ {{ b.seat_handover.open_count }}
+                </span>
+              </button>
+
+              <button
                 v-if="b.status === 'confirmed' && !awaitsNewRound(b)"
                 @click="addToCalendar(b)"
                 class="flex-1 sm:flex-none bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
@@ -518,6 +530,12 @@
       @refund="switchToRefund"
       @done="onRescheduled" />
 
+    <SeatHandoverModal
+      v-if="handoverTarget"
+      :booking="handoverTarget"
+      @close="handoverTarget = null"
+      @changed="load(currentPage)" />
+
     <PostponementRefundModal
       v-if="refundTarget"
       :booking="refundTarget"
@@ -541,6 +559,7 @@ import SplitPaymentPanel from '../components/SplitPaymentPanel.vue';
 import InstallmentPlanPanel from '../components/InstallmentPlanPanel.vue';
 import RescheduleModal from '../components/RescheduleModal.vue';
 import PostponementRefundModal from '../components/PostponementRefundModal.vue';
+import SeatHandoverModal from '../components/SeatHandoverModal.vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const swal = useSwal();
@@ -932,6 +951,9 @@ async function handleCancel(b) {
 
 // ── เปลี่ยนวันเดินทาง / เลือกรอบใหม่ ─────────────────────────────────────
 const rescheduleTarget = ref(null);
+
+// ส่งต่อที่นั่ง — ปุ่มขึ้นเมื่อเซิร์ฟเวอร์บอกว่าผู้เรียกส่งต่อได้ (booking.seat_handover.available)
+const handoverTarget = ref(null);
 
 function openReschedule(b) {
   rescheduleTarget.value = b;

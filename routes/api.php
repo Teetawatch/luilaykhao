@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
 use App\Http\Controllers\Api\V1\AdminPriceSheetController;
 use App\Http\Controllers\Api\V1\AdminRentalController;
+use App\Http\Controllers\Api\V1\AdminSeatHandoverController;
 use App\Http\Controllers\Api\V1\AdminSettingsController;
 use App\Http\Controllers\Api\V1\AdminSosController;
 use App\Http\Controllers\Api\V1\AdminStaffReviewController;
@@ -69,6 +70,7 @@ use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleItineraryController;
 use App\Http\Controllers\Api\V1\ScheduleRallyController;
 use App\Http\Controllers\Api\V1\SeatController;
+use App\Http\Controllers\Api\V1\SeatHandoverController;
 use App\Http\Controllers\Api\V1\ShoppingListController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SplitPaymentController;
@@ -318,6 +320,13 @@ Route::prefix('v1')->group(function () {
         Route::delete('bookings/{ref}/members/{memberId}', [BookingMemberController::class, 'destroy']);
         Route::get('booking-invites/{token}', [BookingMemberController::class, 'showInvite']);
         Route::post('booking-invites/{token}/accept', [BookingMemberController::class, 'acceptInvite']);
+
+        // ส่งต่อที่นั่ง — คนที่ไปไม่ได้ออกลิงก์ให้คนอื่นมารับที่นั่งแทน (SeatHandoverService)
+        Route::get('bookings/{ref}/handovers', [SeatHandoverController::class, 'index']);
+        Route::post('bookings/{ref}/handovers', [SeatHandoverController::class, 'store'])->middleware('throttle:20,1');
+        Route::delete('bookings/{ref}/handovers/{handoverId}', [SeatHandoverController::class, 'destroy']);
+        Route::get('seat-handovers/{token}', [SeatHandoverController::class, 'show'])->middleware('throttle:30,1');
+        Route::post('seat-handovers/{token}/claim', [SeatHandoverController::class, 'claim'])->middleware('throttle:10,1');
 
         // Trip posts / ฟีดรูปหลังทริป (เขียน — โพสต์ได้เฉพาะคนที่เคยเดินทาง)
         Route::post('trips/{slug}/posts', [TripPostController::class, 'store'])->middleware('throttle:10,60');
@@ -745,6 +754,9 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/refund-preview', [AdminController::class, 'refundPreview']);
         Route::post('bookings/{ref}/refund', [AdminController::class, 'processRefund']);
         Route::post('bookings/{ref}/transfer', [AdminController::class, 'transferBooking']);
+        Route::get('bookings/{ref}/handovers', [AdminSeatHandoverController::class, 'index']);
+        Route::post('bookings/{ref}/handovers', [AdminSeatHandoverController::class, 'store']);
+        Route::delete('bookings/{ref}/handovers/{handoverId}', [AdminSeatHandoverController::class, 'destroy']);
         // ส่ง SMS ลิงก์เปิดใช้บัญชีให้ลูกค้าที่ทีมงานเปิดใบจองแทนให้
         Route::post('bookings/{ref}/claim-link', [AdminController::class, 'sendBookingClaimLink']);
         // ส่ง "ใบเดินทาง" ให้ลูกค้าทันที (ปกติ SendTripBriefsJob ส่งเองตอน D-2)

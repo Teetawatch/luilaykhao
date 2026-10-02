@@ -164,7 +164,8 @@ Route::get('/.well-known/apple-app-site-association', function () {
                 'appID' => $appId,
                 // /reset-password: ลิงก์ตั้งรหัสผ่านใหม่ที่เมลไปหาลูกค้า เปิดใน
                 // แอปได้เลยถ้ามีแอปติดอยู่ (ถ้าไม่มี ก็ตกไปที่หน้าเดียวกันใน SPA)
-                'paths' => ['/gift/*', '/reset-password*'],
+                // /handover/*: ลิงก์ส่งต่อที่นั่ง — คนรับมีแอปก็รับในแอปเลย
+                'paths' => ['/gift/*', '/reset-password*', '/handover/*'],
             ]],
         ],
     ]);

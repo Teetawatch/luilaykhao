@@ -104,6 +104,42 @@ class ChatRoomEventService
     }
 
     /**
+     * มีคนรับที่นั่งต่อจากเพื่อนในใบจองเดิม (ส่งต่อที่นั่ง) — หนึ่งที่นั่ง หนึ่งคน
+     *
+     * เหตุผลเดียวกับ memberReplaced: พูดถึงแค่คนที่เข้ามา ไม่เอ่ยชื่อคนเดิม ส่วน
+     * ห้องที่ไม่เคยได้ยินชื่อใบจองนี้ (เป็นคนแรกของรอบตอนจอง) ตัดคำว่า "แทน" ออก
+     */
+    public function seatHandedOver(Booking $booking, User $newcomer, int $handoverId): void
+    {
+        $schedule = $booking->schedule;
+        if (! $schedule) {
+            return;
+        }
+
+        $announced = ChatMessage::where('schedule_id', $schedule->id)
+            ->where('system_key', "member_joined:{$booking->id}")
+            ->exists();
+
+        $travellers = BookingPassenger::whereHas(
+            'booking',
+            fn ($q) => $q->where('schedule_id', $schedule->id)
+                ->whereIn('status', ['pending', 'confirmed', 'completed']),
+        )->count();
+
+        $name = $this->displayName($newcomer);
+
+        $this->post(
+            $schedule,
+            $announced
+                ? "👋 ยินดีต้อนรับ {$name} ที่มาร่วมทริปแทนครับ\n"
+                    ."เพื่อนร่วมทริปของเรายังครบ {$travellers} คนเหมือนเดิม ฝากทุกคนช่วยทักทายต้อนรับเพื่อนใหม่ด้วยนะครับ 🌿"
+                : "👋 ยินดีต้อนรับ {$name} เข้าร่วมทริปครับ\n"
+                    ."ตอนนี้เรามีเพื่อนร่วมทริป {$travellers} คนแล้ว ทักทายกันได้เลยครับ 🌿",
+            "seat_handover:{$handoverId}",
+        );
+    }
+
+    /**
      * ทีมงานประจำรอบคนใหม่ถูก assign เข้ามา
      */
     public function staffAssigned(TripSchedule $schedule, User $staff): void

@@ -71,5 +71,9 @@ return [
         'schedule_announcement',
         // ของขวัญ
         'gift_received',
+        // ส่งต่อที่นั่ง — คนรับ/คนส่ง/คนที่ถูกถอดออก ทุกคนต้องรู้ว่าที่นั่งเปลี่ยนมือแล้ว
+        'seat_handover_received',
+        'seat_handover_claimed',
+        'seat_handover_removed',
     ],
 ];

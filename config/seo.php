@@ -55,6 +55,7 @@ return [
         '/recap/',
         '/group/',
         '/join/',
+        '/handover/',
     ],
 
     'pages' => [

@@ -810,6 +810,10 @@
             <div v-else class="empty-inline">ยังไม่มีข้อมูลผู้โดยสาร</div>
           </section>
 
+          <AdminSeatHandoverSection
+            v-if="detailBooking.passengers?.length"
+            :booking-ref="detailBooking.booking_ref" />
+
           <section class="detail-section two-column">
             <div>
               <div class="section-heading">
@@ -2234,6 +2238,7 @@ import { useAdminStore } from '../../stores/admin';
 import { useToast } from '../../lib/toast';
 import api from '../../lib/axios';
 import CustomPickupModal from '../../components/CustomPickupModal.vue';
+import AdminSeatHandoverSection from '../../components/AdminSeatHandoverSection.vue';
 
 const admin = useAdminStore();
 const toast = useToast();
