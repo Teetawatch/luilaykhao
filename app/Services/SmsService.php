@@ -11,6 +11,9 @@ use Illuminate\Support\Str;
 
 class SmsService
 {
+    /** sms_type ของ SMS "รอบนี้คนไม่ครบ ขอคืนเงินได้" ที่ทีมงานกดส่งเอง */
+    public const UNDERFILLED_NOTICE = 'trip_underfilled_notice';
+
     public function __construct(
         private ThaiBulkSmsClient $client,
     ) {}
@@ -178,6 +181,29 @@ class SmsService
                     ForceMajeureService::chooseUrl($booking),
                 ),
         );
+    }
+
+    /**
+     * แจ้งลูกค้าของรอบที่คนยังไม่ครบ ว่าขอเงินคืนเต็มจำนวนได้ทางไลน์ — ทีมงานกดส่งเอง
+     * จากหน้ารอบเสี่ยงไม่ออก ข้อความทั้งก้อนมาจากหน้าแอดมิน (แก้ได้ก่อนส่ง)
+     *
+     * ผูกกับรอบ: ส่งให้ใบจองเดิมในรอบเดิมได้ครั้งเดียว กดซ้ำไม่เปลืองเครดิตซ้ำ
+     */
+    public function sendUnderfilledNotice(Booking $booking, string $message): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: self::UNDERFILLED_NOTICE,
+            dedupeKey: self::underfilledNoticeKey($booking->schedule_id),
+            message: trim($message),
+        );
+    }
+
+    public static function underfilledNoticeKey(int $scheduleId): string
+    {
+        return 's'.$scheduleId;
     }
 
     public function sendInstallmentReminder(InstallmentPayment $installment, string $reminderType): ?SmsLog
@@ -482,7 +508,7 @@ class SmsService
         }
     }
 
-    private function isConfigured(): bool
+    public function isConfigured(): bool
     {
         $config = config('services.thaibulksms');
 
@@ -517,10 +543,11 @@ class SmsService
             'trip_postponed_reminder',
             'trip_resumed',
             'trip_refund_requested',
+            self::UNDERFILLED_NOTICE,
         ];
     }
 
-    private function recipientFor(Booking $booking): ?string
+    public function recipientFor(Booking $booking): ?string
     {
         $firstPassenger = $booking->passengers->first();
         $phone = $firstPassenger ? $firstPassenger->phone : $booking->user?->phone;

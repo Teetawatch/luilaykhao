@@ -139,6 +139,15 @@
               <span class="material-symbols-rounded">campaign</span>
               ชวนช่วยกันเปิดรอบ
             </button>
+            <button
+              class="btn-secondary"
+              :disabled="busyId === row.id || row.bookings_count === 0"
+              title="SMS แจ้งผู้ที่จ่ายเงินแล้วว่ารอบนี้คนยังไม่ครบ และขอเงินคืนเต็มจำนวนได้ทางไลน์"
+              @click="openSms(row)"
+            >
+              <span class="material-symbols-rounded">sms</span>
+              SMS แจ้งคนไม่ครบ
+            </button>
             <button class="btn-secondary" :disabled="busyId === row.id" @click="openFlash(row)">
               <span class="material-symbols-rounded">bolt</span>
               {{ row.flash_sale_active ? 'แก้ราคาลดโค้งท้าย' : 'ลดราคาโค้งท้าย' }}
@@ -276,6 +285,73 @@
         </div>
       </div>
     </div>
+
+    <!-- ── Modal: SMS แจ้งคนไม่ครบ ────────────────────────── -->
+    <div v-if="smsModal.open" class="modal-overlay" @click.self="smsModal.open = false">
+      <div class="modal-card modal-sm">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">
+              <span class="material-symbols-rounded" style="vertical-align:-4px">sms</span>
+              SMS แจ้งผู้เดินทางว่าคนไม่ครบ
+            </h2>
+            <p class="modal-subtitle">{{ smsModal.row?.trip_title }} · {{ smsModal.row?.departure_label }}</p>
+          </div>
+          <button class="modal-close" @click="smsModal.open = false">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div v-if="smsModal.loading" class="loading-state"><div class="spinner"></div></div>
+
+          <template v-else-if="smsModal.data">
+            <div class="form-group">
+              <label>ข้อความ</label>
+              <textarea v-model="smsForm.message" rows="5" :maxlength="SMS_MAX"></textarea>
+              <span class="sms-meter">
+                {{ smsForm.message.length }}/{{ SMS_MAX }} ตัวอักษร ·
+                ประมาณ {{ smsCredits }} เครดิตต่อข้อความ
+              </span>
+            </div>
+
+            <p v-if="!smsModal.data.sms_enabled" class="sms-warn">
+              <span class="material-symbols-rounded">warning</span>
+              ระบบ SMS ยังไม่ได้เปิดใช้ (ThaiBulkSMS) — ข้อความจะค้างอยู่ในคิวจนกว่าจะเปิด
+            </p>
+
+            <p class="recipient-head">
+              ผู้รับ {{ smsModal.data.recipients.length }} ใบจองที่ชำระเงินแล้ว
+              <span v-if="smsModal.data.counts.already"> · ส่งไปแล้ว {{ smsModal.data.counts.already }}</span>
+              <span v-if="smsModal.data.counts.no_phone"> · ไม่มีเบอร์ {{ smsModal.data.counts.no_phone }}</span>
+            </p>
+            <ul class="recipient-list">
+              <li v-for="r in smsModal.data.recipients" :key="r.booking_id">
+                <div>
+                  <strong>{{ r.name }}</strong>
+                  <span>{{ r.booking_ref }} · {{ r.phone || 'ไม่มีเบอร์โทร' }}</span>
+                </div>
+                <span class="sms-status" :class="r.status">{{ smsStatusLabel(r.status) }}</span>
+              </li>
+            </ul>
+
+            <p class="modal-hint">
+              <span class="material-symbols-rounded">info</span>
+              ส่งได้ครั้งเดียวต่อใบจองต่อรอบ กดอีกครั้งจะส่งเฉพาะใบที่ยังไม่ได้รับ
+              (เช่น ใบที่เพิ่งจ่ายเงินหรือเพิ่งใส่เบอร์โทร)
+            </p>
+          </template>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="smsModal.open = false">ยกเลิก</button>
+          <button class="btn-primary" :disabled="!canSendSms || submitting" @click="submitSms">
+            <span class="material-symbols-rounded">{{ submitting ? 'progress_activity' : 'send' }}</span>
+            {{ submitting ? 'กำลังส่ง...' : `ส่ง SMS ${smsModal.data?.counts.ready || 0} ราย` }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -305,6 +381,11 @@ const flashModal = reactive({ open: false, row: null });
 const flashForm = reactive({ price: null, ends_at: '' });
 const flexiModal = reactive({ open: false, row: null });
 const flexiForm = reactive({ surcharge_per_person: null, respond_by: '', reason: '' });
+const smsModal = reactive({ open: false, loading: false, row: null, data: null });
+const smsForm = reactive({ message: '' });
+
+/** ตรงกับ UNDERFILLED_SMS_MAX ฝั่งเซิร์ฟเวอร์ — 5 ท่อน SMS ภาษาไทย */
+const SMS_MAX = 335;
 
 /** ค่าต่ำสุดของ input datetime-local — เวลาเครื่องผู้ใช้ ไม่ใช่ UTC */
 const minDateTime = computed(() => toLocalInput(new Date(Date.now() + 5 * 60 * 1000)));
@@ -318,6 +399,17 @@ const flashDiscount = computed(() => {
 const canSubmitFlash = computed(() => (flashForm.price ?? -1) >= 0 && !!flashForm.ends_at);
 const canSubmitFlexi = computed(
   () => (flexiForm.surcharge_per_person || 0) > 0 && !!flexiForm.respond_by,
+);
+
+/** SMS ภาษาไทยเป็น UCS-2: ท่อนเดียวได้ 70 ตัว ยาวกว่านั้นตัดท่อนละ 67 */
+const smsCredits = computed(() => {
+  const len = smsForm.message.length;
+  if (len <= 70) return 1;
+  return Math.ceil(len / 67);
+});
+
+const canSendSms = computed(
+  () => !smsModal.loading && (smsModal.data?.counts.ready || 0) > 0 && smsForm.message.trim().length > 0,
 );
 
 function toLocalInput(date) {
@@ -343,6 +435,13 @@ function badges(row) {
     out.push({
       icon: 'campaign',
       text: `ชวนช่วยกันเปิดรอบแล้ว ${relativeTime(row.rally_nudged_at)}`,
+      tone: 'muted',
+    });
+  }
+  if (row.underfilled_sms_count) {
+    out.push({
+      icon: 'sms',
+      text: `ส่ง SMS แจ้งคนไม่ครบแล้ว ${row.underfilled_sms_count} ราย · ${relativeTime(row.underfilled_sms_at)}`,
       tone: 'muted',
     });
   }
@@ -391,6 +490,53 @@ async function sendNudge(row) {
     toast.error(e.response?.data?.message || 'ส่งคำชวนไม่สำเร็จ');
   } finally {
     busyId.value = null;
+  }
+}
+
+function smsStatusLabel(status) {
+  return {
+    ready: 'จะส่ง',
+    sent: 'ส่งแล้ว',
+    pending: 'อยู่ในคิว',
+    failed: 'ส่งไม่สำเร็จ · ระบบลองใหม่',
+    no_phone: 'ข้าม',
+  }[status] || status;
+}
+
+async function openSms(row) {
+  smsModal.row = row;
+  smsModal.data = null;
+  smsModal.loading = true;
+  smsModal.open = true;
+  smsForm.message = '';
+  try {
+    const res = await api.get(`/admin/schedules/${row.id}/underfilled-sms`);
+    smsModal.data = res.data.data;
+    smsForm.message = smsModal.data.message || '';
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'โหลดรายชื่อผู้รับไม่สำเร็จ');
+    smsModal.open = false;
+  } finally {
+    smsModal.loading = false;
+  }
+}
+
+async function submitSms() {
+  const count = smsModal.data?.counts.ready || 0;
+  if (!window.confirm(`ส่ง SMS ถึงผู้เดินทาง ${count} ราย ใช่ไหม?`)) return;
+
+  submitting.value = true;
+  try {
+    const res = await api.post(`/admin/schedules/${smsModal.row.id}/underfilled-sms`, {
+      message: smsForm.message.trim(),
+    });
+    toast.success(res.data.message || 'ส่ง SMS แล้ว');
+    smsModal.open = false;
+    await load();
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ส่ง SMS ไม่สำเร็จ');
+  } finally {
+    submitting.value = false;
   }
 }
 
@@ -638,6 +784,32 @@ onMounted(load);
   font-size: 12.5px; color: #6b7280; line-height: 1.6;
 }
 .modal-hint .material-symbols-rounded { font-size: 17px !important; color: #9ca3af; flex-shrink: 0; }
+
+.sms-meter { display: block; margin-top: 6px; font-size: 11.5px; color: #9ca3af; }
+.sms-warn {
+  display: flex; gap: 7px; margin: 12px 0 0; padding: 9px 12px;
+  background: #fffbeb; border-radius: 8px; font-size: 12.5px; color: #b45309;
+}
+.sms-warn .material-symbols-rounded { font-size: 17px !important; flex-shrink: 0; }
+.recipient-head { margin: 16px 0 8px; font-size: 12.5px; font-weight: 600; color: #4b5563; }
+.recipient-list {
+  list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto;
+  border: 1px solid #e5e7eb; border-radius: 9px;
+}
+.recipient-list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 12px; border-bottom: 1px solid #f3f4f6;
+}
+.recipient-list li:last-child { border-bottom: 0; }
+.recipient-list strong { display: block; font-size: 13px; color: #111827; }
+.recipient-list span { font-size: 11.5px; color: #9ca3af; }
+.sms-status {
+  flex-shrink: 0; padding: 2px 9px; border-radius: 999px;
+  font-size: 11px !important; font-weight: 700; background: #f3f4f6; color: #6b7280 !important;
+}
+.sms-status.ready { background: #eff6ff; color: #1d4ed8 !important; }
+.sms-status.sent { background: #ecfdf5; color: #047857 !important; }
+.sms-status.failed { background: #fef2f2; color: #b91c1c !important; }
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
 .form-group.full-width { grid-column: 1 / -1; }

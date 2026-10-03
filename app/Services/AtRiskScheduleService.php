@@ -2,13 +2,17 @@
 
 namespace App\Services;
 
+use App\Jobs\SendUnderfilledTripWarningsJob;
 use App\Models\Booking;
 use App\Models\FlexiDepartureOffer;
 use App\Models\SmartNotification;
+use App\Models\SmsLog;
 use App\Models\TripSchedule;
 use App\Support\SiteSettings;
+use App\Support\ThaiDate;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * "เรดาร์รอบเสี่ยงไม่ออก" — รวมรอบที่ใกล้วันเดินทางแต่ยังจองไม่ถึงขั้นต่ำที่รถออก
@@ -39,6 +43,10 @@ class AtRiskScheduleService
 
     /** เว้นระยะก่อนกดชวนซ้ำได้อีกครั้ง — กันรบกวนลูกค้ากลุ่มเดิมถี่เกินไป */
     public const NUDGE_COOLDOWN_HOURS = 24;
+
+    public function __construct(
+        private SmsService $sms,
+    ) {}
 
     public function minSeats(): int
     {
@@ -146,6 +154,155 @@ class AtRiskScheduleService
         return ['notified' => $notified, 'skipped_reason' => null];
     }
 
+    /**
+     * ข้อความตั้งต้นของ SMS "รอบนี้คนไม่ครบ ขอเงินคืนได้" — ทีมงานแก้ได้ก่อนกดส่ง
+     *
+     * พูดถึงอีเมลเฉพาะเมื่อเลย D-7 มาแล้ว (SendUnderfilledTripWarningsJob ยิงไปแล้วจริง)
+     * ก่อนหน้านั้นลูกค้ายังไม่ได้อีเมลอะไร ห้ามอ้างถึง
+     */
+    public function underfilledSmsTemplate(TripSchedule $schedule): string
+    {
+        $schedule->loadMissing('trip');
+        $daysBefore = SendUnderfilledTripWarningsJob::DAYS_BEFORE;
+
+        return sprintf(
+            'รอบเดินทาง %s %s มีผู้เดินทางเพียง %d ท่านครับ ขั้นต่ำรถออก %d ท่าน%s ทั้งนี้สามารถแจ้งเลขบัญชีเพื่อรับเงินคืนเต็มจำนวนได้เลยที่ไลน์ %s ครับ',
+            Str::limit(trim((string) $schedule->trip?->title), 45, ''),
+            ThaiDate::short($schedule->departure_date),
+            (int) $schedule->booked_seats,
+            $this->minSeats(),
+            $this->daysLeft($schedule) <= $daysBefore
+                ? " เราได้ส่งอีเมลแจ้งไปแล้วเมื่อ {$daysBefore} วันก่อนเดินทาง"
+                : '',
+            config('app.support_line_id'),
+        );
+    }
+
+    /**
+     * ใครจะได้ SMS บ้าง — ใบจองที่จ่ายเงินมาแล้ว (ข้อความพูดเรื่องคืนเงิน
+     * ใบที่ยังไม่จ่ายสักบาทไม่มีอะไรให้คืน) พร้อมสถานะของแต่ละใบ
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function underfilledSmsRecipients(TripSchedule $schedule): Collection
+    {
+        $bookings = Booking::query()
+            ->where('schedule_id', $schedule->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->where('paid_amount', '>', 0)
+            ->with(['user', 'passengers'])
+            ->orderBy('id')
+            ->get();
+
+        $logs = SmsLog::query()
+            ->whereIn('booking_id', $bookings->pluck('id'))
+            ->where('sms_type', SmsService::UNDERFILLED_NOTICE)
+            ->where('dedupe_key', SmsService::underfilledNoticeKey($schedule->id))
+            ->where('status', '!=', 'skipped')
+            ->get()
+            ->keyBy('booking_id');
+
+        return $bookings->map(function (Booking $booking) use ($logs) {
+            $phone = $this->sms->recipientFor($booking);
+            $log = $logs->get($booking->id);
+
+            return [
+                'booking_id' => $booking->id,
+                'booking_ref' => $booking->booking_ref,
+                'name' => $booking->passengers->first()?->name ?? $booking->user?->name ?? '-',
+                'phone' => $phone ? $this->displayPhone($phone) : null,
+                // ready = จะส่งรอบนี้ · sent/pending/failed = เคยส่งไปแล้ว (failed ระบบลองซ้ำเอง)
+                'status' => $log?->status ?? ($phone ? 'ready' : 'no_phone'),
+                'sent_at' => $log?->sent_at?->toISOString(),
+            ];
+        })->values();
+    }
+
+    /**
+     * ส่ง SMS แจ้งลูกค้าทุกใบของรอบที่ยังไม่เคยได้รับ
+     *
+     * @return array{sent: int, queued: int, failed: int, no_phone: int, already: int}
+     */
+    public function sendUnderfilledSms(TripSchedule $schedule, string $message): array
+    {
+        if ($schedule->status === 'cancelled') {
+            throw new \Exception('รอบนี้ถูกยกเลิกไปแล้ว');
+        }
+
+        if ($schedule->is_charter) {
+            throw new \Exception('รอบเหมาคันออกเดินทางแน่นอนอยู่แล้ว ไม่ต้องแจ้งเรื่องคนไม่ครบ');
+        }
+
+        if ((int) $schedule->booked_seats >= $this->minSeats()) {
+            throw new \Exception('รอบนี้ครบจำนวนออกเดินทางแล้ว');
+        }
+
+        $recipients = $this->underfilledSmsRecipients($schedule);
+
+        if ($recipients->isEmpty()) {
+            throw new \Exception('รอบนี้ยังไม่มีใบจองที่ชำระเงินแล้ว จึงไม่มีใครให้แจ้ง');
+        }
+
+        $ready = $recipients->where('status', 'ready');
+
+        if ($ready->isEmpty()) {
+            throw new \Exception('ส่ง SMS ถึงทุกคนที่มีเบอร์โทรในรอบนี้ไปแล้ว');
+        }
+
+        // บันทึก skipped ของครั้งก่อน (ตอนนั้นยังไม่มีเบอร์ / ปิดชนิดนี้ไว้) จะทำให้
+        // firstOrCreate คืนแถวเก่าแทนการส่งจริง — ล้างทิ้งก่อน
+        SmsLog::query()
+            ->whereIn('booking_id', $ready->pluck('booking_id'))
+            ->where('sms_type', SmsService::UNDERFILLED_NOTICE)
+            ->where('dedupe_key', SmsService::underfilledNoticeKey($schedule->id))
+            ->where('status', 'skipped')
+            ->delete();
+
+        $result = [
+            'sent' => 0,
+            'queued' => 0,
+            'failed' => 0,
+            'no_phone' => $recipients->where('status', 'no_phone')->count(),
+            'already' => $recipients->whereNotIn('status', ['ready', 'no_phone'])->count(),
+        ];
+
+        $bookings = Booking::query()
+            ->whereIn('id', $ready->pluck('booking_id'))
+            ->with(['user', 'passengers', 'schedule.trip'])
+            ->get();
+
+        foreach ($bookings as $booking) {
+            $log = $this->sms->sendUnderfilledNotice($booking, $message);
+
+            match ($log?->status) {
+                'sent' => $result['sent']++,
+                'pending' => $result['queued']++,
+                default => $result['failed']++,
+            };
+        }
+
+        return $result;
+    }
+
+    /** 66812345678 -> 081-234-5678 อ่านง่ายกว่าสำหรับทีมงาน */
+    private function displayPhone(string $phone): string
+    {
+        if (str_starts_with($phone, '66') && strlen($phone) === 11) {
+            $local = '0'.substr($phone, 2);
+
+            return substr($local, 0, 3).'-'.substr($local, 3, 3).'-'.substr($local, 6);
+        }
+
+        return $phone;
+    }
+
+    private function daysLeft(TripSchedule $schedule): int
+    {
+        $today = Carbon::now('Asia/Bangkok')->startOfDay();
+
+        return (int) $today->diffInDays($schedule->departure_date->copy()->startOfDay(), false);
+    }
+
     /** เหลืออีกกี่ชั่วโมงจึงกดชวนซ้ำได้ (0 = กดได้เลย) */
     public function nudgeCooldownRemaining(TripSchedule $schedule): int
     {
@@ -184,6 +341,15 @@ class AtRiskScheduleService
                 ->keyBy('schedule_id'),
 
             'merge' => $this->mergeCandidates($schedules),
+
+            'underfilled_sms' => SmsLog::query()
+                ->where('sms_type', SmsService::UNDERFILLED_NOTICE)
+                ->whereIn('dedupe_key', $ids->map(fn ($id) => SmsService::underfilledNoticeKey($id)))
+                ->whereIn('status', ['sent', 'pending'])
+                ->selectRaw('dedupe_key, COUNT(*) as sms_count, MAX(created_at) as last_at')
+                ->groupBy('dedupe_key')
+                ->get()
+                ->keyBy('dedupe_key'),
         ];
     }
 
@@ -254,6 +420,7 @@ class AtRiskScheduleService
         $booked = (int) $schedule->booked_seats;
         $money = $context['money'][$schedule->id] ?? null;
         $flexi = $context['flexi'][$schedule->id] ?? null;
+        $sms = $context['underfilled_sms'][SmsService::underfilledNoticeKey($schedule->id)] ?? null;
 
         return [
             'id' => $schedule->id,
@@ -281,6 +448,8 @@ class AtRiskScheduleService
             'rally_nudged_at' => $schedule->rally_nudged_at?->toISOString(),
             'rally_cooldown_hours' => $this->nudgeCooldownRemaining($schedule),
             'merge_candidates' => $context['merge'][$schedule->id] ?? [],
+            'underfilled_sms_count' => (int) ($sms->sms_count ?? 0),
+            'underfilled_sms_at' => $sms?->last_at ? Carbon::parse($sms->last_at)->toISOString() : null,
         ];
     }
 

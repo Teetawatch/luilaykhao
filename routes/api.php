@@ -687,6 +687,8 @@ Route::prefix('v1')->group(function () {
         // เรดาร์รอบเสี่ยงไม่ออก — รวมรอบที่คนยังไม่ครบขั้นต่ำไว้พร้อมปุ่มลงมือแก้
         Route::get('schedules/at-risk', [AdminAtRiskScheduleController::class, 'index']);
         Route::post('schedules/{id}/rally-nudge', [AdminAtRiskScheduleController::class, 'nudge']);
+        Route::get('schedules/{id}/underfilled-sms', [AdminAtRiskScheduleController::class, 'underfilledSmsPreview']);
+        Route::post('schedules/{id}/underfilled-sms', [AdminAtRiskScheduleController::class, 'sendUnderfilledSms']);
 
         // Flexi-Price (Go Together) — ผู้จัดยื่นข้อเสนอส่วนต่างค่ารถให้รอบที่คนไม่ครบ
         Route::get('flexi-offers', [FlexiDepartureController::class, 'adminIndex']);

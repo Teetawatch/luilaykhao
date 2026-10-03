@@ -27,7 +27,7 @@ class SendUnderfilledTripWarningsJob implements ShouldQueue
     public int $backoff = 60;
 
     /** How many days before departure the warning is sent. */
-    private const DAYS_BEFORE = 7;
+    public const DAYS_BEFORE = 7;
 
     /** Minimum booked seats that guarantees the round runs (default only). */
     private const MIN_SEATS = 8;

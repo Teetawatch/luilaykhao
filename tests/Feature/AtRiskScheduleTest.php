@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\SmartNotification;
+use App\Models\SmsLog;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\AtRiskScheduleService;
+use App\Services\SmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -224,6 +226,117 @@ class AtRiskScheduleTest extends TestCase
 
         $this->actingAs(User::factory()->create(), 'sanctum')
             ->getJson('/api/v1/admin/schedules/at-risk')
+            ->assertForbidden();
+    }
+
+    public function test_underfilled_sms_preview_fills_in_the_round_and_lists_paid_bookings(): void
+    {
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, 5, booked: 2);
+        $paid = $this->makeBooking($schedule, pax: 1);
+        $unpaid = $this->makeBooking($schedule, pax: 1, paid: 0);   // ไม่มีอะไรให้คืน
+        $noPhone = $this->makeBooking($schedule, pax: 1);
+        $noPhone->passengers()->update(['phone' => null]);
+        $noPhone->user->forceFill(['phone' => null])->save();
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/v1/admin/schedules/{$schedule->id}/underfilled-sms")
+            ->assertOk();
+
+        $message = $res->json('data.message');
+        $this->assertStringContainsString('มีผู้เดินทางเพียง 2 ท่าน', $message);
+        $this->assertStringContainsString('ขั้นต่ำรถออก 8 ท่าน', $message);
+        $this->assertStringContainsString('ไลน์ @luilaykhao', $message);
+        $this->assertStringContainsString('เงินคืนเต็มจำนวน', $message);
+        // เหลือ 5 วัน — เมล D-7 ออกไปแล้วจริง จึงอ้างถึงได้
+        $this->assertStringContainsString('ส่งอีเมลแจ้งไปแล้ว', $message);
+
+        $refs = collect($res->json('data.recipients'))->pluck('status', 'booking_ref');
+        $this->assertSame('ready', $refs[$paid->booking_ref]);
+        $this->assertSame('no_phone', $refs[$noPhone->booking_ref]);
+        $this->assertArrayNotHasKey($unpaid->booking_ref, $refs->all());
+        $this->assertSame(1, $res->json('data.counts.ready'));
+    }
+
+    public function test_underfilled_sms_template_does_not_mention_an_email_before_it_was_sent(): void
+    {
+        $schedule = $this->makeSchedule($this->makeTrip(), 12, booked: 2);
+
+        $message = app(AtRiskScheduleService::class)->underfilledSmsTemplate($schedule);
+
+        $this->assertStringNotContainsString('อีเมล', $message);
+    }
+
+    public function test_sending_underfilled_sms_reaches_each_paid_booking_once(): void
+    {
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, 5, booked: 3);
+        $first = $this->makeBooking($schedule, pax: 2);
+        $second = $this->makeBooking($schedule, pax: 1);
+
+        $text = 'รอบเดินทางนี้มีผู้เดินทางเพียง 3 ท่านครับ แจ้งเลขบัญชีที่ไลน์ @luilaykhao ครับ';
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$schedule->id}/underfilled-sms", ['message' => $text])
+            ->assertOk()
+            ->assertJsonPath('data.queued', 2);
+
+        foreach ([$first, $second] as $booking) {
+            $this->assertDatabaseHas('sms_logs', [
+                'booking_id' => $booking->id,
+                'sms_type' => SmsService::UNDERFILLED_NOTICE,
+                'dedupe_key' => 's'.$schedule->id,
+                'message' => $text,
+                'status' => 'pending',
+            ]);
+        }
+
+        // กดซ้ำไม่ส่งซ้ำ
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$schedule->id}/underfilled-sms", ['message' => $text])
+            ->assertStatus(422);
+
+        // ใบที่เพิ่งจ่ายทีหลังได้รับในการกดครั้งถัดไป — ใบเดิมไม่ได้ซ้ำ
+        $late = $this->makeBooking($schedule, pax: 1);
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$schedule->id}/underfilled-sms", ['message' => $text])
+            ->assertOk()
+            ->assertJsonPath('data.queued', 1)
+            ->assertJsonPath('data.already', 2);
+
+        $this->assertSame(3, SmsLog::where('sms_type', SmsService::UNDERFILLED_NOTICE)->count());
+        $this->assertDatabaseHas('sms_logs', ['booking_id' => $late->id, 'sms_type' => SmsService::UNDERFILLED_NOTICE]);
+
+        $row = collect(
+            $this->actingAs($this->admin, 'sanctum')->getJson('/api/v1/admin/schedules/at-risk')->json('data.schedules')
+        )->firstWhere('id', $schedule->id);
+        $this->assertSame(3, $row['underfilled_sms_count']);
+        $this->assertNotNull($row['underfilled_sms_at']);
+    }
+
+    public function test_underfilled_sms_is_refused_for_full_or_cancelled_rounds(): void
+    {
+        $trip = $this->makeTrip();
+        $full = $this->makeSchedule($trip, 5, booked: 8);
+        $this->makeBooking($full);
+        $cancelled = $this->makeSchedule($trip, 5, booked: 2, attributes: ['status' => 'cancelled']);
+        $this->makeBooking($cancelled);
+
+        foreach ([$full, $cancelled] as $schedule) {
+            $this->actingAs($this->admin, 'sanctum')
+                ->postJson("/api/v1/admin/schedules/{$schedule->id}/underfilled-sms", ['message' => 'ทดสอบ'])
+                ->assertStatus(422);
+        }
+
+        $this->assertSame(0, SmsLog::count());
+    }
+
+    public function test_underfilled_sms_requires_an_admin(): void
+    {
+        $schedule = $this->makeSchedule($this->makeTrip(), 5, booked: 2);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$schedule->id}/underfilled-sms", ['message' => 'ทดสอบ'])
             ->assertForbidden();
     }
 }
