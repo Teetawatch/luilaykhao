@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\AdminSeatHandoverController;
 use App\Http\Controllers\Api\V1\AdminSettingsController;
 use App\Http\Controllers\Api\V1\AdminSosController;
 use App\Http\Controllers\Api\V1\AdminStaffReviewController;
+use App\Http\Controllers\Api\V1\AdminUnderfilledEmailController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AnnouncementController;
 use App\Http\Controllers\Api\V1\AppVersionController;
@@ -689,6 +690,9 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/rally-nudge', [AdminAtRiskScheduleController::class, 'nudge']);
         Route::get('schedules/{id}/underfilled-sms', [AdminAtRiskScheduleController::class, 'underfilledSmsPreview']);
         Route::post('schedules/{id}/underfilled-sms', [AdminAtRiskScheduleController::class, 'sendUnderfilledSms']);
+        // หลักฐานการแจ้งคนไม่ครบ 7 วันก่อนเดินทาง (อีเมล + แจ้งในแอป)
+        Route::get('underfilled-emails', [AdminUnderfilledEmailController::class, 'index']);
+        Route::get('underfilled-emails/{id}', [AdminUnderfilledEmailController::class, 'show'])->whereNumber('id');
 
         // Flexi-Price (Go Together) — ผู้จัดยื่นข้อเสนอส่วนต่างค่ารถให้รอบที่คนไม่ครบ
         Route::get('flexi-offers', [FlexiDepartureController::class, 'adminIndex']);

@@ -27,6 +27,7 @@ use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
 use App\Models\Booking;
 use App\Models\CustomerIntake;
+use App\Models\EmailLog;
 use App\Models\InstallmentPayment;
 use App\Models\Receipt;
 use App\Models\User;
@@ -575,16 +576,53 @@ class MailService
     {
         $booking->loadMissing(['user', 'schedule.trip', 'passengers', 'pickupPoint']);
 
-        try {
-            $this->sendToCustomerEmails(
-                $booking,
-                fn () => new TripUnderfilledWarningMail($booking, $daysBefore, $bookedSeats, $minSeats),
-            );
-        } catch (\Throwable $e) {
-            Log::error('Failed to send trip underfilled warning email', [
-                'booking_ref' => $booking->booking_ref,
-                'error' => $e->getMessage(),
+        // แถวหลักฐานต่อผู้รับหนึ่งคน (ดู /admin/underfilled-emails) — ใบจองที่ไม่มี
+        // อีเมลส่งถึงได้ก็ลงไว้ด้วย ทีมงานจะได้รู้ว่าคนนี้ต้องโทรแจ้งเอง
+        $base = [
+            'type' => EmailLog::TYPE_UNDERFILLED_WARNING,
+            'booking_id' => $booking->id,
+            'schedule_id' => $booking->schedule_id,
+            'user_id' => $booking->user_id,
+            'booking_ref' => $booking->booking_ref,
+            'meta' => [
+                'trip_title' => $booking->schedule?->trip?->title,
+                'departure_date' => $booking->schedule?->departure_date?->toDateString(),
+                'days_before' => $daysBefore,
+                'booked_seats' => $bookedSeats,
+                'min_seats' => $minSeats,
+            ],
+        ];
+
+        $emails = $this->customerEmails($booking);
+
+        if (empty($emails)) {
+            EmailLog::create($base + [
+                'status' => EmailLog::STATUS_SKIPPED,
+                'error_message' => 'ใบจองนี้ไม่มีอีเมลที่ส่งถึงได้',
             ]);
+
+            return;
+        }
+
+        foreach ($emails as $email) {
+            $log = EmailLog::create($base + ['recipient' => $email]);
+
+            try {
+                Mail::to($email)->send(
+                    (new TripUnderfilledWarningMail($booking, $daysBefore, $bookedSeats, $minSeats))->logAs($log),
+                );
+            } catch (\Throwable $e) {
+                $log->update([
+                    'status' => EmailLog::STATUS_FAILED,
+                    'failed_at' => now(),
+                    'error_message' => mb_substr($e->getMessage(), 0, 1000),
+                ]);
+
+                Log::error('Failed to send trip underfilled warning email', [
+                    'booking_ref' => $booking->booking_ref,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 

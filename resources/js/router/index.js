@@ -333,6 +333,7 @@ const routes = [
       { path: 'sale-campaigns', name: 'admin-sale-campaigns', component: () => import('../pages/admin/SaleCampaignsPage.vue') },
       { path: 'schedule-overview', name: 'admin-schedule-overview', component: () => import('../pages/admin/ScheduleOverviewPage.vue') },
       { path: 'at-risk', name: 'admin-at-risk', component: () => import('../pages/admin/AtRiskSchedulesPage.vue') },
+      { path: 'underfilled-emails', name: 'admin-underfilled-emails', component: () => import('../pages/admin/UnderfilledEmailsPage.vue') },
       { path: 'flexi-price', name: 'admin-flexi-price', component: () => import('../pages/admin/FlexiPricePage.vue') },
       { path: 'hero-slides', name: 'admin-hero-slides', component: () => import('../pages/admin/HeroSlidesPage.vue') },
       { path: 'gallery', name: 'admin-gallery', component: () => import('../pages/admin/GalleryPage.vue') },
