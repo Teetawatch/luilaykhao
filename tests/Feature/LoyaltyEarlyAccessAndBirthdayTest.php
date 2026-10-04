@@ -270,4 +270,80 @@ class LoyaltyEarlyAccessAndBirthdayTest extends TestCase
         $this->expectExceptionMessageMatches('/คูปองนี้ใช้ไม่ได้/');
         $this->book($user, $this->makeSchedule(), $coupon->coupon_code);
     }
+
+    // ── ปุ่ม "ใช้โค้ด" ในหน้าจอง (promotions/validate) ──
+
+    public function test_the_apply_code_button_accepts_a_birthday_coupon(): void
+    {
+        // เดิมปุ่มนี้ดูแค่ตาราง promotions ลูกค้าได้คูปองวันเกิดแต่เจอ
+        // "Promotion code not found or inactive" และไปไม่ถึงขั้นจอง
+        $user = $this->userAtTier(LoyaltyTier::INSIDER, [
+            'birth_date' => now('Asia/Bangkok')->copy()->subYears(30)->toDateString(),
+        ]);
+        (new IssueBirthdayCouponsJob)->handle();
+        $coupon = LoyaltyRedemption::where('user_id', $user->id)->firstOrFail();
+        $schedule = $this->makeSchedule();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/promotions/validate', [
+                'code' => $coupon->coupon_code,
+                'trip_id' => $schedule->trip_id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('valid', true)
+            ->assertJsonPath('promotion.code', $coupon->coupon_code)
+            ->assertJsonPath('promotion.type', 'fixed')
+            ->assertJsonPath('promotion.value', 300);
+    }
+
+    public function test_the_apply_code_button_shows_a_percent_coupon_as_percent(): void
+    {
+        $user = $this->userAtTier(LoyaltyTier::FRIEND);
+        $reward = LoyaltyReward::create([
+            'name' => 'ลด 10%',
+            'type' => LoyaltyReward::TYPE_DISCOUNT_PERCENT,
+            'points_required' => 50,
+            'discount_value' => 10,
+            'is_active' => true,
+        ]);
+        $coupon = LoyaltyRedemption::create([
+            'user_id' => $user->id,
+            'reward_id' => $reward->id,
+            'points_used' => 50,
+            'coupon_code' => LoyaltyRedemption::generateCoupon(),
+            'expires_at' => now()->addDays(30),
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/promotions/validate', [
+                'code' => $coupon->coupon_code,
+                'trip_id' => $this->makeSchedule()->trip_id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('promotion.type', 'percent')
+            ->assertJsonPath('promotion.value', 10);
+    }
+
+    public function test_the_apply_code_button_refuses_someone_elses_or_a_used_coupon(): void
+    {
+        $owner = $this->userAtTier(LoyaltyTier::INSIDER, [
+            'birth_date' => now('Asia/Bangkok')->copy()->subYears(30)->toDateString(),
+        ]);
+        (new IssueBirthdayCouponsJob)->handle();
+        $coupon = LoyaltyRedemption::where('user_id', $owner->id)->firstOrFail();
+        $tripId = $this->makeSchedule()->trip_id;
+
+        $this->actingAs($this->userAtTier(LoyaltyTier::FRIEND), 'sanctum')
+            ->postJson('/api/v1/promotions/validate', ['code' => $coupon->coupon_code, 'trip_id' => $tripId])
+            ->assertStatus(400)
+            ->assertJsonPath('valid', false)
+            ->assertJsonPath('message', 'คูปองนี้ใช้ไม่ได้ (อาจถูกใช้ไปแล้ว หมดอายุ หรือไม่ใช่ของบัญชีนี้)');
+
+        $coupon->update(['is_used' => true]);
+
+        $this->actingAs($owner, 'sanctum')
+            ->postJson('/api/v1/promotions/validate', ['code' => $coupon->coupon_code, 'trip_id' => $tripId])
+            ->assertStatus(400)
+            ->assertJsonPath('valid', false);
+    }
 }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\LoyaltyRedemption;
+use App\Models\LoyaltyReward;
 use App\Models\Promotion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -129,6 +131,15 @@ class PromotionController extends Controller
             'trip_id' => 'required|integer|exists:trips,id',
         ]);
 
+        // คูปองส่วนบุคคล (ของขวัญวันเกิด / แลกด้วยแต้ม) ใช้ช่องกรอกโค้ดเดียวกับโปรโมชัน
+        // BookingService รับคูปองพวกนี้อยู่แล้ว แต่ปุ่ม "ใช้โค้ด" ยิงมาตรวจที่นี่ก่อน
+        // ซึ่งเดิมดูแค่ตาราง promotions — ลูกค้าจึงเจอ "not found" และไปไม่ถึงขั้นจอง
+        $redemption = LoyaltyRedemption::with('reward')->where('coupon_code', $request->code)->first();
+
+        if ($redemption) {
+            return $this->validateCoupon($redemption, $request->user()?->id);
+        }
+
         $promotion = Promotion::where('code', $request->code)->where('is_active', true)->first();
 
         if (! $promotion) {
@@ -161,6 +172,45 @@ class PromotionController extends Controller
         return response()->json([
             'valid' => true,
             'promotion' => $promotion,
+        ]);
+    }
+
+    /**
+     * ตอบในรูปเดียวกับโปรโมชัน (`type` percent|fixed + `value`) เพราะเว็บ แอป และ
+     * LIFF คิดส่วนลดตัวอย่างจากสองช่องนี้ — ยอดจริงคิดใหม่ที่ BookingService เสมอ
+     */
+    private function validateCoupon(LoyaltyRedemption $redemption, ?int $userId)
+    {
+        if (! $redemption->isUsableBy($userId)) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'คูปองนี้ใช้ไม่ได้ (อาจถูกใช้ไปแล้ว หมดอายุ หรือไม่ใช่ของบัญชีนี้)',
+            ], 400);
+        }
+
+        $value = $redemption->rewardValue();
+
+        [$type, $previewValue] = match ($redemption->rewardType()) {
+            LoyaltyReward::TYPE_DISCOUNT_PERCENT => ['percent', $value],
+            // หักได้เฉพาะค่าเช่าอุปกรณ์ ซึ่งหน้าจองไม่ได้ส่งมา — โชว์ 0 ไว้ก่อนดีกว่า
+            // โชว์ส่วนลดเกินจริง แล้วให้ BookingService หักยอดจริงตอนยืนยัน
+            LoyaltyReward::TYPE_FREE_RENTAL => ['fixed', 0],
+            default => ['fixed', $value],
+        };
+
+        return response()->json([
+            'valid' => true,
+            'promotion' => [
+                'code' => $redemption->coupon_code,
+                'name' => $redemption->source === LoyaltyRedemption::SOURCE_BIRTHDAY
+                    ? 'ของขวัญวันเกิด'
+                    : ($redemption->reward?->name ?? 'คูปองสมาชิก'),
+                'type' => $type,
+                'value' => $previewValue,
+                'is_coupon' => true,
+                'coupon_type' => $redemption->rewardType(),
+                'expires_at' => $redemption->expires_at?->toIso8601String(),
+            ],
         ]);
     }
 }
