@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\TripSchedule;
 use App\Support\ThaiDate;
 use App\Support\TripRentalItems;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 /**
@@ -25,6 +26,71 @@ class RentalPickListService
 {
     /** สถานะการจองที่ถือว่าต้องเตรียมของจริง */
     public const LIVE_STATUSES = ['confirmed', 'completed'];
+
+    /**
+     * รอบที่มีคนเช่าอุปกรณ์ — ตั้งต้นเฉพาะรอบที่ยังไม่ออกเดินทาง
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function schedules(bool $includePast = false): array
+    {
+        $today = now('Asia/Bangkok')->toDateString();
+
+        $rentalTotals = Booking::query()
+            ->whereIn('status', self::LIVE_STATUSES)
+            ->where('rentals_total', '>', 0)
+            ->selectRaw('schedule_id, COUNT(*) as bookings, SUM(rentals_total) as revenue')
+            ->groupBy('schedule_id')
+            ->get()
+            ->keyBy('schedule_id');
+
+        if ($rentalTotals->isEmpty()) {
+            return [];
+        }
+
+        return TripSchedule::with('trip')
+            ->whereIn('id', $rentalTotals->keys())
+            ->when(! $includePast, fn ($q) => $q->whereDate('departure_date', '>=', $today))
+            ->orderBy('departure_date')
+            ->get()
+            ->map(fn (TripSchedule $s) => [
+                'id' => $s->id,
+                'trip_title' => $s->trip?->title,
+                'departure_date' => $s->departure_date?->toDateString(),
+                'departure_date_thai' => ThaiDate::full($s->departure_date),
+                'is_past' => $s->departure_date?->toDateString() < $today,
+                'bookings_with_rentals' => (int) ($rentalTotals[$s->id]->bookings ?? 0),
+                'rentals_revenue' => (float) ($rentalTotals[$s->id]->revenue ?? 0),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * ใบเตรียมของฉบับคนจัดของ — ของเดียวกับหลังบ้านทุกชิ้น แต่ตัดราคา/รายได้
+     * และเบอร์โทรลูกค้าออก คนจัดของต้องรู้ว่า "ของใคร กี่ชิ้น" เท่านั้น
+     */
+    public function forPacker(TripSchedule $schedule): array
+    {
+        $data = $this->forSchedule($schedule);
+
+        $data['items'] = array_map(
+            fn (array $item) => Arr::except($item, ['revenue']),
+            $data['items'],
+        );
+        $data['bookings'] = array_map(fn (array $booking) => [
+            'booking_ref' => $booking['booking_ref'],
+            'customer_name' => $booking['customer_name'],
+            'status' => $booking['status'],
+            'items' => array_map(
+                fn (array $line) => Arr::except($line, ['unit_price', 'total_price']),
+                $booking['items'],
+            ),
+        ], $data['bookings']);
+        unset($data['totals']['revenue']);
+
+        return $data;
+    }
 
     public function forSchedule(TripSchedule $schedule): array
     {

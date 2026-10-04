@@ -1385,14 +1385,29 @@ class AdminController extends Controller
     /** เปิด/ปิดสิทธิ์เห็นบัญชีของบริษัท โดยไม่แตะบทบาทหลักของผู้ใช้ */
     private function syncFinanceAccess(User $user, mixed $enabled): void
     {
+        $this->syncExtraRole($user, 'finance', $enabled);
+    }
+
+    /**
+     * เปิด/ปิดสิทธิ์ดูใบเตรียมของในแอป — ให้คนที่จัดของในโกดังได้ ไม่ว่าบทบาทหลักจะเป็นอะไร
+     * (คนจัดของหลายคนเป็นแค่บัญชีลูกค้า ไม่ได้เป็นสตาฟที่ออกทริป)
+     */
+    private function syncPackerAccess(User $user, mixed $enabled): void
+    {
+        $this->syncExtraRole($user, 'packer', $enabled);
+    }
+
+    /** บทบาทเสริมที่ซ้อนบนบทบาทหลัก — null = ไม่ได้ส่งมา ปล่อยไว้ตามเดิม */
+    private function syncExtraRole(User $user, string $roleName, mixed $enabled): void
+    {
         if ($enabled === null) {
             return;
         }
 
         if ($enabled) {
-            $user->assignRole($this->ensureAssignableRole('finance'));
+            $user->assignRole($this->ensureAssignableRole($roleName));
         } else {
-            $user->removeRole('finance');
+            $user->removeRole($roleName);
         }
     }
 
@@ -3493,6 +3508,7 @@ class AdminController extends Controller
                 'social_provider' => $user->social_provider,
                 'roles' => $user->roles->pluck('name'),
                 'finance_access' => $user->roles->contains('name', 'finance'),
+                'packer_access' => $user->roles->contains('name', 'packer'),
                 'staff_day_rate' => $user->staff_day_rate !== null ? (float) $user->staff_day_rate : null,
                 'has_driver_pin' => ! empty($user->driver_pin_hash),
                 'bookings_count' => $user->bookings_count,
@@ -3605,6 +3621,7 @@ class AdminController extends Controller
             'driver_pin' => ['nullable', 'string', 'regex:/^\d{4,8}$/'],
             'role' => ['required', 'in:admin,operator,staff,customer'],
             'finance_access' => ['sometimes', 'boolean'],
+            'packer_access' => ['sometimes', 'boolean'],
             'staff_day_rate' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
         ]);
 
@@ -3630,6 +3647,7 @@ class AdminController extends Controller
 
         $user->assignRole($this->ensureAssignableRole($validated['role']));
         $this->syncFinanceAccess($user, $validated['finance_access'] ?? null);
+        $this->syncPackerAccess($user, $validated['packer_access'] ?? null);
 
         return $this->success([
             'id' => $user->id,
@@ -3638,6 +3656,7 @@ class AdminController extends Controller
             'phone' => $user->phone,
             'roles' => $user->fresh()->roles->pluck('name'),
             'finance_access' => $user->fresh()->hasRole('finance'),
+            'packer_access' => $user->fresh()->hasRole('packer'),
             'staff_day_rate' => $user->staff_day_rate !== null ? (float) $user->staff_day_rate : null,
             'has_driver_pin' => ! empty($user->driver_pin_hash),
         ], 'สร้างผู้ใช้สำเร็จ', 201);
@@ -3656,10 +3675,12 @@ class AdminController extends Controller
             'role' => ['sometimes', 'in:admin,operator,staff,customer'],
             // สิทธิ์เห็นตัวเลขกำไร/ต้นทุน — เป็นบทบาทเสริมบนบทบาทหลัก ไม่ใช่แทนที่
             'finance_access' => ['sometimes', 'boolean'],
+            // สิทธิ์ดูใบเตรียมของในแอป — บทบาทเสริมเหมือนกัน
+            'packer_access' => ['sometimes', 'boolean'],
             'staff_day_rate' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
         ]);
 
-        $userData = collect($validated)->except(['password', 'driver_pin', 'role', 'finance_access'])->toArray();
+        $userData = collect($validated)->except(['password', 'driver_pin', 'role', 'finance_access', 'packer_access'])->toArray();
         if (! empty($validated['password'])) {
             $userData['password'] = Hash::make($validated['password']);
         }
@@ -3677,13 +3698,16 @@ class AdminController extends Controller
         $user->update($userData);
 
         if (isset($validated['role'])) {
-            // syncRoles ล้างบทบาทเดิมทั้งหมด — สิทธิ์การเงินเป็นสวิตช์แยก
+            // syncRoles ล้างบทบาทเดิมทั้งหมด — สิทธิ์การเงิน/จัดของเป็นสวิตช์แยก
             // จึงต้องใส่กลับหลังจากนี้เสมอ ไม่งั้นแก้ชื่อผู้ใช้ทีสิทธิ์หลุดที
             $hadFinance = $user->hasRole('finance');
+            $hadPacker = $user->hasRole('packer');
             $user->syncRoles([$this->ensureAssignableRole($validated['role'])]);
             $this->syncFinanceAccess($user, $validated['finance_access'] ?? $hadFinance);
-        } elseif (array_key_exists('finance_access', $validated)) {
-            $this->syncFinanceAccess($user, $validated['finance_access']);
+            $this->syncPackerAccess($user, $validated['packer_access'] ?? $hadPacker);
+        } else {
+            $this->syncFinanceAccess($user, $validated['finance_access'] ?? null);
+            $this->syncPackerAccess($user, $validated['packer_access'] ?? null);
         }
 
         return $this->success([
@@ -3693,6 +3717,7 @@ class AdminController extends Controller
             'phone' => $user->phone,
             'roles' => $user->fresh()->roles->pluck('name'),
             'finance_access' => $user->fresh()->hasRole('finance'),
+            'packer_access' => $user->fresh()->hasRole('packer'),
             'staff_day_rate' => $user->staff_day_rate !== null ? (float) $user->staff_day_rate : null,
             'has_driver_pin' => ! empty($user->driver_pin_hash),
         ], 'อัปเดตผู้ใช้สำเร็จ');

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Booking;
 use App\Models\TripSchedule;
 use App\Services\RentalPickListService;
 use App\Support\ThaiDate;
@@ -27,9 +26,6 @@ class AdminRentalController extends Controller
 {
     use ApiResponse;
 
-    /** สถานะการจองที่ถือว่าต้องเตรียมของจริง */
-    private const LIVE_STATUSES = RentalPickListService::LIVE_STATUSES;
-
     public function __construct(private RentalPickListService $pickList) {}
 
     /**
@@ -37,37 +33,8 @@ class AdminRentalController extends Controller
      */
     public function schedules(Request $request): JsonResponse
     {
-        $includePast = $request->boolean('include_past');
-        $today = now('Asia/Bangkok')->toDateString();
-
-        $rentalTotals = Booking::query()
-            ->whereIn('status', self::LIVE_STATUSES)
-            ->where('rentals_total', '>', 0)
-            ->selectRaw('schedule_id, COUNT(*) as bookings, SUM(rentals_total) as revenue')
-            ->groupBy('schedule_id')
-            ->get()
-            ->keyBy('schedule_id');
-
-        if ($rentalTotals->isEmpty()) {
-            return $this->success(['schedules' => []]);
-        }
-
-        $schedules = TripSchedule::with('trip')
-            ->whereIn('id', $rentalTotals->keys())
-            ->when(! $includePast, fn ($q) => $q->whereDate('departure_date', '>=', $today))
-            ->orderBy('departure_date')
-            ->get();
-
         return $this->success([
-            'schedules' => $schedules->map(fn (TripSchedule $s) => [
-                'id' => $s->id,
-                'trip_title' => $s->trip?->title,
-                'departure_date' => $s->departure_date?->toDateString(),
-                'departure_date_thai' => ThaiDate::full($s->departure_date),
-                'is_past' => $s->departure_date?->toDateString() < $today,
-                'bookings_with_rentals' => (int) ($rentalTotals[$s->id]->bookings ?? 0),
-                'rentals_revenue' => (float) ($rentalTotals[$s->id]->revenue ?? 0),
-            ])->values(),
+            'schedules' => $this->pickList->schedules($request->boolean('include_past')),
         ]);
     }
 

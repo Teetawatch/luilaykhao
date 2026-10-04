@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
         Role::firstOrCreate(['name' => 'operator']);
         // เห็นตัวเลขกำไร/ต้นทุนของบริษัท — ให้เฉพาะคนที่ดูแลบัญชีจริง
         Role::firstOrCreate(['name' => 'finance']);
+        // ดูใบเตรียมของต่อรอบในแอป — ให้คนจัดของในโกดังที่ไม่ได้ใช้หลังบ้าน
+        Role::firstOrCreate(['name' => 'packer']);
         Role::firstOrCreate(['name' => 'staff']);
         Role::firstOrCreate(['name' => 'customer']);
 

@@ -22,6 +22,7 @@
         <option value="operator">เจ้าหน้าที่</option>
         <option value="staff">สตาฟ</option>
         <option value="customer">ลูกค้า</option>
+        <option value="packer">คนจัดของ</option>
       </select>
     </div>
 
@@ -77,6 +78,7 @@
                 </span>
                 <!-- สิทธิ์เห็นตัวเลขกำไร เป็นบทบาทเสริม ไม่ใช่บทบาทหลัก -->
                 <span v-if="u.finance_access" class="role-badge role-finance" title="เห็นหน้าบัญชีทริป">การเงิน</span>
+                <span v-if="u.packer_access" class="role-badge role-packer" title="เปิดใบเตรียมของในแอปได้">คนจัดของ</span>
               </td>
               <td>{{ u.bookings_count || 0 }}</td>
               <td class="date">{{ formatDate(u.created_at) }}</td>
@@ -167,6 +169,13 @@
               </label>
               <small class="form-hint">ผู้ดูแลเห็นอยู่แล้วเสมอ — สวิตช์นี้ให้สิทธิ์เพิ่มโดยไม่เปลี่ยนบทบาทหลัก</small>
             </div>
+            <div class="form-group" v-if="form.role !== 'admin'">
+              <label class="check-label">
+                <input type="checkbox" v-model="form.packer_access" />
+                <span>คนจัดของ — ดูใบเตรียมของแต่ละรอบในแอป</span>
+              </label>
+              <small class="form-hint">เห็นว่าแต่ละรอบต้องเตรียมอุปกรณ์อะไรกี่ชิ้น ของใครบ้าง (ไม่เห็นราคาและเบอร์โทร) ให้บัญชีลูกค้าธรรมดาก็ได้</small>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
@@ -212,16 +221,16 @@ const deleting = ref(null);
 const submitting = ref(false);
 const formError = ref('');
 const copiedUserId = ref(null);
-const form = reactive({ name: '', email: '', phone: '', password: '', driver_pin: '', role: 'customer', finance_access: false, staff_day_rate: null });
+const form = reactive({ name: '', email: '', phone: '', password: '', driver_pin: '', role: 'customer', finance_access: false, packer_access: false, staff_day_rate: null });
 
 /**
- * บทบาทหลักของผู้ใช้ — roles[] มีบทบาทเสริม (finance) ปนอยู่ด้วย
+ * บทบาทหลักของผู้ใช้ — roles[] มีบทบาทเสริม (finance, packer) ปนอยู่ด้วย
  * การหยิบ roles[0] ตรง ๆ จึงอาจได้ "finance" มาแสดงเป็นบทบาทหลัก
  */
 const PRIMARY_ROLES = ['admin', 'operator', 'staff', 'customer'];
 const primaryRole = (u) => PRIMARY_ROLES.find(r => (u.roles || []).includes(r)) || 'customer';
 
-const roleLabels = { admin: 'ผู้ดูแล', operator: 'เจ้าหน้าที่', staff: 'สตาฟ', customer: 'ลูกค้า', finance: 'การเงิน' };
+const roleLabels = { admin: 'ผู้ดูแล', operator: 'เจ้าหน้าที่', staff: 'สตาฟ', customer: 'ลูกค้า', finance: 'การเงิน', packer: 'คนจัดของ' };
 const signupProviderLabels = { email: 'อีเมล', google: 'Gmail', facebook: 'Facebook', line: 'LINE' };
 
 const normalizeSignupProvider = (provider) => {
@@ -247,13 +256,13 @@ const openForm = (u = null) => {
   if (u) {
     Object.assign(form, {
       name: u.name, email: u.email, phone: u.phone || '', password: '', driver_pin: '',
-      role: primaryRole(u), finance_access: !!u.finance_access,
+      role: primaryRole(u), finance_access: !!u.finance_access, packer_access: !!u.packer_access,
       staff_day_rate: u.staff_day_rate ?? null,
     });
   } else {
     Object.assign(form, {
       name: '', email: '', phone: '', password: '', driver_pin: '',
-      role: 'customer', finance_access: false, staff_day_rate: null,
+      role: 'customer', finance_access: false, packer_access: false, staff_day_rate: null,
     });
   }
   showForm.value = true;
@@ -328,6 +337,7 @@ onMounted(() => fetchData());
 @import url('./admin-shared.css');
 
 .role-badge.role-finance { background: #ecfdf5; color: #047857; margin-left: 4px; }
+.role-badge.role-packer { background: #eff6ff; color: #1d4ed8; margin-left: 4px; }
 .check-label { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
 .check-label input { width: 16px; height: 16px; cursor: pointer; }
 

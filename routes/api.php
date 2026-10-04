@@ -50,6 +50,7 @@ use App\Http\Controllers\Api\V1\MedalController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\MyTripAssistantController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\PackingController;
 use App\Http\Controllers\Api\V1\PageContentController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
@@ -444,6 +445,11 @@ Route::prefix('v1')->group(function () {
         // ใบแจกอุปกรณ์เช่าหน้างาน — ดูรายการ + ติ๊กแจก/รับคืน
         Route::get('staff/schedules/{id}/rentals', [StaffController::class, 'rentals']);
         Route::post('staff/schedules/{id}/rentals/mark', [StaffController::class, 'markRental']);
+        // ใบเตรียมของสำหรับคนจัดของในโกดัง (บทบาทเสริม packer) — ไม่มีราคา/เบอร์โทร
+        Route::middleware('role:admin|operator|packer')->group(function () {
+            Route::get('packing/schedules', [PackingController::class, 'schedules']);
+            Route::get('packing/schedules/{id}', [PackingController::class, 'show'])->whereNumber('id');
+        });
         Route::post('staff/schedules/{id}/outstanding/{ref}/send-link', [StaffController::class, 'sendPaymentLink'])
             ->middleware('throttle:payment');
         // จุดรับหน้างาน — "รถถึงแล้ว" + รูปตรงที่จอด แล้วลูกค้าที่รออยู่ได้รู้ทันที
