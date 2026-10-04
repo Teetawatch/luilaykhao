@@ -36,14 +36,24 @@ class FcmService
         }
     }
 
-    public function sendToUser(int $userId, string $title, string $body, array $data = []): void
+    /**
+     * $display ปรับวิธีแสดงผล (ไม่ส่ง = แจ้งเตือนปกติแบบเดิม):
+     * - tag: ใบที่ tag ตรงกันทับใบเดิมในถาดแทนการซ้อนเพิ่ม (Android tag / iOS apns-collapse-id)
+     * - thread: กลุ่มแจ้งเตือนบน iOS (thread-id) — ไม่ส่ง = ใช้ tag
+     * - quiet: ขึ้นในถาดเงียบ ๆ ไม่มีเสียง ไม่ปลุกหน้าจอ
+     * - android_channel: channel ที่แอปสร้างไว้ (เครื่องที่ยังไม่มี channel นี้ Android
+     *   จะใช้ channel เริ่มต้นใน manifest แทน)
+     *
+     * @param  array{tag?: string, thread?: string, quiet?: bool, android_channel?: string}  $display
+     */
+    public function sendToUser(int $userId, string $title, string $body, array $data = [], array $display = []): void
     {
         $tokens = FcmToken::where('user_id', $userId)
             ->where('is_active', true)
             ->pluck('token');
 
         foreach ($tokens as $token) {
-            $this->sendToToken($token, $title, $body, $data, $data['type'] ?? null);
+            $this->sendToToken($token, $title, $body, $data, $data['type'] ?? null, $display);
         }
     }
 
@@ -96,8 +106,14 @@ class FcmService
         }
     }
 
-    private function sendToToken(string $token, string $title, string $body, array $data = [], ?string $type = null): void
-    {
+    private function sendToToken(
+        string $token,
+        string $title,
+        string $body,
+        array $data = [],
+        ?string $type = null,
+        array $display = [],
+    ): void {
         $projectId = config('services.fcm.project_id');
         if (! $projectId) {
             return;
@@ -145,33 +161,56 @@ class FcmService
                 ],
             ];
         } else {
+            $tag = isset($display['tag']) && $display['tag'] !== '' ? (string) $display['tag'] : null;
+            $quiet = (bool) ($display['quiet'] ?? false);
+
+            $androidNotification = [
+                'channel_id' => $display['android_channel'] ?? 'important_updates',
+                'notification_priority' => $quiet ? 'PRIORITY_LOW' : 'PRIORITY_HIGH',
+                'visibility' => 'PUBLIC',
+            ];
+            if (! $quiet) {
+                // Android 8+ เอาเสียง/การสั่นจาก channel อยู่แล้ว สองค่านี้มีผลแค่
+                // เครื่องรุ่นเก่า — ใบเงียบจึงไม่ใส่
+                $androidNotification['sound'] = 'default';
+                $androidNotification['default_vibrate_timings'] = true;
+            }
+            if ($tag !== null) {
+                $androidNotification['tag'] = $tag;
+            }
+
+            $apnsHeaders = [
+                'apns-priority' => '10',
+                'apns-push-type' => 'alert',
+            ];
+            $aps = [
+                'alert' => ['title' => $title, 'body' => $body],
+                'badge' => 1,
+                'content-available' => 1,
+                // passive = เข้าศูนย์แจ้งเตือนเงียบ ๆ ไม่ปลุกหน้าจอ ไม่มีเสียง
+                'interruption-level' => $quiet ? 'passive' : 'active',
+            ];
+            if (! $quiet) {
+                $aps['sound'] = 'default';
+            }
+            if ($tag !== null) {
+                // ใบใหม่ที่ collapse-id ตรงกันทับใบเดิมในศูนย์แจ้งเตือน (สูงสุด 64 ไบต์)
+                $apnsHeaders['apns-collapse-id'] = substr($tag, 0, 64);
+                $aps['thread-id'] = $display['thread'] ?? $tag;
+            }
+
             $messagePayload = array_filter([
                 'token' => $token,
                 'notification' => ['title' => $title, 'body' => $body],
                 'data' => $this->stringData($data),
                 'android' => [
                     'priority' => 'HIGH',
-                    'notification' => [
-                        'channel_id' => 'important_updates',
-                        'sound' => 'default',
-                        'notification_priority' => 'PRIORITY_HIGH',
-                        'default_vibrate_timings' => true,
-                        'visibility' => 'PUBLIC',
-                    ],
+                    'notification' => $androidNotification,
                 ],
                 'apns' => [
-                    'headers' => [
-                        'apns-priority' => '10',
-                        'apns-push-type' => 'alert',
-                    ],
+                    'headers' => $apnsHeaders,
                     'payload' => [
-                        'aps' => [
-                            'alert' => ['title' => $title, 'body' => $body],
-                            'sound' => 'default',
-                            'badge' => 1,
-                            'content-available' => 1,
-                            'interruption-level' => 'active',
-                        ],
+                        'aps' => $aps,
                     ],
                 ],
             ]);

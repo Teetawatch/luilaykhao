@@ -14,6 +14,7 @@ use App\Jobs\SendChatPushJob;
 use App\Models\ChatMessage;
 use App\Models\ChatPoll;
 use App\Models\ChatRead;
+use App\Models\ChatRoomPreference;
 use App\Models\TripSchedule;
 use App\Services\ChatAutoAnswerService;
 use App\Services\ChatPollService;
@@ -353,6 +354,32 @@ class ChatController extends Controller
      * สตาฟ/แอดมินกดโพสต์สรุปการเดินทางเข้าห้องด้วยปุ่มเดียว — ตอบทุกคนพร้อมกัน
      * แทนการพิมพ์ตอบทีละคนทุกทริป
      */
+    /**
+     * ตั้งค่าการแจ้งเตือนของห้องนี้สำหรับตัวเอง: ทุกข้อความ / เฉพาะทีมงานและ
+     * แท็กถึงฉัน / ปิด — มีผลกับ push ของห้องแชทเท่านั้น ประกาศ แจ้งเตือนรถ
+     * และ SOS ยังมาตามปกติ
+     */
+    public function updateNotifications(Request $request, int $scheduleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'level' => ['required', 'string', Rule::in(ChatRoomPreference::LEVELS)],
+        ]);
+
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        $this->chatService->setNotifyLevel($user, $schedule, $validated['level']);
+
+        return $this->success(
+            ['notify_level' => $validated['level']],
+            'บันทึกการแจ้งเตือนแล้ว',
+        );
+    }
+
     public function postTripSummary(Request $request, int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -633,6 +660,7 @@ class ChatController extends Controller
                 $this->chatService->pinnedMessage($schedule)
             ),
             'can_moderate' => $this->chatService->canModerate($user, $schedule),
+            'notify_level' => $this->chatService->notifyLevel($user, $schedule),
             'reaction_emojis' => ChatService::REACTION_EMOJIS,
             'member_count' => $members->count(),
             'members' => $members->map(function ($m) use ($reads, $user, $blockedIds) {
@@ -690,7 +718,11 @@ class ChatController extends Controller
             ->whereIn('schedule_id', $schedules->pluck('id'))
             ->pluck('last_read_message_id', 'schedule_id');
 
-        $conversations = $schedules->map(function ($schedule) use ($messagesBySchedule, $reads, $user) {
+        $notifyLevels = ChatRoomPreference::where('user_id', $user->id)
+            ->whereIn('schedule_id', $schedules->pluck('id'))
+            ->pluck('notify_level', 'schedule_id');
+
+        $conversations = $schedules->map(function ($schedule) use ($messagesBySchedule, $reads, $user, $notifyLevels) {
             $messages = $messagesBySchedule->get($schedule->id) ?? collect();
             $last = $messages->sortByDesc('id')->first();
             $lastReadId = (int) ($reads[$schedule->id] ?? 0);
@@ -709,6 +741,7 @@ class ChatController extends Controller
                 'return_date' => $schedule->return_date?->toDateString(),
                 'status' => $schedule->status,
                 'unread_count' => $unread,
+                'notify_level' => $notifyLevels[$schedule->id] ?? ChatRoomPreference::LEVEL_ALL,
                 'last_message' => $last ? [
                     'body' => $last->body,
                     'image_url' => $last->image_url,

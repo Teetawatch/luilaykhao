@@ -9,6 +9,7 @@ use App\Models\BookingMember;
 use App\Models\ChatMessage;
 use App\Models\ChatReaction;
 use App\Models\ChatRead;
+use App\Models\ChatRoomPreference;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\MediaDisk;
@@ -178,6 +179,48 @@ class ChatService
             $read->last_read_message_id = $messageId;
             $read->save();
         }
+    }
+
+    /** ระดับการแจ้งเตือนของผู้ใช้คนนี้ในห้องนี้ (ไม่มีแถว = ทุกข้อความ) */
+    public function notifyLevel(User $user, TripSchedule $schedule): string
+    {
+        return $this->notifyLevels($schedule->id, [$user->id])[$user->id]
+            ?? ChatRoomPreference::LEVEL_ALL;
+    }
+
+    /**
+     * ระดับการแจ้งเตือนของหลายคนในห้องเดียว — คืนเฉพาะคนที่เปลี่ยนจากค่าเริ่มต้น
+     *
+     * @param  iterable<int>  $userIds
+     * @return array<int, string> user_id => notify_level
+     */
+    public function notifyLevels(int $scheduleId, iterable $userIds): array
+    {
+        $ids = collect($userIds)->map(fn ($id) => (int) $id)->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        return ChatRoomPreference::where('schedule_id', $scheduleId)
+            ->whereIn('user_id', $ids)
+            ->pluck('notify_level', 'user_id')
+            ->mapWithKeys(fn ($level, $userId) => [(int) $userId => (string) $level])
+            ->all();
+    }
+
+    /** ตั้งระดับการแจ้งเตือน — กลับไป "ทุกข้อความ" = ลบแถวทิ้ง */
+    public function setNotifyLevel(User $user, TripSchedule $schedule, string $level): void
+    {
+        $match = ['schedule_id' => $schedule->id, 'user_id' => $user->id];
+
+        if ($level === ChatRoomPreference::LEVEL_ALL) {
+            ChatRoomPreference::where($match)->delete();
+
+            return;
+        }
+
+        ChatRoomPreference::updateOrCreate($match, ['notify_level' => $level]);
     }
 
     /**

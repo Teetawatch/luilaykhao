@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ChatMessage;
 use App\Models\ChatReaction;
 use App\Models\ChatRead;
+use App\Models\ChatRoomPreference;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Support\MediaDisk;
@@ -72,6 +73,7 @@ class PurgeEndedTripChatsJob implements ShouldQueue
             ChatReaction::whereIn('message_id', $messageIds)->delete();
             ChatMessage::where('schedule_id', $scheduleId)->delete();
             ChatRead::where('schedule_id', $scheduleId)->delete();
+            ChatRoomPreference::where('schedule_id', $scheduleId)->delete();
 
             $purged++;
         }
