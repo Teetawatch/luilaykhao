@@ -276,65 +276,68 @@
 
         <!-- Inclusions / Exclusions -->
         <div class="card section-card">
-          <div class="list-editor-container">
-            <div class="list-editor">
-              <div class="flex items-center justify-between mb-4 pr-1">
-                <label class="list-editor-label text-green-700 !mb-0">
-                  <span class="material-symbols-rounded">check_circle</span> สิ่งที่รวมในทริป
-                </label>
-                <div class="section-actions-mini">
-                  <button type="button" @click="openCopyModal('inclusions')" title="คัดลอกไปยังทริปอื่น">
-                    <span class="material-symbols-rounded text-sm">move_to_inbox</span>
+          <div class="section-header-flex !mb-2">
+            <h3 class="section-title text-[var(--color-primary)]">
+              <span class="material-symbols-rounded">fact_check</span> ราคานี้รวม / ไม่รวมอะไร
+            </h3>
+          </div>
+          <p class="text-sm text-gray-400 mb-5 font-medium">
+            แสดงบนหน้าทริปให้ลูกค้าเห็นก่อนจอง · กด <kbd class="incl-kbd">Enter</kbd> เพื่อเพิ่มบรรทัดถัดไป · กด <kbd class="incl-kbd">⌫</kbd> ในช่องว่างเพื่อลบ
+          </p>
+          <div class="incl-grid">
+            <section
+              v-for="col in inclusionColumns"
+              :key="col.field"
+              class="incl-panel"
+              :class="`incl-panel--${col.tone}`"
+              :data-list-field="col.field"
+            >
+              <header class="incl-head">
+                <div class="incl-head-title">
+                  <span class="incl-head-icon material-symbols-rounded">{{ col.icon }}</span>
+                  <span>{{ col.title }}</span>
+                  <span class="incl-count">{{ filledCount(col.field) }}</span>
+                </div>
+                <div class="incl-actions">
+                  <button type="button" @click="openCopyModal(col.field)" title="คัดลอกไปยังทริปอื่น" :aria-label="`คัดลอก${col.title}ไปยังทริปอื่น`">
+                    <span class="material-symbols-rounded">move_to_inbox</span>
                   </button>
-                  <button type="button" @click="copySection('inclusions')" title="คัดลอก">
-                    <span class="material-symbols-rounded text-sm">content_copy</span>
+                  <button type="button" @click="copySection(col.field)" title="คัดลอก" :aria-label="`คัดลอก${col.title}`">
+                    <span class="material-symbols-rounded">content_copy</span>
                   </button>
-                  <button type="button" @click="pasteSection('inclusions')" title="วาง">
-                    <span class="material-symbols-rounded text-sm">content_paste</span>
+                  <button type="button" @click="pasteSection(col.field)" title="วาง" :aria-label="`วาง${col.title}`">
+                    <span class="material-symbols-rounded">content_paste</span>
                   </button>
                 </div>
-              </div>
-              <div class="list-items">
-                <div v-for="(item, idx) in form.inclusions" :key="idx" class="list-item">
-                  <input v-model="form.inclusions[idx]" placeholder="เช่น ค่าธรรมเนียมเข้าอุทยาน" />
-                  <button type="button" class="remove-item-btn" @click="removeItem('inclusions', idx)">
-                    <span class="material-symbols-rounded">close</span>
-                  </button>
-                </div>
-                <button type="button" class="add-item-btn" @click="addItem('inclusions')">
+              </header>
+
+              <div class="incl-body">
+                <ul v-if="form[col.field]?.length" class="incl-list">
+                  <li v-for="(item, idx) in form[col.field]" :key="idx" class="incl-row">
+                    <span class="incl-bullet material-symbols-rounded">{{ col.bullet }}</span>
+                    <input
+                      v-model="form[col.field][idx]"
+                      :placeholder="col.placeholder"
+                      :aria-label="`${col.title} รายการที่ ${idx + 1}`"
+                      @keydown.enter="onListEnter(col.field, idx, $event)"
+                      @keydown.backspace="onListBackspace(col.field, idx, $event)"
+                    />
+                    <button type="button" class="incl-remove" title="ลบรายการ" @click="removeListItem(col.field, idx)">
+                      <span class="material-symbols-rounded">close</span>
+                    </button>
+                  </li>
+                </ul>
+                <button v-else type="button" class="incl-empty" @click="appendListItem(col.field)">
+                  <span class="material-symbols-rounded">{{ col.icon }}</span>
+                  <span>{{ col.empty }}</span>
+                  <small>คลิกเพื่อเพิ่มรายการแรก</small>
+                </button>
+
+                <button v-if="form[col.field]?.length" type="button" class="incl-add" @click="appendListItem(col.field)">
                   <span class="material-symbols-rounded">add</span> เพิ่มรายการ
                 </button>
               </div>
-            </div>
-            <div class="list-editor">
-              <div class="flex items-center justify-between mb-4 pr-1">
-                <label class="list-editor-label text-red-600 !mb-0">
-                  <span class="material-symbols-rounded">cancel</span> สิ่งที่ไม่รวม
-                </label>
-                <div class="section-actions-mini">
-                  <button type="button" @click="openCopyModal('exclusions')" title="คัดลอกไปยังทริปอื่น">
-                    <span class="material-symbols-rounded text-sm">move_to_inbox</span>
-                  </button>
-                  <button type="button" @click="copySection('exclusions')" title="คัดลอก">
-                    <span class="material-symbols-rounded text-sm">content_copy</span>
-                  </button>
-                  <button type="button" @click="pasteSection('exclusions')" title="วาง">
-                    <span class="material-symbols-rounded text-sm">content_paste</span>
-                  </button>
-                </div>
-              </div>
-              <div class="list-items">
-                <div v-for="(item, idx) in form.exclusions" :key="idx" class="list-item">
-                  <input v-model="form.exclusions[idx]" placeholder="เช่น ค่าใช้จ่ายส่วนตัว" />
-                  <button type="button" class="remove-item-btn" @click="removeItem('exclusions', idx)">
-                    <span class="material-symbols-rounded">close</span>
-                  </button>
-                </div>
-                <button type="button" class="add-item-btn" @click="addItem('exclusions')">
-                  <span class="material-symbols-rounded">add</span> เพิ่มรายการ
-                </button>
-              </div>
-            </div>
+            </section>
           </div>
         </div>
 
@@ -1052,7 +1055,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAdminStore } from '../../stores/admin';
 import { useCategoriesStore } from '../../stores/categories';
@@ -1643,6 +1646,45 @@ const addItem = (field, extra = null) => {
     if (!form[field]) form[field] = [];
     form[field].push('');
   }
+};
+
+// ── รวม / ไม่รวม — รายการบรรทัดเดียว พิมพ์ต่อกันได้ด้วยคีย์บอร์ด ──
+// บรรทัดว่างไม่ต้องกันไว้ — compactStringArray ตัดทิ้งตอนบันทึกอยู่แล้ว
+const inclusionColumns = [
+  { field: 'inclusions', title: 'รวมในราคา', icon: 'check_circle', bullet: 'check', tone: 'in', placeholder: 'เช่น ค่าธรรมเนียมเข้าอุทยาน', empty: 'ยังไม่มีรายการที่รวมในราคา' },
+  { field: 'exclusions', title: 'ไม่รวมในราคา', icon: 'cancel', bullet: 'remove', tone: 'out', placeholder: 'เช่น ค่าใช้จ่ายส่วนตัว', empty: 'ยังไม่มีรายการที่ไม่รวม' },
+];
+
+const filledCount = (field) => (form[field] || []).filter((v) => String(v ?? '').trim() !== '').length;
+
+const focusListInput = async (field, idx) => {
+  await nextTick();
+  document.querySelectorAll(`[data-list-field="${field}"] .incl-row input`)[idx]?.focus();
+};
+
+const insertListItem = (field, idx) => {
+  if (!form[field]) form[field] = [];
+  form[field].splice(idx, 0, '');
+  focusListInput(field, idx);
+};
+
+const appendListItem = (field) => insertListItem(field, form[field]?.length ?? 0);
+
+const removeListItem = (field, idx, refocus = false) => {
+  form[field].splice(idx, 1);
+  if (refocus && form[field].length) focusListInput(field, Math.max(idx - 1, 0));
+};
+
+const onListEnter = (field, idx, event) => {
+  if (event.isComposing) return;
+  event.preventDefault();
+  insertListItem(field, idx + 1);
+};
+
+const onListBackspace = (field, idx, event) => {
+  if (form[field][idx] !== '') return;
+  event.preventDefault();
+  removeListItem(field, idx, true);
 };
 
 const removeItem = (field, index) => {
@@ -2378,6 +2420,246 @@ onMounted(() => {
 
 .remove-highlight-btn {
   display: flex;
+}
+
+/* ─── รวม / ไม่รวม ─── */
+.incl-kbd {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid #e5e7eb;
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: #f9fafb;
+  color: #4b5563;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+}
+.incl-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.incl-panel {
+  --tone: #15803d;
+  --tone-soft: #f0fdf4;
+  --tone-line: #bbf7d0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+.incl-panel--out {
+  --tone: #dc2626;
+  --tone-soft: #fef2f2;
+  --tone-line: #fecaca;
+}
+.incl-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  background: var(--tone-soft);
+  border-bottom: 1px solid var(--tone-line);
+}
+.incl-head-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--tone);
+}
+.incl-head-icon {
+  font-size: 22px;
+  font-variation-settings: 'FILL' 1;
+}
+.incl-count {
+  min-width: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--tone);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 22px;
+  text-align: center;
+}
+.incl-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.incl-actions button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.incl-actions button:hover {
+  background: #fff;
+  color: var(--tone);
+}
+.incl-actions .material-symbols-rounded {
+  font-size: 18px;
+}
+.incl-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 8px;
+}
+.incl-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.incl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.incl-row:hover {
+  background: #f9fafb;
+}
+.incl-row:focus-within {
+  background: #fff;
+  border-color: var(--tone-line);
+}
+.incl-bullet {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--tone-soft);
+  color: var(--tone);
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.incl-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 2px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 500;
+}
+.incl-row input::placeholder {
+  color: #c4c9d1;
+  font-weight: 400;
+}
+.incl-remove {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.incl-row:hover .incl-remove,
+.incl-row:focus-within .incl-remove,
+.incl-remove:focus-visible {
+  opacity: 1;
+}
+.incl-remove:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.incl-remove .material-symbols-rounded {
+  font-size: 18px;
+}
+@media (hover: none) {
+  .incl-remove { opacity: 1; }
+}
+.incl-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--tone);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.15s;
+}
+.incl-add:hover {
+  background: var(--tone-soft);
+}
+.incl-add .material-symbols-rounded {
+  font-size: 18px;
+}
+.incl-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 140px;
+  padding: 20px;
+  border: 1.5px dashed #e5e7eb;
+  border-radius: 10px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.incl-empty .material-symbols-rounded {
+  font-size: 28px;
+  color: #d1d5db;
+  transition: color 0.15s;
+}
+.incl-empty small {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+.incl-empty:hover {
+  border-color: var(--tone-line);
+  background: var(--tone-soft);
+  color: var(--tone);
+}
+.incl-empty:hover .material-symbols-rounded {
+  color: var(--tone);
+}
+@media (max-width: 768px) {
+  .incl-grid { grid-template-columns: 1fr; }
 }
 
 /* ─── Modal Styles ───────────────────── */
