@@ -37,6 +37,7 @@ use App\Jobs\SendTripReminderNotificationsJob;
 use App\Jobs\SendUnderfilledTripWarningsJob;
 use App\Jobs\SendWeatherAlertsJob;
 use App\Jobs\SendYearReviewReadyJob;
+use App\Jobs\SettleChatPollsJob;
 use App\Jobs\StartScheduledFlashSalesJob;
 use App\Jobs\WarnExpiringLoyaltyPointsJob;
 use Illuminate\Foundation\Inspiring;
@@ -125,6 +126,8 @@ Schedule::job(new ExpireFlexiOffersJob)->everyFiveMinutes()->withoutOverlapping(
 // จุดรับคืนก่อนเดินทาง → เช้าวันเดินทาง → ปิดทริป → เตือนเซฟรูปก่อนห้องถูกลบ)
 // ทุก 15 นาที เพราะข้อความ "ก่อนรถออก 3 ชม." ต้องละเอียดระดับชั่วโมง
 Schedule::job(new PostTripChatTimelineJob)->everyFifteenMinutes()->withoutOverlapping();
+// โหวตตัดสินในห้องแชทหมดเวลา → ประกาศผลเสียงข้างมาก / รอบรับออเดอร์อาหารหมดเวลา → ประกาศยอดรวม
+Schedule::job(new SettleChatPollsJob)->everyMinute()->withoutOverlapping();
 // Delete a trip's group chat (messages + images) 3 days after it ends, to reclaim storage.
 Schedule::job(new PurgeEndedTripChatsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // ลบรูปให้ลูกค้าโหลด 4 วันหลังอัปโหลด (ทั้งแถวและไฟล์บน R2) — รายชั่วโมงเพื่อให้

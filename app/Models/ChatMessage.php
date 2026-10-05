@@ -62,4 +62,12 @@ class ChatMessage extends Model
     {
         return $this->hasOne(ChatPoll::class, 'message_id');
     }
+
+    /**
+     * รอบรับออเดอร์อาหารที่แนบกับข้อความนี้ — เรนเดอร์เป็นการ์ดสั่งอาหาร
+     */
+    public function foodRound(): HasOne
+    {
+        return $this->hasOne(ChatFoodRound::class, 'message_id');
+    }
 }

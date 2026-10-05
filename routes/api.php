@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\BookingDocumentController;
 use App\Http\Controllers\Api\V1\BookingMemberController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ChatController;
+use App\Http\Controllers\Api\V1\ChatFoodOrderController;
 use App\Http\Controllers\Api\V1\ConciergeController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CountryController;
@@ -371,6 +372,14 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/polls', [ChatController::class, 'createPoll'])->middleware('throttle:chat');
         Route::post('schedules/{id}/chat/polls/{pollId}/vote', [ChatController::class, 'votePoll']);
         Route::post('schedules/{id}/chat/polls/{pollId}/close', [ChatController::class, 'closePoll']);
+        // รับออเดอร์อาหาร (แวะร้านตามสั่ง) — สตาฟเปิด/ปิดรอบ ลูกทริปพิมพ์เมนูของตัวเอง
+        Route::post('schedules/{id}/chat/food-rounds', [ChatFoodOrderController::class, 'store'])->middleware('throttle:chat');
+        Route::put('schedules/{id}/chat/food-rounds/{roundId}/my-order', [ChatFoodOrderController::class, 'upsertMine'])->middleware('throttle:60,1');
+        Route::delete('schedules/{id}/chat/food-rounds/{roundId}/my-order', [ChatFoodOrderController::class, 'destroyMine']);
+        Route::post('schedules/{id}/chat/food-rounds/{roundId}/orders', [ChatFoodOrderController::class, 'storeOnBehalf'])->middleware('throttle:60,1');
+        Route::delete('schedules/{id}/chat/food-rounds/{roundId}/orders/{orderId}', [ChatFoodOrderController::class, 'destroyOrder']);
+        Route::post('schedules/{id}/chat/food-rounds/{roundId}/close', [ChatFoodOrderController::class, 'close']);
+        Route::post('schedules/{id}/chat/food-rounds/{roundId}/reopen', [ChatFoodOrderController::class, 'reopen']);
         Route::post('schedules/{id}/chat/typing', [ChatController::class, 'typing'])->middleware('throttle:60,1');
         Route::post('schedules/{id}/chat/joined', [ChatController::class, 'joined'])->middleware('throttle:20,1');
 

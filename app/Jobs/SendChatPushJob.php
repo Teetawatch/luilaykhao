@@ -43,11 +43,14 @@ class SendChatPushJob implements ShouldQueue
 
     /**
      * @param  array<int>  $mentionedUserIds
+     * @param  bool  $callToAction  ข้อความที่ต้องการคำตอบจากทุกคนภายในไม่กี่นาที (โหวต /
+     *                              รับออเดอร์อาหาร) — ผ่านระดับ "เฉพาะสำคัญ" และเด้งมีเสียงเสมอ
      */
     public function __construct(
         public readonly int $messageId,
         public readonly int $senderUserId,
         public readonly array $mentionedUserIds = [],
+        public readonly bool $callToAction = false,
     ) {}
 
     /** tag ของแจ้งเตือนห้องนี้ — แอปใช้ค่าเดียวกันล้างถาดตอนเปิดห้อง */
@@ -104,7 +107,7 @@ class SendChatPushJob implements ShouldQueue
             ->filter(fn (int $id) => ChatRoomPreference::wantsPush(
                 $levels[$id] ?? ChatRoomPreference::LEVEL_ALL,
                 $mentioned->contains($id),
-                $fromTeam,
+                $fromTeam || $this->callToAction,
             ))
             ->values();
 
@@ -121,7 +124,7 @@ class SendChatPushJob implements ShouldQueue
             // Mentioned members get a more salient "you were mentioned" push
             // instead of the regular new-message one.
             $isMention = $mentioned->contains($userId);
-            $quiet = ! $isMention && ! $this->claimAlert($scheduleId, $userId);
+            $quiet = ! $isMention && ! $this->callToAction && ! $this->claimAlert($scheduleId, $userId);
 
             $title = $isMention ? "📣 $tripTitle" : "💬 $tripTitle";
             if (! $isMention && $unreadCount > 1) {

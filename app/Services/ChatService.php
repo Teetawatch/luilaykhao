@@ -491,6 +491,7 @@ class ChatService
             'reply_to' => $this->presentReplyExcerpt($message->replyTo),
             'reactions' => $this->aggregateReactions($message),
             'poll' => $this->presentPoll($message, $currentUserId),
+            'food_round' => $this->presentFoodRound($message),
             'is_pinned' => $message->pinned_at !== null,
             'created_at' => $message->created_at?->toISOString(),
         ];
@@ -510,6 +511,22 @@ class ChatService
         $poll = $message->relationLoaded('poll') ? $message->poll : $message->poll()->first();
 
         return $poll ? app(ChatPollService::class)->present($poll, $currentUserId) : null;
+    }
+
+    /**
+     * รอบรับออเดอร์อาหารที่แนบกับข้อความ (ถ้ามี)
+     *
+     * @return array<string, mixed>|null
+     */
+    private function presentFoodRound(ChatMessage $message): ?array
+    {
+        if ($message->is_deleted) {
+            return null;
+        }
+
+        $round = $message->relationLoaded('foodRound') ? $message->foodRound : $message->foodRound()->first();
+
+        return $round ? app(ChatFoodOrderService::class)->present($round) : null;
     }
 
     /**

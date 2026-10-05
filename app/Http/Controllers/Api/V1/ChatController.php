@@ -110,6 +110,7 @@ class ChatController extends Controller
             'reactions:id,message_id,user_id,emoji',
             'poll.options',
             'poll.votes',
+            'foodRound.orders.user:id,name,nickname,avatar',
         ];
     }
 
@@ -437,16 +438,25 @@ class ChatController extends Controller
 
     /**
      * สร้างโพลในห้อง — ใครก็ได้ที่อยู่ในห้อง (ทริปกลุ่มต้องตัดสินใจร่วมกัน)
+     *
+     * kind=vote = โหวตตัดสินเสียงข้างมาก: ไม่ส่งตัวเลือกมาได้ (ใช้ เห็นด้วย/ไม่เห็นด้วย)
+     * และมีเวลาปิดเสมอ (duration_minutes, ไม่ส่ง = 10 นาที)
      */
     public function createPoll(Request $request, int $scheduleId): JsonResponse
     {
+        $isVote = $request->input('kind') === ChatPoll::KIND_VOTE;
+
         $validated = $request->validate([
+            'kind' => ['nullable', Rule::in([ChatPoll::KIND_POLL, ChatPoll::KIND_VOTE])],
             'question' => ['required', 'string', 'max:200'],
-            'options' => ['required', 'array', 'min:'.ChatPoll::MIN_OPTIONS, 'max:'.ChatPoll::MAX_OPTIONS],
-            'options.*' => ['required', 'string', 'max:100'],
+            'options' => $isVote
+                ? ['nullable', 'array', 'max:'.ChatPoll::VOTE_MAX_OPTIONS]
+                : ['required', 'array', 'min:'.ChatPoll::MIN_OPTIONS, 'max:'.ChatPoll::MAX_OPTIONS],
+            'options.*' => [$isVote ? 'nullable' : 'required', 'string', 'max:100'],
             'allow_multiple' => ['nullable', 'boolean'],
             // ปิดโหวตอัตโนมัติหลังผ่านไปกี่ชั่วโมง (ไม่ส่ง = เปิดจนกว่าจะปิดเอง)
             'duration_hours' => ['nullable', 'integer', 'min:1', 'max:168'],
+            'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:'.ChatPoll::VOTE_MAX_MINUTES],
         ]);
 
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -461,9 +471,11 @@ class ChatController extends Controller
                 $user,
                 $schedule,
                 trim($validated['question']),
-                $validated['options'],
+                $validated['options'] ?? [],
                 (bool) ($validated['allow_multiple'] ?? false),
                 $validated['duration_hours'] ?? null,
+                $isVote ? ChatPoll::KIND_VOTE : ChatPoll::KIND_POLL,
+                $validated['duration_minutes'] ?? null,
             );
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
@@ -472,14 +484,15 @@ class ChatController extends Controller
         $message = ChatMessage::with($this->messageRelations())->find($poll->message_id);
 
         // ผู้สร้างถือว่าอ่านถึงข้อความล่าสุดแล้ว + แจ้งเตือนสมาชิกเหมือนข้อความปกติ
+        // โหวตมีเส้นตายไม่กี่นาที จึงเด้งแบบมีเสียงถึงทุกคนที่ยังไม่ได้ปิดแจ้งเตือนห้อง
         if ($message) {
             $this->chatService->markRead($user, $schedule, $message->id);
-            SendChatPushJob::dispatch($message->id, $user->id, []);
+            SendChatPushJob::dispatch($message->id, $user->id, [], $isVote);
         }
 
         return $this->success(
             $message ? $this->chatService->presentMessage($message, $user->id) : null,
-            'สร้างโพลแล้ว',
+            $isVote ? 'เริ่มโหวตแล้ว' : 'สร้างโพลแล้ว',
             201,
         );
     }

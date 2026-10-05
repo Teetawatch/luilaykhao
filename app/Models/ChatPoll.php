@@ -17,9 +17,28 @@ class ChatPoll extends Model
 
     public const MAX_OPTIONS = 6;
 
+    /** โพลทั่วไป — ดูผลไปเรื่อย ๆ ไม่มีใครประกาศผล */
+    public const KIND_POLL = 'poll';
+
+    /**
+     * โหวตตัดสิน — เลือกได้ข้อเดียว มีเวลาจำกัดเสมอ ครบทุกคนหรือหมดเวลาแล้วปิดเอง
+     * และประกาศผลเสียงข้างมากเข้าห้อง (ไว้จบเรื่องเวลาเสียงแตกกลางทริป)
+     */
+    public const KIND_VOTE = 'vote';
+
+    /** ตัวเลือกตั้งต้นของโหวต เมื่อคนสร้างไม่ได้พิมพ์ตัวเลือกเอง */
+    public const VOTE_DEFAULT_OPTIONS = ['👍 เห็นด้วย', '👎 ไม่เห็นด้วย'];
+
+    public const VOTE_MAX_OPTIONS = 4;
+
+    /** โหวตไม่ระบุเวลา = ปิดใน 10 นาที (ตัดสินกันบนรถ ไม่ใช่รอข้ามวัน) */
+    public const VOTE_DEFAULT_MINUTES = 10;
+
+    public const VOTE_MAX_MINUTES = 180;
+
     protected $fillable = [
-        'schedule_id', 'message_id', 'created_by_id', 'question',
-        'allow_multiple', 'closes_at', 'closed_at',
+        'schedule_id', 'message_id', 'created_by_id', 'question', 'kind',
+        'allow_multiple', 'closes_at', 'closed_at', 'announced_at',
     ];
 
     protected function casts(): array
@@ -28,6 +47,7 @@ class ChatPoll extends Model
             'allow_multiple' => 'boolean',
             'closes_at' => 'datetime',
             'closed_at' => 'datetime',
+            'announced_at' => 'datetime',
         ];
     }
 
@@ -54,6 +74,11 @@ class ChatPoll extends Model
     public function votes(): HasMany
     {
         return $this->hasMany(ChatPollVote::class, 'poll_id');
+    }
+
+    public function isVote(): bool
+    {
+        return $this->kind === self::KIND_VOTE;
     }
 
     /**
