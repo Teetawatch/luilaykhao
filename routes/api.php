@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\BookingDocumentController;
 use App\Http\Controllers\Api\V1\BookingMemberController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\ChatCollectionController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ChatFoodOrderController;
 use App\Http\Controllers\Api\V1\ChatRestStopController;
@@ -47,6 +48,7 @@ use App\Http\Controllers\Api\V1\HomeWidgetController;
 use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\LiveActivityController;
+use App\Http\Controllers\Api\V1\LostItemController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\MedalController;
 use App\Http\Controllers\Api\V1\ModerationController;
@@ -383,6 +385,7 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/food-rounds/{roundId}/close', [ChatFoodOrderController::class, 'close']);
         Route::post('schedules/{id}/chat/food-rounds/{roundId}/reopen', [ChatFoodOrderController::class, 'reopen']);
         Route::put('schedules/{id}/chat/food-rounds/{roundId}/bill', [ChatFoodOrderController::class, 'bill']);
+        Route::get('schedules/{id}/chat/food-rounds/{roundId}/dietary', [ChatFoodOrderController::class, 'dietary']);
         Route::post('schedules/{id}/chat/food-rounds/{roundId}/my-order/paid', [ChatFoodOrderController::class, 'claimPaid']);
         Route::post('schedules/{id}/chat/food-rounds/{roundId}/orders/{orderId}/paid', [ChatFoodOrderController::class, 'setPaid']);
         // จุดพัก: นัดเวลากลับรถ + เช็คชื่อขึ้นรถ / ขอแวะห้องน้ำแบบไม่บอกชื่อ
@@ -394,6 +397,22 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/stop-requests', [ChatRestStopController::class, 'requestStop'])->middleware('throttle:10,1');
         Route::delete('schedules/{id}/chat/stop-requests/mine', [ChatRestStopController::class, 'cancelRequest']);
         Route::post('schedules/{id}/chat/stop-requests/ack', [ChatRestStopController::class, 'acknowledge']);
+        // เก็บเงินหน้างาน (ค่าใช้จ่ายนอกแพ็กเกจ) — สตาฟสร้าง/ติ๊กจ่าย ลูกทริปแจ้งโอน
+        Route::get('schedules/{id}/chat/roster', [ChatCollectionController::class, 'roster']);
+        Route::post('schedules/{id}/chat/collections', [ChatCollectionController::class, 'store'])->middleware('throttle:chat');
+        Route::put('schedules/{id}/chat/collections/{collectionId}/payers', [ChatCollectionController::class, 'setPayers']);
+        Route::post('schedules/{id}/chat/collections/{collectionId}/claim', [ChatCollectionController::class, 'claim']);
+        Route::post('schedules/{id}/chat/collections/{collectionId}/paid', [ChatCollectionController::class, 'setPaid']);
+        Route::post('schedules/{id}/chat/collections/{collectionId}/close', [ChatCollectionController::class, 'close']);
+        Route::post('schedules/{id}/chat/collections/{collectionId}/reopen', [ChatCollectionController::class, 'reopen']);
+        // ของหาย / ลืมของในทริป — อยู่ต่อหลังห้องแชทถูกลบ (สิทธิ์อิงคนที่ไปทริปจริง)
+        Route::get('lost-items', [LostItemController::class, 'mine']);
+        Route::get('schedules/{id}/lost-items', [LostItemController::class, 'index']);
+        Route::post('schedules/{id}/lost-items', [LostItemController::class, 'store'])->middleware('throttle:chat');
+        Route::post('lost-items/{itemId}/claim', [LostItemController::class, 'claim'])->middleware('throttle:20,1');
+        Route::delete('lost-items/{itemId}/claim', [LostItemController::class, 'unclaim']);
+        Route::post('lost-items/{itemId}/returned', [LostItemController::class, 'returned']);
+        Route::delete('lost-items/{itemId}', [LostItemController::class, 'destroy']);
         // ห้องพักของรอบ — ใครอยู่ในห้องแชทก็ดูได้ ทีมงานจัด/ประกาศ
         Route::get('schedules/{id}/rooms', [ScheduleRoomController::class, 'index']);
         Route::post('schedules/{id}/rooms', [ScheduleRoomController::class, 'store']);
@@ -757,6 +776,7 @@ Route::prefix('v1')->group(function () {
 
         // Schedule Itinerary (กำหนดการรอบเดินทาง) — แอดมิน/operator สร้าง/แก้/ลบ/จัดลำดับ
         Route::get('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'adminIndex']);
+        Route::get('lost-items', [LostItemController::class, 'adminIndex']);
         Route::post('schedules/{id}/itinerary', [ScheduleItineraryController::class, 'store']);
         Route::post('schedules/{id}/itinerary/reorder', [ScheduleItineraryController::class, 'reorder']);
         Route::put('schedules/{id}/itinerary/{itemId}', [ScheduleItineraryController::class, 'update']);

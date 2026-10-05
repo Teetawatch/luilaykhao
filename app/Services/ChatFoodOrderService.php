@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\ChatFoodRoundUpdated;
 use App\Events\ChatMessageSent;
 use App\Jobs\SendChatPushJob;
+use App\Models\BookingPassenger;
 use App\Models\ChatFoodOrder;
 use App\Models\ChatFoodRound;
 use App\Models\ChatMessage;
@@ -243,6 +244,63 @@ class ChatFoodOrderService
             'summary' => $summary->all(),
             'billing' => $round->billed_at ? $this->billingSummary($round, $summary) : null,
         ];
+    }
+
+    // ── แพ้อาหาร / ฮาลาล (เฉพาะทีมงาน) ─────────────────────────────────────
+
+    /**
+     * คนในรอบที่แจ้งแพ้อาหารหรือทานฮาลาลไว้ตอนจอง พร้อมบอกว่ารอบนี้สั่งอะไร —
+     * สตาฟถือรายการไปสั่งร้านต้องรู้ว่า "จานไหนห้ามใส่อะไร"
+     *
+     * ข้อมูลสุขภาพ จึงไม่อยู่ใน payload ของการ์ดที่กระจายทั้งห้อง ทีมงานขอผ่าน
+     * endpoint แยก (สิทธิ์เดียวกับใบรายชื่อของสตาฟที่เห็นข้อมูลนี้อยู่แล้ว)
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function dietary(ChatFoodRound $round): array
+    {
+        $round->loadMissing('orders');
+        $roster = app(TripRosterService::class)->passengers($round->schedule);
+        if ($roster->isEmpty()) {
+            return [];
+        }
+
+        $flags = BookingPassenger::whereIn('id', $roster->pluck('passenger_id'))
+            ->get(['id', 'allergies', 'halal_food'])
+            ->keyBy('id');
+
+        $orderByUser = $round->orders->whereNotNull('user_id')->keyBy('user_id');
+
+        return $roster
+            ->map(function ($p) use ($flags, $orderByUser) {
+                $flag = $flags[$p['passenger_id']] ?? null;
+                $allergies = trim((string) $flag?->allergies);
+                $halal = (bool) $flag?->halal_food;
+                if ($allergies === '' && ! $halal) {
+                    return null;
+                }
+
+                // ออเดอร์อยู่ที่บัญชีที่ดูแลคนนี้ (ตัวเอง หรือคนที่จองให้ทั้งกลุ่ม)
+                $order = $p['user_id'] ? $orderByUser->get($p['user_id']) : null;
+
+                return [
+                    'passenger_id' => $p['passenger_id'],
+                    // บัญชีที่ดูแลคนนี้ — แอปจับคู่กับออเดอร์ที่ไหลเข้ามาภายหลังเองได้
+                    'user_id' => $p['user_id'],
+                    'name' => $p['name'],
+                    'allergies' => $allergies !== '' ? $allergies : null,
+                    'halal' => $halal,
+                    'order_id' => $order?->id,
+                    'order_status' => match (true) {
+                        $order === null => 'none',
+                        (bool) $order->skipped => 'skipped',
+                        default => 'ordered',
+                    },
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     // ── หารบิล ──────────────────────────────────────────────────────────────

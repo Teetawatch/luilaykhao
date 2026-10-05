@@ -493,6 +493,8 @@ class ChatService
             'poll' => $this->presentPoll($message, $currentUserId),
             'food_round' => $this->presentFoodRound($message),
             'rest_stop' => $this->presentRestStop($message),
+            'collection' => $this->presentCollection($message),
+            'lost_item' => $this->presentLostItem($message),
             'is_pinned' => $message->pinned_at !== null,
             'created_at' => $message->created_at?->toISOString(),
         ];
@@ -544,6 +546,38 @@ class ChatService
         $stop = $message->relationLoaded('restStop') ? $message->restStop : $message->restStop()->first();
 
         return $stop ? app(ChatRestStopService::class)->present($stop) : null;
+    }
+
+    /**
+     * ของหายที่ประกาศผ่านข้อความ — ส่วนสาธารณะเท่านั้น (ไม่มีชื่อ/เบอร์เจ้าของ)
+     *
+     * @return array<string, mixed>|null
+     */
+    private function presentLostItem(ChatMessage $message): ?array
+    {
+        if ($message->is_deleted) {
+            return null;
+        }
+
+        $item = $message->relationLoaded('lostItem') ? $message->lostItem : $message->lostItem()->first();
+
+        return $item ? app(LostItemService::class)->present($item) : null;
+    }
+
+    /**
+     * การเก็บเงินหน้างานที่แนบกับข้อความ (ถ้ามี)
+     *
+     * @return array<string, mixed>|null
+     */
+    private function presentCollection(ChatMessage $message): ?array
+    {
+        if ($message->is_deleted) {
+            return null;
+        }
+
+        $collection = $message->relationLoaded('collection') ? $message->collection : $message->collection()->first();
+
+        return $collection ? app(ChatCollectionService::class)->present($collection) : null;
     }
 
     /**

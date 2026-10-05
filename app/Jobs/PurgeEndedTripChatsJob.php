@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\ChatCollection;
 use App\Models\ChatFoodRound;
 use App\Models\ChatMessage;
 use App\Models\ChatPoll;
@@ -10,6 +11,7 @@ use App\Models\ChatRead;
 use App\Models\ChatRestStop;
 use App\Models\ChatRoomPreference;
 use App\Models\ChatStopRequest;
+use App\Models\LostItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Support\MediaDisk;
@@ -80,7 +82,10 @@ class PurgeEndedTripChatsJob implements ShouldQueue
             ChatPoll::where('schedule_id', $scheduleId)->delete();
             ChatFoodRound::where('schedule_id', $scheduleId)->delete();
             ChatRestStop::where('schedule_id', $scheduleId)->delete();
+            ChatCollection::where('schedule_id', $scheduleId)->delete();
             ChatStopRequest::where('schedule_id', $scheduleId)->delete();
+            // ของหายต้องอยู่ต่อหลังห้องถูกลบ — แค่ตัดการ์ดในแชทออก
+            LostItem::where('schedule_id', $scheduleId)->update(['message_id' => null]);
             ChatMessage::where('schedule_id', $scheduleId)->delete();
             ChatRead::where('schedule_id', $scheduleId)->delete();
             ChatRoomPreference::where('schedule_id', $scheduleId)->delete();

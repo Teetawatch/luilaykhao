@@ -14,6 +14,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\FcmService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
@@ -420,5 +421,142 @@ class ChatRestStopTest extends TestCase
         $this->actingAs($a, 'sanctum')
             ->postJson("/api/v1/schedules/{$schedule->id}/chat/stop-requests")
             ->assertStatus(422);
+    }
+
+    // ── นัดรวมพลล่วงหน้า ────────────────────────────────────────────────────
+
+    private function openMeetup(User $staff, TripSchedule $schedule, Carbon $at, ?string $place = 'หน้าลานกางเต็นท์')
+    {
+        return $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops", [
+                'meet_at' => $at->toIso8601String(),
+                'place' => $place,
+            ]);
+    }
+
+    public function test_meetup_tomorrow_includes_join_trip_people_and_reads_naturally(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-10 14:00', 'Asia/Bangkok'));
+        $schedule = $this->makeSchedule();
+        $this->party($schedule, ['สมชาย ใจดี']);
+        $this->party($schedule, ['จอย ทริป'], ['is_join_trip' => true]);
+        $staff = $this->staff($schedule);
+
+        $data = $this->openMeetup($staff, $schedule, Carbon::parse('2026-10-11 04:30', 'Asia/Bangkok'))
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertSame('📍 นัดรวมพล พรุ่งนี้ 04:30 น. ที่หน้าลานกางเต็นท์ — ถึงจุดนัดแล้วกด "มาถึงแล้ว" ในการ์ดนี้', $data['body']);
+        $this->assertSame('meetup', $data['rest_stop']['kind']);
+        $this->assertSame(2, $data['rest_stop']['total'], 'นัดรวมพลนับคนจอยทริปด้วย');
+        Bus::assertDispatched(SendChatPushJob::class, fn ($job) => $job->callToAction === true);
+    }
+
+    public function test_meetup_must_be_in_the_next_seven_days(): void
+    {
+        $schedule = $this->makeSchedule();
+        $staff = $this->staff($schedule);
+
+        $this->openMeetup($staff, $schedule, now()->subMinute())->assertStatus(422);
+        $this->openMeetup($staff, $schedule, now()->addDays(8))->assertStatus(422);
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops", ['place' => 'ไหนก็ได้'])
+            ->assertStatus(422);
+    }
+
+    public function test_a_rest_stop_today_does_not_cancel_tomorrows_meetup_and_vice_versa(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->party($schedule, ['สมชาย ใจดี']);
+        $staff = $this->staff($schedule);
+
+        $restId = $this->openStop($staff, $schedule)['rest_stop']['id'];
+        $meetupId = $this->openMeetup($staff, $schedule, now()->addDay())->json('data.rest_stop.id');
+        $this->assertFalse(ChatRestStop::find($restId)->isDeparted());
+
+        $this->openStop($staff, $schedule);
+        $this->assertTrue(ChatRestStop::find($restId)->isDeparted(), 'จุดพักใบเก่าปิดตามปกติ');
+        $this->assertFalse(ChatRestStop::find($meetupId)->isDeparted(), 'นัดพรุ่งนี้ต้องอยู่รอด');
+    }
+
+    public function test_meetup_reminds_the_eve_before_then_fifteen_minutes_before_then_tells_staff(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-10 14:00', 'Asia/Bangkok'));
+        $schedule = $this->makeSchedule();
+        [$early, , $a] = $this->party($schedule, ['สมชาย ใจดี']);
+        [$late] = $this->party($schedule, ['มานะ ขยัน']);
+        $staff = $this->staff($schedule);
+        $stopId = $this->openMeetup($staff, $schedule, Carbon::parse('2026-10-11 04:30', 'Asia/Bangkok'))
+            ->json('data.rest_stop.id');
+
+        $this->travelTo(Carbon::parse('2026-10-10 19:59', 'Asia/Bangkok'));
+        $this->settle();
+        $this->assertSame([], $this->pushes);
+
+        // 20:00 คืนก่อน — ทุกคน ครั้งเดียว
+        $this->travelTo(Carbon::parse('2026-10-10 20:00', 'Asia/Bangkok'));
+        $this->settle();
+        $this->settle();
+        $this->assertCount(1, $this->pushesTo($early));
+        $this->assertCount(1, $this->pushesTo($late));
+        $this->assertSame('🌙 พรุ่งนี้ 04:30 น. นัดรวมพล', $this->pushesTo($late)[0]['title']);
+        $this->assertCount(0, $this->pushesTo($staff));
+
+        // ตีสอง กด "มาถึงแล้ว" ล่วงหน้าไม่ได้
+        $this->travelTo(Carbon::parse('2026-10-11 01:00', 'Asia/Bangkok'));
+        $this->board($early, $schedule, $stopId, [$a[0]->id])->assertStatus(422);
+
+        $this->travelTo(Carbon::parse('2026-10-11 04:10', 'Asia/Bangkok'));
+        $this->board($early, $schedule, $stopId, [$a[0]->id])->assertOk();
+
+        // 04:15 — เตือนเฉพาะคนที่ยังไม่มา
+        $this->travelTo(Carbon::parse('2026-10-11 04:15', 'Asia/Bangkok'));
+        $this->settle();
+        $this->assertCount(1, $this->pushesTo($early));
+        $this->assertCount(2, $this->pushesTo($late));
+        $this->assertSame('⏰ อีก 15 นาทีนัดรวมพล', $this->pushesTo($late)[1]['title']);
+
+        // 04:30 — ถึงเวลา บอกสตาฟว่าใครยังไม่มา
+        $this->travelTo(Carbon::parse('2026-10-11 04:30', 'Asia/Bangkok'));
+        $this->settle();
+        $this->assertSame('📍 ถึงเวลานัดรวมพลแล้ว', $this->pushesTo($late)[2]['title']);
+        $this->assertSame('📍 ถึงเวลานัด ยังไม่มา 1 คน', $this->pushesTo($staff)[0]['title']);
+        $this->assertSame('มานะ', $this->pushesTo($staff)[0]['body']);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops/{$stopId}/depart")
+            ->assertOk();
+        $this->assertTrue(ChatMessage::where('schedule_id', $schedule->id)
+            ->where('body', '📍 เริ่มแล้ว (มาถึงจุดนัด 1/2 คน)')->exists());
+    }
+
+    public function test_meetup_set_late_in_the_evening_skips_the_eve_reminder(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-10 21:30', 'Asia/Bangkok'));
+        $schedule = $this->makeSchedule();
+        [$late] = $this->party($schedule, ['มานะ ขยัน']);
+        $staff = $this->staff($schedule);
+        $this->openMeetup($staff, $schedule, Carbon::parse('2026-10-11 05:00', 'Asia/Bangkok'));
+
+        $this->travelTo(Carbon::parse('2026-10-10 22:00', 'Asia/Bangkok'));
+        $this->settle();
+
+        $this->assertCount(0, $this->pushesTo($late), 'เพิ่งประกาศไปเมื่อกี้ — ไม่ต้องเตือนคืนนี้ซ้ำ');
+    }
+
+    public function test_staff_can_postpone_a_meetup(): void
+    {
+        $schedule = $this->makeSchedule();
+        $this->party($schedule, ['สมชาย ใจดี']);
+        $staff = $this->staff($schedule);
+        $at = now()->addHours(10)->startOfMinute();
+        $stopId = $this->openMeetup($staff, $schedule, $at)->json('data.rest_stop.id');
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops/{$stopId}/extend", ['minutes' => 30])
+            ->assertOk();
+
+        $this->assertSame($at->copy()->addMinutes(30)->timestamp, ChatRestStop::find($stopId)->return_at->timestamp);
+        $this->assertTrue(ChatMessage::where('schedule_id', $schedule->id)->where('body', 'like', '⏰ เลื่อนเวลานัดรวมพลไป 30 นาที%')->exists());
     }
 }

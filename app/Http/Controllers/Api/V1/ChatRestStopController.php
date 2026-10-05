@@ -12,6 +12,7 @@ use App\Services\ChatService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * จุดพักระหว่างทาง (นัดเวลากลับรถ + เช็คชื่อขึ้นรถ) และคำขอแวะห้องน้ำแบบไม่บอกชื่อ
@@ -29,8 +30,10 @@ class ChatRestStopController extends Controller
     /** สตาฟประกาศพัก — การ์ดนับถอยหลังลงห้อง และเด้งแจ้งทุกคน */
     public function store(Request $request, int $scheduleId): JsonResponse
     {
+        // minutes = พักรถตอนนี้, meet_at = นัดรวมพลล่วงหน้า (ISO-8601 มีโซนเวลา)
         $validated = $request->validate([
-            'minutes' => ['required', 'integer', 'min:'.ChatRestStop::MIN_MINUTES, 'max:'.ChatRestStop::MAX_MINUTES],
+            'minutes' => ['required_without:meet_at', 'nullable', 'integer', 'min:'.ChatRestStop::MIN_MINUTES, 'max:'.ChatRestStop::MAX_MINUTES],
+            'meet_at' => ['required_without:minutes', 'nullable', 'date'],
             'place' => ['nullable', 'string', 'max:120'],
         ]);
 
@@ -41,12 +44,15 @@ class ChatRestStopController extends Controller
             return $this->error('นัดเวลาพักได้เฉพาะทีมงานประจำรอบ', 403);
         }
 
-        $stop = $this->restStops->open(
-            $user,
-            $schedule,
-            (int) $validated['minutes'],
-            isset($validated['place']) ? trim($validated['place']) : null,
-        );
+        $place = isset($validated['place']) ? trim($validated['place']) : null;
+
+        try {
+            $stop = ! empty($validated['meet_at'])
+                ? $this->restStops->openMeetup($user, $schedule, Carbon::parse($validated['meet_at'])->utc(), $place)
+                : $this->restStops->open($user, $schedule, (int) $validated['minutes'], $place);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
 
         $message = ChatMessage::with([
             'user:id,name,nickname,avatar',
@@ -62,7 +68,7 @@ class ChatRestStopController extends Controller
 
         return $this->success(
             $message ? $this->chatService->presentMessage($message, $user->id) : null,
-            'ประกาศเวลาพักแล้ว',
+            $stop->isMeetup() ? 'ประกาศนัดรวมพลแล้ว' : 'ประกาศเวลาพักแล้ว',
             201,
         );
     }

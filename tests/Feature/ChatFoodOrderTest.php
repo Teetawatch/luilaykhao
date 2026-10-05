@@ -6,6 +6,7 @@ use App\Events\ChatFoodRoundUpdated;
 use App\Jobs\SendChatPushJob;
 use App\Jobs\SettleChatPollsJob;
 use App\Models\Booking;
+use App\Models\BookingPassenger;
 use App\Models\ChatFoodRound;
 use App\Models\ChatMessage;
 use App\Models\Trip;
@@ -459,5 +460,51 @@ class ChatFoodOrderTest extends TestCase
             ->assertStatus(422);
         // ยังไม่ส่งยอด → การ์ดไม่มีก้อน billing
         $this->assertNull($this->order($mint, $schedule, $roundId, ['items' => [['name' => 'ชาเย็น']]])->json('data.food_round.billing'));
+    }
+
+    // ── แพ้อาหาร / ฮาลาล ────────────────────────────────────────────────────
+
+    public function test_staff_see_allergies_and_halal_next_to_who_ordered_but_customers_cannot(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $mint = $this->member($schedule, 'มิ้นท์');
+        $bank = $this->member($schedule, 'แบงค์');
+        $ploy = $this->member($schedule, 'พลอย');
+        $staff = $this->staff($schedule);
+
+        $bookingOf = fn (User $u) => Booking::where('user_id', $u->id)->first()->id;
+        BookingPassenger::create(['booking_id' => $bookingOf($mint), 'name' => 'มิ้นท์ หวาน', 'allergies' => 'แพ้กุ้ง']);
+        BookingPassenger::create(['booking_id' => $bookingOf($bank), 'name' => 'แบงค์ ขยัน', 'halal_food' => true]);
+        BookingPassenger::create(['booking_id' => $bookingOf($ploy), 'name' => 'พลอย สวย', 'allergies' => 'แพ้ถั่ว']);
+        BookingPassenger::create(['booking_id' => $bookingOf($ploy), 'name' => 'ปกติ ดี']);
+
+        $roundId = $this->openRound($staff, $schedule)['food_round']['id'];
+        $mintOrder = $this->order($mint, $schedule, $roundId, ['items' => [['name' => 'ผัดไทย']]])->json('data.food_round.orders.0.id');
+        $this->order($bank, $schedule, $roundId, ['skipped' => true]);
+
+        $this->actingAs($mint, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/food-rounds/{$roundId}/dietary")
+            ->assertForbidden();
+
+        $alerts = $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/food-rounds/{$roundId}/dietary")
+            ->assertOk()
+            ->json('data.alerts');
+
+        $this->assertCount(3, $alerts, 'คนที่ไม่ได้แจ้งอะไรไม่ต้องขึ้น');
+        $byName = collect($alerts)->keyBy('name');
+        $this->assertSame('แพ้กุ้ง', $byName['มิ้นท์']['allergies']);
+        $this->assertSame('ordered', $byName['มิ้นท์']['order_status']);
+        $this->assertSame($mintOrder, $byName['มิ้นท์']['order_id']);
+        $this->assertTrue($byName['แบงค์']['halal']);
+        $this->assertSame('skipped', $byName['แบงค์']['order_status']);
+        $this->assertSame('none', $byName['พลอย']['order_status']);
+
+        // ข้อมูลสุขภาพไม่หลุดไปกับการ์ดที่กระจายทั้งห้อง
+        $card = json_encode($this->actingAs($mint, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/messages")->json('data.messages'), JSON_UNESCAPED_UNICODE);
+        $this->assertStringNotContainsString('แพ้กุ้ง', $card);
+        $this->assertStringNotContainsString('halal', $card);
     }
 }

@@ -115,6 +115,8 @@ class ChatController extends Controller
             'poll.votes',
             'foodRound.orders.user:id,name,nickname,avatar',
             'restStop.boardings',
+            'collection.dues',
+            'lostItem',
         ];
     }
 

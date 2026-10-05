@@ -78,4 +78,20 @@ class ChatMessage extends Model
     {
         return $this->hasOne(ChatRestStop::class, 'message_id');
     }
+
+    /**
+     * ของหายที่ประกาศผ่านข้อความนี้ (ของยังอยู่ต่อแม้ข้อความถูกลบ)
+     */
+    public function lostItem(): HasOne
+    {
+        return $this->hasOne(LostItem::class, 'message_id');
+    }
+
+    /**
+     * การเก็บเงินหน้างานที่แนบกับข้อความนี้
+     */
+    public function collection(): HasOne
+    {
+        return $this->hasOne(ChatCollection::class, 'message_id');
+    }
 }

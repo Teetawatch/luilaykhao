@@ -26,6 +26,10 @@ use Illuminate\Support\Facades\Log;
  *
  * รายชื่ออิงผู้โดยสารจริง (TripRosterService) ไม่ใช่บัญชีแอป เพราะคนในกลุ่ม
  * หลายคนไม่มีแอป — คนที่จองให้กด "ขึ้นรถแล้ว" แทนทั้งกลุ่มได้ สตาฟติ๊กแทนใครก็ได้
+ *
+ * "นัดรวมพลล่วงหน้า" (kind = meetup) ใช้กลไกเดียวกัน แต่ตั้งเวลา/วันได้
+ * (พรุ่งนี้ 04:30 หน้าลานกางเต็นท์), เตือนคืนก่อน 20:00 + ก่อนเวลา 15 นาที,
+ * นับรวมคนจอยทริป (เจอกันที่หน้างานอยู่แล้ว) และไม่ปิดจุดพักที่ใช้งานอยู่
  */
 class ChatRestStopService
 {
@@ -44,13 +48,16 @@ class ChatRestStopService
 
         $stop = DB::transaction(function () use ($staff, $schedule, $returnAt, $place, $minutes) {
             // จุดพักเดิมที่ลืมกด "ออกรถ" — ปิดเงียบ ๆ ให้เหลือการ์ดที่ใช้งานใบเดียว
+            // (นัดรวมพลล่วงหน้าไม่นับ — นัดพรุ่งนี้เช้าต้องอยู่รอดผ่านการแวะปั๊มวันนี้)
             ChatRestStop::where('schedule_id', $schedule->id)
+                ->where('kind', ChatRestStop::KIND_REST)
                 ->whereNull('departed_at')
                 ->update(['departed_at' => now()]);
 
             $stop = ChatRestStop::create([
                 'schedule_id' => $schedule->id,
                 'created_by_id' => $staff->id,
+                'kind' => ChatRestStop::KIND_REST,
                 'place' => $place ?: null,
                 'return_at' => $returnAt,
                 // พักสั้นกว่าช่วงเตือน — เพิ่งประกาศเวลาไป ไม่ต้องเตือนซ้ำ
@@ -84,6 +91,49 @@ class ChatRestStopService
     }
 
     /**
+     * นัดรวมพลล่วงหน้า — เช่น "พรุ่งนี้ 04:30 หน้าลานกางเต็นท์" ขึ้นดูพระอาทิตย์
+     */
+    public function openMeetup(User $staff, TripSchedule $schedule, Carbon $meetAt, ?string $place = null): ChatRestStop
+    {
+        if ($meetAt->lte(now())) {
+            throw new \Exception('เวลานัดต้องเป็นเวลาข้างหน้า');
+        }
+        if ($meetAt->gt(now()->addDays(ChatRestStop::MEETUP_MAX_DAYS))) {
+            throw new \Exception('นัดล่วงหน้าได้ไม่เกิน '.ChatRestStop::MEETUP_MAX_DAYS.' วัน');
+        }
+
+        $stop = DB::transaction(function () use ($staff, $schedule, $meetAt, $place) {
+            $stop = ChatRestStop::create([
+                'schedule_id' => $schedule->id,
+                'created_by_id' => $staff->id,
+                'kind' => ChatRestStop::KIND_MEETUP,
+                'place' => $place ?: null,
+                'return_at' => $meetAt,
+                'reminded_at' => $this->minutesLeft($meetAt) <= ChatRestStop::MEETUP_REMIND_BEFORE_MINUTES ? now() : null,
+            ]);
+
+            $where = $place ? " ที่{$place}" : '';
+            $message = ChatMessage::create([
+                'schedule_id' => $schedule->id,
+                'user_id' => $staff->id,
+                'sender_role' => $this->chatService->senderRole($staff, $schedule),
+                'body' => "📍 นัดรวมพล {$this->when($meetAt)} น.{$where} — ถึงจุดนัดแล้วกด \"มาถึงแล้ว\" ในการ์ดนี้",
+            ]);
+
+            $stop->update(['message_id' => $message->id]);
+
+            return $stop;
+        });
+
+        $message = $stop->message()->with(['user', 'replyTo.user', 'reactions', 'restStop.boardings'])->first();
+        if ($message) {
+            broadcast(new ChatMessageSent($message))->toOthers();
+        }
+
+        return $stop->fresh('boardings');
+    }
+
+    /**
      * ติ๊กขึ้นรถ/ยังไม่ขึ้น — ลูกทริปติ๊กได้เฉพาะคนที่ตัวเองดูแล สตาฟติ๊กได้ทุกคน
      *
      * @param  array<int, int>  $passengerIds
@@ -91,11 +141,17 @@ class ChatRestStopService
     public function setBoarded(User $user, ChatRestStop $stop, array $passengerIds, bool $boarded, bool $asStaff): ChatRestStop
     {
         if ($stop->isDeparted()) {
-            throw new \Exception('รถออกไปแล้ว');
+            throw new \Exception($stop->isMeetup() ? 'นัดนี้จบไปแล้ว' : 'รถออกไปแล้ว');
+        }
+
+        // กด "มาถึงแล้ว" ล่วงหน้าทั้งคืนไม่ได้ — ไม่งั้นรายชื่อตอนเช้าโกหก
+        if ($boarded && ! $asStaff && $stop->isMeetup()
+            && $stop->return_at->gt(now()->addHours(ChatRestStop::MEETUP_ARRIVE_WINDOW_HOURS))) {
+            throw new \Exception('ยังไม่ถึงเวลานัด กดได้เมื่อถึงจุดนัดแล้วนะครับ');
         }
 
         $schedule = $stop->schedule;
-        $roster = $this->roster->passengers($schedule, includeJoinTrip: false);
+        $roster = $this->rosterOf($stop);
         $allowed = $asStaff
             ? $roster->pluck('passenger_id')
             : $roster->where('user_id', $user->id)->pluck('passenger_id');
@@ -130,7 +186,7 @@ class ChatRestStopService
     public function extend(ChatRestStop $stop, int $minutes): ChatRestStop
     {
         if ($stop->isDeparted()) {
-            throw new \Exception('รถออกไปแล้ว');
+            throw new \Exception($stop->isMeetup() ? 'นัดนี้จบไปแล้ว' : 'รถออกไปแล้ว');
         }
 
         $minutes = min(max($minutes, 1), 60);
@@ -140,14 +196,16 @@ class ChatRestStopService
         $stop->update([
             'return_at' => $returnAt,
             // เหลือไม่ถึงช่วงเตือน = เพิ่งประกาศเวลาใหม่ ไม่ต้องเตือนซ้ำทันที
-            'reminded_at' => $this->minutesLeft($returnAt) <= ChatRestStop::REMIND_BEFORE_MINUTES ? now() : null,
+            'reminded_at' => $this->minutesLeft($returnAt) <= $stop->remindBeforeMinutes() ? now() : null,
             'due_notified_at' => null,
         ]);
 
         $fresh = $this->broadcastUpdate($stop);
         $this->chatService->postSystem(
             $stop->schedule,
-            "⏰ ขยายเวลาพักอีก {$minutes} นาที — กลับขึ้นรถ {$this->clock($fresh->return_at)} น.",
+            $stop->isMeetup()
+                ? "⏰ เลื่อนเวลานัดรวมพลไป {$minutes} นาที — เจอกัน {$this->when($fresh->return_at)} น."
+                : "⏰ ขยายเวลาพักอีก {$minutes} นาที — กลับขึ้นรถ {$this->clock($fresh->return_at)} น.",
         );
 
         return $fresh;
@@ -164,11 +222,16 @@ class ChatRestStopService
         $fresh = $this->broadcastUpdate($stop);
 
         [$total, $boarded] = $this->counts($fresh);
+        $complete = $total > 0 && $boarded >= $total;
         $this->chatService->postSystem(
             $stop->schedule,
-            $total > 0 && $boarded >= $total
-                ? "🚐 ออกรถแล้ว — ขึ้นครบ {$total}/{$total} คน ไปต่อกันเลย!"
-                : '🚐 ออกรถแล้ว'.($total > 0 ? " (เช็คชื่อขึ้นรถ {$boarded}/{$total} คน)" : ''),
+            $stop->isMeetup()
+                ? ($complete
+                    ? "📍 มากันครบ {$total}/{$total} คน ไปกันเลย!"
+                    : '📍 เริ่มแล้ว'.($total > 0 ? " (มาถึงจุดนัด {$boarded}/{$total} คน)" : ''))
+                : ($complete
+                    ? "🚐 ออกรถแล้ว — ขึ้นครบ {$total}/{$total} คน ไปต่อกันเลย!"
+                    : '🚐 ออกรถแล้ว'.($total > 0 ? " (เช็คชื่อขึ้นรถ {$boarded}/{$total} คน)" : '')),
         );
 
         return $fresh;
@@ -182,12 +245,11 @@ class ChatRestStopService
     {
         $handled = 0;
 
+        // นัดรวมพลอาจอยู่ไกลถึงพรุ่งนี้ (เตือนคืนก่อน) — ดึงทุกใบที่ยังเปิดในสองวัน
+        // ข้างหน้าแล้วให้ settleOne ตัดสินทีละใบ (ใบที่เปิดอยู่มีไม่กี่ใบเสมอ)
         ChatRestStop::whereNull('departed_at')
             ->whereNotNull('message_id')
-            ->where('return_at', '<=', now()->addMinutes(ChatRestStop::REMIND_BEFORE_MINUTES))
-            ->where(fn ($q) => $q->whereNull('reminded_at')
-                ->orWhere(fn ($w) => $w->whereNull('due_notified_at')->where('return_at', '<=', now()))
-                ->orWhere('return_at', '<=', now()->subMinutes(ChatRestStop::AUTO_DEPART_AFTER_MINUTES)))
+            ->where('return_at', '<=', now()->addDays(2))
             ->orderBy('id')
             ->limit(200)
             ->get()
@@ -215,7 +277,17 @@ class ChatRestStopService
             return;
         }
 
+        if ($stop->isMeetup()) {
+            $this->remindEve($stop);
+        }
+
         $due = $stop->return_at->lte(now());
+        if (! $due && $stop->return_at->gt(now()->addMinutes($stop->remindBeforeMinutes()))) {
+            return;
+        }
+        if (($due && $stop->due_notified_at) || (! $due && $stop->reminded_at)) {
+            return;
+        }
         $column = $due ? 'due_notified_at' : 'reminded_at';
 
         // จองสิทธิ์ก่อนส่ง — job ซ้อนกันหรือรันซ้ำจะไม่เด้งซ้ำ
@@ -240,24 +312,74 @@ class ChatRestStopService
             'message_id' => (string) $stop->message_id,
         ];
 
+        $place = $stop->place ? " ที่{$stop->place}" : '';
+
         foreach ($missing->pluck('user_id')->filter()->unique() as $userId) {
             $names = $missing->where('user_id', $userId)->pluck('name');
             $who = $names->count() > 1 ? ' ('.$names->join(', ').')' : '';
+            $left = $this->minutesLeft($stop->return_at);
 
-            $this->send((int) $userId, $due
-                ? ["🚐 ถึงเวลากลับขึ้นรถแล้ว{$who}", "นัดกันไว้ {$time} น. ทุกคนรออยู่ที่รถนะครับ · {$tripTitle}"]
-                : ["⏰ อีก {$this->minutesLeft($stop->return_at)} นาทีรถออก{$who}", "กลับขึ้นรถ {$time} น. แล้วกด \"ขึ้นรถแล้ว\" ในแชทด้วยนะครับ · {$tripTitle}"],
-                $data);
+            $text = match (true) {
+                $stop->isMeetup() && $due => ["📍 ถึงเวลานัดรวมพลแล้ว{$who}", "นัดกันไว้ {$time} น.{$place} ทุกคนรออยู่นะครับ · {$tripTitle}"],
+                $stop->isMeetup() => ["⏰ อีก {$left} นาทีนัดรวมพล{$who}", "{$time} น.{$place} ถึงแล้วกด \"มาถึงแล้ว\" ในแชทด้วยนะครับ · {$tripTitle}"],
+                $due => ["🚐 ถึงเวลากลับขึ้นรถแล้ว{$who}", "นัดกันไว้ {$time} น. ทุกคนรออยู่ที่รถนะครับ · {$tripTitle}"],
+                default => ["⏰ อีก {$left} นาทีรถออก{$who}", "กลับขึ้นรถ {$time} น. แล้วกด \"ขึ้นรถแล้ว\" ในแชทด้วยนะครับ · {$tripTitle}"],
+            };
+
+            $this->send((int) $userId, $text, $data);
         }
 
         // ถึงเวลาแล้วยังไม่ครบ — บอกสตาฟว่าขาดใคร จะได้โทรตามได้ทันที
         if ($due) {
             $names = $missing->pluck('name');
             $list = $names->take(8)->join(', ').($names->count() > 8 ? ' และอีก '.($names->count() - 8).' คน' : '');
+            $title = $stop->isMeetup()
+                ? "📍 ถึงเวลานัด ยังไม่มา {$names->count()} คน"
+                : "🚐 ถึงเวลาออกรถ ยังขาด {$names->count()} คน";
 
             foreach ($this->staffIds($schedule) as $staffId) {
-                $this->send($staffId, ["🚐 ถึงเวลาออกรถ ยังขาด {$names->count()} คน", $list], $data);
+                $this->send($staffId, [$title, $list], $data);
             }
+        }
+    }
+
+    /**
+     * เตือนคืนก่อนวันนัด 20:00 — ให้ทุกคนตั้งนาฬิกาปลุก (ตอนนั้นยังไม่มีใคร "มาถึง")
+     * ส่งเฉพาะนัดที่ประกาศไว้ก่อนช่วงเตือน และยังเหลือเวลาเกินชั่วโมงก่อนนัด
+     */
+    private function remindEve(ChatRestStop $stop): void
+    {
+        if ($stop->eve_reminded_at) {
+            return;
+        }
+
+        $eveAt = $stop->return_at->copy()->timezone('Asia/Bangkok')
+            ->subDay()->setTime(ChatRestStop::MEETUP_EVE_HOUR, 0);
+
+        if (now()->lt($eveAt) || $stop->created_at->gte($eveAt) || $stop->return_at->lte(now()->addHour())) {
+            return;
+        }
+
+        $claimed = ChatRestStop::whereKey($stop->id)->whereNull('eve_reminded_at')->update(['eve_reminded_at' => now()]);
+        if ($claimed === 0) {
+            return;
+        }
+
+        $schedule = $stop->schedule;
+        $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
+        $place = $stop->place ? " ที่{$stop->place}" : '';
+        $data = [
+            'type' => 'rest_stop',
+            'route' => 'chat',
+            'schedule_id' => (string) $schedule->id,
+            'message_id' => (string) $stop->message_id,
+        ];
+
+        foreach ($this->rosterOf($stop)->pluck('user_id')->filter()->unique() as $userId) {
+            $this->send((int) $userId, [
+                "🌙 พรุ่งนี้ {$this->clock($stop->return_at)} น. นัดรวมพล",
+                "เจอกัน{$place} — ตั้งนาฬิกาปลุกไว้ด้วยนะครับ · {$tripTitle}",
+            ], $data);
         }
     }
 
@@ -271,10 +393,11 @@ class ChatRestStopService
     {
         $stop->loadMissing('boardings');
         $boardedIds = $stop->boardings->pluck('passenger_id')->map(fn ($id) => (int) $id);
-        $roster = $this->roster->passengers($stop->schedule, includeJoinTrip: false);
+        $roster = $this->rosterOf($stop);
 
         return [
             'id' => $stop->id,
+            'kind' => $stop->kind ?: ChatRestStop::KIND_REST,
             'place' => $stop->place,
             'return_at' => $stop->return_at?->toISOString(),
             'departed_at' => $stop->departed_at?->toISOString(),
@@ -444,7 +567,7 @@ class ChatRestStopService
     {
         $boarded = $stop->boardings()->pluck('passenger_id')->map(fn ($id) => (int) $id);
 
-        return $this->roster->passengers($stop->schedule, includeJoinTrip: false)
+        return $this->rosterOf($stop)
             ->reject(fn ($p) => $boarded->contains($p['passenger_id']))
             ->values();
     }
@@ -485,6 +608,38 @@ class ChatRestStopService
         ));
 
         return $fresh;
+    }
+
+    /**
+     * รายชื่อของการ์ดนี้ — พักรถนับเฉพาะคนบนรถ ส่วนนัดรวมพลนับคนจอยทริปด้วย
+     * (เจอกันที่หน้างานอยู่แล้ว)
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function rosterOf(ChatRestStop $stop): Collection
+    {
+        return $this->roster->passengers($stop->schedule, includeJoinTrip: $stop->isMeetup());
+    }
+
+    /** "04:30" ถ้าเป็นวันนี้, "พรุ่งนี้ 04:30", หรือ "ศ. 9 ต.ค. 04:30" */
+    private function when(Carbon $at): string
+    {
+        $local = $at->copy()->timezone('Asia/Bangkok');
+        $today = now('Asia/Bangkok')->startOfDay();
+        $day = $local->copy()->startOfDay();
+        $time = $local->format('H:i');
+
+        if ($day->equalTo($today)) {
+            return "วันนี้ {$time}";
+        }
+        if ($day->equalTo($today->copy()->addDay())) {
+            return "พรุ่งนี้ {$time}";
+        }
+
+        $days = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+        $months = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+        return "{$days[$local->dayOfWeek]} {$local->day} {$months[$local->month]} {$time}";
     }
 
     private function minutesLeft(Carbon $at): int

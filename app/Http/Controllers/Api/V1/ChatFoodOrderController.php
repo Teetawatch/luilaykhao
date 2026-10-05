@@ -173,6 +173,17 @@ class ChatFoodOrderController extends Controller
         return $this->payload($round, 'ลบออเดอร์แล้ว');
     }
 
+    /** แพ้อาหาร/ฮาลาลของคนในรอบ ผูกกับออเดอร์ — เฉพาะทีมงาน */
+    public function dietary(Request $request, int $scheduleId, int $roundId): JsonResponse
+    {
+        [$schedule, $round, $error] = $this->resolve($request, $scheduleId, $roundId, staffOnly: true);
+        if ($error) {
+            return $error;
+        }
+
+        return $this->success(['alerts' => $this->food->dietary($round)]);
+    }
+
     /** สตาฟใส่ราคาต่อเมนู + พร้อมเพย์ที่ให้โอนคืน (notify = ประกาศยอดให้ทุกคน) */
     public function bill(Request $request, int $scheduleId, int $roundId): JsonResponse
     {

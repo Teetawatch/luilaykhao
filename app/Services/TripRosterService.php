@@ -64,6 +64,28 @@ class TripRosterService
     }
 
     /**
+     * บัญชีแอปทุกบัญชีที่ไปทริปนี้ — เจ้าของใบจอง + เพื่อนร่วมใบจองที่ตอบรับแล้ว
+     * (รวมรอบที่จบไปแล้ว ต่างจากสิทธิ์ห้องแชทที่ปิดเมื่อใบจองเป็น completed)
+     *
+     * @return Collection<int, int>
+     */
+    public function userIds(TripSchedule $schedule): Collection
+    {
+        $bookingIds = Booking::where('schedule_id', $schedule->id)
+            ->whereIn('status', self::STATUSES)
+            ->pluck('id');
+
+        return Booking::whereIn('id', $bookingIds)->whereNotNull('user_id')->pluck('user_id')
+            ->merge(BookingMember::whereIn('booking_id', $bookingIds)
+                ->where('status', BookingMember::STATUS_ACTIVE)
+                ->whereNotNull('user_id')
+                ->pluck('user_id'))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    /**
      * ผู้โดยสารที่บัญชีนี้ดูแล (ตัวเอง + คนในกลุ่มที่ตัวเองจองให้)
      *
      * @return Collection<int, int>
