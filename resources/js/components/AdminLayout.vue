@@ -262,6 +262,7 @@ const menuGroups = ref([
       { to: '/admin/support', icon: 'fas fa-headset', label: 'ศูนย์ช่วยเหลือ' },
       { to: '/admin/announcements', icon: 'fas fa-bullhorn', label: 'ประกาศจากผู้จัด' },
       { to: '/admin/itinerary', icon: 'fas fa-list-check', label: 'กำหนดการเดินทาง' },
+      { to: '/admin/rooms', icon: 'fas fa-bed', label: 'จัดห้องพัก' },
       { to: '/admin/schedule-photos', icon: 'fas fa-camera-retro', label: 'ภาพให้ลูกค้า' },
     ],
     isOpen: false
