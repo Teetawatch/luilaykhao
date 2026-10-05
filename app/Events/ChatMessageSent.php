@@ -35,7 +35,7 @@ class ChatMessageSent implements ShouldBroadcast
         // Present with the shared formatter so realtime pushes carry reply/
         // reaction data. currentUserId is null — recipients resolve "is_mine"
         // locally (own sends are added optimistically, never via the socket).
-        $this->message->loadMissing(['user', 'replyTo.user', 'reactions', 'poll.options', 'poll.votes', 'foodRound.orders.user']);
+        $this->message->loadMissing(['user', 'replyTo.user', 'reactions', 'poll.options', 'poll.votes', 'foodRound.orders.user', 'restStop.boardings']);
 
         return app(ChatService::class)->presentMessage($this->message);
     }

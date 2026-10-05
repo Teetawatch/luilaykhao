@@ -70,4 +70,12 @@ class ChatMessage extends Model
     {
         return $this->hasOne(ChatFoodRound::class, 'message_id');
     }
+
+    /**
+     * จุดพักที่แนบกับข้อความนี้ — เรนเดอร์เป็นการ์ดนับถอยหลังกลับรถ
+     */
+    public function restStop(): HasOne
+    {
+        return $this->hasOne(ChatRestStop::class, 'message_id');
+    }
 }

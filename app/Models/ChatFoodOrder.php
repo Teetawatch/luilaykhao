@@ -13,6 +13,7 @@ class ChatFoodOrder extends Model
 {
     protected $fillable = [
         'round_id', 'user_id', 'guest_name', 'items', 'skipped', 'entered_by_id',
+        'paid_claimed_at', 'paid_at', 'paid_amount', 'paid_marked_by_id',
     ];
 
     protected function casts(): array
@@ -20,6 +21,9 @@ class ChatFoodOrder extends Model
         return [
             'items' => 'array',
             'skipped' => 'boolean',
+            'paid_claimed_at' => 'datetime',
+            'paid_at' => 'datetime',
+            'paid_amount' => 'decimal:2',
         ];
     }
 

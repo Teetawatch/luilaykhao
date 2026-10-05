@@ -173,6 +173,81 @@ class ChatFoodOrderController extends Controller
         return $this->payload($round, 'ลบออเดอร์แล้ว');
     }
 
+    /** สตาฟใส่ราคาต่อเมนู + พร้อมเพย์ที่ให้โอนคืน (notify = ประกาศยอดให้ทุกคน) */
+    public function bill(Request $request, int $scheduleId, int $roundId): JsonResponse
+    {
+        $validated = $request->validate([
+            'prices' => ['present', 'array', 'max:100'],
+            'prices.*.name' => ['required', 'string', 'max:120'],
+            'prices.*.price' => ['required', 'numeric', 'min:0', 'max:'.ChatFoodRound::MAX_PRICE],
+            // เบอร์มือถือ 10 หลัก หรือเลขบัตร/เลขผู้เสียภาษี 13 หลัก (ขีด/เว้นวรรคได้)
+            'promptpay_id' => ['nullable', 'string', 'max:20', 'regex:/^[0-9\-\s]+$/'],
+            'payee_name' => ['nullable', 'string', 'max:80'],
+            'notify' => ['nullable', 'boolean'],
+        ]);
+
+        $digits = preg_replace('/\D/', '', (string) ($validated['promptpay_id'] ?? ''));
+        if ($digits !== '' && ! (strlen($digits) === 13 || (strlen($digits) === 10 && str_starts_with($digits, '0')))) {
+            return $this->error('พร้อมเพย์ต้องเป็นเบอร์มือถือ 10 หลัก หรือเลข 13 หลัก', 422);
+        }
+
+        [$schedule, $round, $error] = $this->resolve($request, $scheduleId, $roundId, staffOnly: true);
+        if ($error) {
+            return $error;
+        }
+
+        $round = $this->food->bill(
+            $request->user(),
+            $round,
+            $validated['prices'],
+            $digits !== '' ? $digits : null,
+            isset($validated['payee_name']) ? trim($validated['payee_name']) : null,
+            (bool) ($validated['notify'] ?? false),
+        );
+
+        return $this->payload($round, ($validated['notify'] ?? false) ? 'ส่งยอดให้ทุกคนแล้ว' : 'บันทึกราคาแล้ว');
+    }
+
+    /** ลูกค้าแจ้งว่าโอนแล้ว (claimed=false = ถอน) */
+    public function claimPaid(Request $request, int $scheduleId, int $roundId): JsonResponse
+    {
+        $validated = $request->validate(['claimed' => ['nullable', 'boolean']]);
+
+        [$schedule, $round, $error] = $this->resolve($request, $scheduleId, $roundId);
+        if ($error) {
+            return $error;
+        }
+
+        try {
+            $round = $this->food->claimPaid($request->user(), $round, (bool) ($validated['claimed'] ?? true));
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->payload($round, 'แจ้งทีมงานแล้ว');
+    }
+
+    /** สตาฟยืนยันว่าได้รับเงินของออเดอร์นี้แล้ว (หรือยกเลิก) */
+    public function setPaid(Request $request, int $scheduleId, int $roundId, int $orderId): JsonResponse
+    {
+        $validated = $request->validate(['paid' => ['required', 'boolean']]);
+
+        [$schedule, $round, $error] = $this->resolve($request, $scheduleId, $roundId, staffOnly: true);
+        if ($error) {
+            return $error;
+        }
+
+        $order = ChatFoodOrder::where('round_id', $round->id)->findOrFail($orderId);
+
+        try {
+            $round = $this->food->setPaid($request->user(), $order, (bool) $validated['paid']);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->payload($round, $validated['paid'] ? 'บันทึกว่าจ่ายแล้ว' : 'ยกเลิกแล้ว');
+    }
+
     public function close(Request $request, int $scheduleId, int $roundId): JsonResponse
     {
         [$schedule, $round, $error] = $this->resolve($request, $scheduleId, $roundId, staffOnly: true);

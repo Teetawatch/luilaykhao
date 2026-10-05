@@ -18,10 +18,12 @@ use App\Models\ChatRoomPreference;
 use App\Models\TripSchedule;
 use App\Services\ChatAutoAnswerService;
 use App\Services\ChatPollService;
+use App\Services\ChatRestStopService;
 use App\Services\ChatService;
 use App\Services\ContentFilterService;
 use App\Services\ModerationService;
 use App\Services\ScheduleItineraryService;
+use App\Services\ScheduleRoomService;
 use App\Services\TripFactsService;
 use App\Services\WeatherService;
 use App\Support\MediaDisk;
@@ -44,6 +46,7 @@ class ChatController extends Controller
         private ModerationService $moderation,
         private ScheduleItineraryService $itineraryService,
         private ChatAutoAnswerService $autoAnswer,
+        private ChatRestStopService $restStops,
     ) {}
 
     public function index(Request $request, int $scheduleId): JsonResponse
@@ -111,6 +114,7 @@ class ChatController extends Controller
             'poll.options',
             'poll.votes',
             'foodRound.orders.user:id,name,nickname,avatar',
+            'restStop.boardings',
         ];
     }
 
@@ -674,6 +678,12 @@ class ChatController extends Controller
             ),
             'can_moderate' => $this->chatService->canModerate($user, $schedule),
             'notify_level' => $this->chatService->notifyLevel($user, $schedule),
+            // คำขอแวะห้องน้ำ: ตัวเลขรวม (ทีมงานใช้ขึ้นแถบ) + ฉันขอค้างอยู่ไหม — ไม่มีชื่อใคร
+            'stop_requests' => $this->restStops->requestSummary($schedule),
+            'my_stop_request' => $this->restStops->hasPendingRequest($user, $schedule),
+            'can_request_stop' => $this->restStops->isWithinTripWindow($schedule),
+            // มีห้องพักให้ดูไหม — ลูกทริปเห็นเมนู "ห้องพัก" เมื่อทีมงานจัดไว้แล้ว
+            'has_rooms' => app(ScheduleRoomService::class)->hasRooms($schedule),
             'reaction_emojis' => ChatService::REACTION_EMOJIS,
             'member_count' => $members->count(),
             'members' => $members->map(function ($m) use ($reads, $user, $blockedIds) {

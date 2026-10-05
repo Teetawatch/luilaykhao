@@ -492,6 +492,7 @@ class ChatService
             'reactions' => $this->aggregateReactions($message),
             'poll' => $this->presentPoll($message, $currentUserId),
             'food_round' => $this->presentFoodRound($message),
+            'rest_stop' => $this->presentRestStop($message),
             'is_pinned' => $message->pinned_at !== null,
             'created_at' => $message->created_at?->toISOString(),
         ];
@@ -527,6 +528,22 @@ class ChatService
         $round = $message->relationLoaded('foodRound') ? $message->foodRound : $message->foodRound()->first();
 
         return $round ? app(ChatFoodOrderService::class)->present($round) : null;
+    }
+
+    /**
+     * จุดพัก (นัดเวลากลับรถ + เช็คชื่อ) ที่แนบกับข้อความ (ถ้ามี)
+     *
+     * @return array<string, mixed>|null
+     */
+    private function presentRestStop(ChatMessage $message): ?array
+    {
+        if ($message->is_deleted) {
+            return null;
+        }
+
+        $stop = $message->relationLoaded('restStop') ? $message->restStop : $message->restStop()->first();
+
+        return $stop ? app(ChatRestStopService::class)->present($stop) : null;
     }
 
     /**

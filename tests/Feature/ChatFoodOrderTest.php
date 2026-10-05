@@ -11,9 +11,12 @@ use App\Models\ChatMessage;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\FcmService;
+use App\Services\PromptPayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
+use Mockery\MockInterface;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -164,7 +167,7 @@ class ChatFoodOrderTest extends TestCase
         $this->assertSame('กะเพราหมูสับ ไข่ดาว', $round['summary'][0]['name']);
         $this->assertSame(3, $round['summary'][0]['qty']);
         $this->assertSame(['มิ้นท์', 'แบงค์'], $round['summary'][0]['people']);
-        $this->assertSame(['name' => 'ชาเย็น', 'qty' => 1, 'people' => ['มิ้นท์']], $round['summary'][1]);
+        $this->assertSame(['name' => 'ชาเย็น', 'qty' => 1, 'people' => ['มิ้นท์'], 'price' => null], $round['summary'][1]);
 
         Event::assertDispatched(ChatFoodRoundUpdated::class, fn ($e) => $e->round['dish_count'] === 4);
     }
@@ -281,5 +284,180 @@ class ChatFoodOrderTest extends TestCase
 
         $this->order(User::factory()->create(), $schedule, $roundId, ['items' => [['name' => 'ข้าว']]])
             ->assertForbidden();
+    }
+
+    // ── หารบิล ──────────────────────────────────────────────────────────────
+
+    /**
+     * รอบที่สั่งครบแล้ว: มิ้นท์ กะเพรา×1 + ชาเย็น×2, แบงค์ กะเพรา×2, พลอยไม่สั่ง
+     *
+     * @return array{0: User, 1: User, 2: User, 3: User, 4: int, 5: TripSchedule}
+     */
+    private function orderedRound(): array
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $mint = $this->member($schedule, 'มิ้นท์');
+        $bank = $this->member($schedule, 'แบงค์');
+        $ploy = $this->member($schedule, 'พลอย');
+        $staff = $this->staff($schedule);
+        $roundId = $this->openRound($staff, $schedule)['food_round']['id'];
+
+        $this->order($mint, $schedule, $roundId, ['items' => [
+            ['name' => 'กะเพราหมูสับ ไข่ดาว', 'qty' => 1],
+            ['name' => 'ชาเย็น', 'qty' => 2],
+        ]]);
+        $this->order($bank, $schedule, $roundId, ['items' => [['name' => 'กะเพราหมูสับ  ไข่ดาว', 'qty' => 2]]]);
+        $this->order($ploy, $schedule, $roundId, ['skipped' => true]);
+
+        return [$mint, $bank, $ploy, $staff, $roundId, $schedule];
+    }
+
+    private function bill(User $staff, TripSchedule $schedule, int $roundId, array $payload)
+    {
+        return $this->actingAs($staff, 'sanctum')
+            ->putJson("/api/v1/schedules/{$schedule->id}/chat/food-rounds/{$roundId}/bill", $payload);
+    }
+
+    private function orderOf(array $round, string $name): array
+    {
+        return collect($round['orders'])->firstWhere('name', $name);
+    }
+
+    public function test_staff_prices_dishes_and_each_person_gets_their_own_total_and_qr(): void
+    {
+        [$mint, $bank, , $staff, $roundId, $schedule] = $this->orderedRound();
+
+        $round = $this->bill($staff, $schedule, $roundId, [
+            'prices' => [
+                ['name' => 'กะเพราหมูสับ ไข่ดาว', 'price' => 60],
+                ['name' => 'ชาเย็น', 'price' => 25],
+            ],
+            'promptpay_id' => '081-234-5678',
+            'payee_name' => 'พี่สตาฟ',
+        ])->assertOk()->json('data.food_round');
+
+        $this->assertSame(110.0, (float) $this->orderOf($round, 'มิ้นท์')['amount']);
+        $this->assertSame(120.0, (float) $this->orderOf($round, 'แบงค์')['amount']);
+        $this->assertSame('unpaid', $this->orderOf($round, 'มิ้นท์')['pay_status']);
+        $this->assertSame('none', $this->orderOf($round, 'พลอย')['pay_status']);
+        $this->assertSame(
+            app(PromptPayService::class)->buildPayload('0812345678', 110),
+            $this->orderOf($round, 'มิ้นท์')['promptpay_payload'],
+        );
+        $this->assertNull($this->orderOf($round, 'พลอย')['promptpay_payload']);
+
+        $this->assertSame(230.0, (float) $round['billing']['total']);
+        $this->assertSame(230.0, (float) $round['billing']['outstanding']);
+        $this->assertSame('0812345678', $round['billing']['promptpay_id']);
+        $this->assertSame([], $round['billing']['unpriced']);
+        $this->assertSame(60.0, (float) $round['summary'][0]['price']);
+    }
+
+    public function test_dishes_without_a_price_hold_back_that_persons_total(): void
+    {
+        [, , , $staff, $roundId, $schedule] = $this->orderedRound();
+
+        $round = $this->bill($staff, $schedule, $roundId, [
+            'prices' => [['name' => 'กะเพราหมูสับ ไข่ดาว', 'price' => 60]],
+            'promptpay_id' => '0812345678',
+        ])->json('data.food_round');
+
+        $this->assertSame('unpriced', $this->orderOf($round, 'มิ้นท์')['pay_status']);
+        $this->assertNull($this->orderOf($round, 'มิ้นท์')['promptpay_payload']);
+        $this->assertSame('unpaid', $this->orderOf($round, 'แบงค์')['pay_status']);
+        $this->assertSame(['ชาเย็น'], $round['billing']['unpriced']);
+
+        // ใส่ราคาที่ขาดทีหลัง ราคาเดิมยังอยู่
+        $round = $this->bill($staff, $schedule, $roundId, [
+            'prices' => [['name' => 'ชาเย็น', 'price' => 25]],
+            'promptpay_id' => '0812345678',
+        ])->json('data.food_round');
+        $this->assertSame(110.0, (float) $this->orderOf($round, 'มิ้นท์')['amount']);
+    }
+
+    public function test_customer_claims_staff_confirms_and_a_later_price_rise_shows_the_shortfall(): void
+    {
+        [$mint, , , $staff, $roundId, $schedule] = $this->orderedRound();
+        $prices = [
+            ['name' => 'กะเพราหมูสับ ไข่ดาว', 'price' => 60],
+            ['name' => 'ชาเย็น', 'price' => 25],
+        ];
+        $this->bill($staff, $schedule, $roundId, ['prices' => $prices, 'promptpay_id' => '0812345678']);
+
+        $round = $this->actingAs($mint, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/food-rounds/{$roundId}/my-order/paid")
+            ->assertOk()
+            ->json('data.food_round');
+        $mintOrder = $this->orderOf($round, 'มิ้นท์');
+        $this->assertSame('claimed', $mintOrder['pay_status']);
+
+        // ลูกค้ายืนยันการจ่ายของตัวเองไม่ได้ — ต้องเป็นสตาฟ
+        $this->actingAs($mint, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/food-rounds/{$roundId}/orders/{$mintOrder['id']}/paid", ['paid' => true])
+            ->assertForbidden();
+
+        $round = $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/food-rounds/{$roundId}/orders/{$mintOrder['id']}/paid", ['paid' => true])
+            ->assertOk()
+            ->json('data.food_round');
+        $this->assertSame('paid', $this->orderOf($round, 'มิ้นท์')['pay_status']);
+        $this->assertSame(110.0, (float) $round['billing']['collected']);
+        $this->assertSame(120.0, (float) $round['billing']['outstanding']);
+        $this->assertSame(1, $round['billing']['paid_count']);
+
+        // ชาเย็นขึ้นราคา → มิ้นท์ขาดอีก 10 บาท พร้อม QR ของส่วนต่าง
+        $prices[1]['price'] = 30;
+        $round = $this->bill($staff, $schedule, $roundId, ['prices' => $prices, 'promptpay_id' => '0812345678'])
+            ->json('data.food_round');
+        $mintOrder = $this->orderOf($round, 'มิ้นท์');
+        $this->assertSame('short', $mintOrder['pay_status']);
+        $this->assertSame(10.0, (float) $mintOrder['balance']);
+        $this->assertSame(app(PromptPayService::class)->buildPayload('0812345678', 10), $mintOrder['promptpay_payload']);
+    }
+
+    public function test_sending_the_bill_announces_and_pings_only_people_who_owe(): void
+    {
+        $pushes = [];
+        $this->mock(FcmService::class, function (MockInterface $m) use (&$pushes) {
+            $m->shouldReceive('sendToUser')->andReturnUsing(function ($userId, $title) use (&$pushes) {
+                $pushes[] = [(int) $userId, $title];
+            });
+        });
+        [$mint, $bank, $ploy, $staff, $roundId, $schedule] = $this->orderedRound();
+
+        $this->bill($staff, $schedule, $roundId, [
+            'prices' => [
+                ['name' => 'กะเพราหมูสับ ไข่ดาว', 'price' => 60],
+                ['name' => 'ชาเย็น', 'price' => 25],
+            ],
+            'promptpay_id' => '0812345678',
+            'payee_name' => 'พี่สตาฟ',
+            'notify' => true,
+        ])->assertOk();
+
+        $this->assertTrue(ChatMessage::where('schedule_id', $schedule->id)
+            ->where('body', '💸 ยอดค่าอาหาร “มื้อเย็นขากลับ ร้านป้าแดง” รวม ฿230 — ดูยอดของตัวเองในการ์ด แล้วโอนให้พี่สตาฟผ่านพร้อมเพย์ได้เลยครับ')
+            ->exists());
+        $this->assertEqualsCanonicalizing([
+            [$mint->id, '💸 ค่าอาหารของคุณ ฿110'],
+            [$bank->id, '💸 ค่าอาหารของคุณ ฿120'],
+        ], $pushes);
+    }
+
+    public function test_billing_rules(): void
+    {
+        [$mint, , , $staff, $roundId, $schedule] = $this->orderedRound();
+
+        // ลูกค้าตั้งราคาไม่ได้
+        $this->bill($mint, $schedule, $roundId, ['prices' => []])->assertForbidden();
+        // พร้อมเพย์ผิดรูป
+        $this->bill($staff, $schedule, $roundId, ['prices' => [], 'promptpay_id' => '12345'])->assertStatus(422);
+        // ยังไม่ส่งยอด → แจ้งโอนไม่ได้
+        $this->actingAs($mint, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/food-rounds/{$roundId}/my-order/paid")
+            ->assertStatus(422);
+        // ยังไม่ส่งยอด → การ์ดไม่มีก้อน billing
+        $this->assertNull($this->order($mint, $schedule, $roundId, ['items' => [['name' => 'ชาเย็น']]])->json('data.food_round.billing'));
     }
 }

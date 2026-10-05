@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\BookingMemberController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ChatFoodOrderController;
+use App\Http\Controllers\Api\V1\ChatRestStopController;
 use App\Http\Controllers\Api\V1\ConciergeController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CountryController;
@@ -72,6 +73,7 @@ use App\Http\Controllers\Api\V1\SavedTravellerController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\ScheduleItineraryController;
 use App\Http\Controllers\Api\V1\ScheduleRallyController;
+use App\Http\Controllers\Api\V1\ScheduleRoomController;
 use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\SeatHandoverController;
 use App\Http\Controllers\Api\V1\ShoppingListController;
@@ -380,6 +382,26 @@ Route::prefix('v1')->group(function () {
         Route::delete('schedules/{id}/chat/food-rounds/{roundId}/orders/{orderId}', [ChatFoodOrderController::class, 'destroyOrder']);
         Route::post('schedules/{id}/chat/food-rounds/{roundId}/close', [ChatFoodOrderController::class, 'close']);
         Route::post('schedules/{id}/chat/food-rounds/{roundId}/reopen', [ChatFoodOrderController::class, 'reopen']);
+        Route::put('schedules/{id}/chat/food-rounds/{roundId}/bill', [ChatFoodOrderController::class, 'bill']);
+        Route::post('schedules/{id}/chat/food-rounds/{roundId}/my-order/paid', [ChatFoodOrderController::class, 'claimPaid']);
+        Route::post('schedules/{id}/chat/food-rounds/{roundId}/orders/{orderId}/paid', [ChatFoodOrderController::class, 'setPaid']);
+        // จุดพัก: นัดเวลากลับรถ + เช็คชื่อขึ้นรถ / ขอแวะห้องน้ำแบบไม่บอกชื่อ
+        Route::post('schedules/{id}/chat/rest-stops', [ChatRestStopController::class, 'store'])->middleware('throttle:chat');
+        Route::get('schedules/{id}/chat/rest-stops/{stopId}', [ChatRestStopController::class, 'show']);
+        Route::post('schedules/{id}/chat/rest-stops/{stopId}/board', [ChatRestStopController::class, 'board'])->middleware('throttle:60,1');
+        Route::post('schedules/{id}/chat/rest-stops/{stopId}/extend', [ChatRestStopController::class, 'extend']);
+        Route::post('schedules/{id}/chat/rest-stops/{stopId}/depart', [ChatRestStopController::class, 'depart']);
+        Route::post('schedules/{id}/chat/stop-requests', [ChatRestStopController::class, 'requestStop'])->middleware('throttle:10,1');
+        Route::delete('schedules/{id}/chat/stop-requests/mine', [ChatRestStopController::class, 'cancelRequest']);
+        Route::post('schedules/{id}/chat/stop-requests/ack', [ChatRestStopController::class, 'acknowledge']);
+        // ห้องพักของรอบ — ใครอยู่ในห้องแชทก็ดูได้ ทีมงานจัด/ประกาศ
+        Route::get('schedules/{id}/rooms', [ScheduleRoomController::class, 'index']);
+        Route::post('schedules/{id}/rooms', [ScheduleRoomController::class, 'store']);
+        Route::post('schedules/{id}/rooms/auto', [ScheduleRoomController::class, 'auto']);
+        Route::post('schedules/{id}/rooms/announce', [ScheduleRoomController::class, 'announce'])->middleware('throttle:10,1');
+        Route::put('schedules/{id}/rooms/{roomId}', [ScheduleRoomController::class, 'update']);
+        Route::delete('schedules/{id}/rooms/{roomId}', [ScheduleRoomController::class, 'destroy']);
+        Route::put('schedules/{id}/rooms/{roomId}/guests', [ScheduleRoomController::class, 'setGuests']);
         Route::post('schedules/{id}/chat/typing', [ChatController::class, 'typing'])->middleware('throttle:60,1');
         Route::post('schedules/{id}/chat/joined', [ChatController::class, 'joined'])->middleware('throttle:20,1');
 

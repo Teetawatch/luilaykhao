@@ -22,7 +22,11 @@ class ChatFoodRound extends Model
     protected $fillable = [
         'schedule_id', 'message_id', 'created_by_id', 'title', 'note',
         'closes_at', 'closed_at', 'announced_at',
+        'prices', 'promptpay_id', 'payee_name', 'billed_at',
     ];
+
+    /** ราคาต่อจานสูงสุดที่รับ — กันพิมพ์เลขเกิน */
+    public const MAX_PRICE = 10000;
 
     protected function casts(): array
     {
@@ -30,6 +34,8 @@ class ChatFoodRound extends Model
             'closes_at' => 'datetime',
             'closed_at' => 'datetime',
             'announced_at' => 'datetime',
+            'prices' => 'array',
+            'billed_at' => 'datetime',
         ];
     }
 
