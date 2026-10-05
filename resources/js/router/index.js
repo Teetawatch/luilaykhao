@@ -312,6 +312,7 @@ const routes = [
       { path: 'announcements', name: 'admin-announcements', component: () => import('../pages/admin/AnnouncementsPage.vue') },
       { path: 'itinerary', name: 'admin-itinerary', component: () => import('../pages/admin/ItineraryPage.vue') },
       { path: 'rooms', name: 'admin-rooms', component: () => import('../pages/admin/RoomsPage.vue') },
+      { path: 'lost-items', name: 'admin-lost-items', component: () => import('../pages/admin/LostItemsPage.vue') },
       { path: 'incidents', name: 'admin-incidents', component: () => import('../pages/admin/IncidentsPage.vue') },
       { path: 'sos', name: 'admin-sos', component: () => import('../pages/admin/SosPage.vue') },
       { path: 'action-queue', name: 'admin-action-queue', component: () => import('../pages/admin/ActionQueuePage.vue') },
