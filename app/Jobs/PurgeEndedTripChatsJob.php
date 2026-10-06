@@ -11,6 +11,7 @@ use App\Models\ChatRead;
 use App\Models\ChatRestStop;
 use App\Models\ChatRoomPreference;
 use App\Models\ChatStopRequest;
+use App\Models\ChatSupplyRequest;
 use App\Models\LostItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
@@ -84,6 +85,7 @@ class PurgeEndedTripChatsJob implements ShouldQueue
             ChatRestStop::where('schedule_id', $scheduleId)->delete();
             ChatCollection::where('schedule_id', $scheduleId)->delete();
             ChatStopRequest::where('schedule_id', $scheduleId)->delete();
+            ChatSupplyRequest::where('schedule_id', $scheduleId)->delete();
             // ของหายต้องอยู่ต่อหลังห้องถูกลบ — แค่ตัดการ์ดในแชทออก
             LostItem::where('schedule_id', $scheduleId)->update(['message_id' => null]);
             ChatMessage::where('schedule_id', $scheduleId)->delete();

@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatMessage;
 use App\Models\ChatRestStop;
+use App\Models\ChatStopRequest;
 use App\Models\TripSchedule;
+use App\Models\User;
 use App\Services\ChatRestStopService;
 use App\Services\ChatService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 /**
  * จุดพักระหว่างทาง (นัดเวลากลับรถ + เช็คชื่อขึ้นรถ) และคำขอแวะห้องน้ำแบบไม่บอกชื่อ
@@ -139,11 +142,42 @@ class ChatRestStopController extends Controller
         return $this->payload($this->restStops->depart($stop), true, 'ออกรถแล้ว');
     }
 
-    /** ขอแวะห้องน้ำ — ทีมงานเห็นแค่จำนวน */
+    /**
+     * คำขอแบบไม่บอกชื่อ (ห้องน้ำ / แอร์ / ความเร็ว / เพลง) — ทีมงานเห็นแค่จำนวน
+     * เป็นปุ่มของลูกทริปเท่านั้น ทีมงานไม่ต้องขอทีมงาน
+     */
     public function requestStop(Request $request, int $scheduleId): JsonResponse
     {
         $validated = $request->validate([
             'urgent' => ['nullable', 'boolean'],
+            'kind' => ['nullable', Rule::in(array_keys(ChatStopRequest::KINDS))],
+        ]);
+        $kind = $validated['kind'] ?? ChatStopRequest::KIND_TOILET;
+
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        if ($this->chatService->canModerate($user, $schedule)) {
+            return $this->error('ปุ่มนี้สำหรับลูกทริปครับ ทีมงานเห็นคำขอของทุกคนที่แถบด้านบนแชท', 403);
+        }
+
+        if (! $this->restStops->isWithinTripWindow($schedule)) {
+            return $this->error('ส่งคำขอนี้ได้ระหว่างเดินทางเท่านั้นครับ', 422);
+        }
+
+        $summary = $this->restStops->requestStop($user, $schedule, (bool) ($validated['urgent'] ?? false), $kind);
+
+        return $this->success($this->mine($summary, $user, $schedule), 'ส่งแล้ว ทีมงานไม่เห็นชื่อคุณ');
+    }
+
+    public function cancelRequest(Request $request, int $scheduleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'kind' => ['nullable', Rule::in(array_keys(ChatStopRequest::KINDS))],
         ]);
 
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -153,32 +187,17 @@ class ChatRestStopController extends Controller
             return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
         }
 
-        if (! $this->restStops->isWithinTripWindow($schedule)) {
-            return $this->error('ขอแวะห้องน้ำได้ระหว่างเดินทางเท่านั้นครับ', 422);
-        }
+        $summary = $this->restStops->cancelRequest($user, $schedule, $validated['kind'] ?? ChatStopRequest::KIND_TOILET);
 
-        $summary = $this->restStops->requestStop($user, $schedule, (bool) ($validated['urgent'] ?? false));
-
-        return $this->success([...$summary, 'mine' => true], 'ส่งคำขอแล้ว ทีมงานไม่เห็นชื่อคุณ');
-    }
-
-    public function cancelRequest(Request $request, int $scheduleId): JsonResponse
-    {
-        $schedule = TripSchedule::findOrFail($scheduleId);
-        $user = $request->user();
-
-        if (! $this->chatService->canAccess($user, $schedule)) {
-            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
-        }
-
-        return $this->success([...$this->restStops->cancelRequest($user, $schedule), 'mine' => false], 'ยกเลิกคำขอแล้ว');
+        return $this->success($this->mine($summary, $user, $schedule), 'ถอนคำขอแล้ว');
     }
 
     public function acknowledge(Request $request, int $scheduleId): JsonResponse
     {
         $validated = $request->validate([
-            // จะแวะในอีกกี่นาที (0 = แวะเลย, ไม่ส่ง = เร็ว ๆ นี้)
+            // จะแวะในอีกกี่นาที (0 = แวะเลย, ไม่ส่ง = เร็ว ๆ นี้) — ใช้กับห้องน้ำเท่านั้น
             'minutes' => ['nullable', 'integer', 'min:0', 'max:120'],
+            'kind' => ['nullable', Rule::in(array_keys(ChatStopRequest::KINDS))],
         ]);
 
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -188,9 +207,30 @@ class ChatRestStopController extends Controller
             return $this->error('ทำได้เฉพาะทีมงานประจำรอบ', 403);
         }
 
-        $summary = $this->restStops->acknowledge($schedule, isset($validated['minutes']) ? (int) $validated['minutes'] : null);
+        $summary = $this->restStops->acknowledge(
+            $schedule,
+            isset($validated['minutes']) ? (int) $validated['minutes'] : null,
+            $validated['kind'] ?? ChatStopRequest::KIND_TOILET,
+        );
 
-        return $this->success([...$summary, 'mine' => false], 'แจ้งทุกคนแล้ว');
+        return $this->success([...$summary, 'mine' => false, 'mine_kinds' => []], 'แจ้งทุกคนแล้ว');
+    }
+
+    /**
+     * สรุปจำนวน + มุมมองของฉัน (mine = ห้องน้ำ สำหรับแอปรุ่นก่อน, mine_kinds = ทุกเรื่อง)
+     *
+     * @param  array<string, mixed>  $summary
+     * @return array<string, mixed>
+     */
+    private function mine(array $summary, User $user, TripSchedule $schedule): array
+    {
+        $kinds = $this->restStops->myOpenKinds($user, $schedule);
+
+        return [
+            ...$summary,
+            'mine' => in_array(ChatStopRequest::KIND_TOILET, $kinds, true),
+            'mine_kinds' => $kinds,
+        ];
     }
 
     /**

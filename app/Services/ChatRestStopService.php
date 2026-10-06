@@ -415,28 +415,42 @@ class ChatRestStopService
         ];
     }
 
-    // ── ขอแวะห้องน้ำ ────────────────────────────────────────────────────────
+    // ── คำขอแบบไม่บอกชื่อ (ห้องน้ำ / แอร์ / ความเร็ว / เพลง) ─────────────────
 
     /**
-     * ส่งคำขอ (ซ้ำได้ = อัปเดตความด่วนของคำขอเดิม) แล้วบอกสตาฟ
-     * สตาฟเห็นแค่จำนวน ไม่มีทางรู้ว่าใครกด
+     * ส่งคำขอ (ซ้ำได้ = คำขอเดิม) แล้วบอกสตาฟ — สตาฟเห็นแค่จำนวนต่อเรื่อง
+     *
+     * ห้องน้ำค้างจนทีมงานรับทราบ (ต้องหาที่จอด) และ "ด่วน" ได้ ส่วนเรื่องความสบาย
+     * (แอร์/ความเร็ว/เพลง) เป็นความรู้สึก ณ ตอนนั้น หมดอายุเองใน COMFORT_TTL_MINUTES
+     * กดซ้ำหลังหมดอายุ = นับเป็นคำขอใหม่และเด้งหาสตาฟอีกรอบ
      */
-    public function requestStop(User $user, TripSchedule $schedule, bool $urgent): array
+    public function requestStop(User $user, TripSchedule $schedule, bool $urgent, string $kind = ChatStopRequest::KIND_TOILET): array
     {
+        $isToilet = $kind === ChatStopRequest::KIND_TOILET;
+        $urgent = $isToilet && $urgent;
+
         $existing = ChatStopRequest::where('schedule_id', $schedule->id)
             ->where('user_id', $user->id)
+            ->where('kind', $kind)
             ->whereNull('acknowledged_at')
             ->first();
 
-        // กดซ้ำโดยไม่ได้เร่งขึ้น = ไม่ต้องเด้งหาสตาฟอีก
-        $shouldNotify = ! $existing || ($urgent && ! $existing->urgent);
+        $stale = $existing && ! $isToilet
+            && $existing->updated_at->lt(now()->subMinutes(ChatStopRequest::COMFORT_TTL_MINUTES));
+
+        // กดซ้ำระหว่างคำขอเดิมยังนับอยู่ = ไม่ต้องเด้งหาสตาฟอีก (ยกเว้นห้องน้ำที่เร่งเป็นด่วน)
+        $shouldNotify = ! $existing || $stale || ($urgent && ! $existing->urgent);
 
         if ($existing) {
-            $existing->update(['urgent' => $existing->urgent || $urgent]);
+            $existing->forceFill([
+                'urgent' => $existing->urgent || $urgent,
+                'updated_at' => now(),
+            ])->save();
         } else {
             ChatStopRequest::create([
                 'schedule_id' => $schedule->id,
                 'user_id' => $user->id,
+                'kind' => $kind,
                 'urgent' => $urgent,
             ]);
         }
@@ -445,27 +459,40 @@ class ChatRestStopService
         broadcast(new ChatStopRequestsUpdated($schedule->id, $summary));
 
         if ($shouldNotify) {
-            $title = $urgent ? '🚻 มีคนขอแวะห้องน้ำ (ด่วน)' : '🚻 มีคนขอแวะห้องน้ำ';
-            $body = "รวมตอนนี้ {$summary['pending']} คน"
-                .($summary['urgent'] > 0 ? " · ด่วน {$summary['urgent']}" : '')
-                .' — เปิดแชทเพื่อกดรับทราบ';
+            $meta = ChatStopRequest::KINDS[$kind];
+            $count = $summary['kinds'][$kind] ?? 1;
+
+            if ($isToilet) {
+                $title = $urgent ? '🚻 มีคนขอแวะห้องน้ำ (ด่วน)' : '🚻 มีคนขอแวะห้องน้ำ';
+                $body = "รวมตอนนี้ {$summary['pending']} คน"
+                    .($summary['urgent'] > 0 ? " · ด่วน {$summary['urgent']}" : '');
+            } else {
+                $title = "{$meta['emoji']} {$meta['staff']}";
+                $body = "รวมตอนนี้ {$count} คน";
+                // หนาวกับร้อนพร้อมกัน — บอกให้รู้ก่อนปรับแอร์ จะได้ไม่แกว่งไปมา
+                $opposite = ['too_cold' => 'too_hot', 'too_hot' => 'too_cold'][$kind] ?? null;
+                if ($opposite && ($summary['kinds'][$opposite] ?? 0) > 0) {
+                    $body .= ' (แต่มีคนบอกว่า'.ChatStopRequest::KINDS[$opposite]['label'].' '.$summary['kinds'][$opposite].' คน)';
+                }
+            }
 
             foreach ($this->staffIds($schedule) as $staffId) {
-                $this->send($staffId, [$title, $body], [
+                $this->send($staffId, [$title, $body.' — เปิดแชทเพื่อกดรับทราบ'], [
                     'type' => 'stop_request',
                     'route' => 'chat',
                     'schedule_id' => (string) $schedule->id,
-                ], tag: "stop-request-{$schedule->id}");
+                ], tag: $isToilet ? "stop-request-{$schedule->id}" : "comfort-{$kind}-{$schedule->id}");
             }
         }
 
         return $summary;
     }
 
-    public function cancelRequest(User $user, TripSchedule $schedule): array
+    public function cancelRequest(User $user, TripSchedule $schedule, string $kind = ChatStopRequest::KIND_TOILET): array
     {
         ChatStopRequest::where('schedule_id', $schedule->id)
             ->where('user_id', $user->id)
+            ->where('kind', $kind)
             ->whereNull('acknowledged_at')
             ->delete();
 
@@ -476,35 +503,100 @@ class ChatRestStopService
     }
 
     /**
-     * สตาฟรับทราบ — ปิดคำขอที่ค้างทั้งหมด บอกห้องว่าจะแวะในกี่นาที
-     * และแจ้งคนที่ขอเป็นรายคน (ห้องรวมไม่รู้ว่าใครขอ)
+     * สตาฟรับทราบ — ห้องน้ำ: ปิดคำขอทั้งหมด บอกห้องว่าจะแวะในกี่นาที
+     * เรื่องอื่น: ปิดคำขอเรื่องนั้น บอกห้องว่าจัดการแล้ว
+     * ทั้งสองแบบแจ้งคนที่ขอเป็นรายคน (ห้องรวมไม่รู้ว่าใครขอ)
      */
-    public function acknowledge(TripSchedule $schedule, ?int $minutes): array
+    public function acknowledge(TripSchedule $schedule, ?int $minutes, string $kind = ChatStopRequest::KIND_TOILET): array
     {
-        $this->resolveRequests($schedule, $minutes, announce: true);
+        if ($kind === ChatStopRequest::KIND_TOILET) {
+            $this->resolveRequests($schedule, $minutes, announce: true);
+        } else {
+            $this->resolveComfort($schedule, $kind);
+        }
 
         return $this->requestSummary($schedule);
     }
 
     /**
-     * @return array{pending: int, urgent: int}
+     * จำนวนคำขอที่ยังนับอยู่ — pending/urgent คือห้องน้ำ (แอปรุ่นก่อนอ่านสองค่านี้)
+     * kinds = ทุกเรื่อง
+     *
+     * @return array{pending: int, urgent: int, kinds: array<string, int>}
      */
     public function requestSummary(TripSchedule $schedule): array
     {
-        $pending = ChatStopRequest::where('schedule_id', $schedule->id)->whereNull('acknowledged_at');
+        $open = $this->openRequests($schedule)->get(['kind', 'urgent']);
+        $kinds = [];
+        foreach (array_keys(ChatStopRequest::KINDS) as $kind) {
+            $kinds[$kind] = $open->where('kind', $kind)->count();
+        }
+
+        $toilet = $open->where('kind', ChatStopRequest::KIND_TOILET);
 
         return [
-            'pending' => (clone $pending)->count(),
-            'urgent' => (clone $pending)->where('urgent', true)->count(),
+            'pending' => $toilet->count(),
+            'urgent' => $toilet->where('urgent', true)->count(),
+            'kinds' => $kinds,
         ];
     }
 
+    /** ฉันขอแวะห้องน้ำค้างอยู่ไหม (แอปรุ่นก่อน) */
     public function hasPendingRequest(User $user, TripSchedule $schedule): bool
     {
-        return ChatStopRequest::where('schedule_id', $schedule->id)
+        return in_array(ChatStopRequest::KIND_TOILET, $this->myOpenKinds($user, $schedule), true);
+    }
+
+    /**
+     * เรื่องที่ฉันขอค้างอยู่ — แอปใช้ติ๊กสถานะบนปุ่ม
+     *
+     * @return array<int, string>
+     */
+    public function myOpenKinds(User $user, TripSchedule $schedule): array
+    {
+        return $this->openRequests($schedule)
             ->where('user_id', $user->id)
+            ->pluck('kind')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /** คำขอที่ยังนับอยู่: ยังไม่รับทราบ และ (ห้องน้ำ หรือ กดมาไม่เกิน TTL) */
+    private function openRequests(TripSchedule $schedule)
+    {
+        return ChatStopRequest::where('schedule_id', $schedule->id)
             ->whereNull('acknowledged_at')
-            ->exists();
+            ->where(fn ($q) => $q->where('kind', ChatStopRequest::KIND_TOILET)
+                ->orWhere('updated_at', '>=', now()->subMinutes(ChatStopRequest::COMFORT_TTL_MINUTES)));
+    }
+
+    private function resolveComfort(TripSchedule $schedule, string $kind): void
+    {
+        $meta = ChatStopRequest::KINDS[$kind];
+        $fresh = $this->openRequests($schedule)->where('kind', $kind)->pluck('user_id')->map(fn ($id) => (int) $id)->unique();
+
+        // ปิดทั้งที่ยังนับและที่หมดอายุไปแล้ว — กันของเก่าโผล่กลับมาตอนมีคนกดซ้ำ
+        ChatStopRequest::where('schedule_id', $schedule->id)
+            ->where('kind', $kind)
+            ->whereNull('acknowledged_at')
+            ->update(['acknowledged_at' => now()]);
+
+        broadcast(new ChatStopRequestsUpdated($schedule->id, $this->requestSummary($schedule)));
+
+        if ($fresh->isEmpty()) {
+            return;
+        }
+
+        $this->chatService->postSystem($schedule, "{$meta['emoji']} ทีมงานรับทราบแล้ว — {$meta['ack']}");
+
+        foreach ($fresh as $userId) {
+            $this->send($userId, ["{$meta['emoji']} ทีมงานรับทราบแล้ว", $meta['ack']], [
+                'type' => 'stop_request_ack',
+                'route' => 'chat',
+                'schedule_id' => (string) $schedule->id,
+            ]);
+        }
     }
 
     /**
@@ -518,6 +610,7 @@ class ChatRestStopService
     private function resolveRequests(TripSchedule $schedule, ?int $minutes, bool $announce): void
     {
         $requesterIds = ChatStopRequest::where('schedule_id', $schedule->id)
+            ->where('kind', ChatStopRequest::KIND_TOILET)
             ->whereNull('acknowledged_at')
             ->pluck('user_id')
             ->map(fn ($id) => (int) $id)
@@ -528,6 +621,7 @@ class ChatRestStopService
         }
 
         ChatStopRequest::where('schedule_id', $schedule->id)
+            ->where('kind', ChatStopRequest::KIND_TOILET)
             ->whereNull('acknowledged_at')
             ->update(['acknowledged_at' => now()]);
 

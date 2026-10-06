@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\V1\ChatCollectionController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ChatFoodOrderController;
 use App\Http\Controllers\Api\V1\ChatRestStopController;
+use App\Http\Controllers\Api\V1\ChatSupplyController;
 use App\Http\Controllers\Api\V1\ConciergeController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CountryController;
@@ -397,6 +398,12 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/stop-requests', [ChatRestStopController::class, 'requestStop'])->middleware('throttle:10,1');
         Route::delete('schedules/{id}/chat/stop-requests/mine', [ChatRestStopController::class, 'cancelRequest']);
         Route::post('schedules/{id}/chat/stop-requests/ack', [ChatRestStopController::class, 'acknowledge']);
+        // ขอยา/ของจำเป็นจากสตาฟ ส่งถึงที่นั่ง
+        Route::get('schedules/{id}/chat/supplies', [ChatSupplyController::class, 'index']);
+        Route::post('schedules/{id}/chat/supplies', [ChatSupplyController::class, 'store'])->middleware('throttle:20,1');
+        Route::delete('schedules/{id}/chat/supplies/{requestId}', [ChatSupplyController::class, 'destroy']);
+        Route::post('schedules/{id}/chat/supplies/{requestId}/deliver', [ChatSupplyController::class, 'deliver']);
+        Route::post('schedules/{id}/chat/supplies/{requestId}/decline', [ChatSupplyController::class, 'decline']);
         // เก็บเงินหน้างาน (ค่าใช้จ่ายนอกแพ็กเกจ) — สตาฟสร้าง/ติ๊กจ่าย ลูกทริปแจ้งโอน
         Route::get('schedules/{id}/chat/roster', [ChatCollectionController::class, 'roster']);
         Route::post('schedules/{id}/chat/collections', [ChatCollectionController::class, 'store'])->middleware('throttle:chat');

@@ -15,11 +15,14 @@ use App\Models\ChatMessage;
 use App\Models\ChatPoll;
 use App\Models\ChatRead;
 use App\Models\ChatRoomPreference;
+use App\Models\ChatStopRequest;
+use App\Models\ChatSupplyRequest;
 use App\Models\TripSchedule;
 use App\Services\ChatAutoAnswerService;
 use App\Services\ChatPollService;
 use App\Services\ChatRestStopService;
 use App\Services\ChatService;
+use App\Services\ChatSupplyService;
 use App\Services\ContentFilterService;
 use App\Services\ModerationService;
 use App\Services\ScheduleItineraryService;
@@ -683,6 +686,17 @@ class ChatController extends Controller
             // คำขอแวะห้องน้ำ: ตัวเลขรวม (ทีมงานใช้ขึ้นแถบ) + ฉันขอค้างอยู่ไหม — ไม่มีชื่อใคร
             'stop_requests' => $this->restStops->requestSummary($schedule),
             'my_stop_request' => $this->restStops->hasPendingRequest($user, $schedule),
+            'my_stop_requests' => $this->restStops->myOpenKinds($user, $schedule),
+            // ปุ่มคำขอแบบไม่บอกชื่อ และของที่ขอจากสตาฟได้ — แอปวาดตามรายการนี้
+            'stop_request_kinds' => collect(ChatStopRequest::KINDS)
+                ->map(fn ($k, $key) => ['key' => $key, 'label' => $k['label'], 'emoji' => $k['emoji']])
+                ->values()->all(),
+            'supply_items' => collect(ChatSupplyRequest::ITEMS)
+                ->map(fn ($i, $key) => ['key' => $key, 'label' => $i['label'], 'emoji' => $i['emoji']])
+                ->values()->all(),
+            'supply_requests_pending' => $this->chatService->canModerate($user, $schedule)
+                ? app(ChatSupplyService::class)->pendingCount($schedule)
+                : 0,
             'can_request_stop' => $this->restStops->isWithinTripWindow($schedule),
             // มีห้องพักให้ดูไหม — ลูกทริปเห็นเมนู "ห้องพัก" เมื่อทีมงานจัดไว้แล้ว
             'has_rooms' => app(ScheduleRoomService::class)->hasRooms($schedule),

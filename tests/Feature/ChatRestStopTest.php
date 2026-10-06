@@ -559,4 +559,108 @@ class ChatRestStopTest extends TestCase
         $this->assertSame($at->copy()->addMinutes(30)->timestamp, ChatRestStop::find($stopId)->return_at->timestamp);
         $this->assertTrue(ChatMessage::where('schedule_id', $schedule->id)->where('body', 'like', '⏰ เลื่อนเวลานัดรวมพลไป 30 นาที%')->exists());
     }
+
+    // ── คำขอแบบไม่บอกชื่ออื่น ๆ (แอร์ / ความเร็ว / เพลง) ─────────────────────
+
+    private function ask(User $user, TripSchedule $schedule, string $kind, array $extra = [])
+    {
+        return $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/stop-requests", ['kind' => $kind, ...$extra]);
+    }
+
+    public function test_comfort_requests_are_counted_per_kind_and_never_named(): void
+    {
+        $schedule = $this->makeSchedule();
+        [$a] = $this->party($schedule, ['สมชาย ใจดี']);
+        [$b] = $this->party($schedule, ['มานะ ขยัน']);
+        $staff = $this->staff($schedule);
+
+        $this->ask($a, $schedule, 'too_cold')->assertOk()
+            ->assertJsonPath('data.kinds.too_cold', 1)
+            ->assertJsonPath('data.mine_kinds', ['too_cold'])
+            ->assertJsonPath('data.pending', 0, 'pending ยังหมายถึงห้องน้ำ (แอปรุ่นก่อน)');
+        $this->ask($a, $schedule, 'too_cold'); // กดซ้ำ = คำขอเดิม
+        $this->ask($b, $schedule, 'too_hot');
+
+        $toStaff = $this->pushesTo($staff);
+        $this->assertCount(2, $toStaff);
+        $this->assertSame('🥶 มีคนบอกว่าแอร์หนาวไป', $toStaff[0]['title']);
+        // หนาวกับร้อนพร้อมกัน → บอกให้รู้ก่อนปรับ
+        $this->assertStringContainsString('(แต่มีคนบอกว่าแอร์หนาวไป 1 คน)', $toStaff[1]['body']);
+        foreach ($toStaff as $push) {
+            $this->assertStringNotContainsString($a->name, $push['title'].$push['body']);
+        }
+
+        $this->actingAs($b, 'sanctum')->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.stop_requests.kinds.too_cold', 1)
+            ->assertJsonPath('data.stop_requests.kinds.too_hot', 1)
+            ->assertJsonPath('data.my_stop_requests', ['too_hot']);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/stop-requests/ack", ['kind' => 'too_cold'])
+            ->assertOk()
+            ->assertJsonPath('data.kinds.too_cold', 0)
+            ->assertJsonPath('data.kinds.too_hot', 1, 'รับทราบเรื่องหนึ่งไม่ปิดอีกเรื่อง');
+
+        $this->assertTrue(ChatMessage::where('schedule_id', $schedule->id)
+            ->where('body', '🥶 ทีมงานรับทราบแล้ว — ปรับแอร์ให้อุ่นขึ้นแล้วนะครับ')->exists());
+        $this->assertSame('🥶 ทีมงานรับทราบแล้ว', last($this->pushesTo($a))['title']);
+        $this->assertCount(0, array_filter($this->pushesTo($b), fn ($p) => str_contains($p['title'], 'รับทราบ')));
+    }
+
+    public function test_comfort_requests_expire_after_an_hour_and_count_again_when_pressed(): void
+    {
+        $schedule = $this->makeSchedule();
+        [$a] = $this->party($schedule, ['สมชาย ใจดี']);
+        $staff = $this->staff($schedule);
+
+        $this->ask($a, $schedule, 'too_fast');
+        $this->travel(61)->minutes();
+
+        $this->actingAs($a, 'sanctum')->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.stop_requests.kinds.too_fast', 0)
+            ->assertJsonPath('data.my_stop_requests', []);
+
+        $this->ask($a, $schedule, 'too_fast')->assertJsonPath('data.kinds.too_fast', 1);
+        $this->assertCount(2, $this->pushesTo($staff), 'กดใหม่หลังหมดอายุ = เด้งหาสตาฟอีกรอบ');
+
+        // ขอแวะห้องน้ำไม่หมดอายุ
+        $this->ask($a, $schedule, 'toilet');
+        $this->travel(3)->hours();
+        $this->actingAs($a, 'sanctum')->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.stop_requests.pending', 1);
+    }
+
+    public function test_announcing_a_rest_stop_only_answers_toilet_requests(): void
+    {
+        $schedule = $this->makeSchedule();
+        [$a] = $this->party($schedule, ['สมชาย ใจดี']);
+        $staff = $this->staff($schedule);
+
+        $this->ask($a, $schedule, 'toilet');
+        $this->ask($a, $schedule, 'music_down');
+        $this->openStop($staff, $schedule);
+
+        $this->actingAs($a, 'sanctum')->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.stop_requests.pending', 0)
+            ->assertJsonPath('data.stop_requests.kinds.music_down', 1);
+    }
+
+    public function test_requester_withdraws_one_kind_and_staff_cannot_ask(): void
+    {
+        $schedule = $this->makeSchedule();
+        [$a] = $this->party($schedule, ['สมชาย ใจดี']);
+        $staff = $this->staff($schedule);
+
+        $this->ask($a, $schedule, 'too_cold');
+        $this->ask($a, $schedule, 'toilet');
+        $this->actingAs($a, 'sanctum')
+            ->deleteJson("/api/v1/schedules/{$schedule->id}/chat/stop-requests/mine", ['kind' => 'too_cold'])
+            ->assertOk()
+            ->assertJsonPath('data.mine_kinds', ['toilet'])
+            ->assertJsonPath('data.mine', true);
+
+        $this->ask($staff, $schedule, 'toilet')->assertForbidden();
+        $this->ask($a, $schedule, 'karaoke')->assertStatus(422);
+    }
 }
