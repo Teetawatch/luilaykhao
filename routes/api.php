@@ -5,10 +5,12 @@ use App\Http\Controllers\Api\V1\AdminActionQueueController;
 use App\Http\Controllers\Api\V1\AdminArticleController;
 use App\Http\Controllers\Api\V1\AdminAtRiskScheduleController;
 use App\Http\Controllers\Api\V1\AdminBroadcastController;
+use App\Http\Controllers\Api\V1\AdminCharterRequestController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminFinanceController;
 use App\Http\Controllers\Api\V1\AdminForceMajeureController;
+use App\Http\Controllers\Api\V1\AdminGiftVoucherController;
 use App\Http\Controllers\Api\V1\AdminInstallmentController;
 use App\Http\Controllers\Api\V1\AdminIntakeController;
 use App\Http\Controllers\Api\V1\AdminPageContentController;
@@ -31,6 +33,7 @@ use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\BookingDocumentController;
 use App\Http\Controllers\Api\V1\BookingMemberController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\CharterRequestController;
 use App\Http\Controllers\Api\V1\ChatCollectionController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ChatFoodOrderController;
@@ -44,6 +47,7 @@ use App\Http\Controllers\Api\V1\DriverController;
 use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\FlexiDepartureController;
 use App\Http\Controllers\Api\V1\GiftController;
+use App\Http\Controllers\Api\V1\GiftVoucherController;
 use App\Http\Controllers\Api\V1\GroupPlanController;
 use App\Http\Controllers\Api\V1\HomeWidgetController;
 use App\Http\Controllers\Api\V1\IncidentController;
@@ -318,6 +322,24 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/progress', [TripProgressController::class, 'show']);
 
         // Gifts / ซื้อทริปเป็นของขวัญ (ผู้รับกรอกโค้ดเพื่อรับการจองมาเป็นของตัวเอง)
+        // เหมาทริป / จัดทริปส่วนตัว — ขอ → ใบเสนอราคา → ตอบรับ → ทีมงานเปิดการจอง
+        Route::get('charter-requests', [CharterRequestController::class, 'index']);
+        Route::post('charter-requests', [CharterRequestController::class, 'store'])->middleware('throttle:10,1');
+        Route::get('charter-requests/{charter}', [CharterRequestController::class, 'show'])->whereNumber('charter');
+        Route::post('charter-requests/{charter}/accept', [CharterRequestController::class, 'accept'])->whereNumber('charter');
+        Route::post('charter-requests/{charter}/decline', [CharterRequestController::class, 'decline'])->whereNumber('charter');
+        Route::post('charter-requests/{charter}/cancel', [CharterRequestController::class, 'cancel'])->whereNumber('charter');
+
+        // บัตรของขวัญแบบระบุยอดเงิน (ซื้อ/จ่าย/เพิ่มเข้าบัญชี — ใช้ตอนจองผ่าน gift_voucher_code)
+        Route::get('gift-vouchers', [GiftVoucherController::class, 'index']);
+        Route::post('gift-vouchers', [GiftVoucherController::class, 'store'])->middleware('throttle:10,1');
+        Route::post('gift-vouchers/lookup', [GiftVoucherController::class, 'lookup'])->middleware('throttle:promotion');
+        Route::post('gift-vouchers/claim', [GiftVoucherController::class, 'claim'])->middleware('throttle:promotion');
+        Route::get('gift-vouchers/{voucher}', [GiftVoucherController::class, 'show'])->whereNumber('voucher');
+        Route::get('gift-vouchers/{voucher}/payment', [GiftVoucherController::class, 'payment'])->whereNumber('voucher');
+        Route::post('gift-vouchers/{voucher}/slip', [GiftVoucherController::class, 'uploadSlip'])->whereNumber('voucher')->middleware('throttle:payment');
+        Route::delete('gift-vouchers/{voucher}', [GiftVoucherController::class, 'destroy'])->whereNumber('voucher');
+
         Route::get('gifts/sent', [GiftController::class, 'sent']);
         Route::get('gifts/{code}', [GiftController::class, 'preview']);
         Route::post('gifts/{code}/claim', [GiftController::class, 'claim'])->middleware('throttle:10,1');
@@ -876,6 +898,24 @@ Route::prefix('v1')->group(function () {
         Route::post('payments/{ref}/send-link', [AdminPaymentController::class, 'sendLink']);
         // QR ให้ลูกค้าสแกนจ่ายตอนทีมงานเปิดการจองแทน (ลูกค้าไม่ได้อยู่ในแอป)
         Route::post('payments/{ref}/qr', [AdminPaymentController::class, 'qr'])->middleware('throttle:payment');
+
+        // คำขอเหมาทริป — เสนอราคา ปิดคำขอ เปิดรอบเหมา ผูกการจอง
+        Route::get('charter-requests', [AdminCharterRequestController::class, 'index']);
+        Route::get('charter-requests/{charter}', [AdminCharterRequestController::class, 'show'])->whereNumber('charter');
+        Route::post('charter-requests/{charter}/quote', [AdminCharterRequestController::class, 'quote'])->whereNumber('charter');
+        Route::post('charter-requests/{charter}/reject', [AdminCharterRequestController::class, 'reject'])->whereNumber('charter');
+        Route::put('charter-requests/{charter}/note', [AdminCharterRequestController::class, 'note'])->whereNumber('charter');
+        Route::post('charter-requests/{charter}/schedule', [AdminCharterRequestController::class, 'createSchedule'])->whereNumber('charter');
+        Route::post('charter-requests/{charter}/link-booking', [AdminCharterRequestController::class, 'linkBooking'])->whereNumber('charter');
+
+        // บัตรของขวัญ — ตรวจสลิป ปรับยอด ยกเลิก ออกบัตรชดเชย
+        Route::get('gift-vouchers', [AdminGiftVoucherController::class, 'index']);
+        Route::post('gift-vouchers', [AdminGiftVoucherController::class, 'store']);
+        Route::get('gift-vouchers/{voucher}', [AdminGiftVoucherController::class, 'show'])->whereNumber('voucher');
+        Route::post('gift-vouchers/{voucher}/approve', [AdminGiftVoucherController::class, 'approve'])->whereNumber('voucher');
+        Route::post('gift-vouchers/{voucher}/reject', [AdminGiftVoucherController::class, 'reject'])->whereNumber('voucher');
+        Route::post('gift-vouchers/{voucher}/adjust', [AdminGiftVoucherController::class, 'adjust'])->whereNumber('voucher');
+        Route::post('gift-vouchers/{voucher}/cancel', [AdminGiftVoucherController::class, 'cancel'])->whereNumber('voucher');
         Route::get('payments/{ref}/qr/{payment}', [AdminPaymentController::class, 'qrStatus']);
 
         // Drivers (ทะเบียนคนขับ)

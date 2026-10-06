@@ -13,6 +13,7 @@ use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\Review;
 use App\Models\SchedulePhoto;
+use App\Models\Trip;
 use App\Models\TripPost;
 use App\Models\TripSchedule;
 use App\Services\BookingService;
@@ -75,11 +76,16 @@ class BookingController extends Controller
                 giftMessage: $request->gift_message,
                 skipPayment: $skipPayment,
                 termsConsent: $termsConsent,
+                giftVoucherCode: $request->gift_voucher_code,
             );
 
             return $this->success(
                 new BookingResource($booking),
-                $skipPayment ? 'ยืนยันการจองสำเร็จ (ข้ามการชำระเงิน)' : 'สร้างการจองสำเร็จ',
+                match (true) {
+                    $skipPayment => 'ยืนยันการจองสำเร็จ (ข้ามการชำระเงิน)',
+                    $booking->payment_method === Booking::PAYMENT_METHOD_GIFT_VOUCHER => 'ยืนยันการจองสำเร็จ ชำระครบด้วยบัตรของขวัญ',
+                    default => 'สร้างการจองสำเร็จ',
+                },
                 201,
             );
         } catch (\Exception $e) {
@@ -172,19 +178,29 @@ class BookingController extends Controller
 
     private const PAST_STATUSES = ['cancelled', 'refunded', 'completed'];
 
+    private const CANCELLED_STATUSES = ['cancelled', 'refunded'];
+
     /**
      * รายการจองของผู้ใช้
      *
      * ค่าเริ่มต้นคืนทั้งหมดในครั้งเดียว เพราะแอปมือถือที่ปล่อยไปแล้วเก็บผลลัพธ์ลง
      * offline cache ทั้งก้อน — ถ้าเปลี่ยนไปแบ่งหน้าโดยปริยาย แอปจะเห็นแค่หน้าแรก
      * เงียบ ๆ. เว็บที่ต้องการแบ่งหน้าให้ส่ง per_page มาเอง
+     *
+     * scope มีสองชุด:
+     * - upcoming / past — แบ่งตามสถานะ (หน้าเว็บ)
+     * - current / history — แบ่งตามวันที่ (แอป) ใบที่เดินทางจบแล้วส่วนใหญ่ยังเป็น
+     *   confirmed ตลอดไป การแบ่งตามสถานะจึงไม่ทำให้รายการ "กำลังจะถึง" เล็กลงเลย
+     *   current = ยังไม่จบ (โหลดครบทีเดียว จำนวนจำกัดโดยธรรมชาติ)
+     *   history = ส่วนที่เหลือทั้งหมด เรียงวันเดินทางล่าสุดก่อน แบ่งหน้าได้
      */
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate([
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
-            'scope' => ['nullable', 'string', 'in:upcoming,past'],
+            'scope' => ['nullable', 'string', 'in:upcoming,past,current,history'],
         ]);
+        $scope = $data['scope'] ?? null;
 
         $userId = $request->user()->id;
 
@@ -202,12 +218,14 @@ class BookingController extends Controller
 
         $query = $mine()
             ->when(
-                isset($data['scope']),
+                in_array($scope, ['upcoming', 'past'], true),
                 fn ($q) => $q->whereIn(
                     'status',
-                    $data['scope'] === 'upcoming' ? self::UPCOMING_STATUSES : self::PAST_STATUSES,
+                    $scope === 'upcoming' ? self::UPCOMING_STATUSES : self::PAST_STATUSES,
                 ),
             )
+            ->when($scope === 'current', fn ($q) => $this->whereStillCurrent($q))
+            ->when($scope === 'history', fn ($q) => $q->whereNot(fn ($inner) => $this->whereStillCurrent($inner)))
             ->with([
                 'user',
                 'schedule.trip',
@@ -230,7 +248,17 @@ class BookingController extends Controller
                 'review' => fn ($q) => $q->where('user_id', $userId),
                 'staffReviews' => fn ($q) => $q->where('reviewer_user_id', $request->user()->id),
             ])
-            ->orderByDesc('created_at');
+            // ประวัติแบ่งหน้าตามวันเดินทาง (ล่าสุดก่อน) ตรงกับที่แอปเรียงแสดง — ถ้าแบ่ง
+            // ตามวันที่จอง หน้าถัดไปจะมีทริปที่ต้องแทรกขึ้นไปเหนือรายการที่เห็นอยู่แล้ว
+            ->when(
+                $scope === 'history',
+                fn ($q) => $q->orderByDesc(
+                    TripSchedule::select('departure_date')
+                        ->whereColumn('trip_schedules.id', 'bookings.schedule_id')
+                        ->limit(1),
+                )->orderByDesc('bookings.id'),
+                fn ($q) => $q->orderByDesc('created_at'),
+            );
 
         // จำนวนของแต่ละแท็บต้องนับจากการจองทั้งหมดของผู้ใช้ ไม่ใช่จากหน้าที่กำลังดู
         // หรือจาก scope ที่กรองอยู่ ไม่งั้นตัวเลขบนแท็บจะเปลี่ยนไปมาตามหน้า
@@ -238,6 +266,27 @@ class BookingController extends Controller
             'upcoming_count' => $mine()->whereIn('status', self::UPCOMING_STATUSES)->count(),
             'past_count' => $mine()->whereIn('status', self::PAST_STATUSES)->count(),
         ];
+
+        if (in_array($scope, ['current', 'history'], true)) {
+            $history = fn () => $mine()->whereNot(fn ($inner) => $this->whereStillCurrent($inner));
+            $travelled = fn () => $history()->whereNotIn('bookings.status', self::CANCELLED_STATUSES);
+
+            $meta += [
+                'current_count' => $this->whereStillCurrent($mine())->count(),
+                'history_count' => $history()->count(),
+                // แท็บ "เดินทางแล้ว" / "ยกเลิก" ของแอปนับจากตรงนี้ เพราะแอปถือประวัติไว้แค่บางหน้า
+                'travelled_count' => $travelled()->count(),
+                'cancelled_count' => $history()->whereIn('bookings.status', self::CANCELLED_STATUSES)->count(),
+                'destinations_count' => Trip::query()
+                    ->whereIn('id', TripSchedule::query()
+                        ->select('trip_id')
+                        ->whereIn('id', $travelled()->select('bookings.schedule_id')))
+                    ->whereNotNull('location')
+                    ->where('location', '!=', '')
+                    ->distinct()
+                    ->count('location'),
+            ];
+        }
 
         if (! isset($data['per_page'])) {
             $bookings = $query->get();
@@ -256,6 +305,25 @@ class BookingController extends Controller
             $bookings->through(fn ($b) => new BookingResource($b)),
             meta: $meta,
         );
+    }
+
+    /**
+     * ใบจองที่ "ยังไม่จบ" — ยังไม่ยกเลิก และรอบยังไม่ผ่านวันกลับ (เวลาไทย) หรือยังรอเลือก
+     * รอบใหม่จากเหตุสุดวิสัย ต้องตรงกับ `_isUpcomingBooking` / `_isPastBooking` ของแอป:
+     * ใบที่วันกลับ < วันนี้ คือ "เดินทางแล้ว" แม้สถานะยัง confirmed
+     *
+     * history คือ whereNot ของเงื่อนไขนี้ทั้งก้อน สองชุดจึงไม่มีใบไหนตกหล่นหรือซ้ำ
+     */
+    private function whereStillCurrent($query)
+    {
+        $today = now('Asia/Bangkok')->toDateString();
+
+        return $query->whereIn('bookings.status', Booking::MODIFIABLE_STATUSES)
+            ->where(fn ($q) => $q
+                ->where(fn ($fm) => $fm->awaitingNewRound())
+                // ใบที่รอบหายไปแล้ว — แอปไม่มีวันให้เทียบจึงถือว่ายังไม่จบ
+                ->orWhereDoesntHave('schedule')
+                ->orWhereHas('schedule', fn ($s) => $s->whereDate('return_date', '>=', $today)));
     }
 
     /**

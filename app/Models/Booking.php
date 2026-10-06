@@ -42,6 +42,9 @@ class Booking extends Model
     // ใช้แยกใบพวกนี้ออกจากยอดที่โอนเข้ามาจริงเวลาไล่บัญชี
     public const PAYMENT_METHOD_ADMIN_SKIP = 'admin_skip';
 
+    /** ยอดทั้งหมดถูกจ่ายด้วยบัตรของขวัญ — ไม่มีเงินเข้าเพิ่มตอนจอง */
+    public const PAYMENT_METHOD_GIFT_VOUCHER = 'gift_voucher';
+
     // สถานะที่ลูกค้ากดบอกเองว่าตอนนี้อยู่ตรงไหนของการนัดเจอที่จุดรับ
     public const PICKUP_STATUS_ON_THE_WAY = 'on_the_way';
 
@@ -85,6 +88,7 @@ class Booking extends Model
         'hold_until', 'hold_note', 'hold_by_id',
         'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path', 'refund_account',
         'promotion_id', 'promotion_code', 'discount_amount',
+        'gift_voucher_id', 'voucher_amount', 'voucher_restored_amount',
         'sale_campaign_id', 'campaign_discount',
         'is_join_trip', 'flexi_surcharge',
         'is_gift', 'gift_code', 'gift_from_name', 'gift_message',
@@ -101,6 +105,8 @@ class Booking extends Model
             'addons_total' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'voucher_amount' => 'decimal:2',
+            'voucher_restored_amount' => 'decimal:2',
             'campaign_discount' => 'decimal:2',
             'flexi_surcharge' => 'decimal:2',
             'paid_at' => 'datetime',
@@ -158,6 +164,17 @@ class Booking extends Model
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);
+    }
+
+    public function giftVoucher(): BelongsTo
+    {
+        return $this->belongsTo(GiftVoucher::class);
+    }
+
+    /** ยอดที่จ่ายด้วยบัตรของขวัญและยังไม่ได้คืนกลับเข้าบัตร */
+    public function netVoucherAmount(): float
+    {
+        return round(max(0.0, (float) $this->voucher_amount - (float) $this->voucher_restored_amount), 2);
     }
 
     /** แคมเปญวันพิเศษที่ใบจองนี้จองเข้ามาระหว่างที่มันเปิดอยู่ (ถ้ามี) */

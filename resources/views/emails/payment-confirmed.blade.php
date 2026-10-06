@@ -26,9 +26,9 @@
 
     <div class="highlight-box hl-green">
       <div class="amount-label">💵 ยอดที่ชำระ</div>
-      <div class="amount">฿{{ number_format($booking->paid_amount, 0) }}</div>
+      <div class="amount">฿{{ number_format((float) $booking->paid_amount + ($booking->payment_method === 'gift_voucher' ? (float) $booking->voucher_amount : 0), 0) }}</div>
       <div class="amount-note">
-        {{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'โอนผ่านธนาคาร' : ($booking->payment_method ?? '-')) }}
+        {{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'โอนผ่านธนาคาร' : ($booking->payment_method === 'gift_voucher' ? 'บัตรของขวัญ' : ($booking->payment_method ?? '-'))) }}
         &nbsp;&middot;&nbsp;{{ \App\Support\ThaiDate::shortTime(now()) }} น.
       </div>
     </div>
@@ -80,6 +80,12 @@
         <span class="info-label">ยอดรวมทั้งหมด</span>
         <span class="info-value">฿{{ number_format($booking->total_amount, 0) }}</span>
       </div>
+      @if((float) $booking->voucher_amount > 0)
+      <div class="info-row">
+        <span class="info-label">ชำระด้วยบัตรของขวัญ</span>
+        <span class="info-value accent-green">฿{{ number_format((float) $booking->voucher_amount, 0) }}</span>
+      </div>
+      @endif
       <div class="info-row">
         <span class="info-label">ยอดชำระแล้ว</span>
         <span class="info-value accent-green">฿{{ number_format($booking->paid_amount, 0) }}</span>

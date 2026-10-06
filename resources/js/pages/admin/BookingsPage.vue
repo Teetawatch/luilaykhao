@@ -460,6 +460,11 @@
               <span>ชำระแล้ว</span>
               <strong class="text-green">{{ formatMoney(detailBooking.paid_amount) }}</strong>
             </div>
+            <div v-if="Number(detailBooking.voucher_amount) > 0" class="detail-stat">
+              <span>จ่ายด้วยบัตรของขวัญ</span>
+              <strong class="text-green">{{ formatMoney(detailBooking.voucher_amount) }}</strong>
+              <small v-if="Number(detailBooking.gift_voucher?.restored_amount) > 0">คืนเข้าบัตรแล้ว {{ formatMoney(detailBooking.gift_voucher.restored_amount) }}</small>
+            </div>
             <div class="detail-stat">
               <span>คงเหลือ</span>
               <strong :class="paymentBalance(detailBooking) > 0 ? 'text-warn' : 'text-green'">
@@ -1765,6 +1770,15 @@
                 ลูกค้ายังไม่ได้แจ้งเลขบัญชี — โทรขอก่อนโอน
               </p>
             </div>
+            <div v-if="refundPreview && Number(refundPreview.voucher_restorable) > 0" class="form-group">
+              <label>คืนยอดเข้าบัตรของขวัญ (บาท)</label>
+              <input v-model.number="statusForm.voucherRestore" type="number" min="0" :max="refundPreview.voucher_restorable" step="0.01" />
+              <p class="field-hint">
+                ใบนี้จ่ายด้วยบัตรของขวัญ ฿{{ Number(refundPreview.voucher_amount).toLocaleString() }}
+                — ตามนโยบายคืนเข้าบัตร {{ refundPreview.voucher_restore_percent }}%
+                (฿{{ Number(refundPreview.voucher_restore_amount).toLocaleString() }}) ยอดนี้กลับเข้าบัตร ไม่ใช่โอนเป็นเงิน
+              </p>
+            </div>
             <div class="form-group">
               <label>หลักฐานการโอนคืน (สลิป)</label>
               <input type="file" accept="image/*" @change="onRefundSlipPick" />
@@ -2378,7 +2392,7 @@ const transferInput = ref(null);
 const submitting = ref(false);
 const loadingDetail = ref(false);
 const currentPage = ref(1);
-const statusForm = reactive({ status: '', reason: '', refundAmount: null, refundSlip: null });
+const statusForm = reactive({ status: '', reason: '', refundAmount: null, refundSlip: null, voucherRestore: null });
 const refundPreview = ref(null);
 const editForm = reactive({
   status: 'pending',
@@ -3308,6 +3322,7 @@ function openStatusModal(booking) {
   statusForm.reason = '';
   statusForm.refundAmount = null;
   statusForm.refundSlip = null;
+  statusForm.voucherRestore = null;
   refundPreview.value = null;
   showStatusModal.value = true;
   if (refundRequested) loadRefundPreview();
@@ -3326,6 +3341,9 @@ async function loadRefundPreview() {
     refundPreview.value = preview;
     if (statusForm.refundAmount === null) {
       statusForm.refundAmount = Number(preview.refund_amount ?? 0);
+    }
+    if (statusForm.voucherRestore === null && Number(preview.voucher_restorable) > 0) {
+      statusForm.voucherRestore = Number(preview.voucher_restore_amount ?? 0);
     }
   } catch {
     refundPreview.value = null;
@@ -3351,6 +3369,7 @@ async function doUpdateStatus() {
         amount: statusForm.refundAmount ?? 0,
         note: statusForm.reason || null,
         slip: statusForm.refundSlip,
+        voucherRestore: Number(refundPreview.value?.voucher_restorable) > 0 ? statusForm.voucherRestore : null,
       });
       showStatusModal.value = false;
       if (detailBooking.value?.booking_ref === statusBooking.value.booking_ref) {

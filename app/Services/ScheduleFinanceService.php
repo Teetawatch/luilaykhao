@@ -499,6 +499,9 @@ class ScheduleFinanceService
     /**
      * ยอดเงินรายรอบ — จอง/จ่ายแล้ว/คืนแล้ว/จำนวนใบที่ยังค้าง
      *
+     * ยอดที่จ่ายด้วยบัตรของขวัญ (หักยอดที่คืนเข้าบัตรแล้ว) นับเป็นเงินที่รอบนี้ได้รับ —
+     * เงินค่าบัตรเข้ามาก่อนแล้วตอนขายบัตร total_amount/paid_amount ไม่รวมส่วนนี้
+     *
      * @param  iterable<int>  $scheduleIds
      * @return Collection<int, object>
      */
@@ -508,9 +511,9 @@ class ScheduleFinanceService
             ->whereNotIn('status', self::REVENUE_STATUSES_EXCLUDED)
             ->selectRaw(
                 'schedule_id,
-                 SUM(paid_amount) as paid,
+                 SUM(paid_amount + voucher_amount - voucher_restored_amount) as paid,
                  SUM(refund_amount) as refunded,
-                 SUM(total_amount) as booked,
+                 SUM(total_amount + voucher_amount - voucher_restored_amount) as booked,
                  COUNT(*) as bookings_count,
                  SUM(CASE WHEN total_amount > paid_amount THEN 1 ELSE 0 END) as unpaid_count'
             )

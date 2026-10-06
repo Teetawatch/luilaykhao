@@ -211,6 +211,7 @@ class CreateBookingRequest extends FormRequest
             'group_name' => ['nullable', 'string', 'max:255'],
             'group_notes' => ['nullable', 'string', 'max:1000'],
             'promotion_code' => ['nullable', 'string', 'max:50'],
+            'gift_voucher_code' => ['nullable', 'string', 'max:30'],
             'is_join_trip' => ['nullable', 'boolean'],
             // ประเภทรถที่เลือก (รอบที่วิ่งทั้งบัสและตู้) — ความเป็นเจ้าของของรอบ
             // ตรวจใน BookingService ที่เดียว เพราะต้องอ่านโควตาที่นั่งพร้อมกัน

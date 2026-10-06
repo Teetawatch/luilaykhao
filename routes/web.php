@@ -9,6 +9,7 @@ use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PublicAccountClaimController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicGiftController;
+use App\Http\Controllers\PublicGiftVoucherController;
 use App\Http\Controllers\PublicIntakeController;
 use App\Http\Controllers\PublicPassengerFillController;
 use App\Http\Controllers\PublicPassportController;
@@ -150,6 +151,12 @@ Route::get('/gift/{code}', [PublicGiftController::class, 'show'])
     ->middleware('throttle:120,1')
     ->name('public.gift.show');
 
+// บัตรของขวัญแบบระบุยอด — ลิงก์ที่ผู้ซื้อส่งให้ผู้รับ
+Route::get('/voucher/{code}', [PublicGiftVoucherController::class, 'show'])
+    ->where('code', '[A-Za-z0-9-]+')
+    ->middleware('throttle:60,1')
+    ->name('public.voucher.show');
+
 // Universal Links (iOS) — ผูกโดเมนกับแอปเพื่อให้ https://luilaykhao.com/gift/*
 // เปิดแอปโดยตรง ต้องเสิร์ฟที่ /.well-known/ เป็น application/json ผ่าน https ห้าม redirect
 // คืน 404 เมื่อยังไม่ตั้งค่า IOS_APP_ID เพื่อไม่ให้ Apple แคชไฟล์ที่ผูกผิด
@@ -165,7 +172,8 @@ Route::get('/.well-known/apple-app-site-association', function () {
                 // /reset-password: ลิงก์ตั้งรหัสผ่านใหม่ที่เมลไปหาลูกค้า เปิดใน
                 // แอปได้เลยถ้ามีแอปติดอยู่ (ถ้าไม่มี ก็ตกไปที่หน้าเดียวกันใน SPA)
                 // /handover/*: ลิงก์ส่งต่อที่นั่ง — คนรับมีแอปก็รับในแอปเลย
-                'paths' => ['/gift/*', '/reset-password*', '/handover/*'],
+                // /voucher/*: บัตรของขวัญ — ผู้รับที่มีแอปเพิ่มบัตรเข้าบัญชีได้เลย
+                'paths' => ['/gift/*', '/reset-password*', '/handover/*', '/voucher/*'],
             ]],
         ],
     ]);

@@ -204,6 +204,7 @@ const menuGroups = ref([
     items: [
       { to: '/admin/intakes', icon: 'fas fa-address-card', label: 'ข้อมูลลูกค้าจากลิงก์', badge: 'intake' },
       { to: '/admin/manual-booking', icon: 'fas fa-headset', label: 'จองแทนลูกค้า' },
+      { to: '/admin/charter-requests', icon: 'fas fa-people-group', label: 'คำขอเหมาทริป' },
       { to: '/admin/bookings', icon: 'fas fa-ticket-alt', label: 'การจอง' },
       { to: '/admin/installments', icon: 'fas fa-calendar-check', label: 'ผ่อนชำระ' },
       { to: '/admin/customers', icon: 'fas fa-user-friends', label: 'จัดการลูกค้า' },
@@ -243,6 +244,7 @@ const menuGroups = ref([
       { to: '/admin/sale-campaigns', icon: 'fas fa-calendar-day', label: 'แคมเปญวันพิเศษ (9.9)' },
       { to: '/admin/urgent-popup', icon: 'fas fa-fire', label: 'ป๊อปอัพทริปด่วน' },
       { to: '/admin/loyalty', icon: 'fas fa-coins', label: 'ระบบสะสมแต้ม' },
+      { to: '/admin/gift-vouchers', icon: 'fas fa-gift', label: 'บัตรของขวัญ' },
     ],
     isOpen: false
   },

@@ -758,6 +758,11 @@ class TripSchedule extends Model
     /** รอบนี้ยังขายอยู่ไหม — เงื่อนไขเดียวกับที่ flash sale ใช้ */
     public function campaignEligible(): bool
     {
+        // รอบเหมาใช้ราคาที่ตกลงกับกลุ่มไว้แล้ว (ใบเสนอราคา) — แคมเปญต้องไม่ไปลดให้เอง
+        if ($this->is_charter) {
+            return false;
+        }
+
         if ($this->status !== 'open' || $this->available_seats <= 0) {
             return false;
         }

@@ -94,10 +94,13 @@ class ReceiptService
         $rentalsTotal = (float) $booking->rentals_total;
         $flexi = (float) $booking->flexi_surcharge;
         $discount = (float) $booking->discount_amount;
+        // บัตรของขวัญไม่ใช่ส่วนลด — เป็นเงินที่จ่ายมาก่อนแล้ว total_amount ถูกหักไปแล้ว
+        // จึงต้องบวกกลับเพื่อได้ยอดสุทธิจริงของการจอง
+        $voucher = (float) $booking->voucher_amount;
         $paxCount = $booking->passengers->count() ?: 1;
 
         // ยอดค่าทริปก่อนรวมของเสริม/เช่า/ส่วนลด (แกะกลับจากยอดรวมสุทธิ)
-        $ticketsGross = round($total - $addonsTotal - $rentalsTotal - $flexi + $discount, 2);
+        $ticketsGross = round($total + $voucher - $addonsTotal - $rentalsTotal - $flexi + $discount, 2);
 
         $items = [];
         $items[] = [
@@ -150,7 +153,8 @@ class ReceiptService
             'summary' => [
                 'subtotal' => round($ticketsGross + $addonsTotal + $rentalsTotal + $flexi, 2),
                 'discount' => $discount,
-                'total' => $total,
+                'total' => round($total + $voucher, 2),
+                'gift_voucher' => $voucher,
                 'paid' => $amount,
                 'balance' => round(max(0, $total - (float) $booking->paid_amount), 2),
                 'balance_due_at' => $booking->balance_due_at ? ThaiDate::full($booking->balance_due_at) : null,

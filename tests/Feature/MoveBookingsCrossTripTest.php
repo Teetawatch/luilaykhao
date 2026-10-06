@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
+use App\Models\GiftVoucher;
 use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -439,5 +440,50 @@ class MoveBookingsCrossTripTest extends TestCase
         $this->assertSame($targetPoint->id, $passenger->fresh()->pickup_point_id);
         // แถวที่นั่งต้องย้ายตามรอบด้วย ไม่ค้างกินที่นั่งรอบเดิม
         $this->assertSame($target->id, $booking->seats()->first()->schedule_id);
+    }
+
+    /** บัตรของขวัญต้องแบ่งตามสัดส่วนเดียวกับเงินสด ไม่ใช่ติดไปเต็มจำนวนทั้งสองใบ */
+    public function test_partial_move_splits_the_gift_voucher_amount_too(): void
+    {
+        $admin = $this->makeAdmin();
+        $source = $this->makeSchedule('Source Trip');
+        $target = $this->makeSchedule('Other Trip');
+
+        $voucher = GiftVoucher::create([
+            'code' => GiftVoucher::generateCode(),
+            'amount' => 1000, 'balance' => 0, 'status' => 'active',
+        ]);
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => User::factory()->create()->id,
+            'schedule_id' => $source->id,
+            'status' => 'confirmed',
+            'qr_code' => Booking::generateQrCode(),
+            'total_amount' => 2000,
+            'paid_amount' => 2000,
+            'gift_voucher_id' => $voucher->id,
+            'voucher_amount' => 1000,
+            'voucher_restored_amount' => 200,
+        ]);
+        $moving = BookingPassenger::create(['booking_id' => $booking->id, 'name' => 'Mover', 'phone' => '0800000000']);
+        BookingPassenger::create(['booking_id' => $booking->id, 'name' => 'Stayer', 'phone' => '0800000001']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/schedules/move-bookings', [
+                'source_schedule_id' => $source->id,
+                'target_schedule_id' => $target->id,
+                'passenger_ids' => [$moving->id],
+            ])
+            ->assertOk();
+
+        $split = $moving->fresh()->booking;
+        $booking->refresh();
+
+        $this->assertEquals(500, $split->voucher_amount);
+        $this->assertEquals(100, $split->voucher_restored_amount);
+        $this->assertEquals(500, $booking->voucher_amount);
+        $this->assertEquals(100, $booking->voucher_restored_amount);
+        $this->assertEquals(1000, $split->voucher_amount + $booking->voucher_amount);
+        $this->assertSame($voucher->id, $split->gift_voucher_id);
     }
 }

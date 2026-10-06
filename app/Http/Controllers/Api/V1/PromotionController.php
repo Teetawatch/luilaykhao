@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\GiftVoucher;
 use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\Promotion;
@@ -140,6 +141,16 @@ class PromotionController extends Controller
             return $this->validateCoupon($redemption, $request->user()?->id);
         }
 
+        // บัตรของขวัญที่ใส่มาในช่องโค้ดส่วนลด (เว็บ/LIFF ไม่มีช่องแยก) — ตอบในรูป
+        // fixed เท่ายอดคงเหลือ หน้าจอคิดยอดตัวอย่างได้ถูกโดยไม่ต้องรู้จักบัตร
+        // BookingService ย้ายรหัสนี้ไปใช้เป็นบัตรเองตอนจองจริง
+        if (GiftVoucher::looksLikeCode($request->code)) {
+            $voucher = GiftVoucher::where('code', GiftVoucher::normalizeCode($request->code))->first();
+            if ($voucher) {
+                return $this->validateVoucher($voucher, $request->user()?->id);
+            }
+        }
+
         $promotion = Promotion::where('code', $request->code)->where('is_active', true)->first();
 
         if (! $promotion) {
@@ -172,6 +183,34 @@ class PromotionController extends Controller
         return response()->json([
             'valid' => true,
             'promotion' => $promotion,
+        ]);
+    }
+
+    private function validateVoucher(GiftVoucher $voucher, ?int $userId)
+    {
+        $problem = match (true) {
+            $voucher->status === GiftVoucher::STATUS_UNDER_REVIEW => 'บัตรของขวัญนี้กำลังรอยืนยันการชำระเงิน ยังใช้ไม่ได้ครับ',
+            $voucher->status !== GiftVoucher::STATUS_ACTIVE => 'ไม่พบบัตรของขวัญนี้ กรุณาตรวจสอบรหัสอีกครั้ง',
+            ! $voucher->canBeUsedBy($userId) => 'บัตรของขวัญนี้เป็นของบัญชีอื่น',
+            $voucher->isExpired() => 'บัตรของขวัญนี้หมดอายุแล้ว',
+            (float) $voucher->balance <= 0 => 'บัตรของขวัญนี้ใช้ครบยอดแล้ว',
+            default => null,
+        };
+
+        if ($problem) {
+            return response()->json(['valid' => false, 'message' => $problem], 400);
+        }
+
+        return response()->json([
+            'valid' => true,
+            'kind' => 'gift_voucher',
+            'promotion' => [
+                'code' => $voucher->code,
+                'name' => 'บัตรของขวัญ',
+                'type' => 'fixed',
+                'value' => (float) $voucher->balance,
+                'is_gift_voucher' => true,
+            ],
         ]);
     }
 

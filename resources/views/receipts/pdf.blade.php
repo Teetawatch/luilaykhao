@@ -158,6 +158,9 @@
                     <tr><td class="k">ส่วนลด</td><td class="v">-{{ number_format((float) data_get($d, 'summary.discount'), 2) }}</td></tr>
                     @endif
                     <tr class="grand"><td class="k">ยอดสุทธิ</td><td class="v">{{ number_format((float) data_get($d, 'summary.total'), 2) }}</td></tr>
+                    @if((float) data_get($d, 'summary.gift_voucher') > 0)
+                    <tr class="paid"><td class="k">ชำระด้วยบัตรของขวัญ</td><td class="v">{{ number_format((float) data_get($d, 'summary.gift_voucher'), 2) }}</td></tr>
+                    @endif
                     <tr class="paid"><td class="k">รับชำระ ({{ $kindLabel }})</td><td class="v">{{ number_format((float) data_get($d, 'summary.paid'), 2) }}</td></tr>
                     @if((float) data_get($d, 'summary.balance') > 0)
                     <tr class="bal"><td class="k">คงเหลือ</td><td class="v">{{ number_format((float) data_get($d, 'summary.balance'), 2) }}</td></tr>

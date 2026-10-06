@@ -14,6 +14,23 @@
       </router-link>
     </div>
 
+    <div v-if="charterRequest" class="intake-banner">
+      <span class="material-symbols-rounded">groups</span>
+      <div>
+        <strong>จองให้คำขอเหมาทริป {{ charterRequest.ref }}</strong>
+        <p>
+          {{ charterRequest.contact_name }} · ใบเสนอราคา {{ charterRequest.quote?.group_size }} คน
+          ท่านละ ฿{{ Number(charterRequest.quote?.price_per_person || 0).toLocaleString() }}
+          (รวม ฿{{ Number(charterRequest.quote?.total || 0).toLocaleString() }})
+        </p>
+        <p>การจองจะเข้าบัญชีของผู้ขอ (ลูกค้าเห็นในแอปทันที) และผูกกลับไปที่คำขอให้เองเมื่อบันทึก</p>
+        <p v-if="!charterRequest.schedule" class="intake-warn">
+          <span class="material-symbols-rounded">warning</span>
+          ยังไม่ได้เปิดรอบเหมาจากคำขอนี้ — กลับไปกด "เปิดรอบเหมา" ที่หน้าคำขอก่อน หรือเลือกรอบเองด้านล่าง
+        </p>
+      </div>
+    </div>
+
     <div v-if="intakeSources.length" class="intake-banner">
       <span class="material-symbols-rounded">contact_mail</span>
       <div>
@@ -924,6 +941,8 @@ const holdQuickDays = ref(null);
 // ข้อมูลลูกค้าที่ถูกดึงมาจากลิงก์กรอกเอง — โชว์แถบบอกที่มา แล้วส่ง id กลับตอนบันทึก
 // เป็นรายการเพราะกลุ่มที่มาด้วยกันอาจถูกกรอกแยกกันมาหลายกลุ่ม แต่ต้องจองใบเดียว
 const intakeIds = ref([]);
+// มาจากหน้า "คำขอเหมาทริป" — ใบจองเข้าบัญชีผู้ขอและผูกกลับไปที่คำขอให้เอง
+const charterRequest = ref(null);
 const intakeSources = ref([]);
 const intakeDroppedCount = ref(0);
 const intakeScheduleMixed = ref(false);
@@ -1342,7 +1361,34 @@ const submitHint = computed(() => {
 onMounted(async () => {
   await fetchTrips();
   await prefillFromIntake(route.query.intake);
+  await prefillFromCharter(route.query.charter_request);
 });
+
+async function prefillFromCharter(charterParam) {
+  const id = Number(charterParam);
+  if (!Number.isInteger(id) || id <= 0) return;
+
+  try {
+    const res = await api.get(`/admin/charter-requests/${id}`);
+    const charter = res.data?.data;
+    if (!charter) return;
+    charterRequest.value = charter;
+
+    form.customer_name = charter.contact_name || '';
+    form.phone = charter.contact_phone || '';
+    form.email = charter.user?.email && !String(charter.user.email).endsWith('@social.local') ? charter.user.email : '';
+
+    const schedule = charter.schedule;
+    if (schedule) {
+      form.trip_id = Number(schedule.trip_id);
+      await onTripChange();
+      form.schedule_id = Number(schedule.id);
+      await onScheduleChange();
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'โหลดคำขอเหมาทริปไม่สำเร็จ');
+  }
+}
 
 onBeforeUnmount(stopQrTimers);
 
@@ -1845,6 +1891,7 @@ function buildBookingPayload() {
   appendFormValue(fd, 'send_email', form.send_email);
   // มาจากหน้า "ข้อมูลลูกค้าจากลิงก์" — เซิร์ฟเวอร์ปิดทุกกลุ่มที่รวมมาให้เองเมื่อจองสำเร็จ
   intakeIds.value.forEach((id) => appendFormValue(fd, 'intake_ids[]', id));
+  if (charterRequest.value) appendFormValue(fd, 'charter_request_id', charterRequest.value.id);
 
   if (isHoldMode.value && holdUntilDate.value) {
     // ส่งเป็น ISO ที่มีโซนเวลาติดไป เซิร์ฟเวอร์จะได้ไม่ต้องเดาว่าเป็นเวลาไทยหรือ UTC

@@ -14,6 +14,7 @@ use App\Mail\DepositPaidMail;
 use App\Mail\EmailVerificationMail;
 use App\Mail\GiftClaimedMail;
 use App\Mail\GiftPurchasedMail;
+use App\Mail\GiftVoucherIssuedMail;
 use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
 use App\Mail\PassportExpiringMail;
@@ -28,6 +29,7 @@ use App\Mail\WelcomeRegistrationMail;
 use App\Models\Booking;
 use App\Models\CustomerIntake;
 use App\Models\EmailLog;
+use App\Models\GiftVoucher;
 use App\Models\InstallmentPayment;
 use App\Models\Receipt;
 use App\Models\User;
@@ -348,6 +350,28 @@ class MailService
         } catch (\Throwable $e) {
             Log::error('Failed to send gift purchased email', [
                 'booking_ref' => $booking->booking_ref,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * บัตรของขวัญชำระเงินเรียบร้อย — ส่งรหัสและลิงก์ส่งต่อให้ผู้ซื้อ
+     */
+    public function sendGiftVoucherIssuedEmail(GiftVoucher $voucher): void
+    {
+        $voucher->loadMissing('purchaser');
+
+        $email = $voucher->purchaser?->email;
+        if (! $this->isDeliverable($email) || str_ends_with(strtolower((string) $email), '@social.local')) {
+            return;
+        }
+
+        try {
+            Mail::to($email)->send(new GiftVoucherIssuedMail($voucher));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send gift voucher email', [
+                'voucher_id' => $voucher->id,
                 'error' => $e->getMessage(),
             ]);
         }

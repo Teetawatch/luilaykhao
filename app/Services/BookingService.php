@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
 use App\Models\BookingTermAcceptance;
+use App\Models\GiftVoucher;
 use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\Payment;
@@ -41,6 +42,7 @@ class BookingService
         private BroadcastNotificationService $broadcastService,
         private TripAlertService $tripAlertService,
         private ScheduleSeatNotifier $seatNotifier,
+        private GiftVoucherService $giftVoucherService,
     ) {}
 
     public function createBooking(
@@ -65,6 +67,7 @@ class BookingService
         ?int $vehicleOptionId = null,
         bool $skipPayment = false,
         ?TermsConsent $termsConsent = null,
+        ?string $giftVoucherCode = null,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
@@ -77,8 +80,19 @@ class BookingService
         // Almost Ready (5-7) or Guaranteed (8+) band. Null = join trip.
         $bookedBeforeBooking = null;
         $bookedAfterBooking = null;
+        // บัตรของขวัญจ่ายครบทั้งยอด — ยืนยันใบจองทันทีหลัง transaction
+        $coveredByVoucher = false;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
+        // เว็บและ LIFF ไม่มีช่องบัตรของขวัญแยก ลูกค้าใส่รหัสบัตรในช่องโค้ดส่วนลด
+        // แทน — รหัสที่เป็นบัตรของขวัญจริงจึงถูกย้ายมาใช้เป็นบัตร (ใช้คู่กับโค้ด
+        // ส่วนลดได้เฉพาะช่องทางที่มีช่องแยก คือแอป)
+        if ($promotionCode !== null && blank($giftVoucherCode) && GiftVoucher::looksLikeCode($promotionCode)
+            && GiftVoucher::where('code', GiftVoucher::normalizeCode($promotionCode))->exists()) {
+            $giftVoucherCode = $promotionCode;
+            $promotionCode = null;
+        }
+
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, $skipPayment, $giftVoucherCode, &$coveredByVoucher, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -480,6 +494,27 @@ class BookingService
                 }
             }
 
+            // บัตรของขวัญ — หักหลังส่วนลดทุกชนิด เพราะบัตรคือ "เงินที่จ่ายมาแล้ว" ไม่ใช่
+            // ส่วนลด total_amount ที่เหลือคือยอดที่ยังต้องจ่ายเป็นเงิน PaymentQuote
+            // (มัดจำ/งวด/แบ่งจ่าย) จึงคิดต่อจากยอดนี้ได้เองโดยไม่ต้องรู้จักบัตร
+            $voucher = null;
+            $voucherAmount = 0.0;
+            if (filled($giftVoucherCode)) {
+                if ($skipPayment) {
+                    throw new \Exception('การจองที่ข้ามการชำระเงินใช้บัตรของขวัญไม่ได้');
+                }
+
+                $voucher = $this->giftVoucherService->lockForRedemption($giftVoucherCode, $userId);
+                $voucherAmount = round(min((float) $voucher->balance, max(0.0, (float) $totalAmount)), 2);
+
+                if ($voucherAmount <= 0) {
+                    throw new \Exception('ยอดที่ต้องชำระเป็น 0 บาทแล้ว ไม่ต้องใช้บัตรของขวัญครับ');
+                }
+
+                $totalAmount = round((float) $totalAmount - $voucherAmount, 2);
+                $coveredByVoucher = $totalAmount <= 0;
+            }
+
             // จุดรับแบบ custom (ลูกค้าปักหมุดเอง) จะถูกใช้ก็ต่อเมื่อไม่ได้เลือกจุดที่กำหนดไว้
             // และไม่ใช่ join trip — รับอัตโนมัติทันที ลูกค้าชำระเงินได้เลย ไม่มีค่าบริการ
             // แยกต่างหาก (custom_pickup_price) เพราะราคาโซนถูกคิดรวมในค่าทริปต่อคนแล้ว
@@ -515,6 +550,8 @@ class BookingService
                 'promotion_id' => $promotionId,
                 'promotion_code' => ($promotionId || $redemption) ? $promotionCode : null,
                 'discount_amount' => $discountAmount,
+                'gift_voucher_id' => $voucher?->id,
+                'voucher_amount' => $voucherAmount,
                 'sale_campaign_id' => $saleCampaign?->id,
                 'campaign_discount' => $campaignDiscount,
                 'is_join_trip' => $isJoinTrip,
@@ -542,6 +579,12 @@ class BookingService
                     'is_used' => true,
                     'booking_id' => $booking->id,
                 ]);
+            }
+
+            // หักยอดจากบัตรใน transaction เดียวกัน — บัตรใบเดียวกดจองพร้อมกันสองหน้าต่าง
+            // ได้ยอดไม่เกินที่มีอยู่จริง (lockForRedemption ล็อกแถวบัตรไว้แล้ว)
+            if ($voucher) {
+                $this->giftVoucherService->redeem($voucher, $booking, $voucherAmount, $userId);
             }
 
             // Create passengers
@@ -615,6 +658,8 @@ class BookingService
                     'route' => 'booking',
                 ],
             );
+        } elseif ($coveredByVoucher) {
+            $booking = $this->confirmPaidByVoucher($booking);
         } else {
             // Send emails outside of DB transaction
             $this->mailService->sendBookingCreatedEmail($booking);
@@ -646,6 +691,54 @@ class BookingService
         );
 
         return $booking;
+    }
+
+    /**
+     * บัตรของขวัญจ่ายครบทั้งยอด — ยืนยันผ่านท่อเดียวกับการจ่ายเต็มจำนวนปกติ
+     * (บันทึก → ยืนยัน → แจ้งทุกฝ่าย) ใบเสร็จ อีเมล SMS และแต้มจึงออกเหมือนจ่ายเอง
+     */
+    private function confirmPaidByVoucher(Booking $booking): Booking
+    {
+        $settlement = app(BookingSettlementService::class);
+        $ref = 'GV-'.strtoupper(Str::random(10));
+
+        DB::transaction(function () use ($settlement, $booking, $ref) {
+            $settlement->record($booking, 'full', [
+                'payment_method' => Booking::PAYMENT_METHOD_GIFT_VOUCHER,
+                'payment_ref' => $ref,
+            ]);
+            $settlement->confirm($booking, 'full', Booking::PAYMENT_METHOD_GIFT_VOUCHER, $ref);
+        });
+
+        $settlement->announce($booking, 'full');
+
+        // ของขวัญทริปที่จ่ายด้วยบัตร — ผู้ซื้อยังต้องได้อีเมลโค้ดของขวัญไว้ส่งต่อ
+        if ($booking->is_gift) {
+            $this->mailService->sendBookingCreatedEmail($booking->fresh());
+        }
+
+        return $booking->fresh(['passengers.pickupPoint', 'seats', 'schedule.trip']);
+    }
+
+    /**
+     * ยอดที่ควรคืนกลับเข้าบัตรของขวัญเมื่อใบที่ยืนยันแล้วถูกคืนเงิน — สัดส่วนเดียวกับ
+     * นโยบายยกเลิกของเงินสด (รอบคนไม่ครบที่เราเป็นฝ่ายยกเลิก = คืนเต็ม)
+     */
+    public function voucherRestoreSuggestion(Booking $booking): array
+    {
+        $remaining = $booking->netVoucherAmount();
+
+        if ($remaining <= 0) {
+            return ['percent' => 0, 'amount' => 0.0, 'remaining' => 0.0];
+        }
+
+        $percent = $booking->owesUnderfilledFullRefund() ? 100 : $this->calculateRefundPercent($booking);
+
+        return [
+            'percent' => $percent,
+            'amount' => round($remaining * $percent / 100, 2),
+            'remaining' => $remaining,
+        ];
     }
 
     /** payload หมุดที่ลูกค้าปักเองครบพอที่จะใช้งานได้หรือยัง (ต้องมีทั้งพิกัดและชื่อจุด) */
@@ -1447,9 +1540,16 @@ class BookingService
     /**
      * Admin: บันทึกการคืนเงิน — อัปเดต refund fields และเปลี่ยนสถานะเป็น 'refunded'
      */
-    public function processRefund(Booking $booking, float $refundAmount, ?string $note = null, ?string $slipPath = null): Booking
+    /**
+     * @param  float|null  $voucherRestore  ยอดที่คืนกลับเข้าบัตรของขวัญ (null = ตามนโยบาย
+     *                                      ดู voucherRestoreSuggestion)
+     */
+    public function processRefund(Booking $booking, float $refundAmount, ?string $note = null, ?string $slipPath = null, ?float $voucherRestore = null, ?int $actorId = null): Booking
     {
-        $refunded = DB::transaction(function () use ($booking, $refundAmount, $note, $slipPath) {
+        // คิดก่อนเปลี่ยนสถานะ — นโยบายอ่านวันเดินทางและสถานะของใบ ณ ตอนนี้
+        $voucherRestore ??= $this->voucherRestoreSuggestion($booking)['amount'];
+
+        $refunded = DB::transaction(function () use ($booking, $refundAmount, $note, $slipPath, $voucherRestore, $actorId) {
             $booking->loadMissing('seats');
 
             $booking->update([
@@ -1472,6 +1572,15 @@ class BookingService
             // Sync seats back
             $schedule = $booking->schedule()->lockForUpdate()->first();
             $schedule?->syncBookedSeats();
+
+            if ($voucherRestore > 0) {
+                $this->giftVoucherService->restoreForBooking(
+                    $booking,
+                    $voucherRestore,
+                    'คืนเงินการจอง '.$booking->booking_ref,
+                    $actorId,
+                );
+            }
 
             return $booking->fresh(['passengers', 'schedule.trip']);
         });

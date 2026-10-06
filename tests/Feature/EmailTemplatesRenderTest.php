@@ -9,10 +9,12 @@ use App\Mail\BalancePaidMail;
 use App\Mail\BookingCancelledMail;
 use App\Mail\BookingCreatedMail;
 use App\Mail\BookingStatusChangedMail;
+use App\Mail\CharterQuoteMail;
 use App\Mail\DepositPaidMail;
 use App\Mail\EmailVerificationMail;
 use App\Mail\GiftClaimedMail;
 use App\Mail\GiftPurchasedMail;
+use App\Mail\GiftVoucherIssuedMail;
 use App\Mail\InstallmentDueReminderMail;
 use App\Mail\InstallmentPaidMail;
 use App\Mail\PasswordResetMail;
@@ -21,6 +23,8 @@ use App\Mail\TripUnderfilledWarningMail;
 use App\Mail\WelcomeRegistrationMail;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Models\CharterRequest;
+use App\Models\GiftVoucher;
 use App\Models\InstallmentPayment;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -116,6 +120,68 @@ class EmailTemplatesRenderTest extends TestCase
                 ]);
 
                 return new GiftPurchasedMail($t->booking);
+            }],
+            'charter-quote' => [function ($t) {
+                $charter = CharterRequest::create([
+                    'ref' => 'CH-261007-ABCD',
+                    'user_id' => $t->booking->user_id,
+                    'trip_id' => $t->booking->schedule->trip_id,
+                    'preferred_date' => '2026-12-10',
+                    'group_size' => 20,
+                    'contact_name' => 'คุณสมศรี',
+                    'contact_phone' => '0812345678',
+                    'status' => 'quoted',
+                    'quote_trip_id' => $t->booking->schedule->trip_id,
+                    'quote_departure_date' => '2026-12-10',
+                    'quote_return_date' => '2026-12-12',
+                    'quote_group_size' => 20,
+                    'quote_price_per_person' => 3200,
+                    'quote_total' => 64000,
+                    'quote_includes' => "รถตู้ VIP\nที่พัก 2 คืน",
+                    'quote_note' => 'ราคาพิเศษ',
+                    'quote_valid_until' => '2026-11-01',
+                    'quoted_at' => now(),
+                ]);
+
+                return new CharterQuoteMail($charter);
+            }],
+            'gift-voucher-issued' => [function ($t) {
+                $voucher = GiftVoucher::create([
+                    'code' => 'GVK7XPQ2MBAB',
+                    'purchaser_user_id' => $t->booking->user_id,
+                    'amount' => 2000,
+                    'balance' => 2000,
+                    'status' => 'active',
+                    'recipient_name' => 'น้องมายด์',
+                    'from_name' => 'พี่หมี',
+                    'paid_at' => now(),
+                    'expires_at' => now()->addYear(),
+                ]);
+
+                return new GiftVoucherIssuedMail($voucher);
+            }],
+            'gift-voucher-issued-self' => [function ($t) {
+                $voucher = GiftVoucher::create([
+                    'code' => 'GVK7XPQ2MBAC',
+                    'purchaser_user_id' => $t->booking->user_id,
+                    'owner_user_id' => $t->booking->user_id,
+                    'amount' => 1000,
+                    'balance' => 1000,
+                    'status' => 'active',
+                ]);
+
+                return new GiftVoucherIssuedMail($voucher);
+            }],
+            'payment-confirmed-by-voucher' => [function ($t) {
+                $t->booking->forceFill([
+                    'payment_type' => 'full',
+                    'payment_method' => 'gift_voucher',
+                    'total_amount' => 0,
+                    'paid_amount' => 0,
+                    'voucher_amount' => 5400,
+                ]);
+
+                return new PaymentConfirmedMail($t->booking);
             }],
             'gift-claimed' => [function ($t) {
                 $t->booking->forceFill([

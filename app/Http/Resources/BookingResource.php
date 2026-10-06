@@ -192,6 +192,13 @@ class BookingResource extends JsonResource
                 fn () => app(SeatHandoverService::class)->summaryFor($this->resource, $request->user()),
             ),
             'total_amount' => $this->total_amount,
+            // ยอดที่จ่ายด้วยบัตรของขวัญ — หักออกจาก total_amount แล้ว (total_amount = ยอดที่
+            // ยังต้องจ่ายเป็นเงิน) ค่าทริปเต็มของใบนี้คือ total_amount + voucher_amount
+            'voucher_amount' => (float) $this->voucher_amount,
+            'gift_voucher' => $this->when((float) $this->voucher_amount > 0, fn () => [
+                'amount' => (float) $this->voucher_amount,
+                'restored_amount' => (float) $this->voucher_restored_amount,
+            ]),
             // ยอดที่ต้องโอน "ตอนนี้" ของแต่ละรูปแบบการชำระ คำนวณจากหลังบ้านที่เดียว
             // (เว็บ/แอปเคยคำนวณเองคนละสูตร ลูกค้าจึงโอนมาไม่เท่ากัน) ส่งเฉพาะรายการ
             // ที่ยังรอชำระ เพราะรายการที่ยืนยันแล้วอ่านยอดจริงจากฟิลด์ที่บันทึกไว้

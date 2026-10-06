@@ -151,9 +151,13 @@ export const useAdminStore = defineStore('admin', {
 
     // Records a refund via the dedicated endpoint (sets refund fields, frees
     // seats, notifies the customer) and optionally attaches a transfer slip.
-    async processRefund(ref, { amount, note = null, slip = null }) {
+    // voucherRestore: ยอดที่คืนกลับเข้าบัตรของขวัญ (null = ให้หลังบ้านคิดตามนโยบาย)
+    async processRefund(ref, { amount, note = null, slip = null, voucherRestore = null }) {
       const form = new FormData();
       form.append('refund_amount', amount);
+      if (voucherRestore !== null && voucherRestore !== '' && !Number.isNaN(Number(voucherRestore))) {
+        form.append('voucher_restore_amount', voucherRestore);
+      }
       if (note) form.append('note', note);
       if (slip) form.append('refund_slip', slip);
       const res = await api.post(`/admin/bookings/${ref}/refund`, form, {

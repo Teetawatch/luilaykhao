@@ -22,6 +22,7 @@ use App\Jobs\VerifySlipJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
+use App\Models\CharterRequest;
 use App\Models\CustomerIntake;
 use App\Models\Driver;
 use App\Models\GalleryImage;
@@ -40,6 +41,7 @@ use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
 use App\Services\AccountClaimService;
 use App\Services\BookingService;
+use App\Services\CharterRequestService;
 use App\Services\ChatRoomEventService;
 use App\Services\DriverLoginCodeService;
 use App\Services\ForceMajeureService;
@@ -917,6 +919,10 @@ class AdminController extends Controller
             'total_amount' => round(((float) $booking->total_amount) * $ratio, 2),
             'paid_amount' => round(((float) $booking->paid_amount) * $ratio, 2),
             'discount_amount' => round(((float) $booking->discount_amount) * $ratio, 2),
+            // ยอดที่จ่ายด้วยบัตรของขวัญแบ่งตามสัดส่วนเดียวกับเงินสด — ไม่งั้นทั้งสองใบ
+            // ถือยอดบัตรเต็มจำนวน รายรับของรอบนับซ้ำ และคืนเข้าบัตรได้เกินที่ใช้ไปจริง
+            'voucher_amount' => round(((float) $booking->voucher_amount) * $ratio, 2),
+            'voucher_restored_amount' => round(((float) $booking->voucher_restored_amount) * $ratio, 2),
         ], $movedPickup));
         $newBooking->save();
 
@@ -925,6 +931,8 @@ class AdminController extends Controller
             'total_amount' => max(0, round(((float) $booking->total_amount) - ((float) $newBooking->total_amount), 2)),
             'paid_amount' => max(0, round(((float) $booking->paid_amount) - ((float) $newBooking->paid_amount), 2)),
             'discount_amount' => max(0, round(((float) $booking->discount_amount) - ((float) $newBooking->discount_amount), 2)),
+            'voucher_amount' => max(0, round(((float) $booking->voucher_amount) - ((float) $newBooking->voucher_amount), 2)),
+            'voucher_restored_amount' => max(0, round(((float) $booking->voucher_restored_amount) - ((float) $newBooking->voucher_restored_amount), 2)),
         ]);
 
         foreach ($booking->installmentPayments as $payment) {
@@ -1572,6 +1580,7 @@ class AdminController extends Controller
         }
 
         $preview = $this->bookingService->calculateRefundAmount($booking);
+        $voucher = $this->bookingService->voucherRestoreSuggestion($booking);
         $account = $booking->refund_account;
 
         return $this->success([
@@ -1584,6 +1593,11 @@ class AdminController extends Controller
             // ลูกค้าขอคืนเงินเองจากรอบที่คนไม่ครบ — บัญชีที่เขากรอกไว้ให้โอนเข้า
             'refund_status' => $booking->refund_status,
             'refund_account' => is_array($account) && ! empty($account['number']) ? $account : null,
+            // ส่วนที่จ่ายด้วยบัตรของขวัญ — คืนกลับเข้าบัตร ไม่ใช่โอนเป็นเงิน
+            'voucher_amount' => (float) $booking->voucher_amount,
+            'voucher_restorable' => $voucher['remaining'],
+            'voucher_restore_percent' => $voucher['percent'],
+            'voucher_restore_amount' => $voucher['amount'],
         ]);
     }
 
@@ -1597,6 +1611,8 @@ class AdminController extends Controller
             'refund_amount' => ['required', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:500'],
             'refund_slip' => ['nullable', 'image', 'max:5120'],
+            // ไม่ส่ง = คืนเข้าบัตรตามนโยบาย (refund-preview บอกยอดไว้แล้ว)
+            'voucher_restore_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $booking = Booking::where('booking_ref', $ref)
@@ -1622,7 +1638,21 @@ class AdminController extends Controller
             $slipPath = $request->file('refund_slip')->store('refund-slips/'.date('Y/m'), MediaDisk::slipDisk());
         }
 
-        $booking = $this->bookingService->processRefund($booking, $refundAmount, $request->note, $slipPath);
+        $voucherRestore = $request->filled('voucher_restore_amount')
+            ? (float) $request->voucher_restore_amount
+            : null;
+        if ($voucherRestore !== null && $voucherRestore > $booking->netVoucherAmount()) {
+            return $this->error('ยอดคืนเข้าบัตรของขวัญต้องไม่เกิน ฿'.number_format($booking->netVoucherAmount(), 2), 422);
+        }
+
+        $booking = $this->bookingService->processRefund(
+            $booking,
+            $refundAmount,
+            $request->note,
+            $slipPath,
+            $voucherRestore,
+            $request->user()?->id,
+        );
 
         $this->mailService->sendBookingStatusChangedEmail($booking, 'refunded');
 
@@ -1640,6 +1670,7 @@ class AdminController extends Controller
             'refund_amount' => (float) $booking->refund_amount,
             'refunded_at' => $booking->refunded_at?->toISOString(),
             'refund_slip_url' => MediaDisk::slipUrl($booking->refund_slip_path),
+            'voucher_restored_amount' => (float) $booking->voucher_restored_amount,
         ], 'คืนเงิน ฿'.number_format($refundAmount, 0).' สำเร็จ');
     }
 
@@ -2490,7 +2521,16 @@ class AdminController extends Controller
             'intake_id' => ['nullable', 'exists:customer_intakes,id'],
             'intake_ids' => ['nullable', 'array', 'max:20'],
             'intake_ids.*' => ['integer', 'exists:customer_intakes,id'],
+            // มาจากหน้า "คำขอเหมาทริป" — ใบจองต้องอยู่ในบัญชีของคนที่ขอ แล้วผูกกลับไปที่คำขอ
+            'charter_request_id' => ['nullable', 'integer', 'exists:charter_requests,id'],
         ]);
+
+        $charterRequest = $request->filled('charter_request_id')
+            ? CharterRequest::with('user')->find($request->integer('charter_request_id'))
+            : null;
+        if ($charterRequest && ! in_array($charterRequest->status, [CharterRequest::STATUS_ACCEPTED, CharterRequest::STATUS_BOOKED], true)) {
+            return $this->error('คำขอเหมานี้ยังไม่ได้ตอบรับใบเสนอราคา', 422);
+        }
 
         $schedule = TripSchedule::with(['trip', 'pickupPoints', 'vehicleOptions'])->findOrFail($request->schedule_id);
         $schedule->syncBookedSeats();
@@ -2639,7 +2679,12 @@ class AdminController extends Controller
         $email = filled($request->input('email')) ? mb_strtolower(trim($request->input('email'))) : null;
         $phoneVariants = PhoneNumber::variants($request->phone);
 
-        $user = ($email ? User::where('email', $email)->first() : null)
+        // คำขอเหมาทริปมาจากบัญชีที่ลูกค้าล็อกอินอยู่แล้ว — ใช้บัญชีนั้นตรง ๆ ไม่ต้องเดา
+        // จากเบอร์/อีเมล และไม่ทับชื่อในบัญชีด้วยชื่อผู้ติดต่อของคำขอ
+        $charterUser = $charterRequest?->user;
+
+        $user = $charterUser
+            ?? ($email ? User::where('email', $email)->first() : null)
             // บัญชีจริงของลูกค้ามาก่อนบัญชีเงาเสมอ ถ้าเบอร์เดียวกันมีทั้งสองแบบค้างอยู่
             ?? User::query()->whereIn('phone', $phoneVariants)->orderBy('is_shadow')->first();
 
@@ -2652,7 +2697,7 @@ class AdminController extends Controller
             ]);
             $user->forceFill(['is_shadow' => true])->save();
             $user->assignRole('customer');
-        } else {
+        } elseif (! $charterUser) {
             // อีเมลของบัญชีที่ลูกค้าสมัครเองห้ามถูกทับด้วยอีเมลที่แอดมินพิมพ์มา —
             // ทับแล้วลูกค้าล็อกอินด้วยอีเมลเดิมไม่ได้อีก
             $user->update(array_filter([
@@ -2887,11 +2932,25 @@ class AdminController extends Controller
             $booking,
         );
 
+        $charterWarning = null;
+        if ($charterRequest) {
+            try {
+                app(CharterRequestService::class)->linkBooking($charterRequest, $booking);
+            } catch (\Exception $e) {
+                // ใบจองเกิดแล้ว — ไม่ล้มทั้งคำขอเพราะผูกไม่ได้ บอกทีมงานให้ผูกเองทีหลัง
+                $charterWarning = 'ผูกกับคำขอเหมาไม่สำเร็จ: '.$e->getMessage();
+            }
+        }
+
         $message = match (true) {
             $holdUntil !== null => 'ล็อกที่นั่งให้ลูกค้าแล้ว ถึง '.ThaiDate::shortTime($holdUntil->setTimezone('Asia/Bangkok')).' น.',
             $request->boolean('send_email', true) => 'บันทึกการจองและส่งอีเมลสำเร็จ',
             default => 'บันทึกการจองสำเร็จ',
         };
+
+        if ($charterWarning) {
+            $message .= ' — '.$charterWarning;
+        }
 
         return $this->success(new BookingResource($booking), $message, 201);
     }
@@ -3011,6 +3070,16 @@ class AdminController extends Controller
         $booking = Booking::with(['seats', 'schedule', 'installmentPayments'])->where('booking_ref', $ref)->firstOrFail();
         $schedule = $booking->schedule;
         $bookedBefore = $schedule ? (int) $schedule->booked_seats : null;
+
+        // ลบทิ้งตรง ๆ ยอดบัตรของขวัญที่ใบนี้ใช้ไปจะหายโดยไม่มีบันทึกคืน — ให้ผ่านการ
+        // ยกเลิก/คืนเงินก่อน ซึ่งคืนยอดเข้าบัตรตามกติกาและลงสมุดบัญชีของบัตรให้
+        if ($booking->netVoucherAmount() > 0) {
+            return $this->error(
+                'การจองนี้จ่ายด้วยบัตรของขวัญ ฿'.number_format($booking->netVoucherAmount(), 2)
+                .' — ยกเลิกหรือบันทึกคืนเงินก่อน ยอดจะได้คืนเข้าบัตรของลูกค้า แล้วค่อยลบ',
+                422,
+            );
+        }
 
         // 1. Delete associated files
         if ($booking->slip_path) {

@@ -112,6 +112,9 @@
             <div class="row"><div class="lbl">ส่วนลด</div><div class="amt">-฿{{ number_format((float) data_get($d, 'summary.discount'), 2) }}</div></div>
             @endif
             <div class="row grand"><div class="lbl">ยอดสุทธิ</div><div class="amt">฿{{ number_format((float) data_get($d, 'summary.total'), 2) }}</div></div>
+            @if((float) data_get($d, 'summary.gift_voucher') > 0)
+            <div class="row paid"><div class="lbl">ชำระด้วยบัตรของขวัญ</div><div class="amt">฿{{ number_format((float) data_get($d, 'summary.gift_voucher'), 2) }}</div></div>
+            @endif
             <div class="row paid"><div class="lbl">รับชำระ ({{ $kindLabel }})</div><div class="amt">฿{{ number_format((float) data_get($d, 'summary.paid'), 2) }}</div></div>
             @if((float) data_get($d, 'summary.balance') > 0)
             <div class="row bal"><div class="lbl">คงเหลือ{{ data_get($d, 'summary.balance_due_at') ? ' (ครบกำหนด '.data_get($d, 'summary.balance_due_at').')' : '' }}</div><div class="amt">฿{{ number_format((float) data_get($d, 'summary.balance'), 2) }}</div></div>

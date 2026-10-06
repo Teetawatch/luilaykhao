@@ -7,6 +7,7 @@ use App\Jobs\SendTripBriefsJob;
 use App\Jobs\SyncTripActivityJob;
 use App\Models\Booking;
 use App\Services\CustomerIntakeService;
+use App\Services\GiftVoucherService;
 use App\Services\LoyaltyService;
 use Carbon\Carbon;
 
@@ -36,6 +37,7 @@ class BookingObserver
     public function __construct(
         private LoyaltyService $loyaltyService,
         private CustomerIntakeService $intakeService,
+        private GiftVoucherService $giftVoucherService,
     ) {}
 
     public function created(Booking $booking): void
@@ -75,6 +77,16 @@ class BookingObserver
         if (in_array($booking->status, self::REVERSING_STATUSES, true)
             && $booking->getOriginal('status') === 'pending') {
             $this->intakeService->reopenForFailedBooking($booking);
+
+            // ยอดที่หักจากบัตรของขวัญไว้ตอนจอง ยังไม่ได้แลกเป็นอะไรเลย — คืนเต็มจำนวน
+            // (ใบที่ยืนยันแล้วคืนตอนทีมงานบันทึกคืนเงิน ตามนโยบายยกเลิก)
+            if ((float) $booking->voucher_amount > 0) {
+                $this->giftVoucherService->restoreForBooking(
+                    $booking,
+                    (float) $booking->voucher_amount,
+                    'การจอง '.$booking->booking_ref.' ยกเลิกก่อนชำระเงิน',
+                );
+            }
         }
 
         // ยกเลิกแล้วต้องเก็บการ์ดออกจากหน้าจอล็อกด้วย ไม่ใช่ค้างนับถอยหลังไปยัง
