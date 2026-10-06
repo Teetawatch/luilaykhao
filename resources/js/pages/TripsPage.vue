@@ -159,14 +159,14 @@
           </div>
 
           <!-- โครงการ์ดระหว่างโหลด บอกล่วงหน้าว่าผลลัพธ์จะมาในรูปแบบไหน -->
-          <div v-if="tripsStore.loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8">
-            <div v-for="n in 8" :key="n" class="bg-white rounded-[2rem] border border-gray-100 overflow-hidden">
-              <div class="m-2 rounded-[1.5rem] aspect-[4/5] skeleton"></div>
-              <div class="p-5 space-y-3">
-                <div class="h-3.5 w-24 rounded-full skeleton"></div>
+          <div v-if="tripsStore.loading" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-x-6 gap-y-10">
+            <div v-for="n in 8" :key="n">
+              <div class="rounded-2xl aspect-[4/5] skeleton"></div>
+              <div class="pt-3.5 space-y-2.5">
+                <div class="h-3 w-28 rounded-full skeleton"></div>
                 <div class="h-4 w-full rounded-full skeleton"></div>
-                <div class="h-4 w-2/3 rounded-full skeleton"></div>
-                <div class="h-6 w-28 rounded-full skeleton mt-5"></div>
+                <div class="h-3 w-2/3 rounded-full skeleton"></div>
+                <div class="h-4 w-24 rounded-full skeleton mt-4"></div>
               </div>
             </div>
           </div>
@@ -189,7 +189,7 @@
 
           <!-- ผลลัพธ์ -->
           <div v-else>
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-x-6 gap-y-10">
               <TripCard
                 v-for="(trip, index) in tripsStore.trips"
                 :key="trip.id"
