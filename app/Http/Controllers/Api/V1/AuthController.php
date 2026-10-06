@@ -733,6 +733,8 @@ class AuthController extends Controller
             'roles' => $user->roles->pluck('name'),
             'social_provider' => $user->social_provider,
             'has_password' => ! is_null($user->password),
+            // แท็บงานสตาฟชวนเขียนแนะนำตัว (การ์ดในห้องแชท) จนกว่าจะเขียน
+            'has_staff_intro' => filled($user->staff_bio),
             'email_verified' => $user->hasVerifiedEmail(),
             // เคยเปิดแอปแล้วหรือยัง — เว็บใช้ค่านี้ตัดสินว่าจะชวนโหลดแอปไหม
             // คนที่มีแล้วต้องไม่เห็นคำชวน (ดู App\Support\AppLinks)

@@ -140,18 +140,45 @@ class ChatRoomEventService
     }
 
     /**
-     * ทีมงานประจำรอบคนใหม่ถูก assign เข้ามา
+     * ทีมงานประจำรอบคนใหม่ถูก assign เข้ามา — แนะนำตัวเต็ม ๆ (ชื่อเล่น เบอร์
+     * ป่าที่เคยเดิน ความถนัด) ให้ลูกทริปรู้สึกรู้จักกันก่อนวันเดินทาง
+     * แอปวาดเป็นการ์ดจาก `staff_intro` ของข้อความนี้ ดู StaffIntroService
      */
     public function staffAssigned(TripSchedule $schedule, User $staff): void
     {
-        $name = $this->displayName($staff);
+        $intros = app(StaffIntroService::class);
 
         $this->post(
             $schedule,
-            "🎽 {$name} จะเป็นทีมงานดูแลรอบนี้ครับ\n"
-                .'มีอะไรอยากถามก่อนเดินทาง ทักในห้องนี้ได้เลย ทีมงานอ่านทุกข้อความครับ',
+            $intros->body($intros->present($staff, $schedule)),
             "staff_joined:{$staff->id}",
         );
+    }
+
+    /**
+     * แอดมินเอาสตาฟออกจากรอบ — ลบการ์ดแนะนำตัว ไม่งั้นลูกทริปจะโทรหาคนที่ไม่ได้มา
+     * ด้วย คีย์ถูกเปลี่ยนทิ้งไว้ ถ้าใส่คนเดิมกลับเข้ารอบจะแนะนำตัวใหม่ได้อีกครั้ง
+     */
+    public function staffRemoved(TripSchedule $schedule, User $staff): void
+    {
+        try {
+            $message = ChatMessage::where('schedule_id', $schedule->id)
+                ->where('system_key', "staff_joined:{$staff->id}")
+                ->first();
+
+            if (! $message) {
+                return;
+            }
+
+            $message->forceFill(['system_key' => "staff_joined:{$staff->id}:removed:{$message->id}"])->save();
+            $this->chatService->deleteMessage($message);
+        } catch (\Throwable $e) {
+            Log::warning('ChatRoomEvent: ลบการ์ดแนะนำทีมงานไม่สำเร็จ', [
+                'schedule_id' => $schedule->id,
+                'staff_id' => $staff->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

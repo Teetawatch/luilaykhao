@@ -495,6 +495,7 @@ class ChatService
             'rest_stop' => $this->presentRestStop($message),
             'collection' => $this->presentCollection($message),
             'lost_item' => $this->presentLostItem($message),
+            'staff_intro' => app(StaffIntroService::class)->forMessage($message),
             'is_pinned' => $message->pinned_at !== null,
             'created_at' => $message->created_at?->toISOString(),
         ];

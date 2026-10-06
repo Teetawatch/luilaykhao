@@ -515,6 +515,9 @@ Route::prefix('v1')->group(function () {
         // Staff assignment and reviews
         Route::get('staff/schedules/my', [StaffController::class, 'mySchedules']);
         Route::get('staff/reviews/my', [StaffController::class, 'myReviews']);
+        // โปรไฟล์แนะนำตัวที่เด้งเป็นการ์ดในห้องแชทของรอบ
+        Route::get('staff/profile', [StaffController::class, 'profile']);
+        Route::put('staff/profile', [StaffController::class, 'updateProfile']);
         Route::post('staff/reviews', [StaffController::class, 'storeReview']);
         Route::post('staff/check-in/lookup', [DriverController::class, 'lookupCheckIn']);
         Route::post('staff/check-in/confirm', [DriverController::class, 'checkIn']);

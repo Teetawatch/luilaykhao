@@ -7,11 +7,13 @@ use App\Models\Booking;
 use App\Models\ScheduleExpense;
 use App\Models\StaffReview;
 use App\Models\TripSchedule;
+use App\Models\User;
 use App\Services\OutstandingPaymentService;
 use App\Services\PickupArrivalService;
 use App\Services\RentalHandoutService;
 use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleLedgerService;
+use App\Services\StaffIntroService;
 use App\Services\VehicleLocationService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +31,7 @@ class StaffController extends Controller
         private ScheduleFinanceService $financeService,
         private PickupArrivalService $pickupArrivals,
         private VehicleLocationService $vehicleLocations,
+        private StaffIntroService $intros,
     ) {}
 
     public function mySchedules(Request $request): JsonResponse
@@ -653,6 +656,66 @@ class StaffController extends Controller
             ->whereKey($scheduleId)
             ->whereHas('activeStaff', fn ($q) => $q->where('users.id', $request->user()->id))
             ->first();
+    }
+
+    /**
+     * โปรไฟล์แนะนำตัวที่ลูกทริปเห็นในห้องแชทของรอบ + ตัวอย่างการ์ดจริง
+     */
+    public function profile(Request $request): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        return $this->success($this->profilePayload($request->user()));
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $validated = $request->validate([
+            'nickname' => ['nullable', 'string', 'max:50'],
+            'staff_bio' => ['nullable', 'string', 'max:'.StaffIntroService::BIO_MAX],
+            'staff_trails' => ['nullable', 'array', 'max:'.StaffIntroService::TRAILS_MAX],
+            'staff_trails.*' => ['nullable', 'string', 'max:'.StaffIntroService::ITEM_MAX],
+            'staff_skills' => ['nullable', 'array', 'max:'.StaffIntroService::SKILLS_MAX],
+            'staff_skills.*' => ['nullable', 'string', 'max:'.StaffIntroService::ITEM_MAX],
+        ]);
+
+        $user->forceFill([
+            'nickname' => trim((string) ($validated['nickname'] ?? '')) ?: null,
+            'staff_bio' => $this->intros->cleanBio($validated['staff_bio'] ?? null),
+            'staff_trails' => $this->intros->cleanList($validated['staff_trails'] ?? [], StaffIntroService::TRAILS_MAX) ?: null,
+            'staff_skills' => $this->intros->cleanList($validated['staff_skills'] ?? [], StaffIntroService::SKILLS_MAX) ?: null,
+        ])->save();
+
+        // ห้องของรอบที่กำลังจะไปเห็นข้อมูลใหม่ทันที ไม่ต้องรอแอดมินมอบหมายใหม่
+        $this->intros->refreshUpcomingIntros($user);
+
+        return $this->success($this->profilePayload($user->fresh()), 'บันทึกโปรไฟล์ทีมงานแล้ว');
+    }
+
+    private function profilePayload(User $user): array
+    {
+        return [
+            'nickname' => $user->nickname,
+            'phone' => $user->phone,
+            'avatar_url' => $user->avatar_url,
+            'staff_bio' => $user->staff_bio,
+            'staff_trails' => $user->staff_trails ?? [],
+            'staff_skills' => $user->staff_skills ?? [],
+            'limits' => [
+                'bio' => StaffIntroService::BIO_MAX,
+                'trails' => StaffIntroService::TRAILS_MAX,
+                'skills' => StaffIntroService::SKILLS_MAX,
+                'item' => StaffIntroService::ITEM_MAX,
+            ],
+            'preview' => $this->intros->present($user),
+        ];
     }
 
     public function myReviews(Request $request): JsonResponse

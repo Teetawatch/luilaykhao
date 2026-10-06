@@ -1065,7 +1065,15 @@ class AdminController extends Controller
         // Detaching would drop the row a released assignment lives in, taking the
         // record of who worked the round with it — so only touch active rows here
         // and revive released ones by clearing released_at.
-        $schedule->activeStaff()->detach($existingStaffIds->diff($wantedStaffIds)->all());
+        $removedStaffIds = $existingStaffIds->diff($wantedStaffIds)->values();
+        $schedule->activeStaff()->detach($removedStaffIds->all());
+
+        if ($removedStaffIds->isNotEmpty()) {
+            $chatEvents = app(ChatRoomEventService::class);
+            foreach (User::whereIn('id', $removedStaffIds->all())->get() as $staff) {
+                $chatEvents->staffRemoved($schedule, $staff);
+            }
+        }
 
         foreach ($wantedStaffIds->diff($existingStaffIds) as $staffId) {
             ScheduleStaffAssignment::updateOrCreate(

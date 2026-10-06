@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'driver_pin_hash', 'staff_day_rate', 'avatar', 'title', 'nickname', 'public_handle', 'public_profile_enabled', 'public_bio', 'id_card', 'name_en', 'nationality', 'passport_no', 'passport_expires_at', 'birth_date', 'birthdate_token', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'self_reported_max_distance_km', 'self_reported_max_elevation_m', 'hiking_baseline_updated_at', 'social_provider', 'social_id', 'referral_code', 'referred_by'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'driver_pin_hash', 'staff_day_rate', 'staff_bio', 'staff_trails', 'staff_skills', 'avatar', 'title', 'nickname', 'public_handle', 'public_profile_enabled', 'public_bio', 'id_card', 'name_en', 'nationality', 'passport_no', 'passport_expires_at', 'birth_date', 'birthdate_token', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes', 'self_reported_max_distance_km', 'self_reported_max_elevation_m', 'hiking_baseline_updated_at', 'social_provider', 'social_id', 'referral_code', 'referred_by'])]
 #[Hidden(['password', 'driver_pin_hash', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -48,6 +48,9 @@ class User extends Authenticatable
             'line_blocked_at' => 'datetime',
             // ค่าตอบแทนต่อวันของทีมงาน — ใช้ลงรายการค่าจ้างตอนปิดงบรอบ
             'staff_day_rate' => 'decimal:2',
+            // การ์ดแนะนำทีมงานในห้องแชท — ดู StaffIntroService
+            'staff_trails' => 'array',
+            'staff_skills' => 'array',
         ];
     }
 
