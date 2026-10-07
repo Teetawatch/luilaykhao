@@ -9,8 +9,7 @@ use Illuminate\Support\Facades\Schema;
  * และยอมรับเงื่อนไข "ฉบับไหน" — พอเงื่อนไขถูกแก้ทีหลัง ก็ไม่มีอะไรบอกได้ว่า
  * ใบจองใบนั้นตกลงตามข้อความชุดใด ซึ่งเป็นสิ่งแรกที่ถูกถามเวลามีข้อพิพาท
  *
- * รูปแบบเดียวกับที่ระบบเก็บ consent อยู่แล้วใน face_search_consents และ
- * customer_intake_people.consent_proof
+ * รูปแบบเดียวกับที่ระบบเก็บ consent อยู่แล้วใน customer_intake_people.consent_proof
  */
 return new class extends Migration
 {

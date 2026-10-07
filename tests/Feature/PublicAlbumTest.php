@@ -7,9 +7,14 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 class PublicAlbumTest extends TestCase
@@ -135,51 +140,45 @@ class PublicAlbumTest extends TestCase
         $this->assertStringContainsString('attachment', $response->headers->get('content-disposition'));
     }
 
-    public function test_public_can_download_all_photos_as_zip(): void
+    public function test_album_offers_no_zip_download(): void
     {
-        $schedule = $this->makeScheduleWithPhotos(3);
-        $token = $schedule->ensurePhotoToken();
-
-        $response = $this->get("/album/{$token}/download");
-        $response->assertOk();
-        $this->assertSame('application/zip', $response->headers->get('content-type'));
-
-        // The streamed body should be a valid, non-empty zip with 3 entries.
-        $content = $response->streamedContent();
-        $this->assertNotEmpty($content);
-
-        $tmp = tempnam(sys_get_temp_dir(), 'ziptest');
-        file_put_contents($tmp, $content);
-        $zip = new \ZipArchive;
-        $this->assertTrue($zip->open($tmp) === true);
-        $this->assertSame(3, $zip->numFiles);
-        $zip->close();
-        @unlink($tmp);
-    }
-
-    public function test_zip_download_leaves_no_temp_file_behind(): void
-    {
-        // ไฟล์ zip ชั่วคราวก้อนละ ~100MB เคยค้างใน /tmp จนดิสก์ VPS เกือบเต็ม
-        // (ลูกค้ากดยกเลิกกลางคัน → บรรทัด unlink เดิมไม่ถูกรัน)
+        // ดาวน์โหลดทั้งอัลบั้มเคยสร้าง zip ใน /tmp ของเซิร์ฟเวอร์จนดิสก์ VPS เต็ม
+        // จึงถอดออก ลูกค้าเลือกบันทึกเองทีละรูป
         $schedule = $this->makeScheduleWithPhotos(2);
         $token = $schedule->ensurePhotoToken();
+        $ids = $schedule->photos->pluck('id')->implode(',');
 
-        $before = glob(sys_get_temp_dir().'/album*') ?: [];
+        $this->assertNoRouteFor('GET', "/album/{$token}/download");
 
-        $this->get("/album/{$token}/download")->assertOk()->streamedContent();
-
-        $after = glob(sys_get_temp_dir().'/album*') ?: [];
-        $this->assertSame($before, $after);
+        $response = $this->get("/album/{$token}/download?ids={$ids}");
+        $this->assertNotSame('application/zip', $response->headers->get('content-type'));
     }
 
-    public function test_download_requires_a_valid_token(): void
+    public function test_face_search_endpoints_are_gone(): void
     {
-        $this->get('/album/nope/download')->assertNotFound();
+        $schedule = $this->makeScheduleWithPhotos(1);
+        $token = $schedule->ensurePhotoToken();
+        $photoId = $schedule->photos()->first()->id;
+
+        $this->assertNoRouteFor('POST', "/api/v1/album/{$token}/face-consent");
+        $this->assertNoRouteFor('DELETE', "/api/v1/album/{$token}/face-consent");
+        $this->assertNoRouteFor('GET', "/album/{$token}/photo/{$photoId}");
+        $this->assertFalse(Schema::hasTable('face_search_consents'));
+
+        $this->getJson("/api/v1/album/{$token}/photos")
+            ->assertOk()
+            ->assertJsonMissingPath('data.face_search_consent_version');
+
+        $this->get("/album/{$token}")
+            ->assertOk()
+            ->assertDontSee('face-api')
+            ->assertDontSee('ใบหน้า');
     }
 
-    public function test_app_gets_the_album_link_only_after_the_team_shares_it(): void
+    public function test_app_no_longer_gets_an_album_link_endpoint(): void
     {
-        $schedule = $this->makeScheduleWithPhotos(2);
+        $schedule = $this->makeScheduleWithPhotos(1);
+        $schedule->ensurePhotoToken();
         $customer = User::factory()->create();
         $booking = Booking::create([
             'booking_ref' => Booking::generateRef(),
@@ -192,42 +191,21 @@ class PublicAlbumTest extends TestCase
             'payment_type' => 'full',
         ]);
 
-        // ยังไม่แชร์ = ไม่มีลิงก์ แอปจึงไม่ขึ้นปุ่มค้นหาใบหน้า
-        $this->actingAs($customer, 'sanctum')
-            ->getJson("/api/v1/bookings/{$booking->booking_ref}/album")
-            ->assertOk()
-            ->assertJsonPath('data.album_url', null)
-            ->assertJsonPath('data.count', 2);
-
-        // การเรียกของลูกค้าต้องไม่สร้าง token ให้เอง — การเปิดลิงก์สาธารณะเป็นสิทธิ์ของทีมงาน
-        $this->assertNull($schedule->fresh()->photo_token);
-
-        $token = $schedule->ensurePhotoToken();
-
-        $this->actingAs($customer, 'sanctum')
-            ->getJson("/api/v1/bookings/{$booking->booking_ref}/album")
-            ->assertOk()
-            ->assertJsonPath('data.album_url', url('/album/'.$token));
+        $this->assertNoRouteFor('GET', "/api/v1/bookings/{$booking->booking_ref}/album");
     }
 
-    public function test_album_link_is_not_handed_to_someone_elses_booking(): void
+    /** Only the SPA's catch-all (or nothing at all) may answer a removed URL. */
+    private function assertNoRouteFor(string $method, string $uri): void
     {
-        $schedule = $this->makeScheduleWithPhotos(1);
-        $schedule->ensurePhotoToken();
-        $booking = Booking::create([
-            'booking_ref' => Booking::generateRef(),
-            'user_id' => User::factory()->create()->id,
-            'schedule_id' => $schedule->id,
-            'qr_code' => Booking::generateQrCode(),
-            'status' => 'confirmed',
-            'total_amount' => 1000,
-            'paid_amount' => 1000,
-            'payment_type' => 'full',
-        ]);
+        try {
+            $route = Route::getRoutes()->match(Request::create($uri, $method));
+        } catch (NotFoundHttpException|MethodNotAllowedHttpException) {
+            $this->addToAssertionCount(1);
 
-        $this->actingAs(User::factory()->create(), 'sanctum')
-            ->getJson("/api/v1/bookings/{$booking->booking_ref}/album")
-            ->assertNotFound();
+            return;
+        }
+
+        $this->assertSame('{any?}', $route->uri(), "{$method} {$uri} is still routed to {$route->uri()}");
     }
 
     public function test_opening_the_album_counts_the_visitor(): void
@@ -279,7 +257,6 @@ class PublicAlbumTest extends TestCase
         $photoId = $schedule->photos()->first()->id;
 
         $this->get("/album/{$token}/download/{$photoId}")->assertOk();
-        $this->get("/album/{$token}/download")->assertOk();
 
         $this->assertSame(0, $schedule->fresh()->photo_views_count);
     }
