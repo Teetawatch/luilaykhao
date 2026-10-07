@@ -681,6 +681,63 @@ class SeatHandoverTest extends TestCase
             ->assertJsonPath('data.seat_handover.open_count', 1);
     }
 
+    /** @return array<int, string|null> passenger_id => seat_label จากหน้าส่งต่อที่นั่ง */
+    private function seatLabels(): array
+    {
+        $seats = $this->actingAs($this->owner, 'sanctum')
+            ->getJson("/api/v1/bookings/{$this->booking->booking_ref}/handovers")
+            ->assertOk()
+            ->json('data.seats');
+
+        return collect($seats)->mapWithKeys(fn ($s) => [(int) $s['passenger_id'] => $s['seat_label']])->all();
+    }
+
+    public function test_travellers_with_the_same_name_get_their_own_seats(): void
+    {
+        // จองโดยกรอกชื่อซ้ำกันทุกที่นั่ง — ชื่อตรงกันต้องไม่ได้ที่นั่งเดียวกัน
+        $this->friendSeat->update(['name' => 'สมชาย ใจดี']);
+        BookingSeat::where('booking_id', $this->booking->id)->update(['passenger_name' => 'สมชาย ใจดี']);
+
+        $this->assertSame([
+            $this->ownerSeat->id => 'A1',
+            $this->friendSeat->id => 'A2',
+        ], $this->seatLabels());
+
+        $token = $this->createLink($this->owner, $this->friendSeat);
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson("/api/v1/seat-handovers/{$token}/claim", $this->claimPayload())
+            ->assertOk();
+
+        $this->assertSame('สมชาย ใจดี', BookingSeat::where('seat_id', 'A1')->value('passenger_name'));
+        $this->assertSame('มานะ ขยันดี', BookingSeat::where('seat_id', 'A2')->value('passenger_name'));
+    }
+
+    public function test_renamed_traveller_keeps_the_seat_nobody_else_holds(): void
+    {
+        // ทีมงานสลับที่นั่งให้แล้ว (A1 = หญิง) และเจ้าของแก้ชื่อตัวเองทีหลัง
+        // ซึ่งไม่ได้ rename แถวที่นั่ง — A2 ยังค้างชื่อเก่า
+        BookingSeat::where('seat_id', 'A1')->update(['passenger_name' => 'สมหญิง รักดี']);
+        BookingSeat::where('seat_id', 'A2')->update(['passenger_name' => 'ชื่อเก่า']);
+        $this->ownerSeat->update(['name' => 'สมชาย ใจดีมาก']);
+
+        $this->assertSame([
+            $this->ownerSeat->id => 'A2',
+            $this->friendSeat->id => 'A1',
+        ], $this->seatLabels());
+
+        $token = $this->createLink($this->owner, $this->ownerSeat, ['transfers_ownership' => false]);
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->getJson("/api/v1/seat-handovers/{$token}")
+            ->assertJsonPath('data.seat_label', 'A2');
+        $this->actingAs(User::factory()->create(), 'sanctum')
+            ->postJson("/api/v1/seat-handovers/{$token}/claim", $this->claimPayload())
+            ->assertOk();
+
+        // ที่นั่งของหญิงต้องไม่ถูกเขียนชื่อคนใหม่ทับ
+        $this->assertSame('สมหญิง รักดี', BookingSeat::where('seat_id', 'A1')->value('passenger_name'));
+        $this->assertSame('มานะ ขยันดี', BookingSeat::where('seat_id', 'A2')->value('passenger_name'));
+    }
+
     public function test_unknown_token_is_404(): void
     {
         $this->actingAs(User::factory()->create(), 'sanctum')

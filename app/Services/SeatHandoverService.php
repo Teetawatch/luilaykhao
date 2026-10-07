@@ -897,28 +897,55 @@ class SeatHandoverService
     }
 
     /**
-     * ที่นั่งของผู้เดินทางคนนี้ — จับคู่ด้วยชื่อก่อน แล้วค่อยถอยไปตามลำดับ
-     * (กติกาเดียวกับ AdminController::seatMovesForBooking)
+     * ที่นั่งของผู้เดินทางคนนี้ — จับคู่ทั้งใบแบบหนึ่งคนหนึ่งที่นั่ง: ชื่อตรงก่อน
+     * (ที่นั่งที่ถูกจับไปแล้วใช้ซ้ำไม่ได้ ชื่อซ้ำกันจึงไม่ได้ที่นั่งเดียวกัน) แล้วคนที่
+     * ชื่อไม่ตรงค่อยรับที่นั่งที่เหลือตามลำดับ
+     *
+     * ชื่อบนแถวที่นั่งค้างเป็นชื่อเก่าได้ (/p/ กรอกเอง, รับคำเชิญ, แอดมินแก้ชื่อ
+     * ไม่ได้ rename booking_seats) — ของเดิมถอยไปตามลำดับทั้งใบ คนที่ชื่อไม่ตรงจึง
+     * ไปได้ที่นั่งของคนอื่น แล้วตอนรับลิงก์ก็เขียนชื่อคนใหม่ทับที่นั่งคนนั้นด้วย
      */
     public function seatFor(Booking $booking, BookingPassenger $passenger): ?BookingSeat
+    {
+        return $this->seatAssignments($booking)[(int) $passenger->id] ?? null;
+    }
+
+    /** @return array<int, BookingSeat> passenger_id => ที่นั่ง */
+    private function seatAssignments(Booking $booking): array
     {
         $seats = ($booking->relationLoaded('seats') ? $booking->seats : $booking->seats()->get())
             ->sortBy('id')->values();
         if ($seats->isEmpty()) {
-            return null;
-        }
-
-        $byName = $seats->first(fn (BookingSeat $s) => trim((string) $s->passenger_name) !== ''
-            && trim((string) $s->passenger_name) === trim((string) $passenger->name));
-        if ($byName) {
-            return $byName;
+            return [];
         }
 
         $passengers = ($booking->relationLoaded('passengers') ? $booking->passengers : $booking->passengers()->get())
             ->sortBy('id')->values();
-        $index = $passengers->search(fn ($p) => (int) $p->id === (int) $passenger->id);
 
-        return $index === false ? null : $seats->get($index);
+        $assigned = [];
+        $taken = [];
+        foreach ($passengers as $passenger) {
+            $name = trim((string) $passenger->name);
+            if ($name === '') {
+                continue;
+            }
+            $seat = $seats->first(fn (BookingSeat $s) => ! isset($taken[$s->id])
+                && trim((string) $s->passenger_name) === $name);
+            if ($seat) {
+                $assigned[(int) $passenger->id] = $seat;
+                $taken[$seat->id] = true;
+            }
+        }
+
+        $freeSeats = $seats->reject(fn (BookingSeat $s) => isset($taken[$s->id]))->values();
+        $unmatched = $passengers->reject(fn (BookingPassenger $p) => isset($assigned[(int) $p->id]))->values();
+        foreach ($unmatched as $index => $passenger) {
+            if ($seat = $freeSeats->get($index)) {
+                $assigned[(int) $passenger->id] = $seat;
+            }
+        }
+
+        return $assigned;
     }
 
     /**
