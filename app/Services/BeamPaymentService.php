@@ -42,6 +42,7 @@ class BeamPaymentService
         private InstallmentPaymentService $installmentPaymentService,
         private BalancePaymentService $balancePaymentService,
         private SplitPaymentService $splitPaymentService,
+        private ExtraPaymentService $extraPaymentService,
     ) {}
 
     /** ใช้ Beam อยู่ไหม — ต้องทั้งเปิดสวิตช์ และมี credential ครบ. */
@@ -144,6 +145,12 @@ class BeamPaymentService
             ->latest('id')
             ->first();
 
+        // ยอดเปลี่ยนไปแล้ว (เช่น แอดมินเพิ่มของระหว่างที่ QR เดิมยังไม่หมดอายุ) —
+        // ใบเดิมคือยอดเก่า ต้องออกใบใหม่ ไม่งั้นลูกค้าจ่ายไม่ครบโดยไม่รู้ตัว
+        if ($existing && abs((float) $existing->amount - $this->amountFor($booking, $purpose, $opts)) >= 0.01) {
+            $existing = null;
+        }
+
         return $existing ?? $this->startCharge($booking, $purpose, $methodType, $opts);
     }
 
@@ -205,6 +212,7 @@ class BeamPaymentService
             Payment::PURPOSE_INSTALLMENT_DUE => $this->settleInstallmentDue($payment, $booking),
             Payment::PURPOSE_BALANCE => $this->settleBalance($payment, $booking),
             Payment::PURPOSE_SPLIT_SHARE => $this->settleSplitShare($payment, $booking),
+            Payment::PURPOSE_EXTRA => $this->settleExtra($payment, $booking),
             default => Log::error('Beam settle got an unknown purpose', [
                 'payment_id' => $payment->id,
                 'purpose' => $payment->purpose,
@@ -363,6 +371,19 @@ class BeamPaymentService
         $this->balancePaymentService->recordPayment($booking, $this->paymentMethodLabel($payment));
     }
 
+    /**
+     * ลงยอดตามที่ออก QR ไว้ ไม่ใช่ยอดค้าง ณ ตอนเงินเข้า — ระหว่างนั้นแอดมินอาจแก้
+     * ยอดอีกรอบ แต่เงินที่เข้ามาจริงคือยอดบน QR (ส่วนต่างที่เหลือจะโผล่เป็นยอดค้างใหม่)
+     */
+    private function settleExtra(Payment $payment, Booking $booking): void
+    {
+        $this->extraPaymentService->recordPayment(
+            $booking,
+            $this->paymentMethodLabel($payment),
+            (float) $payment->amount,
+        );
+    }
+
     private function settleSplitShare(Payment $payment, Booking $booking): void
     {
         $share = BookingSplitShare::find($payment->purpose_id);
@@ -419,6 +440,7 @@ class BeamPaymentService
             Payment::PURPOSE_INSTALLMENT_DUE => $this->installmentDueAmount($booking, $opts['purpose_id'] ?? null),
             Payment::PURPOSE_BALANCE => $this->balanceAmount($booking),
             Payment::PURPOSE_SPLIT_SHARE => $this->shareAmount($opts['purpose_id'] ?? null),
+            Payment::PURPOSE_EXTRA => $booking->loadMissing('installmentPayments')->extraDueAmount(),
             default => throw new PaymentNotAvailableException('รูปแบบการชำระเงินไม่ถูกต้อง'),
         };
     }

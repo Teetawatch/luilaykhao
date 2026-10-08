@@ -144,7 +144,11 @@ class HomeWidgetService
         $bookings = Booking::query()
             ->where('user_id', $userId)
             ->where('status', 'confirmed')
-            ->whereIn('payment_type', ['deposit', 'installment'])
+            ->where(function ($q) {
+                $q->whereIn('payment_type', ['deposit', 'installment'])
+                    // ยอดเพิ่มเติมของใบจ่ายเต็ม — ดู Booking::extraDueAmount()
+                    ->orWhereRaw('total_amount - paid_amount - waived_amount >= 1');
+            })
             // ใบที่รอเลือกรอบใหม่ (เหตุสุดวิสัย) — วันครบกำหนดยังผูกกับรอบที่ไม่ได้ออก
             ->notAwaitingNewRound()
             ->with(['installmentPayments', 'schedule.trip'])
@@ -163,28 +167,30 @@ class HomeWidgetService
      */
     private function outstandingFor(Booking $booking): ?array
     {
-        if ($booking->payment_type === 'installment') {
-            $next = $booking->installmentPayments
+        $next = $booking->payment_type === 'installment'
+            ? $booking->installmentPayments
                 ->sortBy('installment_no')
-                ->first(fn ($installment) => $installment->status !== 'paid');
+                ->first(fn ($installment) => $installment->status !== 'paid')
+            : null;
 
-            if (! $next) {
-                return null;
-            }
-
+        if ($next) {
             $amount = (float) $next->amount;
             $due = $next->due_date;
             $label = "งวดที่ {$next->installment_no}/{$booking->installment_count}";
             $slipPending = filled($next->slip_path);
-        } elseif ($booking->payment_type === 'deposit') {
-            if ($booking->balance_paid_at !== null || (float) $booking->balance_amount <= 0) {
-                return null;
-            }
-
+        } elseif ($booking->payment_type === 'deposit'
+            && $booking->balance_paid_at === null
+            && (float) $booking->balance_amount > 0) {
             $amount = (float) $booking->balance_amount;
             $due = $booking->balance_due_at;
             $label = 'ยอดส่วนที่เหลือ';
             $slipPending = filled($booking->balance_slip_path);
+        } elseif (($extraDue = $booking->extraDueAmount()) > 0) {
+            // ไม่มีวันครบกำหนดของตัวเอง — จ่ายก่อนวันเดินทาง
+            $amount = $extraDue;
+            $due = $booking->schedule?->departure_date;
+            $label = 'ยอดเพิ่มเติม';
+            $slipPending = false;
         } else {
             return null;
         }

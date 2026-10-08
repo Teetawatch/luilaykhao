@@ -73,7 +73,7 @@ class Booking extends Model
         'checked_in', 'checked_in_at',
         'pickup_status', 'pickup_status_at', 'pickup_status_eta_minutes',
         'terms_accepted_at', 'terms_version',
-        'total_amount', 'selected_addons', 'addons_total', 'selected_rentals', 'rentals_total', 'paid_amount', 'payment_method',
+        'total_amount', 'selected_addons', 'addons_total', 'selected_rentals', 'rentals_total', 'paid_amount', 'waived_amount', 'payment_method',
         'payment_type', 'installment_count', 'installment_interval_days',
         'deposit_amount', 'balance_amount', 'balance_due_at', 'balance_paid_at',
         'balance_payment_ref', 'balance_slip_path', 'balance_transfer_datetime',
@@ -104,6 +104,7 @@ class Booking extends Model
             'total_amount' => 'decimal:2',
             'addons_total' => 'decimal:2',
             'paid_amount' => 'decimal:2',
+            'waived_amount' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'voucher_amount' => 'decimal:2',
             'voucher_restored_amount' => 'decimal:2',
@@ -385,6 +386,12 @@ class Booking extends Model
         return $this->hasMany(InstallmentPayment::class)->orderBy('installment_no');
     }
 
+    /** การจ่ายยอดเพิ่มเติมหลังยืนยันแล้ว — ดู [extraDueAmount]. */
+    public function extraPayments(): HasMany
+    {
+        return $this->hasMany(BookingExtraPayment::class)->latest('id');
+    }
+
     public function splitShares(): HasMany
     {
         return $this->hasMany(BookingSplitShare::class)->orderBy('id');
@@ -477,11 +484,51 @@ class Booking extends Model
             return false;
         }
 
-        return match ($this->payment_type ?? 'full') {
+        $scheduledPaid = match ($this->payment_type ?? 'full') {
             'deposit' => $this->balance_paid_at !== null,
             'installment' => ! $this->installmentPayments()->where('status', '!=', 'paid')->exists(),
             default => true,
         };
+
+        return $scheduledPaid && $this->extraDueAmount() <= 0;
+    }
+
+    /**
+     * ยอดเพิ่มเติมที่ลูกค้ายังต้องจ่าย บนใบที่ยืนยันแล้ว
+     *
+     * = ยอดรวม − ที่รับมาแล้ว − ที่แอดมินยกเว้น − ยอดที่นัดจ่ายไว้แล้ว (ยอดคงเหลือของ
+     * มัดจำ/แบ่งจ่าย และงวดที่ยังไม่จ่าย) ยอดนัดจ่ายพวกนั้นมีทางจ่ายของมันอยู่แล้ว ที่นี่
+     * จึงเหลือแค่ส่วนที่ "ไม่มีทางจ่าย": ใบที่แอดมินข้ามการชำระเงินแล้วให้ลูกค้าจ่ายทีหลัง
+     * และยอดที่แอดมินเพิ่มของ/ปรับขึ้นหลังยืนยัน
+     *
+     * ต่ำกว่า 1 บาทถือว่าครบ — เศษสตางค์จากการปัดมัดจำรายคนไม่ควรกลายเป็นการทวงเงิน
+     */
+    public function extraDueAmount(): float
+    {
+        if ($this->status !== 'confirmed' || $this->awaitsNewRound()) {
+            return 0.0;
+        }
+
+        $scheduled = 0.0;
+
+        if ($this->balance_paid_at === null && (float) $this->balance_amount > 0
+            && in_array($this->payment_type, ['deposit'], true)) {
+            $scheduled += (float) $this->balance_amount;
+        }
+
+        if ($this->payment_type === 'installment') {
+            $installments = $this->relationLoaded('installmentPayments')
+                ? $this->installmentPayments
+                : $this->installmentPayments()->get();
+            $scheduled += (float) $installments->where('status', '!=', 'paid')->sum('amount');
+        }
+
+        $due = (float) $this->total_amount
+            - (float) $this->paid_amount
+            - (float) $this->waived_amount
+            - $scheduled;
+
+        return $due < 1 ? 0.0 : round($due, 2);
     }
 
     /**

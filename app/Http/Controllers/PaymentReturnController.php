@@ -28,6 +28,7 @@ class PaymentReturnController extends Controller
         Payment::PURPOSE_INSTALLMENT_DUE => 'ตัดงวดที่ชำระให้อัตโนมัติ',
         Payment::PURPOSE_BALANCE => 'บันทึกยอดคงเหลือให้อัตโนมัติ',
         Payment::PURPOSE_SPLIT_SHARE => 'บันทึกส่วนแบ่งของคุณให้อัตโนมัติ',
+        Payment::PURPOSE_EXTRA => 'บันทึกยอดเพิ่มเติมให้อัตโนมัติ',
     ];
 
     public function __invoke(Request $request): View

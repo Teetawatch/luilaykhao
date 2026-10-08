@@ -36,7 +36,7 @@ class BeamPaymentController extends Controller
     {
         $validated = $request->validate([
             'booking_ref' => ['required', 'string', 'exists:bookings,booking_ref'],
-            'purpose' => ['required', 'in:full,deposit,split,installment,installment_due,balance,split_share'],
+            'purpose' => ['required', 'in:full,deposit,split,installment,installment_due,balance,split_share,extra'],
             'payment_method_type' => ['nullable', 'string', 'max:40'],
             'installment_count' => ['nullable', 'integer', 'min:2', 'max:'.PaymentQuote::MAX_INSTALLMENT_COUNT],
             // แถวปลายทางของ purpose ที่ชี้เฉพาะเจาะจง: ส่วนแบ่งของเพื่อน หรือ งวดที่ 2+

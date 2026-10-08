@@ -1857,6 +1857,8 @@ class AdminController extends Controller
             'user.phone' => ['nullable', 'string', 'max:30'],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            // ยอดที่ยกเว้นไม่เก็บจากลูกค้า — ลดยอดเพิ่มเติมที่แอปทวงโดยไม่ปั่นรายรับ
+            'waived_amount' => ['nullable', 'numeric', 'min:0'],
             'payment_method' => ['nullable', 'string', 'max:100'],
             'payment_type' => ['nullable', 'in:full,deposit,installment'],
             'installment_count' => ['nullable', 'integer', 'min:1', 'max:12'],
@@ -1962,7 +1964,7 @@ class AdminController extends Controller
                 $bookingUpdates = [];
                 foreach ([
                     'status', 'schedule_id', 'pickup_region', 'pickup_point_id', 'group_name', 'group_notes',
-                    'qr_code', 'cancellation_reason', 'total_amount', 'paid_amount', 'payment_method',
+                    'qr_code', 'cancellation_reason', 'total_amount', 'paid_amount', 'waived_amount', 'payment_method',
                     'payment_type', 'installment_count', 'installment_interval_days', 'payment_ref',
                     'paid_at', 'transfer_datetime', 'cancelled_at', 'checked_in_at',
                     'deposit_amount', 'balance_amount', 'balance_due_at', 'balance_payment_ref',

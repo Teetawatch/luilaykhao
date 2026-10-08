@@ -216,6 +216,13 @@ class BookingResource extends JsonResource
             'selected_rentals' => $this->selected_rentals ?? [],
             'rentals_total' => $this->rentals_total,
             'paid_amount' => $this->paid_amount,
+            'waived_amount' => (float) $this->waived_amount,
+            // ยอดเพิ่มเติมที่ยังต้องจ่ายบนใบที่ยืนยันแล้ว (แอดมินข้ามการชำระแล้วให้จ่ายทีหลัง
+            // หรือเพิ่มของให้ทีหลัง) — client อ่านตัวนี้ตัวเดียว ห้ามคิด total − paid เอง
+            // เพราะยอดคงเหลือของมัดจำและงวดที่นัดไว้มีทางจ่ายของมันแยกอยู่แล้ว
+            'extra_due' => [
+                'amount' => $this->resource->extraDueAmount(),
+            ],
             'payment_method' => $this->payment_method,
             'payment_type' => $this->payment_type ?? 'full',
             'installment_count' => $this->installment_count,

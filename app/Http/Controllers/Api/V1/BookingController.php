@@ -44,6 +44,7 @@ class BookingController extends Controller
         // ผู้ใช้ทั่วไปที่ส่งธงนี้มาเองจะได้ใบจอง pending ตามปกติ ไม่ใช่ข้อผิดพลาด
         // เพราะไม่มีอะไรให้เดา และช่องทางเก่าที่ยังไม่รู้จักธงนี้ต้องทำงานเหมือนเดิม
         $skipPayment = $request->boolean('skip_payment') && $request->user()->hasRole('admin');
+        $waivePayment = $skipPayment && $request->input('skip_payment_mode') === 'waive';
 
         try {
             // อ่านก่อนสร้างใบจอง — เวอร์ชันที่ลูกค้าเห็นไม่ตรงฉบับปัจจุบันต้องไม่ได้ใบจอง
@@ -74,6 +75,7 @@ class BookingController extends Controller
                 giftFromName: $request->gift_from_name,
                 giftMessage: $request->gift_message,
                 skipPayment: $skipPayment,
+                waivePayment: $waivePayment,
                 termsConsent: $termsConsent,
                 giftVoucherCode: $request->gift_voucher_code,
             );
@@ -81,7 +83,8 @@ class BookingController extends Controller
             return $this->success(
                 new BookingResource($booking),
                 match (true) {
-                    $skipPayment => 'ยืนยันการจองสำเร็จ (ข้ามการชำระเงิน)',
+                    $waivePayment => 'ยืนยันการจองสำเร็จ (ไม่ต้องเก็บเงินจากลูกค้า)',
+                    $skipPayment => 'ยืนยันการจองสำเร็จ ลูกค้าชำระเงินทีหลังในแอปได้',
                     $booking->payment_method === Booking::PAYMENT_METHOD_GIFT_VOUCHER => 'ยืนยันการจองสำเร็จ ชำระครบด้วยบัตรของขวัญ',
                     default => 'สร้างการจองสำเร็จ',
                 },

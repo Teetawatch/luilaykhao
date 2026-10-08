@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\BalancePaymentService;
 use App\Services\BookingService;
 use App\Services\BookingSettlementService;
+use App\Services\ExtraPaymentService;
 use App\Services\InstallmentPaymentService;
 use App\Services\PaymentNotAvailableException;
 use App\Services\PromptPayService;
@@ -334,6 +335,53 @@ class PaymentController extends Controller
     }
 
     /**
+     * POST /payments/charge-extra — จ่าย "ยอดเพิ่มเติม" ของใบที่ยืนยันแล้วด้วยสลิป
+     *
+     * ยอดมาจาก Booking::extraDueAmount() เสมอ ไม่รับยอดจาก client — ดูที่มาใน
+     * ExtraPaymentService (ทาง Beam ใช้ purpose = extra แทน)
+     */
+    public function chargeExtra(Request $request, ExtraPaymentService $extraPayments): JsonResponse
+    {
+        $request->validate([
+            'booking_ref' => ['required', 'string'],
+            'payment_method' => ['nullable', 'in:promptpay,mobile_banking'],
+            'slip_image' => ['required', 'image', 'max:5120'],
+            'transfer_date' => ['nullable', 'date'],
+            'transfer_time' => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
+        ]);
+
+        $booking = Booking::where('booking_ref', $request->booking_ref)
+            ->with('installmentPayments')
+            ->firstOrFail();
+
+        if (! $booking->isAccessibleByUser($request->user()->id)) {
+            return $this->error('คุณไม่มีสิทธิ์ชำระเงินสำหรับการจองนี้', 403);
+        }
+
+        if ($booking->extraDueAmount() <= 0) {
+            return $this->error('การจองนี้ไม่มียอดเพิ่มเติมที่ต้องชำระ', 422);
+        }
+
+        $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
+
+        $payment = $extraPayments->recordPayment(
+            $booking,
+            $request->input('payment_method', 'promptpay'),
+            null,
+            $slipPath,
+            $this->resolveTransferDatetime($request),
+        );
+
+        $booking = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers', 'installmentPayments']);
+
+        return $this->success([
+            'status' => 'confirmed',
+            'amount' => (float) $payment->amount,
+            'booking' => new BookingResource($booking),
+        ], 'ชำระยอดเพิ่มเติมสำเร็จ');
+    }
+
+    /**
      * Inbound payment-gateway webhook.
      *
      * The endpoint is unauthenticated (Sanctum can't sign gateway callbacks),
@@ -412,7 +460,7 @@ class PaymentController extends Controller
         BookingSettlementService $settlement,
     ): JsonResponse {
         $validated = $request->validate([
-            'purpose' => ['nullable', 'in:full,deposit,installment,split,balance,installment_due,split_share'],
+            'purpose' => ['nullable', 'in:full,deposit,installment,split,balance,installment_due,split_share,extra'],
             'installment_count' => ['nullable', 'integer', 'min:2', 'max:'.PaymentQuote::MAX_INSTALLMENT_COUNT],
             'installment_no' => ['nullable', 'integer', 'min:2'],
             'share_id' => ['nullable', 'integer'],
@@ -427,7 +475,7 @@ class PaymentController extends Controller
         }
 
         $purpose = $validated['purpose'] ?? 'full';
-        $paidOnConfirmed = in_array($purpose, ['balance', 'installment_due', 'split_share'], true);
+        $paidOnConfirmed = in_array($purpose, ['balance', 'installment_due', 'split_share', 'extra'], true);
 
         if (! $paidOnConfirmed && $booking->status !== 'pending') {
             return $this->error('การจองนี้ไม่ได้อยู่ระหว่างรอชำระเงินครั้งแรก', 422);
@@ -478,6 +526,15 @@ class PaymentController extends Controller
             }
 
             return round((float) $booking->balance_amount, 2);
+        }
+
+        if ($purpose === 'extra') {
+            $due = $booking->extraDueAmount();
+            if ($due <= 0) {
+                throw new PaymentNotAvailableException('การจองนี้ไม่มียอดเพิ่มเติมที่ต้องชำระ');
+            }
+
+            return $due;
         }
 
         if ($purpose === 'installment_due') {

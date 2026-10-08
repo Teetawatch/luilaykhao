@@ -221,6 +221,11 @@ class AdminPaymentController extends Controller
             return [Payment::PURPOSE_INSTALLMENT_DUE, $installment->id, 'ค่างวดที่ '.$installment->installment_no];
         }
 
+        // ยอดเพิ่มเติม — แอดมินข้ามการชำระให้จ่ายทีหลัง หรือเพิ่มของให้หลังยืนยัน
+        if ($booking->extraDueAmount() > 0) {
+            return [Payment::PURPOSE_EXTRA, null, 'ยอดเพิ่มเติม'];
+        }
+
         throw new PaymentNotAvailableException('การจองนี้ชำระครบแล้ว');
     }
 
@@ -234,6 +239,7 @@ class AdminPaymentController extends Controller
     {
         return match ($purpose) {
             Payment::PURPOSE_BALANCE => round((float) $booking->balance_amount, 2),
+            Payment::PURPOSE_EXTRA => $booking->extraDueAmount(),
             Payment::PURPOSE_INSTALLMENT_DUE => round(
                 (float) $booking->installmentPayments()->whereKey($purposeId)->value('amount'),
                 2,

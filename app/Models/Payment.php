@@ -38,6 +38,9 @@ class Payment extends Model
     /** ส่วนแบ่งของเพื่อน — purpose_id = booking_split_shares.id. */
     public const PURPOSE_SPLIT_SHARE = 'split_share';
 
+    /** ยอดเพิ่มเติมบนใบที่ยืนยันแล้ว — ดู Booking::extraDueAmount(). */
+    public const PURPOSE_EXTRA = 'extra';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_SUCCEEDED = 'succeeded';

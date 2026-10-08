@@ -482,6 +482,7 @@ Route::prefix('v1')->group(function () {
         Route::post('payments/charge', [PaymentController::class, 'charge'])->middleware('throttle:payment');
         Route::post('payments/charge-installment', [PaymentController::class, 'chargeInstallment'])->middleware('throttle:payment');
         Route::post('payments/charge-balance', [PaymentController::class, 'chargeBalance'])->middleware('throttle:payment');
+        Route::post('payments/charge-extra', [PaymentController::class, 'chargeExtra'])->middleware('throttle:payment');
         Route::post('payments/scan-slip', [PaymentController::class, 'scanSlip'])->middleware('throttle:slip-scan');
 
         // Beam Checkout — ออก QR/ลิงก์จ่าย แล้วให้ webhook เป็นคนยืนยันการจอง

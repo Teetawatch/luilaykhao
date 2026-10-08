@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
+use App\Models\SmartNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -29,7 +30,6 @@ class OutstandingPaymentService
     {
         $query = Booking::query()
             ->where('status', 'confirmed')
-            ->whereIn('payment_type', ['installment', 'deposit'])
             ->with(['schedule.trip', 'user', 'passengers', 'installmentPayments'])
             ->where(function ($q) {
                 $q->where(function ($q2) {
@@ -39,7 +39,10 @@ class OutstandingPaymentService
                     $q2->where('payment_type', 'deposit')
                         ->whereNull('balance_paid_at')
                         ->where('balance_amount', '>', 0);
-                });
+                })
+                    // ยอดเพิ่มเติม (แอดมินข้ามการชำระ/เพิ่มของให้ทีหลัง) — คัดหยาบด้วย SQL
+                    // แล้วให้ summarize() ตัดสินด้วย Booking::extraDueAmount() อีกชั้น
+                    ->orWhereRaw('total_amount - paid_amount - waived_amount >= 1');
             });
 
         if ($scheduleId) {
@@ -71,14 +74,10 @@ class OutstandingPaymentService
     {
         $type = $booking->payment_type;
 
-        if ($type === 'installment') {
-            $all = $booking->installmentPayments->sortBy('installment_no')->values();
-            $next = $all->firstWhere('status', '!=', 'paid');
+        $all = $booking->installmentPayments->sortBy('installment_no')->values();
+        $next = $type === 'installment' ? $all->firstWhere('status', '!=', 'paid') : null;
 
-            if (! $next) {
-                return null;
-            }
-
+        if ($next) {
             $amount = (float) $next->amount;
             $dueDate = $next->due_date?->toDateString();
             $installmentNo = $next->installment_no;
@@ -92,10 +91,7 @@ class OutstandingPaymentService
             $schedule = $all->map(fn ($i) => $this->installmentRow($i))->all();
             $paidTotal = (float) $all->where('status', 'paid')->sum('amount');
             $remainingTotal = (float) $all->where('status', '!=', 'paid')->sum('amount');
-        } elseif ($type === 'deposit') {
-            if (! $this->balancePaymentService->hasOutstandingBalance($booking)) {
-                return null;
-            }
+        } elseif ($type === 'deposit' && $this->balancePaymentService->hasOutstandingBalance($booking)) {
 
             $amount = (float) $booking->balance_amount;
             $dueDate = $booking->balance_due_at?->toDateString();
@@ -128,6 +124,26 @@ class OutstandingPaymentService
                 ],
             ];
             $paidTotal = (float) $booking->deposit_amount;
+            $remainingTotal = $amount;
+        } elseif (($extraDue = $booking->extraDueAmount()) > 0) {
+            // ยอดเพิ่มเติมไม่มีวันครบกำหนดของตัวเอง — ต้องจ่ายก่อนเดินทาง
+            $type = 'extra';
+            $amount = $extraDue;
+            $dueDate = $booking->schedule?->departure_date?->toDateString();
+            $installmentNo = null;
+            $label = 'ยอดเพิ่มเติม';
+            $slipPending = false;
+            $schedule = [[
+                'installment_no' => 1,
+                'label' => 'ยอดเพิ่มเติม',
+                'amount' => $amount,
+                'due_date' => $dueDate,
+                'status' => 'pending',
+                'paid_at' => null,
+                'slip_pending' => false,
+                'overdue' => $dueDate ? Carbon::parse($dueDate)->isPast() : false,
+            ]];
+            $paidTotal = (float) $booking->paid_amount;
             $remainingTotal = $amount;
         } else {
             return null;
@@ -206,19 +222,27 @@ class OutstandingPaymentService
             if (in_array('sms', $channels, true)) {
                 $this->smsService->sendInstallmentReminder($next, $reminderType);
             }
-        } elseif ($booking->payment_type === 'deposit') {
-            if (! $this->balancePaymentService->hasOutstandingBalance($booking)) {
-                throw new \RuntimeException('การจองนี้ไม่มียอดค้างชำระ');
-            }
-
+        } elseif ($booking->payment_type === 'deposit' && $this->balancePaymentService->hasOutstandingBalance($booking)) {
             if (in_array('email', $channels, true)) {
                 $this->mailService->sendBalanceDueReminderEmail($booking);
             }
             if (in_array('sms', $channels, true)) {
                 $this->smsService->sendBalanceDueReminder($booking);
             }
+        } elseif (($extraDue = $booking->extraDueAmount()) > 0) {
+            // ยอดเพิ่มเติมจ่ายได้ในแอปเท่านั้น (ยังไม่มีหน้าลิงก์สาธารณะ) — ทวงด้วย
+            // แจ้งเตือนในแอปแทนอีเมล/SMS ที่จะพาไปหน้าที่จ่ายไม่ได้
+            if ($booking->user_id) {
+                SmartNotification::send(
+                    $booking->user_id,
+                    'extra_due',
+                    'มียอดที่ต้องชำระเพิ่ม',
+                    'การจอง '.$booking->booking_ref.' มียอดเพิ่มเติม '.number_format($extraDue, 2).' บาท แตะเพื่อชำระในแอป',
+                    ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
+                );
+            }
         } else {
-            throw new \RuntimeException('การจองนี้ไม่รองรับลิงก์ชำระเงิน');
+            throw new \RuntimeException('การจองนี้ไม่มียอดค้างชำระ');
         }
 
         return $this->summarize($booking->fresh()->load(['schedule.trip', 'user', 'passengers', 'installmentPayments'])) ?? [];

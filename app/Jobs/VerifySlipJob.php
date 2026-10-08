@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Booking;
+use App\Models\BookingExtraPayment;
 use App\Models\BookingSplitShare;
 use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
@@ -24,8 +25,8 @@ class VerifySlipJob implements ShouldQueue
     public int $timeout = 60;
 
     public function __construct(
-        private readonly string $type,         // 'booking' | 'balance' | 'installment' | 'split'
-        private readonly int $modelId,      // Booking.id, InstallmentPayment.id or BookingSplitShare.id
+        private readonly string $type,         // 'booking' | 'balance' | 'installment' | 'split' | 'extra'
+        private readonly int $modelId,      // Booking.id, InstallmentPayment.id, BookingSplitShare.id or BookingExtraPayment.id
         private readonly string $slipPath,
         private readonly float $expectedAmount,
     ) {}
@@ -46,6 +47,7 @@ class VerifySlipJob implements ShouldQueue
             'balance' => $this->saveToBooking($result, 'balance_slip_ocr_status', 'balance_slip_ocr_result'),
             'installment' => $this->saveToInstallment($result),
             'split' => $this->saveToSplitShare($result),
+            'extra' => $this->saveToExtraPayment($result),
         };
     }
 
@@ -99,6 +101,24 @@ class VerifySlipJob implements ShouldQueue
         if ($result['status'] === SlipOcrService::STATUS_FAILED) {
             $bookingRef = $share->booking?->booking_ref ?? "share#{$this->modelId}";
             $this->notifyAdmins("ส่วนแบ่งกลุ่มของ {$bookingRef}", $result['reason'] ?? 'unknown');
+        }
+    }
+
+    private function saveToExtraPayment(array $result): void
+    {
+        $payment = BookingExtraPayment::with('booking')->find($this->modelId);
+        if (! $payment) {
+            return;
+        }
+
+        $payment->update([
+            'slip_ocr_status' => $result['status'],
+            'slip_ocr_result' => $result['raw'],
+        ]);
+
+        if ($result['status'] === SlipOcrService::STATUS_FAILED) {
+            $bookingRef = $payment->booking?->booking_ref ?? "extra#{$this->modelId}";
+            $this->notifyAdmins("ยอดเพิ่มเติมของ {$bookingRef}", $result['reason'] ?? 'unknown');
         }
     }
 
