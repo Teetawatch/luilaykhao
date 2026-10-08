@@ -894,9 +894,12 @@ class AdminController extends Controller
             'booking_ref',
             'qr_code',
             'share_token',
+            'story_token',
             'payment_token',
             'reschedule_token',
             'birthdate_token',
+            'passport_token',
+            'brief_token',
             'gift_code',
             'created_at',
             'updated_at',
@@ -908,9 +911,12 @@ class AdminController extends Controller
             'booking_ref' => Booking::generateRef(),
             'qr_code' => Booking::generateQrCode(),
             'share_token' => null,
+            'story_token' => null,
             'payment_token' => null,
             'reschedule_token' => null,
             'birthdate_token' => null,
+            'passport_token' => null,
+            'brief_token' => null,
             'gift_code' => null,
             'schedule_id' => $target->id,
             // ประเภทรถของรอบปลายทาง — ใบที่แยกออกมาไปคนละรอบแล้ว จะชี้คันของรอบเดิมไม่ได้
@@ -1423,7 +1429,13 @@ class AdminController extends Controller
         if ($enabled) {
             $user->assignRole($this->ensureAssignableRole($roleName));
         } else {
-            $user->removeRole($roleName);
+            // ถอดเฉพาะบทบาทที่ถืออยู่จริง — removeRole('ชื่อ') ต้องค้นบทบาทก่อน ถ้าระบบยัง
+            // ไม่เคยสร้างบทบาทนี้ (finance/packer ถูกสร้างตอนเปิดสิทธิ์ครั้งแรก) จะโยน
+            // RoleDoesNotExist แล้วการตั้งสิทธิ์หลักทุกครั้งพังเป็น 500
+            $held = $user->roles->where('name', $roleName);
+            if ($held->isNotEmpty()) {
+                $user->removeRole(...$held->all());
+            }
         }
     }
 

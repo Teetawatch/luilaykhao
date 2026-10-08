@@ -347,6 +347,10 @@ class MoveBookingsCrossTripTest extends TestCase
         $booking->ensureShareToken();
         $booking->ensurePaymentToken();
         $booking->ensureBirthdateToken();
+        $booking->ensureStoryToken();
+        $booking->ensurePassportToken();
+        $booking->ensureBriefToken();
+        $booking->ensureRescheduleToken();
 
         $moving = BookingPassenger::create([
             'booking_id' => $booking->id,
@@ -375,6 +379,10 @@ class MoveBookingsCrossTripTest extends TestCase
         $this->assertNull($splitBooking->share_token);
         $this->assertNull($splitBooking->payment_token);
         $this->assertNull($splitBooking->birthdate_token);
+        $this->assertNull($splitBooking->story_token);
+        $this->assertNull($splitBooking->passport_token);
+        $this->assertNull($splitBooking->brief_token);
+        $this->assertNull($splitBooking->reschedule_token);
         // การจองเดิมยังถือ token ของตัวเองไว้ครบ
         $this->assertNotNull($booking->share_token);
         $this->assertNotNull($booking->payment_token);

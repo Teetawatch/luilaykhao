@@ -131,6 +131,36 @@ class AdminStaffAssignmentTest extends TestCase
         ]);
     }
 
+    public function test_setting_the_staff_role_works_before_finance_or_packer_roles_exist(): void
+    {
+        // ระบบจริงที่ยังไม่เคยเปิดสิทธิ์การเงิน/จัดของให้ใคร จะไม่มีแถวบทบาทนั้นเลย
+        Role::create(['name' => 'admin', 'guard_name' => 'web']);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $user = User::factory()->create();
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/users/{$user->id}", ['role' => 'staff'])
+            ->assertOk()
+            ->assertJsonPath('data.finance_access', false)
+            ->assertJsonPath('data.packer_access', false);
+        $this->assertTrue($user->fresh()->hasRole('staff'));
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/users/{$user->id}", ['finance_access' => false, 'packer_access' => false])
+            ->assertOk();
+
+        // ตั้งสิทธิ์เสร็จแล้วต้องมอบหมายเข้ารอบได้ทันที
+        $schedule = $this->makeSchedule();
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/schedules/{$schedule->id}/staff", [
+                'staff_ids' => [$user->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.staff.0.id', $user->id);
+    }
+
     public function test_round_payload_carries_the_details_a_scheduler_needs(): void
     {
         Role::create(['name' => 'admin', 'guard_name' => 'web']);
