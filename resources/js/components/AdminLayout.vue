@@ -191,6 +191,7 @@ const menuGroups = ref([
       { to: '/admin/price-sheet', icon: 'fas fa-tag', label: 'ราคาทริป' },
       { to: '/admin/at-risk', icon: 'fas fa-triangle-exclamation', label: 'รอบเสี่ยงไม่ออก' },
       { to: '/admin/underfilled-emails', icon: 'fas fa-envelope-circle-check', label: 'หลักฐานแจ้งคนไม่ครบ' },
+      { to: '/admin/postponed', icon: 'fas fa-calendar-xmark', label: 'ลูกค้าที่ถูกเลื่อนรอบ' },
       { to: '/admin/flexi-price', icon: 'fas fa-people-arrows', label: 'Flexi-Price ไปต่อ' },
       { to: '/admin/calendar', icon: 'fas fa-calendar', label: 'ปฏิทินทริป' },
       { to: '/admin/categories', icon: 'fas fa-tags', label: 'หมวดหมู่กิจกรรม' },

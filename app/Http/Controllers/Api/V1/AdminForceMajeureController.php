@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\ForceMajeureSeatHold;
 use App\Models\TripSchedule;
 use App\Services\ForceMajeureService;
+use App\Services\PostponedBookingsBoard;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,6 +30,20 @@ class AdminForceMajeureController extends Controller
         $schedule = TripSchedule::findOrFail($id);
 
         return $this->success($this->forceMajeure->overview($schedule));
+    }
+
+    /** ทุกใบที่ถูกเลื่อน + การกันที่นั่งในรอบใหม่ — หน้า /admin/postponed */
+    public function bookings(PostponedBookingsBoard $board): JsonResponse
+    {
+        return $this->success($board->build());
+    }
+
+    public function releaseHold(int $holdId): JsonResponse
+    {
+        $hold = ForceMajeureSeatHold::findOrFail($holdId);
+        $this->forceMajeure->releaseHold($hold);
+
+        return $this->success(null, "ปล่อยที่นั่ง {$hold->seat_count} ที่ที่กันไว้แล้ว คนทั่วไปจองได้ทันที");
     }
 
     public function store(Request $request, int $id): JsonResponse

@@ -766,6 +766,8 @@ Route::prefix('v1')->group(function () {
         Route::get('schedules/{id}/force-majeure', [AdminForceMajeureController::class, 'show']);
         Route::post('schedules/{id}/force-majeure', [AdminForceMajeureController::class, 'store']);
         Route::post('schedules/{id}/force-majeure/revert', [AdminForceMajeureController::class, 'revert']);
+        Route::get('force-majeure/bookings', [AdminForceMajeureController::class, 'bookings']);
+        Route::post('force-majeure/holds/{holdId}/release', [AdminForceMajeureController::class, 'releaseHold'])->whereNumber('holdId');
 
         // ราคาทริป — ทริป/รอบ/ราคาของช่วงเวลาหนึ่งไว้ที่เดียวสำหรับทำสื่อโปรโมท
         Route::get('price-sheet', [AdminPriceSheetController::class, 'index']);
