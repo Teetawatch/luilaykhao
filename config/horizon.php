@@ -199,7 +199,9 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default'],
+            // ต้องครบทุกคิวที่โค้ด dispatch ไป (onQueue) — คิวที่ไม่อยู่ในนี้ไม่มีใครรับ
+            // งานจะค้างเงียบ ๆ ตลอดไป (reminders/sms เคยค้างอยู่ 3 เดือน) ดู HorizonQueuesTest
+            'queue' => ['default', 'reminders', 'sms'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,

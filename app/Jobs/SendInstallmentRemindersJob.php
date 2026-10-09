@@ -20,6 +20,13 @@ class SendInstallmentRemindersJob implements ShouldQueue
 
     private const DUE_SOON_DAYS = 2;
 
+    /**
+     * งวดที่เลยกำหนดมานานกว่านี้แล้วเพิ่งถูกพบ (job ไม่ได้วิ่งหลายวัน) แค่ติดสถานะ
+     * overdue เงียบ ๆ ไม่ยิงอีเมล/SMS — ข้อความ "เลยกำหนดมานิดนึง" ของงวดที่เลยมา
+     * เป็นเดือนผิดทั้งเนื้อหาและจังหวะ ทีมงานตามเองจากหน้าผ่อนชำระ
+     */
+    private const OVERDUE_NOTIFY_WITHIN_DAYS = 3;
+
     public function handle(SmsService $smsService, MailService $mailService): void
     {
         $today = now()->toDateString();
@@ -27,12 +34,22 @@ class SendInstallmentRemindersJob implements ShouldQueue
         // 1. Mark overdue + notify
         $overdue = InstallmentPayment::where('status', 'pending')
             ->whereDate('due_date', '<', $today)
-            ->whereHas('booking', fn ($q) => $q->where('payment_type', 'installment')->notAwaitingNewRound())
+            ->whereHas('booking', fn ($q) => $q->where('payment_type', 'installment')
+                // ใบที่ยกเลิก/คืนเงินไปแล้วไม่มีอะไรต้องจ่าย
+                ->whereIn('status', ['pending', 'confirmed'])
+                ->notAwaitingNewRound())
             ->with('booking.user')
             ->get();
 
+        $notifySince = now()->subDays(self::OVERDUE_NOTIFY_WITHIN_DAYS)->toDateString();
+
         foreach ($overdue as $ip) {
             $ip->update(['status' => 'overdue']);
+
+            if ($ip->due_date?->toDateString() < $notifySince) {
+                continue;
+            }
+
             Log::warning('Installment overdue', [
                 'booking_ref' => $ip->booking->booking_ref ?? null,
                 'installment_no' => $ip->installment_no,

@@ -17,6 +17,9 @@ class SmsService
     /** sms_type ของ SMS ที่ระบบส่งเองคู่กับอีเมลแจ้งคนไม่ครบ (D-7) */
     public const UNDERFILLED_WARNING = 'trip_underfilled_warning';
 
+    /** SMS ที่ค้าง/ล้มเหลว ลองส่งซ้ำได้ภายในกี่ชั่วโมงนับจากที่สร้าง */
+    public const RETRY_WITHIN_HOURS = 24;
+
     public function __construct(
         private ThaiBulkSmsClient $client,
     ) {}
@@ -412,6 +415,9 @@ class SmsService
         SmsLog::whereIn('status', ['pending', 'failed'])
             ->whereIn('sms_type', $this->sendableSmsTypes())
             ->where('attempts', '<', 3)
+            // ข้อความที่ค้างนานกว่านี้หมดความหมายแล้ว (ยืนยันจองของทริปที่จบไปแล้ว
+            // เตือนจ่ายงวดที่เลยมาแล้ว) — ส่งตอนนี้มีแต่ทำให้ลูกค้างง ปล่อยค้างไว้เป็นหลักฐาน
+            ->where('created_at', '>=', now()->subHours(self::RETRY_WITHIN_HOURS))
             ->where(function ($query) {
                 $query->whereNull('scheduled_at')
                     ->orWhere('scheduled_at', '<=', now());
