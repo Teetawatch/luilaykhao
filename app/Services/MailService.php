@@ -41,6 +41,9 @@ use Illuminate\Support\Facades\Mail;
 
 class MailService
 {
+    /** อีเมลแจ้งคนไม่ครบที่ล้มเหลว ลองส่งใหม่ถึงที่อยู่เดิมได้ไม่เกินกี่ฉบับ */
+    public const UNDERFILLED_MAX_ATTEMPTS = 3;
+
     public function __construct(private ReceiptService $receipts) {}
 
     /**
@@ -682,8 +685,13 @@ class MailService
     /**
      * Send an "trip may be cancelled" warning email — the round is close to
      * departure but still below the guaranteed minimum number of booked seats.
+     *
+     * เรียกซ้ำได้ (job วิ่งทุกชั่วโมงในช่วง D-7 ถึง D-2): ที่อยู่ที่เข้าคิว/ส่งไปแล้วของ
+     * รอบนี้จะไม่ถูกส่งซ้ำ ส่วนที่ล้มเหลวจะลองใหม่จนครบ UNDERFILLED_MAX_ATTEMPTS ฉบับ
+     *
+     * @return string[] ที่อยู่อีเมลที่ส่งถึงได้ของใบจองนี้ (ว่าง = ไม่มีอีเมลให้ส่ง)
      */
-    public function sendTripUnderfilledWarningEmail(Booking $booking, int $daysBefore, int $bookedSeats, int $minSeats): void
+    public function sendTripUnderfilledWarningEmail(Booking $booking, int $daysBefore, int $bookedSeats, int $minSeats): array
     {
         $booking->loadMissing(['user', 'schedule.trip', 'passengers', 'pickupPoint']);
 
@@ -704,18 +712,40 @@ class MailService
             ],
         ];
 
-        $emails = $this->customerEmails($booking);
+        $previous = EmailLog::query()
+            ->where('type', EmailLog::TYPE_UNDERFILLED_WARNING)
+            ->where('booking_id', $booking->id)
+            ->where('schedule_id', $booking->schedule_id)
+            ->get(['recipient', 'status']);
+
+        // ข่าวนี้ต้องถึงคนที่จ่ายเงินด้วย ไม่ใช่แค่อีเมลที่กรอกไว้ในช่องผู้เดินทาง
+        // (พิมพ์ผิดบ่อย และมักเป็นอีเมลของเพื่อนร่วมทริป)
+        $emails = collect($this->customerEmails($booking))
+            ->merge(array_filter([$booking->user?->email], fn ($email) => $this->isDeliverable($email)))
+            ->map(fn ($email) => strtolower(trim((string) $email)))
+            ->unique()
+            ->values()
+            ->all();
 
         if (empty($emails)) {
-            EmailLog::create($base + [
-                'status' => EmailLog::STATUS_SKIPPED,
-                'error_message' => 'ใบจองนี้ไม่มีอีเมลที่ส่งถึงได้',
-            ]);
+            if ($previous->where('status', EmailLog::STATUS_SKIPPED)->isEmpty()) {
+                EmailLog::create($base + [
+                    'status' => EmailLog::STATUS_SKIPPED,
+                    'error_message' => 'ใบจองนี้ไม่มีอีเมลที่ส่งถึงได้',
+                ]);
+            }
 
-            return;
+            return [];
         }
 
         foreach ($emails as $email) {
+            $attempts = $previous->where('recipient', $email);
+
+            if ($attempts->contains(fn ($log) => $log->status !== EmailLog::STATUS_FAILED)
+                || $attempts->count() >= self::UNDERFILLED_MAX_ATTEMPTS) {
+                continue;
+            }
+
             $log = EmailLog::create($base + ['recipient' => $email]);
 
             try {
@@ -735,6 +765,8 @@ class MailService
                 ]);
             }
         }
+
+        return $emails;
     }
 
     /**

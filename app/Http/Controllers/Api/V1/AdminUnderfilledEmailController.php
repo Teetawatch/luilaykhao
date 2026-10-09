@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\EmailLog;
 use App\Models\SmartNotification;
+use App\Models\SmsLog;
 use App\Models\TripSchedule;
+use App\Services\SmsService;
 use App\Traits\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +20,7 @@ use Illuminate\Http\Request;
  * หลักฐานมาสองทาง:
  * - email_logs: ส่งถึงที่อยู่ไหน Brevo รับไปเมื่อไหร่ (Message-ID) และเนื้อหาที่ส่งจริง
  * - smart_notifications: แจ้งในแอปที่ job ยิงคู่กันเสมอ และลูกค้าเปิดอ่านแล้วหรือยัง
+ * - sms_logs: SMS ที่ส่งคู่กับอีเมล (เริ่ม 2026-10-10) ส่งถึงเบอร์ไหน ผู้ให้บริการรับไปหรือยัง
  *
  * รอบที่แจ้งไปก่อนมีตาราง email_logs ยังมีแค่หลักฐานในแอป จึงรวมทั้งสองทางเข้าด้วยกัน
  * ต่อใบจอง แทนที่จะโชว์เฉพาะที่เพิ่งเริ่มเก็บ
@@ -56,8 +59,16 @@ class AdminUnderfilledEmailController extends Controller
             ->filter(fn ($n) => ! empty($n->data['booking_ref']))
             ->keyBy(fn ($n) => $n->data['booking_ref']);
 
+        $smsLogs = SmsLog::where('sms_type', SmsService::UNDERFILLED_WARNING)
+            ->whereBetween('created_at', $range)
+            ->with('booking:id,booking_ref')
+            ->get()
+            ->filter(fn (SmsLog $sms) => $sms->booking)
+            ->keyBy(fn (SmsLog $sms) => $sms->booking->booking_ref);
+
         $refs = $logs->pluck('booking_ref')->filter()
             ->merge($notifications->keys())
+            ->merge($smsLogs->keys())
             ->unique()
             ->values();
 
@@ -68,10 +79,11 @@ class AdminUnderfilledEmailController extends Controller
 
         $logsByRef = $logs->groupBy(fn ($log) => $log->booking_ref ?? 'log-'.$log->id);
 
-        $rows = $logsByRef->keys()->merge($notifications->keys())->unique()->map(
-            function ($ref) use ($logsByRef, $notifications, $bookings) {
+        $rows = $logsByRef->keys()->merge($notifications->keys())->merge($smsLogs->keys())->unique()->map(
+            function ($ref) use ($logsByRef, $notifications, $smsLogs, $bookings) {
                 $bookingLogs = $logsByRef->get($ref, collect());
                 $notification = $notifications->get($ref);
+                $sms = $smsLogs->get($ref);
                 $booking = $bookings->get($ref);
                 $first = $bookingLogs->first();
                 $leadPassenger = $booking?->passengers->first();
@@ -99,6 +111,21 @@ class AdminUnderfilledEmailController extends Controller
                     ])->values(),
                     // ใบจองที่แจ้งไปก่อนเริ่มเก็บ email_logs — อีเมลน่าจะออกแล้วแต่ไม่มีบันทึกยืนยัน
                     'email_unrecorded' => $bookingLogs->isEmpty(),
+                    'sms' => $sms ? [
+                        'recipient' => $sms->recipient,
+                        'status' => $sms->status,
+                        'message' => $sms->message,
+                        'attempts' => (int) $sms->attempts,
+                        'error_message' => $sms->error_message,
+                        'queued_at' => $sms->created_at?->toIso8601String(),
+                        'sent_at' => $sms->sent_at?->toIso8601String(),
+                        'failed_at' => $sms->failed_at?->toIso8601String(),
+                    ] : null,
+                    // ไม่มีช่องทางไหนออกไปถึงตัวลูกค้าเลย — ทีมงานต้องโทรแจ้งเอง
+                    // (ใบเก่าที่ไม่มีบันทึกสักทางไม่นับ — ไม่รู้ ไม่ได้แปลว่าไม่ถึง)
+                    'unreachable' => ($bookingLogs->isNotEmpty() || $sms)
+                        && ! $bookingLogs->contains(fn (EmailLog $log) => in_array($log->status, [EmailLog::STATUS_SENT, EmailLog::STATUS_QUEUED], true))
+                        && ! in_array($sms?->status, ['sent', 'pending'], true),
                     'in_app' => $notification ? [
                         'sent_at' => $notification->created_at?->toIso8601String(),
                         'read_at' => $notification->read_at?->toIso8601String(),
@@ -147,6 +174,11 @@ class AdminUnderfilledEmailController extends Controller
                 'emails_failed' => (int) $emails->get(EmailLog::STATUS_FAILED, 0),
                 'no_email' => (int) $emails->get(EmailLog::STATUS_SKIPPED, 0),
                 'in_app_read' => $rows->filter(fn ($r) => $r['in_app']['is_read'] ?? false)->count(),
+                'sms_sent' => $smsLogs->where('status', 'sent')->count(),
+                'sms_pending' => $smsLogs->where('status', 'pending')->count(),
+                'sms_failed' => $smsLogs->where('status', 'failed')->count(),
+                'no_phone' => $smsLogs->where('status', 'skipped')->count(),
+                'unreachable' => $rows->where('unreachable', true)->count(),
             ],
         ]);
     }

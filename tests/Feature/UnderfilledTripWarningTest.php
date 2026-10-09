@@ -5,11 +5,15 @@ namespace Tests\Feature;
 use App\Jobs\SendUnderfilledTripWarningsJob;
 use App\Mail\TripUnderfilledWarningMail;
 use App\Models\Booking;
+use App\Models\BookingPassenger;
+use App\Models\EmailLog;
 use App\Models\SmartNotification;
+use App\Models\SmsLog;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\MailService;
+use App\Services\SmsService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -38,8 +42,13 @@ class UnderfilledTripWarningTest extends TestCase
         parent::tearDown();
     }
 
-    private function booking(int $bookedSeats, string $status = 'open', string $departureDate = '2026-07-12'): Booking
-    {
+    private function booking(
+        int $bookedSeats,
+        string $status = 'open',
+        string $departureDate = '2026-07-12',
+        array $schedule = [],
+        array $booking = [],
+    ): Booking {
         $trip = Trip::create([
             'title' => 'Dawn Trek', 'slug' => 'dawn-'.uniqid(), 'type' => 'trekking',
             'location' => 'X', 'difficulty' => 'easy', 'duration_days' => 1,
@@ -50,16 +59,34 @@ class UnderfilledTripWarningTest extends TestCase
             'departure_date' => $departureDate,
             'return_date' => $departureDate,
             'total_seats' => 12, 'booked_seats' => $bookedSeats, 'transport_type' => 'van', 'status' => $status,
-        ]);
+        ] + $schedule);
 
-        return Booking::create([
+        return $this->bookingOn($schedule, $booking);
+    }
+
+    private function bookingOn(TripSchedule $schedule, array $overrides = []): Booking
+    {
+        return Booking::create($overrides + [
             'booking_ref' => Booking::generateRef(),
-            'user_id' => User::factory()->create(['email' => 'cust-'.uniqid().'@example.com'])->id,
+            'user_id' => User::factory()->create([
+                'email' => 'cust-'.uniqid().'@example.com',
+                'phone' => '0812345678',
+            ])->id,
             'schedule_id' => $schedule->id,
             'qr_code' => Booking::generateQrCode(),
             'status' => 'confirmed',
             'total_amount' => 1800,
         ]);
+    }
+
+    private function runJob(): void
+    {
+        app()->call([new SendUnderfilledTripWarningsJob, 'handle']);
+    }
+
+    private function sms(Booking $b)
+    {
+        return SmsLog::where('booking_id', $b->id)->where('sms_type', SmsService::UNDERFILLED_WARNING);
     }
 
     private function warnings(Booking $b)
@@ -72,7 +99,7 @@ class UnderfilledTripWarningTest extends TestCase
     {
         $b = $this->booking(bookedSeats: 3);
 
-        (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
+        $this->runJob();
 
         Mail::assertQueued(TripUnderfilledWarningMail::class, 1);
         $this->assertSame(1, $this->warnings($b)->count());
@@ -82,7 +109,7 @@ class UnderfilledTripWarningTest extends TestCase
     {
         $this->booking(bookedSeats: 8);
 
-        (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
+        $this->runJob();
 
         Mail::assertNothingQueued();
     }
@@ -91,28 +118,164 @@ class UnderfilledTripWarningTest extends TestCase
     {
         $this->booking(bookedSeats: 3, status: 'cancelled');
 
-        (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
+        $this->runJob();
 
         Mail::assertNothingQueued();
     }
 
-    public function test_no_warning_when_departure_is_not_seven_days_out(): void
+    public function test_no_warning_outside_the_seven_to_two_day_window(): void
     {
-        $this->booking(bookedSeats: 3, departureDate: '2026-07-10'); // 5 days out
+        $this->booking(bookedSeats: 3, departureDate: '2026-07-13'); // D-8 ยังไม่ถึงเวลา
+        $this->booking(bookedSeats: 3, departureDate: '2026-07-06'); // D-1 สายเกินไปแล้ว
 
-        (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
+        $this->runJob();
 
-        Mail::assertNothingQueued();
+        Mail::assertNotQueued(TripUnderfilledWarningMail::class);
+        $this->assertSame(0, SmsLog::where('sms_type', SmsService::UNDERFILLED_WARNING)->count());
     }
 
-    public function test_warning_is_sent_only_once_per_daily_run(): void
+    /**
+     * วันที่ D-7 worker ล่ม / job ล้ม ต้องไม่ทำให้รอบนั้นไม่มีใครได้แจ้งเลย —
+     * รอบถัดไปของ job ตามเก็บได้จนถึง D-2 และบอกจำนวนวันตามจริง
+     */
+    public function test_a_round_missed_on_day_seven_is_caught_up_later(): void
+    {
+        $b = $this->booking(bookedSeats: 3, departureDate: '2026-07-10'); // D-5
+
+        $this->runJob();
+
+        Mail::assertQueued(TripUnderfilledWarningMail::class, fn ($mail) => $mail->daysBefore === 5);
+        $this->assertSame(1, $this->warnings($b)->count());
+        $this->assertSame(5, EmailLog::where('booking_id', $b->id)->sole()->meta['days_before']);
+    }
+
+    public function test_warning_is_sent_only_once_however_often_the_job_runs(): void
     {
         $b = $this->booking(bookedSeats: 3);
 
-        (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
+        $this->runJob();
+        $this->runJob();
+        Carbon::setTestNow(Carbon::parse('2026-07-06 03:00:00', 'UTC')); // วันรุ่งขึ้น D-6
+        $this->runJob();
 
         Mail::assertQueued(TripUnderfilledWarningMail::class, 1);
         $this->assertSame(1, $this->warnings($b)->count());
+        $this->assertSame(1, $this->sms($b)->count());
+        $this->assertSame(1, EmailLog::where('booking_id', $b->id)->count());
+    }
+
+    /** จองเข้ามาหลังวันที่แจ้งไปแล้ว ก็ต้องได้รู้กติกาเดียวกัน — คนเดิมไม่โดนซ้ำ */
+    public function test_a_booking_made_after_the_first_warning_is_warned_too(): void
+    {
+        $first = $this->booking(bookedSeats: 3);
+        $this->runJob();
+
+        $late = $this->bookingOn($first->schedule);
+        $this->runJob();
+
+        Mail::assertQueued(TripUnderfilledWarningMail::class, 2);
+        $this->assertSame(1, $this->warnings($first)->count());
+        $this->assertSame(1, $this->warnings($late)->count());
+    }
+
+    public function test_sms_goes_out_with_the_round_and_what_to_do(): void
+    {
+        $b = $this->booking(bookedSeats: 3);
+
+        $this->runJob();
+
+        $sms = $this->sms($b)->sole();
+        $this->assertSame('66812345678', $sms->recipient);
+        $this->assertSame('pending', $sms->status);
+        $this->assertStringContainsString('Dawn Trek', $sms->message);
+        $this->assertStringContainsString('3/8 ท่าน', $sms->message);
+        $this->assertStringContainsString('คืนเงินเต็มจำนวน', $sms->message);
+        $this->assertStringContainsString(config('app.support_line_id'), $sms->message);
+        $this->assertStringContainsString($b->booking_ref, $sms->message);
+        $this->assertStringContainsString('ส่งทางอีเมลแล้ว', $sms->message);
+    }
+
+    /** ไม่มีอีเมล SMS ห้ามอ้างว่าส่งอีเมลไปแล้ว */
+    public function test_sms_does_not_mention_an_email_that_was_never_sent(): void
+    {
+        $b = $this->booking(bookedSeats: 3);
+        $b->user->update(['email' => 'manual_1_ab@luilaykhao.com']);
+
+        $this->runJob();
+
+        $this->assertStringNotContainsString('อีเมล', $this->sms($b)->sole()->message);
+    }
+
+    /** ผู้เดินทางคนแรกไม่ได้กรอกเบอร์ ใช้เบอร์ของบัญชีที่จองแทน ไม่ใช่ข้ามไปเลย */
+    public function test_sms_falls_back_to_the_bookers_phone(): void
+    {
+        $b = $this->booking(bookedSeats: 3);
+        BookingPassenger::create(['booking_id' => $b->id, 'name' => 'สมชาย ใจดี', 'phone' => null]);
+
+        $this->runJob();
+
+        $this->assertSame('66812345678', $this->sms($b)->sole()->recipient);
+    }
+
+    /** อีเมลในช่องผู้เดินทางพิมพ์ผิดได้ — ผู้จองที่จ่ายเงินต้องได้ฉบับของตัวเองด้วย */
+    public function test_email_reaches_both_the_passenger_and_the_booker(): void
+    {
+        $b = $this->booking(bookedSeats: 3);
+        BookingPassenger::create(['booking_id' => $b->id, 'name' => 'สมชาย ใจดี', 'email' => 'friend@example.com']);
+
+        $this->runJob();
+
+        $this->assertEqualsCanonicalizing(
+            ['friend@example.com', $b->user->email],
+            EmailLog::where('booking_id', $b->id)->pluck('recipient')->all(),
+        );
+    }
+
+    public function test_a_failed_email_is_retried_until_the_attempt_limit(): void
+    {
+        $b = $this->booking(bookedSeats: 3);
+        $failed = fn () => EmailLog::create([
+            'type' => EmailLog::TYPE_UNDERFILLED_WARNING,
+            'booking_id' => $b->id,
+            'schedule_id' => $b->schedule_id,
+            'booking_ref' => $b->booking_ref,
+            'recipient' => $b->user->email,
+            'status' => EmailLog::STATUS_FAILED,
+        ]);
+
+        $failed();
+        $this->runJob();
+        Mail::assertQueued(TripUnderfilledWarningMail::class, 1);
+
+        EmailLog::where('booking_id', $b->id)->update(['status' => EmailLog::STATUS_FAILED]);
+        $failed();
+        $this->runJob();
+
+        // ล้มครบ 3 ฉบับแล้ว เลิกยิงซ้ำ — หน้าหลักฐานโชว์ให้ทีมงานตามเอง
+        Mail::assertQueued(TripUnderfilledWarningMail::class, 1);
+        $this->assertSame(MailService::UNDERFILLED_MAX_ATTEMPTS, EmailLog::where('booking_id', $b->id)->count());
+    }
+
+    public function test_charter_round_is_never_warned(): void
+    {
+        $this->booking(bookedSeats: 3, schedule: ['is_charter' => true]);
+
+        $this->runJob();
+
+        Mail::assertNothingQueued();
+    }
+
+    /** ใบที่จ่ายเงินแล้วแต่ยังรอตรวจสลิปมีเงินค้างอยู่กับเรา ต้องรู้ด้วย — ใบที่ยังไม่จ่ายไม่ต้อง */
+    public function test_paid_pending_bookings_are_warned_but_unpaid_ones_are_not(): void
+    {
+        $paid = $this->booking(bookedSeats: 3, booking: ['status' => 'pending', 'paid_amount' => 900]);
+        $unpaid = $this->bookingOn($paid->schedule, ['status' => 'pending', 'paid_amount' => 0]);
+
+        $this->runJob();
+
+        $this->assertSame(1, $this->warnings($paid)->count());
+        $this->assertSame(0, $this->warnings($unpaid)->count());
+        $this->assertSame(0, $this->sms($unpaid)->count());
     }
 
     public function test_email_renders_with_the_seat_details(): void
@@ -177,7 +340,7 @@ class UnderfilledTripWarningTest extends TestCase
     {
         $b = $this->booking(bookedSeats: 3);
 
-        (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
+        $this->runJob();
 
         $body = $this->warnings($b)->first()->body;
 

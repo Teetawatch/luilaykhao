@@ -10,7 +10,6 @@ use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
-use App\Services\MailService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -69,7 +68,7 @@ class UnderfilledEmailEvidenceTest extends TestCase
 
     private function runJob(): void
     {
-        (new SendUnderfilledTripWarningsJob)->handle(app(MailService::class));
+        app()->call([new SendUnderfilledTripWarningsJob, 'handle']);
     }
 
     public function test_a_sent_warning_leaves_a_log_with_the_message_id_and_the_html_that_went_out(): void
@@ -184,5 +183,31 @@ class UnderfilledEmailEvidenceTest extends TestCase
         $this->actingAs(User::factory()->create(), 'sanctum')
             ->getJson('/api/v1/admin/underfilled-emails')
             ->assertForbidden();
+    }
+
+    /** อีเมลส่งไม่ได้ แต่ SMS ออก = ยังถึงตัว · ไม่ได้ทั้งสองทาง = ทีมงานต้องโทรเอง */
+    public function test_admin_sees_sms_evidence_and_who_could_not_be_reached(): void
+    {
+        $bySms = $this->booking('manual_1_aa@luilaykhao.com');
+        $bySms->user->update(['phone' => '0812345678']);
+        $nobody = $this->booking('manual_2_bb@luilaykhao.com');
+        $nobody->user->update(['phone' => null]);
+
+        $this->runJob();
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/underfilled-emails')
+            ->assertOk()
+            ->assertJsonPath('data.summary.sms_pending', 1)
+            ->assertJsonPath('data.summary.no_phone', 1)
+            ->assertJsonPath('data.summary.unreachable', 1);
+
+        $rows = collect($res->json('data.groups'))->flatMap(fn ($g) => $g['bookings'])->keyBy('booking_ref');
+
+        $this->assertSame('66812345678', $rows[$bySms->booking_ref]['sms']['recipient']);
+        $this->assertSame('pending', $rows[$bySms->booking_ref]['sms']['status']);
+        $this->assertFalse($rows[$bySms->booking_ref]['unreachable']);
+        $this->assertSame('skipped', $rows[$nobody->booking_ref]['sms']['status']);
+        $this->assertTrue($rows[$nobody->booking_ref]['unreachable']);
     }
 }

@@ -7,8 +7,8 @@
           หลักฐานแจ้งคนไม่ครบ
         </h1>
         <p class="page-subtitle">
-          อีเมลที่ระบบส่งอัตโนมัติ {{ daysBefore }} วันก่อนเดินทาง ถึงลูกค้าในรอบที่ผู้ร่วมทริปยังไม่ครบขั้นต่ำ
-          — ส่งถึงที่อยู่ไหน เมื่อไหร่ และเนื้อหาที่ลูกค้าได้รับจริง พร้อมสถานะแจ้งเตือนในแอป
+          อีเมลและ SMS ที่ระบบส่งอัตโนมัติตั้งแต่ {{ daysBefore }} วันก่อนเดินทาง ถึงลูกค้าในรอบที่ผู้ร่วมทริปยังไม่ครบขั้นต่ำ
+          — ส่งถึงที่อยู่/เบอร์ไหน เมื่อไหร่ และเนื้อหาที่ลูกค้าได้รับจริง พร้อมสถานะแจ้งเตือนในแอป
         </p>
       </div>
       <div class="header-actions">
@@ -58,6 +58,26 @@
       <div class="stat" :class="{ warn: summary.no_email }">
         <span class="stat-num">{{ summary.no_email }}</span>
         <span class="stat-label">ไม่มีอีเมล</span>
+      </div>
+      <div class="stat ok">
+        <span class="stat-num">{{ summary.sms_sent }}</span>
+        <span class="stat-label">SMS ส่งสำเร็จ</span>
+      </div>
+      <div class="stat" :class="{ warn: summary.sms_pending }">
+        <span class="stat-num">{{ summary.sms_pending }}</span>
+        <span class="stat-label">SMS รอส่ง</span>
+      </div>
+      <div class="stat" :class="{ bad: summary.sms_failed }">
+        <span class="stat-num">{{ summary.sms_failed }}</span>
+        <span class="stat-label">SMS ไม่สำเร็จ</span>
+      </div>
+      <div class="stat" :class="{ warn: summary.no_phone }">
+        <span class="stat-num">{{ summary.no_phone }}</span>
+        <span class="stat-label">ไม่มีเบอร์</span>
+      </div>
+      <div class="stat" :class="{ bad: summary.unreachable }">
+        <span class="stat-num">{{ summary.unreachable }}</span>
+        <span class="stat-label">ติดต่อไม่ได้เลย</span>
       </div>
       <div class="stat">
         <span class="stat-num">{{ summary.in_app_read }}</span>
@@ -109,6 +129,7 @@
               <tr>
                 <th>ใบจอง / ลูกค้า</th>
                 <th>อีเมล</th>
+                <th>SMS</th>
                 <th>แจ้งในแอป</th>
               </tr>
             </thead>
@@ -120,6 +141,10 @@
                     {{ bookingStatusLabel(row.booking_status) }}
                   </span>
                   <div class="cell-sub">{{ row.customer_name || '—' }} · {{ row.customer_phone || 'ไม่มีเบอร์' }}</div>
+                  <div v-if="row.unreachable" class="unreachable">
+                    <span class="material-symbols-rounded inline-icon">call</span>
+                    ไม่มีอีเมลหรือ SMS ถึงตัว — โทรหรือทักแจ้งเอง
+                  </div>
                 </td>
                 <td>
                   <div v-if="row.email_unrecorded" class="cell-sub unrecorded">
@@ -142,6 +167,22 @@
                       ดูอีเมลที่ส่ง
                     </button>
                   </div>
+                </td>
+                <td>
+                  <template v-if="row.sms">
+                    <span class="tag" :class="smsStatusClass(row.sms.status)">{{ smsStatusLabel(row.sms.status) }}</span>
+                    <span v-if="row.sms.recipient" class="recipient">{{ displayPhone(row.sms.recipient) }}</span>
+                    <div class="cell-sub">
+                      <template v-if="row.sms.status === 'sent'">ผู้ให้บริการรับไป {{ formatDateTime(row.sms.sent_at) }}</template>
+                      <template v-else-if="row.sms.status === 'failed'">
+                        {{ formatDateTime(row.sms.failed_at) }} · ลองแล้ว {{ row.sms.attempts }} ครั้ง · {{ row.sms.error_message }}
+                      </template>
+                      <template v-else-if="row.sms.status === 'pending'">เข้าคิว {{ formatDateTime(row.sms.queued_at) }}</template>
+                      <template v-else>{{ row.sms.error_message }}</template>
+                    </div>
+                    <div v-if="row.sms.status !== 'skipped'" class="cell-sub sms-text">{{ row.sms.message }}</div>
+                  </template>
+                  <span v-else class="cell-sub">—</span>
                 </td>
                 <td>
                   <template v-if="row.in_app">
@@ -237,6 +278,7 @@ const filteredGroups = computed(() => {
       const bookings = g.bookings.filter((b) =>
         [b.booking_ref, b.customer_name, b.customer_phone].some(matches)
         || b.emails.some((m) => matches(m.recipient))
+        || matches(b.sms?.recipient) || matches(b.sms?.recipient && displayPhone(b.sms.recipient))
       );
       return bookings.length ? { ...g, bookings } : null;
     })
@@ -306,9 +348,28 @@ const STATUS = {
 const statusLabel = (s) => STATUS[s]?.[0] ?? s;
 const statusClass = (s) => STATUS[s]?.[1] ?? '';
 
+const SMS_STATUS = {
+  sent: ['ส่งแล้ว', 'tag-ok'],
+  pending: ['รอส่ง', 'tag-warn'],
+  failed: ['ส่งไม่สำเร็จ', 'tag-bad'],
+  skipped: ['ไม่ได้ส่ง', 'tag-warn'],
+};
+const smsStatusLabel = (s) => SMS_STATUS[s]?.[0] ?? s;
+const smsStatusClass = (s) => SMS_STATUS[s]?.[1] ?? '';
+
+// 66812345678 -> 081-234-5678
+const displayPhone = (p) => {
+  const s = String(p ?? '');
+  if (s.startsWith('66') && s.length === 11) {
+    const local = `0${s.slice(2)}`;
+    return `${local.slice(0, 3)}-${local.slice(3, 6)}-${local.slice(6)}`;
+  }
+  return s;
+};
+
 const bookingStatusLabel = (s) => ({
   cancelled: 'ยกเลิกแล้ว',
-  pending: 'รอชำระ',
+  pending: 'รอยืนยันชำระ',
   completed: 'เดินทางแล้ว',
   refunded: 'คืนเงินแล้ว',
 }[s] ?? s);
@@ -448,6 +509,18 @@ onMounted(fetchData);
 .inline-icon { font-size: 13px; vertical-align: -2px; }
 .dot { margin: 0 6px; }
 .unrecorded { font-style: italic; }
+.unreachable {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dc2626;
+}
+.sms-text {
+  margin-top: 6px;
+  max-width: 280px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
 
 .mail-line + .mail-line { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; }
 .btn-sm { font-size: 13px; padding: 6px 10px; }

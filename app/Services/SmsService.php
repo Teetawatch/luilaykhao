@@ -14,6 +14,9 @@ class SmsService
     /** sms_type ของ SMS "รอบนี้คนไม่ครบ ขอคืนเงินได้" ที่ทีมงานกดส่งเอง */
     public const UNDERFILLED_NOTICE = 'trip_underfilled_notice';
 
+    /** sms_type ของ SMS ที่ระบบส่งเองคู่กับอีเมลแจ้งคนไม่ครบ (D-7) */
+    public const UNDERFILLED_WARNING = 'trip_underfilled_warning';
+
     public function __construct(
         private ThaiBulkSmsClient $client,
     ) {}
@@ -198,6 +201,34 @@ class SmsService
             type: self::UNDERFILLED_NOTICE,
             dedupeKey: self::underfilledNoticeKey($booking->schedule_id),
             message: trim($message),
+        );
+    }
+
+    /**
+     * คู่ของอีเมลแจ้งคนไม่ครบที่ระบบส่งเอง — อีเมลเข้าถังขยะหรือลูกค้าไม่เปิดอ่าน
+     * บ่อยจนพึ่งไม่ได้ SMS นี้จึงต้องอ่านจบในตัว: รอบไหน ขาดกี่คน และทำอะไรได้บ้าง
+     *
+     * ผูกกับรอบเหมือน UNDERFILLED_NOTICE: ใบเดิมในรอบเดิมได้ครั้งเดียว
+     */
+    public function sendUnderfilledWarning(Booking $booking, int $bookedSeats, int $minSeats, bool $emailed): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: self::UNDERFILLED_WARNING,
+            dedupeKey: self::underfilledNoticeKey($booking->schedule_id),
+            message: sprintf(
+                'ทริป %s %s ตอนนี้มีผู้ร่วมทริป %d/%d ท่าน รถออกเมื่อครบ %d ท่าน หากรอบนี้ไม่ได้ออก เราคืนเงินเต็มจำนวน ย้ายรอบหรือขอคืนเงินได้เลยที่ไลน์ %s (%s)%s',
+                $this->tripTitle($booking),
+                ThaiDate::short($booking->schedule?->departure_date),
+                $bookedSeats,
+                $minSeats,
+                $minSeats,
+                config('app.support_line_id'),
+                $booking->booking_ref,
+                $emailed ? ' รายละเอียดส่งทางอีเมลแล้ว' : '',
+            ),
         );
     }
 
@@ -544,13 +575,15 @@ class SmsService
             'trip_resumed',
             'trip_refund_requested',
             self::UNDERFILLED_NOTICE,
+            self::UNDERFILLED_WARNING,
         ];
     }
 
     public function recipientFor(Booking $booking): ?string
     {
-        $firstPassenger = $booking->passengers->first();
-        $phone = $firstPassenger ? $firstPassenger->phone : $booking->user?->phone;
+        // ผู้เดินทางคนแรกที่ไม่ได้กรอกเบอร์ ต้องไม่ทำให้ใบนั้นหลุดจาก SMS ทุกฉบับ —
+        // ถอยไปใช้เบอร์ของบัญชีที่จอง
+        $phone = $booking->passengers->first()?->phone ?: $booking->user?->phone;
         $digits = preg_replace('/\D+/', '', (string) $phone);
 
         if ($digits === '') {

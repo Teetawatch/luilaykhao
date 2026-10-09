@@ -79,8 +79,9 @@ Schedule::job(new SendWeatherAlertsJob)->dailyAt('18:00')->timezone('Asia/Bangko
 // ตามเก็บพาสปอร์ตของทริปต่างประเทศ 45/21/10 วันก่อนเดินทาง — ทั้งของที่ยังไม่กรอก
 // และเล่มที่จะหมดอายุเร็วกว่าเกณฑ์ 6 เดือน (ตกเกณฑ์ขึ้นมาเองเมื่อเวลาผ่านไป)
 Schedule::job(new SendTravelDocumentRemindersJob)->dailyAt('09:30')->timezone('Asia/Bangkok')->withoutOverlapping();
-// 5 วันก่อนออกเดินทาง เตือนลูกค้าเมื่อรอบยังมีผู้จองไม่ถึงขั้นต่ำ (8 ที่นั่ง) — ทริปอาจถูกยกเลิก
-Schedule::job(new SendUnderfilledTripWarningsJob)->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+// D-7 ถึง D-2 แจ้งลูกค้า (อีเมล + SMS + แอป/LINE) เมื่อรอบยังมีผู้จองไม่ถึงขั้นต่ำ — วิ่งทุกชั่วโมง
+// เพื่อเก็บตกใบที่ส่งไม่ถึง/จองเข้ามาทีหลัง กันซ้ำในตัว และหยุดหลัง 20:00 ไม่ให้ SMS เด้งกลางดึก
+Schedule::job(new SendUnderfilledTripWarningsJob)->hourly()->between('09:00', '20:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // รอบที่เดินทางจบแล้วแต่ยังไม่ปิดงบ — เตือนทุกเช้าจนกว่าจะเคลียร์ ไม่ปล่อยให้เงียบหาย
 Schedule::job(new SendFinanceCloseRemindersJob)->dailyAt('09:15')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new SendForceMajeureRemindersJob)->dailyAt('10:00')->timezone('Asia/Bangkok')->withoutOverlapping();
