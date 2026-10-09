@@ -53,6 +53,9 @@
         .foot { text-align:center; color:var(--muted); font-size:11.5px; margin-top:20px; line-height:1.7; }
         .foot b { color:var(--brand-dark); }
 
+        .personal { background:#f4f8f7; border-left:3px solid var(--brand); border-radius:4px 12px 12px 4px; padding:10px 14px; margin-top:10px; font-size:12.5px; color:var(--muted); }
+        .personal b { color:var(--brand-dark); }
+
         .empty { background:#fff; border:1px solid var(--line); border-radius:24px; padding:48px 28px; text-align:center; }
         .empty .big { font-size:52px; }
         .empty h2 { margin-top:12px; font-size:20px; font-weight:900; color:var(--ink); }
@@ -94,6 +97,12 @@
             <div class="sec-label">ออกให้แก่</div>
             <div style="font-weight:800">{{ data_get($d, 'customer.name') }}</div>
             @if(data_get($d, 'customer.phone'))<div class="trip-sub">โทร {{ data_get($d, 'customer.phone') }}</div>@endif
+            @if(data_get($d, 'personal'))
+            <div class="personal">
+                <b>ใบเสร็จแยกรายบุคคล</b> · ผู้เดินทางคนที่ {{ data_get($d, 'personal.index') }} จาก {{ data_get($d, 'personal.count') }} ท่าน
+                เป็นส่วนหนึ่งของใบเสร็จรวมเลขที่ <b>{{ data_get($d, 'personal.parent_receipt_no') }}</b>@if(data_get($d, 'personal.payer_name')) ชำระโดย {{ data_get($d, 'personal.payer_name') }}@endif
+            </div>
+            @endif
         </div>
 
         <div class="sec">

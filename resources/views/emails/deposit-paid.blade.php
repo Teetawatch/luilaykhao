@@ -13,7 +13,7 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong> 💚<br />
+      สวัสดีคุณ <strong>{{ ($recipientName ?? null) ?: ($booking->user->name ?? '-') }}</strong> 💚<br />
       ขอบคุณมาก ๆ นะครับที่ชำระมัดจำเข้ามา ทีมงานกันที่นั่งให้คุณเรียบร้อยแล้วครับ
     </div>
 
@@ -30,6 +30,8 @@
       <a href="{{ url('/receipt/'.$receipt->verify_token) }}" class="cta-btn cta-teal">🧾 ดูใบเสร็จรับเงิน (Digital Travel Receipt)</a>
     </div>
     @endif
+
+    <x-emails.personal-receipts :receipt="$receipt ?? null" :personal="$personalReceipts ?? null" />
 
     <p class="section-label">รายละเอียดการเดินทาง</p>
     <div class="info-card">

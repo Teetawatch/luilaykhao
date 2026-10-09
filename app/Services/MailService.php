@@ -34,6 +34,8 @@ use App\Models\InstallmentPayment;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Support\AccountLinks;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -57,6 +59,91 @@ class MailService
 
             return null;
         }
+    }
+
+    /**
+     * ใบเสร็จแยกรายบุคคลของใบรวม — พลาดก็แค่ไม่มีใบแยก อีเมลยังต้องออก
+     *
+     * @return EloquentCollection<int, Receipt>
+     */
+    private function issuePersonalReceipts(Receipt $receipt): EloquentCollection
+    {
+        try {
+            return $this->receipts->issuePersonalReceipts($receipt);
+        } catch (\Throwable $e) {
+            Log::error('Failed to issue personal receipts', [
+                'receipt_no' => $receipt->receipt_no,
+                'error' => $e->getMessage(),
+            ]);
+
+            return new EloquentCollection;
+        }
+    }
+
+    /**
+     * ส่งอีเมลที่มีใบเสร็จให้ทุกคนในการจอง — ใครได้ใบไหน
+     *
+     * จองคนเดียวหลายที่นั่งจะมีใบแยกรายบุคคลด้วย: ผู้จองได้ใบรวมแนบไฟล์ +
+     * ลิงก์ใบแยกของทุกคน (ส่งต่อให้เพื่อนที่ไม่ได้กรอกอีเมลได้) ส่วนเพื่อนที่
+     * กรอกอีเมลไว้ได้ใบในชื่อตัวเองแนบไปแทนใบรวม ซึ่งมีชื่อผู้จองกับยอดของ
+     * ทั้งคณะ — เอาไปเบิกบริษัทไม่ได้
+     *
+     * @param  callable(?Receipt, EloquentCollection<int, Receipt>, ?string): Mailable  $mailableFactory
+     */
+    private function sendReceiptEmails(Booking $booking, ?Receipt $receipt, callable $mailableFactory): void
+    {
+        $personal = $receipt ? $this->issuePersonalReceipts($receipt) : new EloquentCollection;
+
+        if ($personal->isEmpty()) {
+            $this->sendToCustomerEmails($booking, fn () => $mailableFactory($receipt, new EloquentCollection, null));
+
+            return;
+        }
+
+        $emails = $this->customerEmails($booking);
+        $passengers = $booking->passengers->sortBy('id')->values();
+        $payerEmail = $this->payerEmail($booking, $emails);
+        $byPassenger = $personal->keyBy('passenger_id');
+
+        foreach ($emails as $email) {
+            $theirs = $passengers->filter(fn ($p) => $this->normaliseEmail($p->email) === $email);
+            $own = new EloquentCollection(
+                $theirs->map(fn ($p) => $byPassenger->get($p->id))->filter()->values()->all()
+            );
+
+            if ($email === $payerEmail || $own->isEmpty()) {
+                Mail::to($email)->send($mailableFactory($receipt, $personal, null));
+
+                continue;
+            }
+
+            Mail::to($email)->send($mailableFactory($own->first(), $own, $theirs->first()?->name));
+        }
+    }
+
+    /**
+     * อีเมลไหนคือผู้จอง (คนจ่ายเงิน) ในรายชื่อผู้รับ
+     *
+     * อีเมลบัญชีผู้จองก่อน ถ้าไม่ได้กรอกไว้ในรายชื่อผู้เดินทาง ก็ถือว่าผู้เดินทาง
+     * คนแรกคือผู้จอง — ฟอร์มจองให้กรอกตัวเองเป็นคนแรก
+     */
+    private function payerEmail(Booking $booking, array $emails): ?string
+    {
+        $userEmail = $this->normaliseEmail($booking->user?->email);
+        if ($userEmail !== null && in_array($userEmail, $emails, true)) {
+            return $userEmail;
+        }
+
+        $first = $booking->passengers->sortBy('id')
+            ->map(fn ($p) => $this->normaliseEmail($p->email))
+            ->first(fn ($email) => $email !== null && in_array($email, $emails, true));
+
+        return $first ?? ($emails[0] ?? null);
+    }
+
+    private function normaliseEmail(mixed $email): ?string
+    {
+        return blank($email) ? null : strtolower(trim((string) $email));
     }
 
     /**
@@ -412,7 +499,7 @@ class MailService
 
         try {
             // Customer email
-            $this->sendToCustomerEmails($booking, fn () => new PaymentConfirmedMail($booking, $paymentType, $receipt));
+            $this->sendReceiptEmails($booking, $receipt, fn ($r, $personal, $name) => new PaymentConfirmedMail($booking, $paymentType, $r, $personal, $name));
         } catch (\Throwable $e) {
             Log::error('Failed to send payment confirmed email', [
                 'booking_ref' => $booking->booking_ref,
@@ -533,7 +620,7 @@ class MailService
         $receipt = $this->issueReceipt($booking, $kind, (float) $booking->deposit_amount);
 
         try {
-            $this->sendToCustomerEmails($booking, fn () => new DepositPaidMail($booking, $receipt));
+            $this->sendReceiptEmails($booking, $receipt, fn ($r, $personal, $name) => new DepositPaidMail($booking, $r, $personal, $name));
         } catch (\Throwable $e) {
             Log::error('Failed to send deposit paid email', [
                 'booking_ref' => $booking->booking_ref,
@@ -660,7 +747,7 @@ class MailService
         $receipt = $this->issueReceipt($booking, 'balance', (float) $booking->balance_amount);
 
         try {
-            $this->sendToCustomerEmails($booking, fn () => new BalancePaidMail($booking, $receipt));
+            $this->sendReceiptEmails($booking, $receipt, fn ($r, $personal, $name) => new BalancePaidMail($booking, $r, $personal, $name));
         } catch (\Throwable $e) {
             Log::error('Failed to send balance paid email', [
                 'booking_ref' => $booking->booking_ref,

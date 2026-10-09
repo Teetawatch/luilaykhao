@@ -667,6 +667,7 @@ class TripBriefService
     private function receiptUrl(Booking $booking): ?string
     {
         $receipt = Receipt::where('booking_id', $booking->id)
+            ->whereNull('parent_id')
             ->whereNotNull('verify_token')
             ->orderByDesc('id')
             ->first();

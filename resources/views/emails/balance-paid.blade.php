@@ -13,7 +13,7 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong> 💚<br />
+      สวัสดีคุณ <strong>{{ ($recipientName ?? null) ?: ($booking->user->name ?? '-') }}</strong> 💚<br />
       ขอบคุณมาก ๆ นะครับ ได้รับยอดส่วนที่เหลือเรียบร้อยแล้ว
       ตอนนี้การชำระเงินของคุณครบถ้วนสมบูรณ์ พร้อมออกเดินทางแล้วครับ
     </div>
@@ -23,6 +23,8 @@
       <div class="amount">฿{{ number_format($booking->paid_amount, 0) }}</div>
       <div class="amount-note">ครบถ้วนสมบูรณ์แล้วครับ ขอบคุณที่ไว้ใจพวกเรานะครับ</div>
     </div>
+
+    <x-emails.personal-receipts :receipt="$receipt ?? null" :personal="$personalReceipts ?? null" />
 
     <p class="section-label">สรุปการชำระเงิน</p>
     <div class="info-card">

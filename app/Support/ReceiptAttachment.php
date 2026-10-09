@@ -10,6 +10,28 @@ use Illuminate\Support\Facades\Log;
 class ReceiptAttachment
 {
     /**
+     * ไฟล์แนบของอีเมลยืนยันการชำระ ตามว่าผู้รับเป็นใคร
+     *
+     * ผู้จองได้ใบรวมเป็นไฟล์ ส่วนใบแยกของเพื่อนอยู่ในอีเมลเป็นลิงก์ — แนบครบ
+     * ทุกคนอีเมลจะบวมตามขนาดคณะ เพื่อนได้ใบของตัวเองครบทุกใบ เพราะอีเมล
+     * เดียวกันอาจกรอกไว้ให้หลายคน (พ่อแม่กรอกให้ลูก)
+     *
+     * @param  iterable<int, Receipt>|null  $personal
+     * @return array<int, Attachment>
+     */
+    public static function forEmail(?Receipt $receipt, ?iterable $personal = null): array
+    {
+        if ($receipt === null || ! $receipt->isPersonal()) {
+            return self::for($receipt);
+        }
+
+        return collect($personal ?? [$receipt])
+            ->flatMap(fn (Receipt $r) => self::for($r))
+            ->values()
+            ->all();
+    }
+
+    /**
      * แนบไฟล์ PDF ใบเสร็จเข้ากับ Mailable — เรนเดอร์ PDF ตอนส่ง (บนคิว)
      * ถ้าไม่มีใบเสร็จ หรือเรนเดอร์ PDF ไม่สำเร็จ ก็ยังส่งอีเมลยืนยันได้ตามปกติ
      * โดยไม่มีไฟล์แนบ (กันไม่ให้ทั้งอีเมลล้มเพราะ dompdf พัง) และ log สาเหตุไว้

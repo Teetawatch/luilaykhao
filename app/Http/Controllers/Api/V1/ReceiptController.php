@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BookingMember;
 use App\Models\Receipt;
 use App\Services\ReceiptService;
 use App\Traits\ApiResponse;
@@ -27,10 +28,10 @@ class ReceiptController extends Controller
     /**
      * ใบเสร็จทั้งหมดของการจองหนึ่งใบ (มัดจำ/ยอดคงเหลือ/เต็มจำนวน ออกคนละใบ)
      *
-     * เห็นได้เฉพาะเจ้าของการจองกับทีมงาน ไม่รวมเพื่อนร่วมเดินทางที่ถูกเชิญ:
-     * ใบเสร็จมีชื่อผู้ชำระและยอดเงินที่แยกออกมาเป็นเอกสารทางบัญชี ต่างจาก
-     * รายละเอียดทริปที่ทุกคนในคณะควรเห็น และ token ในนี้เปิดดูได้โดยไม่ต้อง
-     * ล็อกอิน — ใครถือก็เปิดได้ จึงไม่ควรแจกกว้างกว่าที่จำเป็น
+     * ผู้จองกับทีมงานเห็นใบรวม พร้อมใบแยกรายบุคคลของทุกคนซ้อนอยู่ใน
+     * `personal` (ไว้ส่งต่อให้เพื่อน) เพื่อนร่วมเดินทางที่ผูกบัญชีไว้เห็น
+     * เฉพาะใบในชื่อตัวเอง — ใบรวมมีชื่อผู้ชำระกับยอดของทั้งคณะ และ token
+     * ในนี้เปิดดูได้โดยไม่ต้องล็อกอิน ใครถือก็เปิดได้ จึงไม่แจกกว้างกว่าที่จำเป็น
      */
     public function index(Request $request, string $ref): JsonResponse
     {
@@ -39,14 +40,37 @@ class ReceiptController extends Controller
         $user = $request->user();
         $isTeam = $user->hasAnyRole(['admin', 'operator']);
 
-        if (! $isTeam && $booking->user_id !== $user->id) {
+        if ($isTeam || $booking->user_id === $user->id) {
+            $receipts = Receipt::where('booking_id', $booking->id)
+                ->whereNull('parent_id')
+                ->with('personalReceipts')
+                ->orderBy('issued_at')
+                ->get()
+                ->map(fn (Receipt $receipt) => $this->format($receipt) + [
+                    'personal' => $receipt->personalReceipts
+                        ->map(fn (Receipt $personal) => $this->format($personal))
+                        ->values(),
+                ]);
+
+            return $this->success($receipts);
+        }
+
+        $member = BookingMember::where('booking_id', $booking->id)
+            ->where('user_id', $user->id)
+            ->where('status', BookingMember::STATUS_ACTIVE)
+            ->first();
+
+        if ($member === null) {
             return $this->error('ใบเสร็จเปิดดูได้เฉพาะผู้จองครับ', 403);
         }
 
-        $receipts = Receipt::where('booking_id', $booking->id)
-            ->orderBy('issued_at')
-            ->get()
-            ->map(fn (Receipt $receipt) => $this->format($receipt));
+        $receipts = $member->passenger_id === null
+            ? collect()
+            : Receipt::where('booking_id', $booking->id)
+                ->where('passenger_id', $member->passenger_id)
+                ->orderBy('issued_at')
+                ->get()
+                ->map(fn (Receipt $receipt) => $this->format($receipt));
 
         return $this->success($receipts);
     }
@@ -66,6 +90,10 @@ class ReceiptController extends Controller
             'issued_at' => $receipt->issued_at?->toISOString(),
             'verify_url' => $verifyUrl,
             'pdf_url' => $verifyUrl.'/pdf',
+            'is_personal' => $receipt->isPersonal(),
+            // ใบแยกรายบุคคลออกในชื่อผู้เดินทาง — ใบรวมเป็นชื่อผู้จองเสมอ
+            'holder_name' => data_get($receipt->snapshot, 'customer.name'),
+            'parent_receipt_no' => data_get($receipt->snapshot, 'personal.parent_receipt_no'),
         ];
     }
 }

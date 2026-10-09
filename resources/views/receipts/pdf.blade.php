@@ -67,6 +67,8 @@
     .verify-url { color: #006565; font-size: 10px; margin-top: 6px; word-break: break-all; }
 
     .foot { margin-top: 24px; border-top: 1px solid #eef2f1; padding-top: 12px; color: #97a09c; font-size: 9.5px; text-align: center; }
+    .personal { margin-top: 14px; background: #f4f8f7; border-left: 3px solid #006565; border-radius: 4px 10px 10px 4px; padding: 9px 14px; font-size: 10.5px; color: #3c4a47; }
+    .personal b { color: #0f3d3e; }
     .thanks { text-align: center; color: #0f3d3e; font-weight: 700; font-size: 12px; margin-top: 20px; }
 </style>
 </head>
@@ -118,6 +120,14 @@
             </td>
         </tr>
     </table>
+
+    @if(data_get($d, 'personal'))
+    <div class="personal">
+        <b>ใบเสร็จแยกรายบุคคล</b> · ผู้เดินทางคนที่ {{ data_get($d, 'personal.index') }} จาก {{ data_get($d, 'personal.count') }} ท่าน
+        — เป็นส่วนหนึ่งของใบเสร็จรวมเลขที่ <b>{{ data_get($d, 'personal.parent_receipt_no') }}</b>@if(data_get($d, 'personal.payer_name')) ชำระโดย {{ data_get($d, 'personal.payer_name') }}@endif
+        (ค่าใช้จ่ายของทั้งคณะหารเท่ากันตามจำนวนผู้เดินทาง)
+    </div>
+    @endif
 
     <table class="items">
         <thead>
