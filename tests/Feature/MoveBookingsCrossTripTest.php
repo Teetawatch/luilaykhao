@@ -83,13 +83,13 @@ class MoveBookingsCrossTripTest extends TestCase
                 'source_schedule_id' => $source->id,
                 'target_schedule_id' => $target->id,
                 'passenger_ids' => [$passenger->id],
-                'seat_assignments' => [$passenger->id => 'B2'],
+                'seat_assignments' => [$passenger->id => 'D2'],
             ])
             ->assertOk();
 
         $booking->refresh();
         $this->assertSame($target->id, $booking->schedule_id);
-        $this->assertSame('B2', $booking->seats()->first()->seat_id);
+        $this->assertSame('D2', $booking->seats()->first()->seat_id);
         $this->assertSame($target->id, $booking->seats()->first()->schedule_id);
     }
 

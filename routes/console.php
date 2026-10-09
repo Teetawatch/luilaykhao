@@ -110,6 +110,9 @@ Schedule::job(new PurgeStaleCustomerIntakesJob)->dailyAt('03:45')->timezone('Asi
 
 // กลุ่มที่กรอกค้างแล้วเงียบไป — บอกทีมงานตอนเช้าให้ไปตามในแชท ไม่ใช่ตอนตีสาม
 Schedule::job(new NotifyStalledIntakesJob)->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+// ที่นั่งที่ขายแล้วแต่ไม่อยู่บนผัง — ผังโชว์ว่างทั้งที่รอบเต็ม ต้องรู้ก่อนวันเดินทาง
+// (ผลขึ้นการ์ดในหน้า "สิ่งที่รอคุณ" อยู่แล้ว ตัวนี้ทิ้งร่องรอยไว้ใน log ด้วย)
+Schedule::command('seats:audit')->dailyAt('07:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ReleaseForceMajeureHoldsJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();

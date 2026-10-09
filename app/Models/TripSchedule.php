@@ -131,17 +131,19 @@ class TripSchedule extends Model
         // staff-assignment push never reaches them).
         static::saved(function (self $schedule) {
             if ($schedule->wasChanged('vehicle_id') && $schedule->vehicle_id) {
+                // afterCommit — การเปลี่ยนรถที่ถูกย้อน (เช่น ผังใหม่ทำให้ที่นั่งหลุด
+                // ดู SeatLayoutGuard) ต้องไม่ส่งข่าวว่าได้รถคันใหม่แล้ว
                 SendDriverAssignmentPushJob::dispatch(
                     $schedule->id,
                     (int) $schedule->vehicle_id,
-                );
+                )->afterCommit();
 
                 // ลูกค้าก็ต้องรู้ด้วย — "ทะเบียนรถอะไร เบอร์คนขับ" คือคำถามยอดฮิต
                 // ในห้องแชท และก่อนหน้านี้ไม่มีอะไรบอกเขาว่าข้อมูลมาแล้ว
                 NotifyTripCrewAssignedJob::dispatch(
                     $schedule->id,
                     NotifyTripCrewAssignedJob::KIND_VEHICLE,
-                );
+                )->afterCommit();
             }
         });
     }

@@ -87,7 +87,7 @@ class BookingModificationTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [
                 'target_schedule_id' => $target->id,
-                'seat_ids' => ['B2'],
+                'seat_ids' => ['D2'],
             ])
             ->assertOk()
             ->assertJsonPath('data.schedule.id', $target->id);
@@ -99,7 +99,7 @@ class BookingModificationTest extends TestCase
         $this->assertDatabaseHas('booking_seats', [
             'booking_id' => $booking->id,
             'schedule_id' => $target->id,
-            'seat_id' => 'B2',
+            'seat_id' => 'D2',
         ]);
         $this->assertDatabaseMissing('booking_seats', [
             'booking_id' => $booking->id,
@@ -116,12 +116,12 @@ class BookingModificationTest extends TestCase
         $target = $this->makeSchedule($trip, now()->addMonths(2)->toDateString());
 
         $booking = $this->makeSeatBooking($user, $source, ['A1']);
-        $this->makeSeatBooking($other, $target, ['B2']); // B2 ถูกจองบนรอบปลายทางแล้ว
+        $this->makeSeatBooking($other, $target, ['D2']); // D2 ถูกจองบนรอบปลายทางแล้ว
 
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [
                 'target_schedule_id' => $target->id,
-                'seat_ids' => ['B2'],
+                'seat_ids' => ['D2'],
             ])
             ->assertStatus(422);
 
@@ -140,7 +140,7 @@ class BookingModificationTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [
                 'target_schedule_id' => $target->id,
-                'seat_ids' => ['B2'],
+                'seat_ids' => ['D2'],
             ])
             ->assertStatus(422);
     }
@@ -162,7 +162,7 @@ class BookingModificationTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [
                 'target_schedule_id' => $target->id,
-                'seat_ids' => ['B2'],
+                'seat_ids' => ['D2'],
             ])
             ->assertStatus(422);
     }
@@ -233,7 +233,7 @@ class BookingModificationTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [
                 'target_schedule_id' => $target->id,
-                'seat_ids' => ['B2'],
+                'seat_ids' => ['D2'],
             ])
             ->assertStatus(422);
 
@@ -255,7 +255,7 @@ class BookingModificationTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [
                 'target_schedule_id' => $target->id,
-                'seat_ids' => ['B2'],
+                'seat_ids' => ['D2'],
             ])
             ->assertOk();
 

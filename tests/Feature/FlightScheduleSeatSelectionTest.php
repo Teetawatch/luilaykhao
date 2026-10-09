@@ -152,7 +152,7 @@ class FlightScheduleSeatSelectionTest extends TestCase
             userId: $user->id,
             scheduleId: $vanRound->id,
             passengers: $this->passengers(2),
-            seatIds: ['A1', 'B1'],
+            seatIds: ['A1', 'A2'],
         );
 
         $this->assertDatabaseCount('booking_seats', 2);

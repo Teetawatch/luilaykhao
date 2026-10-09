@@ -49,6 +49,8 @@ use App\Services\MailService;
 use App\Services\RouteTrackService;
 use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleSeatNotifier;
+use App\Services\SeatLayoutConflict;
+use App\Services\SeatLayoutGuard;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
 use App\Services\TripBriefService;
@@ -89,6 +91,7 @@ class AdminController extends Controller
         private VehicleDriverService $vehicleDriverService,
         private DriverLoginCodeService $driverLoginCodes,
         private ScheduleSeatNotifier $seatNotifier,
+        private SeatLayoutGuard $seatLayoutGuard,
     ) {}
 
     // ─── Dashboard Stats ──────────────────────────────────────
@@ -569,7 +572,12 @@ class AdminController extends Controller
             return $this->error('รอบนี้ถูกยกเลิกเพราะเหตุสุดวิสัยและลูกค้ากำลังเลือกรอบใหม่ เปิดกลับไม่ได้ — สร้างรอบใหม่แทน', 422);
         }
 
-        $schedule->update($validated);
+        // เปลี่ยนรถ/ชนิดรถ/จำนวนที่นั่งเปลี่ยนผังของรอบ — ห้ามทำให้ที่นั่งที่ขายแล้วหลุดผัง
+        try {
+            $this->seatLayoutGuard->guard(fn () => [$schedule], fn () => $schedule->update($validated));
+        } catch (SeatLayoutConflict $e) {
+            return $this->error($e->getMessage(), 422);
+        }
 
         return $this->success(
             new TripScheduleResource($schedule->fresh()->load('trip', 'vehicle')),
@@ -591,7 +599,14 @@ class AdminController extends Controller
             return $this->error('มีรอบที่ถูกยกเลิกเพราะเหตุสุดวิสัยอยู่ในรายการ เปิดกลับไม่ได้ — สร้างรอบใหม่แทน', 422);
         }
 
-        TripSchedule::whereIn('id', $request->ids)->update($request->data);
+        try {
+            $this->seatLayoutGuard->guard(
+                fn () => TripSchedule::whereIn('id', $request->ids)->get(),
+                fn () => TripSchedule::whereIn('id', $request->ids)->update($request->data),
+            );
+        } catch (SeatLayoutConflict $e) {
+            return $this->error($e->getMessage(), 422);
+        }
 
         return $this->success(null, 'อัปเดตรอบเดินทางสำเร็จ');
     }
@@ -714,6 +729,21 @@ class AdminController extends Controller
 
         if ($duplicateSeatIds->isNotEmpty()) {
             return $this->error('เลือกที่นั่งปลายทางซ้ำ: '.$duplicateSeatIds->join(', '), 422);
+        }
+
+        $unknownSeatIds = $seatMoves
+            ->filter(fn ($move) => filled($move['target_seat_id']))
+            ->groupBy('target_option_id')
+            ->flatMap(fn ($moves, $optionId) => $this->seatLayoutGuard->unknownSeatIds(
+                $target,
+                (int) $optionId ? $target->vehicleOptions()->find((int) $optionId) : null,
+                $moves->pluck('target_seat_id'),
+            ))
+            ->unique()
+            ->values();
+
+        if ($unknownSeatIds->isNotEmpty()) {
+            return $this->error('ไม่มีที่นั่ง '.$unknownSeatIds->join(', ').' ในผังที่นั่งของรอบปลายทาง', 422);
         }
 
         if ($seatIdsToMove->isNotEmpty()) {
@@ -2229,7 +2259,7 @@ class AdminController extends Controller
 
                 if (array_key_exists('seat_ids', $data)) {
                     // ล็อกรอบเดินทางก่อนแก้ที่นั่ง — ลบของเดิมแล้วค่อยตรวจ จึงไม่ติดที่นั่งตัวเอง
-                    TripSchedule::lockForUpdate()->find($booking->schedule_id);
+                    $seatSchedule = TripSchedule::lockForUpdate()->find($booking->schedule_id);
                     $booking->seats()->delete();
                     if (! ($booking->fresh()->is_join_trip)) {
                         // ที่นั่งส่งมาเรียงตามผู้โดยสาร ช่องที่เว้นว่างคือคนที่ยังไม่ระบุที่นั่ง
@@ -2246,6 +2276,17 @@ class AdminController extends Controller
                         // ที่นั่งเหล่านี้ต้องไม่มีแถวค้างของ booking อื่นเลย (unique constraint ไม่สนสถานะ)
                         // ที่นั่งผูกกับคัน — A1 ของบัสกับ A1 ของตู้ไม่ชนกัน
                         $seatOptionId = (int) ($booking->vehicle_option_id ?? 0);
+
+                        // ช่องนี้พิมพ์เองได้ — รหัสที่ไม่มีบนผังทำให้ผู้โดยสารหายจากผัง
+                        // (รอบที่บินไปเป็นเลขที่นั่งของสายการบิน ไม่ตรวจ)
+                        $unknownSeatIds = $this->seatLayoutGuard->unknownSeatIds(
+                            $seatSchedule,
+                            $seatOptionId ? ScheduleVehicleOption::find($seatOptionId) : null,
+                            $newSeatIds,
+                        );
+                        if ($unknownSeatIds !== []) {
+                            throw new \RuntimeException('ไม่มีที่นั่ง '.implode(', ', $unknownSeatIds).' ในผังที่นั่งของรถคันนี้');
+                        }
 
                         $occupied = BookingSeat::where('schedule_id', $booking->schedule_id)
                             ->where('vehicle_option_id', $seatOptionId)
@@ -2692,6 +2733,13 @@ class AdminController extends Controller
             }
             if (! $vehicleOption->canFit($participantCount)) {
                 return $this->error($vehicleOption->label.'ของรอบนี้เหลือไม่พอสำหรับ '.$participantCount.' ท่าน', 422);
+            }
+        }
+
+        if (! $isJoinTrip) {
+            $unknownSeatIds = $this->seatLayoutGuard->unknownSeatIds($schedule, $vehicleOption, $seatIds);
+            if ($unknownSeatIds !== []) {
+                return $this->error('ไม่มีที่นั่ง '.implode(', ', $unknownSeatIds).' ในผังที่นั่งของรถคันนี้', 422);
             }
         }
 
@@ -3213,7 +3261,17 @@ class AdminController extends Controller
         $this->vehicleDriverService->applyDriverSnapshot($vehicle);
         // เลิกผูก/เปลี่ยนคนขับแล้วต้องไม่ค้างบัญชีของคนเดิมไว้ ไม่งั้นเขายังเห็นรถคันนี้ในแอป
         $this->vehicleDriverService->detachInheritedPinAccount($vehicle, $previousDriverId);
-        $vehicle->save();
+
+        // ผัง/ชนิด/ความจุของรถคือผังของทุกรอบที่ใช้รถคันนี้ — แก้แล้วที่นั่งที่ขายไป
+        // ต้องยังอยู่บนผังครบ ไม่งั้นลูกค้าหายจากผังและผังโชว์ที่ว่างทั้งที่รอบเต็ม
+        try {
+            $this->seatLayoutGuard->guard(
+                fn () => $this->seatLayoutGuard->upcomingSchedulesUsingVehicle($vehicle->id),
+                fn () => $vehicle->save(),
+            );
+        } catch (SeatLayoutConflict $e) {
+            return $this->error($e->getMessage(), 422);
+        }
 
         // ย้ายไปใช้บัญชีของคนขับในทะเบียนแล้ว บัญชีเดิมของรถคันนี้อาจไม่เหลือใครใช้
         if ($previousPinAccountId && $previousPinAccountId !== $vehicle->driver_user_id) {
@@ -4046,7 +4104,16 @@ class AdminController extends Controller
         $validated = $request->validate($this->vehicleOptionRules());
         $validated['schedule_id'] = $scheduleId;
 
-        $option = ScheduleVehicleOption::create($validated);
+        // รอบที่ขายที่นั่งไปตอนยังมีรถคันเดียว — พอมีตัวเลือก หน้าจองวาดเฉพาะผังของ
+        // ตัวเลือก ที่นั่งเดิมจะไม่มีผังไหนแสดง ต้องย้ายใบจองเข้าคันก่อน
+        try {
+            $option = $this->seatLayoutGuard->guard(
+                fn () => [TripSchedule::find($scheduleId)],
+                fn () => ScheduleVehicleOption::create($validated),
+            );
+        } catch (SeatLayoutConflict $e) {
+            return $this->error($e->getMessage(), 422);
+        }
 
         return $this->success(new ScheduleVehicleOptionResource($option), 'เพิ่มประเภทรถสำเร็จ', 201);
     }
@@ -4067,7 +4134,14 @@ class AdminController extends Controller
             );
         }
 
-        $option->update($validated);
+        try {
+            $this->seatLayoutGuard->guard(
+                fn () => [TripSchedule::find($scheduleId)],
+                fn () => $option->update($validated),
+            );
+        } catch (SeatLayoutConflict $e) {
+            return $this->error($e->getMessage(), 422);
+        }
 
         return $this->success(new ScheduleVehicleOptionResource($option->fresh()), 'อัปเดตประเภทรถสำเร็จ');
     }

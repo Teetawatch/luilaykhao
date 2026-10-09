@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Seat\LockSeatRequest;
 use App\Models\ScheduleVehicleOption;
 use App\Models\TripSchedule;
+use App\Services\SeatLayoutGuard;
 use App\Services\SeatLockService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,7 @@ class SeatController extends Controller
 
     public function __construct(
         private SeatLockService $seatLockService,
+        private SeatLayoutGuard $seatLayoutGuard,
     ) {}
 
     /**
@@ -61,6 +63,13 @@ class SeatController extends Controller
         // วาดผังจากข้อมูลที่ค้างอยู่ในเครื่องยิงเข้ามา
         if (! $schedule->allowsSeatSelection()) {
             return $this->error('รอบนี้เดินทางโดยเครื่องบิน ที่นั่งจัดโดยสายการบิน ไม่ต้องเลือกที่นั่งเอง', 422);
+        }
+
+        // แอปที่ค้างผังเก่าไว้ในเครื่อง (แอดมินเพิ่งแก้ผัง) ต้องโหลดผังใหม่ ไม่ใช่ล็อก
+        // ที่นั่งที่ไม่มีอยู่แล้วไปจองได้
+        $unknown = $this->seatLayoutGuard->unknownSeatIds($schedule, $option ?: null, $seatIds);
+        if ($unknown !== []) {
+            return $this->error('ไม่มีที่นั่ง '.implode(', ', $unknown).' ในผังที่นั่งของรถคันนี้ กรุณาโหลดผังใหม่แล้วเลือกอีกครั้ง', 422);
         }
 
         // กันตั้งแต่ล็อกที่นั่ง ไม่งั้นคนที่ยังไม่ถึงคิวจะล็อกที่นั่งกันคนอื่นไว้ได้

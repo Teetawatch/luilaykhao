@@ -43,6 +43,7 @@ class BookingService
         private TripAlertService $tripAlertService,
         private ScheduleSeatNotifier $seatNotifier,
         private GiftVoucherService $giftVoucherService,
+        private SeatLayoutGuard $seatLayoutGuard,
     ) {}
 
     public function createBooking(
@@ -178,6 +179,9 @@ class BookingService
                 if ($duplicateSeatIds->isNotEmpty()) {
                     throw new \Exception('เลือกที่นั่งซ้ำกัน: '.$duplicateSeatIds->join(', ').' กรุณาเลือกที่นั่งใหม่');
                 }
+
+                // รหัสที่ไม่มีบนผังจะไม่มีผังไหนวาดให้ — ใบจองหายจากผังทั้งที่นับเป็นที่นั่งแล้ว
+                $this->seatLayoutGuard->assertSeatsInLayout($schedule, $vehicleOption, $seatIds);
 
                 // ตรวจ Redis soft-lock เฉพาะ flow ที่ผู้ใช้ล็อกที่นั่งเองก่อนจอง (เช่น booking flow ปกติ)
                 // สำหรับ group checkout การจองที่นั่งถูกยึดถาวรไว้ใน group_plan_members แล้ว Redis lock เป็นแค่
@@ -1158,6 +1162,8 @@ class BookingService
                 if ($newSeatIds->count() !== $passengerCount) {
                     throw new \Exception("กรุณาเลือกที่นั่งใหม่ให้ครบ {$passengerCount} ที่นั่ง");
                 }
+
+                $this->seatLayoutGuard->assertSeatsInLayout($target, $targetOption, $newSeatIds);
 
                 if ($newSeatIds->duplicates()->isNotEmpty()) {
                     throw new \Exception('เลือกที่นั่งซ้ำกัน กรุณาเลือกใหม่');

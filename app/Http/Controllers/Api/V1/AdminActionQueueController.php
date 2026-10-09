@@ -15,6 +15,7 @@ use App\Models\TripPost;
 use App\Services\AtRiskScheduleService;
 use App\Services\ForceMajeureService;
 use App\Services\ScheduleFinanceService;
+use App\Services\SeatLayoutGuard;
 use App\Services\ShoppingListService;
 use App\Services\SlipOcrService;
 use App\Traits\ApiResponse;
@@ -45,6 +46,7 @@ class AdminActionQueueController extends Controller
             $this->sosGroup(),
             $this->incidentGroup(),
             $this->atRiskScheduleGroup(),
+            $this->seatLayoutGroup(),
             $this->financeCloseGroup(),
             $this->shoppingReportGroup(),
             $this->refundRequestGroup(),
@@ -128,6 +130,29 @@ class AdminActionQueueController extends Controller
                 'title' => $row['trip_title'],
                 'detail' => "{$row['departure_label']} · {$row['booked_seats']}/{$row['min_seats']} ท่าน"
                     ." · เหลือ {$row['days_left']} วัน",
+                'at' => null,
+            ])->values(),
+        );
+    }
+
+    /**
+     * รอบที่มีที่นั่งของใบจองไม่อยู่บนผัง — ผังโชว์ว่างทั้งที่รอบเต็ม และสตาฟ
+     * เห็นคนนั่งผิดตำแหน่ง ซ่อมได้สองทาง: ย้ายที่นั่งในหน้าแก้ไขการจอง หรือ
+     * วาดผังของรถให้มีรหัสเดิมกลับมา
+     */
+    private function seatLayoutGroup(): array
+    {
+        $rows = app(SeatLayoutGuard::class)->upcomingConflicts();
+
+        return $this->group(
+            'seat_layout_conflicts', 'ที่นั่งที่จองแล้วแต่ไม่อยู่บนผัง', 'event_seat', 'high',
+            $rows->count(),
+            '/admin/bookings',
+            $rows->take(5)->map(fn (array $row) => [
+                'title' => $row['schedule']->trip?->title ?? 'ทริป',
+                'detail' => $row['schedule']->departureLabelShort()
+                    .' · '.$row['orphans']->pluck('seat_id')->join(', ')
+                    .' ('.$row['orphans']->pluck('booking.booking_ref')->filter()->unique()->join(', ').')',
                 'at' => null,
             ])->values(),
         );
