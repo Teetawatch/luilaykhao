@@ -14,7 +14,7 @@ bash /var/www/luilaykhao/deploy/deploy.sh
 ```
 
 รันในนาม user ที่ปกติใช้ `git pull` (ไม่ต้องใส่ `sudo` นำหน้า สคริปต์ขอรหัส sudo เอง)
-สคริปต์ดึงโค้ด → composer (ถ้า lock เปลี่ยน) → build หน้าเว็บ → migrate → ล้าง cache →
+สคริปต์ดึงโค้ด → composer install → build หน้าเว็บ → migrate → ล้าง cache →
 รีสตาร์ท Horizon → `ops:doctor` และหยุดทันทีถ้าขั้นไหนพัง
 
 ถ้าขึ้น "มีไฟล์ถูกแก้บนเซิร์ฟเวอร์" แปลว่ามีคนแก้โค้ดตรงบนเครื่อง — การแก้นั้นต้องเข้า git

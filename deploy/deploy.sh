@@ -11,7 +11,7 @@
 # ทำอะไรบ้าง (หยุดทันทีถ้าขั้นไหนพัง):
 #   1. เช็คก่อนเริ่ม: อยู่บน main, ไม่มีไฟล์ที่ถูกแก้บนเซิร์ฟเวอร์
 #   2. ดึงโค้ดใหม่ (fast-forward เท่านั้น ไม่ merge เอง)
-#   3. composer install — เฉพาะเมื่อ composer.lock เปลี่ยน
+#   3. composer install (ทุกครั้ง — vendor/ ต้องตรงกับ composer.lock เสมอ)
 #   4. npm ci (เมื่อ package-lock.json เปลี่ยน) + npm run build
 #   5. php artisan migrate
 #   6. ล้าง cache config/route/view/event (ไม่แตะ cache ข้อมูล — ที่นั่งที่ล็อกไว้ยังอยู่)
@@ -23,6 +23,10 @@
 # ปรับได้ผ่าน env: APP_DIR, WEB_USER (www-data), BRANCH (main)
 
 set -Eeuo pipefail
+
+# ทั้งสคริปต์อยู่ใน main() — bash อ่านฟังก์ชันจบทั้งก้อนก่อนรัน git pull ที่เขียนทับ
+# ไฟล์นี้กลางทางจึงไม่ทำให้บรรทัดที่เหลือกลายเป็นของเวอร์ชันใหม่
+main() {
 
 APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 WEB_USER="${WEB_USER:-www-data}"
@@ -98,12 +102,10 @@ fi
 
 # ---------------------------------------------------------------------------
 CURRENT_STEP="composer install"
-if changed composer.lock || [ ! -f vendor/autoload.php ]; then
-  step "composer install"
-  as_deployer composer install --no-dev --optimize-autoloader --no-interaction --no-progress
-else
-  step "composer.lock ไม่เปลี่ยน — ข้าม composer install"
-fi
+# ทุกครั้ง ไม่ใช่เฉพาะเมื่อ lock เปลี่ยนระหว่าง commit — vendor/ บนเครื่องอาจไม่ตรงกับ
+# lock ด้วยเหตุอื่น (เคยมีคนรัน composer update บนเซิร์ฟเวอร์) ไม่มีอะไรเปลี่ยนก็จบในไม่กี่วินาที
+step "composer install"
+as_deployer composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 
 # ---------------------------------------------------------------------------
 CURRENT_STEP="build หน้าเว็บ"
@@ -155,3 +157,6 @@ else
   note "sudo -u $WEB_USER php artisan ops:doctor"
   exit 1
 fi
+}
+
+main "$@"
