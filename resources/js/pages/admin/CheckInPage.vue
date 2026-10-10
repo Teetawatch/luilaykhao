@@ -63,6 +63,7 @@
         <span class="material-symbols-rounded" style="font-size:32px;">check_circle</span>
       </div>
       <h2>เช็คอินสำเร็จ!</h2>
+      <p v-if="result.message" class="ok-msg">{{ result.message }}</p>
       <div class="result-details">
         <div class="rd-row">
           <span class="rd-label">รหัสจอง</span>
@@ -78,7 +79,13 @@
         </div>
         <div class="rd-row">
           <span class="rd-label">ผู้โดยสาร</span>
-          <span>{{ result.booking.passengers?.length || 0 }} คน</span>
+          <span>
+            {{ result.booking.passengers?.length || 0 }} คน
+            <!-- เช็คอินรายคน: ใบเดียวกันขึ้นรถไม่ครบได้ -->
+            <template v-if="(result.booking.passengers?.length || 0) > 1">
+              · ขึ้นรถแล้ว {{ aboardCount(result.booking) }}/{{ result.booking.passengers.length }}
+            </template>
+          </span>
         </div>
         <div class="rd-row">
           <span class="rd-label">เช็คอินเมื่อ</span>
@@ -142,7 +149,7 @@ async function doCheckInQr() {
   result.value = null;
   try {
     const res = await admin.checkInByQr(qrInput.value.trim());
-    result.value = { success: true, booking: res.data };
+    result.value = { success: true, booking: res.data, message: res.message };
     recentCheckins.value.unshift(res.data);
     if (recentCheckins.value.length > 10) recentCheckins.value.pop();
     qrInput.value = '';
@@ -159,7 +166,7 @@ async function doCheckInRef() {
   result.value = null;
   try {
     const res = await admin.checkInByRef(refInput.value.trim());
-    result.value = { success: true, booking: res.data };
+    result.value = { success: true, booking: res.data, message: res.message };
     recentCheckins.value.unshift(res.data);
     if (recentCheckins.value.length > 10) recentCheckins.value.pop();
     refInput.value = '';
@@ -168,6 +175,10 @@ async function doCheckInRef() {
   } finally {
     processing.value = false;
   }
+}
+
+function aboardCount(booking) {
+  return (booking?.passengers || []).filter((p) => p.checked_in_at).length;
 }
 
 function resetResult() {
@@ -328,6 +339,7 @@ function resetResult() {
   font-weight: 500;
 }
 
+.ok-msg { color: var(--color-text-muted, #475569); margin: 4px 0 12px; font-weight: 600; }
 .error-msg {
   color: #dc2626;
   font-size: 15px;

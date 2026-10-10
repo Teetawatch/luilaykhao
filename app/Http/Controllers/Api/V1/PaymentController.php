@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\BalancePaymentService;
 use App\Services\BookingService;
 use App\Services\BookingSettlementService;
+use App\Services\CheckInPassService;
 use App\Services\ExtraPaymentService;
 use App\Services\InstallmentPaymentService;
 use App\Services\PaymentNotAvailableException;
@@ -585,6 +586,8 @@ class PaymentController extends Controller
             'qr_data_uri' => $qrCodes->svgDataUri($booking->qr_code, 260),
             'checked_in' => (bool) $booking->checked_in,
             'checked_in_at' => $booking->checked_in_at?->toISOString(),
+            // บัตรขึ้นรถรายคนตามสิทธิ์ผู้ดู (เพื่อนเห็นของตัวเองใบเดียว)
+            'check_in_passes' => app(CheckInPassService::class)->passesFor($booking, $request->user()),
         ]);
     }
 

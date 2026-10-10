@@ -401,7 +401,10 @@
                     <div class="sec-label">เช็คอิน</div>
                     <div class="big">✓ เช็คอินขึ้นรถแล้ว</div>
                     @if($b['checkin']['checked_in_label'])
-                        <div class="sub">เมื่อ {{ $b['checkin']['checked_in_label'] }} น. · เดินทางปลอดภัยนะครับ</div>
+                        <div class="sub">
+                            เมื่อ {{ $b['checkin']['checked_in_label'] }} น.@if($b['checkin']['aboard_label'] ?? null) · {{ $b['checkin']['aboard_label'] }}@endif
+                            · เดินทางปลอดภัยนะครับ
+                        </div>
                     @endif
                 </div>
             @elseif($b['checkin']['show'])
@@ -413,9 +416,59 @@
                     </div>
                     <div class="note">
                         ยื่นจอนี้ให้ทีมงานสแกนตอนขึ้นรถได้เลยครับ สแกนไม่ติดก็บอกเลขนี้แทนได้
+                        @if($b['checkin']['aboard_label'] ?? null)
+                            <br><b>{{ $b['checkin']['aboard_label'] }}</b> — สแกนอีกครั้งสำหรับคนที่เหลือ
+                        @endif
                     </div>
                 </div>
             @endif
+        </div>
+    @endif
+
+    {{-- ── ไปครบไหม ─────────────────────────────────────────────
+         ใบจองหลายคน: บอกไว้ก่อนว่าใครไม่ไป สตาฟจะได้ไม่ยืนรอที่จุดขึ้นรถ
+         (ลิงก์ในข้อความ LINE "พรุ่งนี้ไปครบไหม" พามาที่ #attendance) --}}
+    @if($b['attendance']['show'] ?? false)
+        <div class="card" id="attendance">
+            <div class="sec">
+                <div class="sec-label">ไปครบไหม</div>
+
+                @if(session('attendance_saved'))
+                    <div class="flash ok">บันทึกแล้วครับ ทีมงานเห็นจำนวนคนล่าสุดแล้ว</div>
+                @elseif(session('attendance_error'))
+                    <div class="flash bad">{{ session('attendance_error') }}</div>
+                @endif
+
+                @if($b['attendance']['confirmed'])
+                    <div class="big">ไป {{ $b['attendance']['going_count'] }} จาก {{ $b['attendance']['total'] }} คน</div>
+                    <div class="sub">แก้ได้จนถึงเวลารถออก</div>
+                @else
+                    <div class="note" style="margin-top:0;">
+                        ติ๊กคนที่ไป แล้วกดยืนยัน — คนที่ไม่ได้ติ๊ก ทีมงานจะรู้ว่าไม่ต้องรอที่จุดขึ้นรถ
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('public.trip-brief.attendance', request()->route('token')) }}">
+                    @csrf
+                    @foreach($b['attendance']['passengers'] as $person)
+                        <label class="choice {{ $person['going'] ? 'on' : '' }}">
+                            @if($person['checked_in'])
+                                {{-- ขึ้นรถแล้ว: ไปแน่นอน แก้ไม่ได้ --}}
+                                <input type="hidden" name="going[]" value="{{ $person['id'] }}">
+                                <input type="checkbox" checked disabled>
+                            @else
+                                <input type="checkbox" name="going[]" value="{{ $person['id'] }}" @checked($person['going'])>
+                            @endif
+                            <span>{{ $person['name'] }}@if($person['checked_in']) · ขึ้นรถแล้ว@endif</span>
+                        </label>
+                    @endforeach
+                    <button type="submit" class="btn" style="margin-top:12px; border:none; font-family:inherit; cursor:pointer;">ยืนยันจำนวนคนเดินทาง</button>
+                </form>
+                <div class="note">
+                    การแจ้งไม่ไปไม่ใช่การยกเลิก และไม่ได้คืนเงินอัตโนมัติ
+                    ถ้ามีคนไปแทน ใช้ “ส่งต่อที่นั่ง” ในแอป ชื่อในประกันจะได้ตรงตัวคนครับ
+                </div>
+            </div>
         </div>
     @endif
 

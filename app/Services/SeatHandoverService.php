@@ -635,6 +635,12 @@ class SeatHandoverService
                 'self_fill_token' => null,
                 'self_fill_expires_at' => null,
                 'self_filled_at' => now(),
+                // บัตรขึ้นรถและลิงก์ของเพื่อนเป็นของคนเดิม — ออกใหม่ให้คนที่รับที่นั่ง
+                // ไม่งั้นคนที่ส่งต่อไปแล้วยังถือ QR ที่สแกนขึ้นรถได้อยู่
+                'qr_code' => Booking::generateQrCode(),
+                'pass_token' => null,
+                'checked_in_at' => null,
+                'not_going_at' => null,
             ])->save();
 
             $seat?->update(['passenger_name' => $passenger->name]);

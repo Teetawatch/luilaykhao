@@ -125,6 +125,8 @@ class Booking extends Model
             'refund_amount' => 'decimal:2',
             'refunded_at' => 'datetime',
             'checked_in_at' => 'datetime',
+            'attendance_asked_at' => 'datetime',
+            'attendance_confirmed_at' => 'datetime',
             'pickup_status_at' => 'datetime',
             'pickup_status_eta_minutes' => 'integer',
             'brief_sent_at' => 'datetime',

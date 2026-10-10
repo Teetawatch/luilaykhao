@@ -90,6 +90,7 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TravelDocumentController;
 use App\Http\Controllers\Api\V1\TripAlertController;
+use App\Http\Controllers\Api\V1\TripAttendanceController;
 use App\Http\Controllers\Api\V1\TripCalendarController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\TripMemberLocationController;
@@ -231,6 +232,13 @@ Route::prefix('v1')->group(function () {
         // ลิงก์ให้เพื่อนร่วมทางกรอกข้อมูลของตัวเอง (คนจองไม่ต้องรู้เลขบัตรเพื่อน)
         Route::post('bookings/{ref}/passengers/{passengerId}/invite', [PassengerInviteController::class, 'store']);
         Route::delete('bookings/{ref}/passengers/{passengerId}/invite', [PassengerInviteController::class, 'destroy']);
+        // ลิงก์ของเพื่อน (/f/{token}) — บัตรขึ้นรถ + กรอกข้อมูล + เข้าแอป ในลิงก์เดียว
+        Route::post('bookings/{ref}/passengers/{passengerId}/pass-link', [PassengerInviteController::class, 'passLink']);
+        Route::delete('bookings/{ref}/passengers/{passengerId}/pass-link', [PassengerInviteController::class, 'revokePassLink']);
+        // ไปครบไหม — คนจองตอบทั้งใบ เพื่อนตอบเฉพาะตัวเอง
+        Route::get('bookings/{ref}/attendance', [TripAttendanceController::class, 'show']);
+        Route::post('bookings/{ref}/attendance', [TripAttendanceController::class, 'confirm']);
+        Route::post('bookings/{ref}/attendance/{passengerId}', [TripAttendanceController::class, 'update']);
 
         // สมุดผู้ร่วมเดินทาง — เก็บคนที่พาไปบ่อยไว้กรอกซ้ำ ไม่ต้องพิมพ์ใหม่ทุกรอบ
         Route::get('saved-travellers', [SavedTravellerController::class, 'index']);
@@ -345,6 +353,7 @@ Route::prefix('v1')->group(function () {
         // Booking members / companion invites (เชิญเพื่อนเข้าการจองเดียวกัน)
         Route::get('bookings/{ref}/members', [BookingMemberController::class, 'index']);
         Route::post('bookings/{ref}/invites', [BookingMemberController::class, 'store']);
+        Route::post('bookings/{ref}/members/me/passenger', [BookingMemberController::class, 'claimPassenger']);
         Route::delete('bookings/{ref}/members/{memberId}', [BookingMemberController::class, 'destroy']);
         Route::get('booking-invites/{token}', [BookingMemberController::class, 'showInvite']);
         Route::post('booking-invites/{token}/accept', [BookingMemberController::class, 'acceptInvite']);
@@ -520,6 +529,7 @@ Route::prefix('v1')->group(function () {
         Route::post('staff/reviews', [StaffController::class, 'storeReview']);
         Route::post('staff/check-in/lookup', [DriverController::class, 'lookupCheckIn']);
         Route::post('staff/check-in/confirm', [DriverController::class, 'checkIn']);
+        Route::post('staff/check-in/undo', [DriverController::class, 'undoCheckIn']);
 
         // ยอดค้างชำระของรอบที่สตาฟรับผิดชอบ (ทวง + ให้ลูกค้าสแกนจ่ายหน้างาน)
         Route::get('staff/schedules/{id}/outstanding', [StaffController::class, 'outstanding']);
@@ -629,6 +639,7 @@ Route::prefix('v1')->group(function () {
             Route::post('schedules/{id}/inspection', [DriverController::class, 'storeInspection']);
             Route::post('check-in/lookup', [DriverController::class, 'lookupCheckIn']);
             Route::post('check-in', [DriverController::class, 'checkIn']);
+            Route::post('check-in/undo', [DriverController::class, 'undoCheckIn']);
 
             // On-trip incident reports (accident / injury logged by staff)
             Route::get('schedules/{id}/incidents', [IncidentController::class, 'index']);

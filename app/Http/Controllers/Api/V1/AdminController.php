@@ -1265,7 +1265,15 @@ class AdminController extends Controller
             'group_bookings' => $bookings->where('is_group', true)->count(),
             'gift_bookings' => $bookings->where('is_gift', true)->count(),
             'checked_in_bookings' => $checkedIn->count(),
-            'checked_in_passengers' => $checkedIn->sum(fn (Booking $booking) => $booking->passengers->count()),
+            // รายคน — ใบจองเดียวกันมาไม่ครบได้
+            'checked_in_passengers' => $checkedIn->sum(
+                fn (Booking $booking) => $booking->passengers->filter(fn ($p) => $p->checked_in_at !== null)->count()
+            ),
+            'not_going_passengers' => $bookings->sum(
+                fn (Booking $booking) => $booking->passengers
+                    ->filter(fn ($p) => $p->not_going_at !== null && $p->checked_in_at === null)
+                    ->count()
+            ),
             'waitlist_waiting' => $schedule->waitlistEntries()->where('status', 'waiting')->count(),
             'waitlist_offered' => $schedule->waitlistEntries()->where('status', 'offered')->count(),
             'departure_status' => $schedule->departureStatus(),

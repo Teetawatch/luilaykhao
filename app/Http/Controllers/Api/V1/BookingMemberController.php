@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Services\BookingMemberService;
+use App\Services\CheckInPassService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -88,6 +89,29 @@ class BookingMemberController extends Controller
         }
 
         return $this->success(null, 'นำสมาชิกออกแล้ว');
+    }
+
+    /**
+     * เพื่อนเลือกว่าตัวเองคือใครในรายชื่อผู้เดินทาง — แล้วได้บัตรขึ้นรถของตัวเอง
+     */
+    public function claimPassenger(Request $request, string $ref): JsonResponse
+    {
+        $validated = $request->validate([
+            'passenger_id' => ['required', 'integer'],
+        ]);
+
+        $booking = $this->resolveBooking($ref);
+
+        try {
+            $member = $this->members->claimPassenger($booking, $request->user(), (int) $validated['passenger_id']);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success([
+            'passenger_id' => $member->passenger_id,
+            'check_in_passes' => app(CheckInPassService::class)->passesFor($booking->fresh('passengers'), $request->user()),
+        ], 'บันทึกแล้ว บัตรขึ้นรถของคุณพร้อมใช้');
     }
 
     /**

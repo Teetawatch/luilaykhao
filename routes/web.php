@@ -8,6 +8,7 @@ use App\Http\Controllers\MedalPageController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PublicAccountClaimController;
 use App\Http\Controllers\PublicBirthdateController;
+use App\Http\Controllers\PublicFriendPassController;
 use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicGiftVoucherController;
 use App\Http\Controllers\PublicIntakeController;
@@ -129,6 +130,10 @@ Route::post('/t/{token}/pickup-status', [PublicTripBriefController::class, 'repo
     ->where('token', '[a-z0-9]+')
     ->middleware('throttle:30,1')
     ->name('public.trip-brief.pickup-status');
+Route::post('/t/{token}/attendance', [PublicTripBriefController::class, 'attendance'])
+    ->where('token', '[a-z0-9]+')
+    ->middleware('throttle:20,1')
+    ->name('public.trip-brief.attendance');
 Route::post('/t/{token}/ack', [PublicTripBriefController::class, 'acknowledge'])
     ->where('token', '[a-z0-9]+')
     ->middleware('throttle:20,1')
@@ -172,7 +177,8 @@ Route::get('/.well-known/apple-app-site-association', function () {
                 // แอปได้เลยถ้ามีแอปติดอยู่ (ถ้าไม่มี ก็ตกไปที่หน้าเดียวกันใน SPA)
                 // /handover/*: ลิงก์ส่งต่อที่นั่ง — คนรับมีแอปก็รับในแอปเลย
                 // /voucher/*: บัตรของขวัญ — ผู้รับที่มีแอปเพิ่มบัตรเข้าบัญชีได้เลย
-                'paths' => ['/gift/*', '/reset-password*', '/handover/*', '/voucher/*'],
+                // /join/*: คำเชิญเข้าการจอง (รวมปุ่ม "เข้าร่วมทริปในแอป" บนลิงก์ของเพื่อน)
+                'paths' => ['/gift/*', '/reset-password*', '/handover/*', '/voucher/*', '/join/*'],
             ]],
         ],
     ]);
@@ -213,6 +219,20 @@ Route::post('/p/{token}', [PublicPassengerFillController::class, 'submit'])
     ->name('public.passenger-fill.submit');
 Route::get('/p-done', [PublicPassengerFillController::class, 'done'])
     ->name('public.passenger-fill.done');
+
+// ลิงก์ของเพื่อน — บัตรขึ้นรถรายคน + กรอกข้อมูล + เข้าแอป + แจ้งไม่ไป ในลิงก์เดียว
+Route::get('/f/{token}', [PublicFriendPassController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:120,1')
+    ->name('public.friend-pass.show');
+Route::post('/f/{token}/fill', [PublicFriendPassController::class, 'fill'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:20,1')
+    ->name('public.friend-pass.fill');
+Route::post('/f/{token}/attendance', [PublicFriendPassController::class, 'attendance'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:20,1')
+    ->name('public.friend-pass.attendance');
 
 // ลิงก์เก็บข้อมูลลูกค้าก่อนการจอง — แปะไว้ในไบโอไอจี / auto-reply ไลน์ได้
 // `/r/` คือลิงก์ของทีมงาน (ใช้ซ้ำได้) `/g/` คือลิงก์ของกลุ่มที่คนแรกส่งต่อให้เพื่อน

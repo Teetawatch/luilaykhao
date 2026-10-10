@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\BookingMember;
+use App\Models\BookingPassenger;
 use App\Models\ChatMessage;
 use App\Models\SchedulePickupPoint;
 use App\Models\SmartNotification;
@@ -148,7 +149,10 @@ class PickupArrivalService
     }
 
     /**
-     * การจองที่ยังรออยู่ที่จุดนี้ (ยังไม่เช็คอิน)
+     * การจองที่ยังมีคนรออยู่ที่จุดนี้ (ยังไม่ขึ้นรถ และไม่ได้แจ้งว่าไม่ไป)
+     *
+     * ดูรายคน ไม่ใช่ระดับใบจอง — ใบจองเดียวกันขึ้นคนละจุดได้ คนจองเช็คอินที่จุดแรก
+     * แล้วเพื่อนที่ยืนรอจุดถัดไปก็ยังต้องได้รู้ว่ารถมาถึงแล้ว
      *
      * @return Collection<int, Booking>
      */
@@ -156,23 +160,21 @@ class PickupArrivalService
     {
         $validIds = $schedule->pickupPoints->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        return Booking::with('passengers:id,booking_id,pickup_point_id')
-            ->where('schedule_id', $schedule->id)
-            ->where('status', 'confirmed')
-            ->where('checked_in', false)
-            ->get()
+        return $this->pendingBookings($schedule)
             ->filter(fn (Booking $b) => in_array(
                 (int) $point->id,
-                $this->effectivePickupPointIds($b, $validIds),
+                $this->effectivePickupPointIds($b, $validIds, awaitingOnly: true),
                 true,
             ))
             ->values();
     }
 
     /**
-     * ยังมีคนรออยู่จุดละกี่คน — สตาฟใช้ดูว่าจุดไหนยังต้องแวะ
+     * ยังมีคนรออยู่จุดละกี่คน — สตาฟใช้ดูว่าจุดไหนยังต้องแวะ และใช้ตัดสินว่าจุดไหน
+     * "รับครบแล้ว"
      *
-     * นับหัวคนแบบรายผู้โดยสาร เพราะคนในใบจองเดียวกันเลือกจุดรับคนละจุดได้
+     * นับหัวคนแบบรายผู้โดยสาร เพราะคนในใบจองเดียวกันเลือกจุดรับคนละจุดได้ และ
+     * ขึ้นรถไม่พร้อมกันได้
      *
      * @return array<int, int> pointId => จำนวนคน
      */
@@ -180,23 +182,16 @@ class PickupArrivalService
     {
         $validIds = $schedule->pickupPoints->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        $bookings = Booking::with('passengers:id,booking_id,pickup_point_id')
-            ->where('schedule_id', $schedule->id)
-            ->where('status', 'confirmed')
-            ->where('checked_in', false)
-            ->get();
-
         $counts = [];
 
-        foreach ($bookings as $booking) {
-            $points = $this->effectivePickupPointIds($booking, $validIds);
-            if ($points === []) {
+        foreach ($this->pendingBookings($schedule) as $booking) {
+            if ($this->hasCustomPickup($booking)) {
                 continue;
             }
 
             // ใบจองเก่าที่ไม่มีรายชื่อผู้โดยสารแยก นับเป็นหนึ่งหัวที่จุดของใบจอง
             if ($booking->passengers->isEmpty()) {
-                foreach ($points as $pointId) {
+                foreach ($this->effectivePickupPointIds($booking, $validIds) as $pointId) {
                     $counts[$pointId] = ($counts[$pointId] ?? 0) + 1;
                 }
 
@@ -205,16 +200,12 @@ class PickupArrivalService
 
             // นับรายคนจริง ๆ ไม่ใช่หารจำนวนคนด้วยจำนวนจุด — ใบจอง 3 คนที่แยกขึ้น
             // สองจุด (2 คนจุดแรก 1 คนจุดหลัง) เคยถูกนับเป็นจุดละ 2 รวมเป็น 4 หัว
-            $bookingPointId = in_array((int) $booking->pickup_point_id, $validIds, true)
-                ? (int) $booking->pickup_point_id
-                : null;
-
             foreach ($booking->passengers as $passenger) {
-                $own = in_array((int) $passenger->pickup_point_id, $validIds, true)
-                    ? (int) $passenger->pickup_point_id
-                    : null;
+                if (! $passenger->isAwaitingBoarding()) {
+                    continue;
+                }
 
-                $pointId = $own ?? $bookingPointId;
+                $pointId = $this->passengerPointId($booking, $passenger, $validIds);
 
                 if ($pointId !== null) {
                     $counts[$pointId] = ($counts[$pointId] ?? 0) + 1;
@@ -232,17 +223,21 @@ class PickupArrivalService
      * ใช้ไม่ได้แล้วให้ตกกลับไปจุดของการจอง และการจองที่ปักหมุดเองไม่นับเข้าจุด
      * ตายตัวใด ๆ — กติกาเดียวกับที่ manifest ใช้จัดกลุ่ม
      *
+     * $awaitingOnly = นับเฉพาะคนที่ยังรอขึ้นรถ, $onlyPassengerIds = นับเฉพาะคนเหล่านี้
+     * (เช่น คนที่เพิ่งเช็คอิน — จุดที่ "เพิ่งมีคนขึ้น") ใบจองที่ไม่มีรายชื่อแยกใช้จุด
+     * ระดับใบจอง และถือว่ารออยู่ตราบที่ใบยังไม่เช็คอิน
+     *
      * @param  array<int, int>  $validIds  id ของจุดรับที่อยู่ในรอบนี้จริง
+     * @param  array<int, int>|null  $onlyPassengerIds
      * @return array<int, int>
      */
-    public function effectivePickupPointIds(Booking $booking, array $validIds): array
-    {
-        $hasCustomPickup = ! $booking->pickup_point_id
-            && $booking->custom_pickup_lat !== null
-            && $booking->custom_pickup_lng !== null
-            && $booking->custom_pickup_status !== 'rejected';
-
-        if ($hasCustomPickup) {
+    public function effectivePickupPointIds(
+        Booking $booking,
+        array $validIds,
+        bool $awaitingOnly = false,
+        ?array $onlyPassengerIds = null,
+    ): array {
+        if ($this->hasCustomPickup($booking)) {
             return [];
         }
 
@@ -250,26 +245,79 @@ class PickupArrivalService
             ? (int) $booking->pickup_point_id
             : null;
 
+        // การจองเก่าที่ไม่มีรายชื่อผู้โดยสารแยก — ใช้จุดระดับการจองแทน
+        if ($booking->passengers->isEmpty()) {
+            if ($bookingPointId === null || ($awaitingOnly && $booking->checked_in)) {
+                return [];
+            }
+
+            return [$bookingPointId];
+        }
+
         $ids = [];
 
         foreach ($booking->passengers as $passenger) {
-            $own = in_array((int) $passenger->pickup_point_id, $validIds, true)
-                ? (int) $passenger->pickup_point_id
-                : null;
+            if ($awaitingOnly && ! $passenger->isAwaitingBoarding()) {
+                continue;
+            }
 
-            $resolved = $own ?? $bookingPointId;
+            if ($onlyPassengerIds !== null && ! in_array((int) $passenger->id, $onlyPassengerIds, true)) {
+                continue;
+            }
+
+            $resolved = $this->passengerPointId($booking, $passenger, $validIds);
 
             if ($resolved) {
                 $ids[$resolved] = true;
             }
         }
 
-        // การจองเก่าที่ไม่มีรายชื่อผู้โดยสารแยก — ใช้จุดระดับการจองแทน
-        if (empty($ids) && $bookingPointId) {
-            $ids[$bookingPointId] = true;
+        return array_keys($ids);
+    }
+
+    /** จุดรับของผู้โดยสารคนหนึ่ง: จุดของตัวเองก่อน แล้วค่อยจุดของใบจอง */
+    public function passengerPointId(Booking $booking, BookingPassenger $passenger, array $validIds): ?int
+    {
+        if ($this->hasCustomPickup($booking)) {
+            return null;
         }
 
-        return array_keys($ids);
+        $own = in_array((int) $passenger->pickup_point_id, $validIds, true)
+            ? (int) $passenger->pickup_point_id
+            : null;
+
+        $bookingPointId = in_array((int) $booking->pickup_point_id, $validIds, true)
+            ? (int) $booking->pickup_point_id
+            : null;
+
+        return $own ?? $bookingPointId;
+    }
+
+    /** ใบจองที่ปักหมุดจุดรับเอง — ไม่อยู่ในจุดรับตายตัวจุดใด */
+    public function hasCustomPickup(Booking $booking): bool
+    {
+        return ! $booking->pickup_point_id
+            && $booking->custom_pickup_lat !== null
+            && $booking->custom_pickup_lng !== null
+            && $booking->custom_pickup_status !== 'rejected';
+    }
+
+    /**
+     * ใบจองที่ยืนยันแล้วของรอบนี้ ที่ยังมีใครสักคนรอขึ้นรถอยู่
+     *
+     * @return Collection<int, Booking>
+     */
+    private function pendingBookings(TripSchedule $schedule): Collection
+    {
+        return Booking::with('passengers:id,booking_id,pickup_point_id,checked_in_at,not_going_at')
+            ->where('schedule_id', $schedule->id)
+            ->where('status', 'confirmed')
+            ->where(fn ($q) => $q
+                ->where('checked_in', false)
+                ->orWhereHas('passengers', fn ($p) => $p
+                    ->whereNull('checked_in_at')
+                    ->whereNull('not_going_at')))
+            ->get();
     }
 
     /** ข้อความที่ลูกค้าได้รับ — ทะเบียนมาก่อนเสมอ เพราะนั่นคือสิ่งที่เขากำลังมองหา */

@@ -90,6 +90,7 @@ class MedalService
                 'members' => fn ($q) => $q->where('status', BookingMember::STATUS_ACTIVE)
                     ->whereNotNull('user_id')
                     ->orderBy('id'),
+                'members.passenger:id,booking_id,checked_in_at',
             ])
             ->get();
 
@@ -116,6 +117,11 @@ class MedalService
             }
 
             foreach ($booking->members as $member) {
+                // เพื่อนที่ผูกกับชื่อตัวเองแล้วไม่ได้ขึ้นรถ (เช็คอินรายคน) ไม่ได้ไปทริปนี้จริง
+                if ($usesCheckIn && $member->passenger && $member->passenger->checked_in_at === null) {
+                    continue;
+                }
+
                 $holders[(int) $member->user_id] ??= (int) $booking->id;
             }
         }

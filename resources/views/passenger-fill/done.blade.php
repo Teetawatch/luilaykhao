@@ -15,6 +15,10 @@
             @endif
             <br>แล้วเจอกันวันเดินทาง
         </p>
+        @if (! empty($passUrl))
+            {{-- มาจากลิงก์ของเพื่อน: ต่อไปคือบัตรขึ้นรถของตัวเองและห้องแชทของทริป --}}
+            <a href="{{ $passUrl }}" class="btn" style="margin-top: 22px; text-decoration: none;">ดูบัตรขึ้นรถและเข้าห้องแชทของทริป</a>
+        @endif
     </div>
 </div>
 @endsection

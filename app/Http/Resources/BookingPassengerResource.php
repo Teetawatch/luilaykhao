@@ -32,6 +32,9 @@ class BookingPassengerResource extends JsonResource
             'weight' => $this->weight,
             'halal_food' => $this->halal_food,
             'pickup_point_id' => $this->pickup_point_id,
+            // เช็คอินรายคน + แจ้งไม่ไป (ตัว QR อยู่ที่ check_in_passes ของใบจอง ตามสิทธิ์ผู้ดู)
+            'checked_in_at' => $this->checked_in_at?->toISOString(),
+            'not_going_at' => $this->not_going_at?->toISOString(),
             'pickup_point' => $this->when($this->relationLoaded('pickupPoint') && $this->pickupPoint, function () {
                 return [
                     'id' => $this->pickupPoint->id,

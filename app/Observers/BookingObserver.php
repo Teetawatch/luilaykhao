@@ -6,6 +6,7 @@ use App\Jobs\AnnounceChatMemberJoinedJob;
 use App\Jobs\SendTripBriefsJob;
 use App\Jobs\SyncTripActivityJob;
 use App\Models\Booking;
+use App\Models\BookingPassenger;
 use App\Services\CustomerIntakeService;
 use App\Services\GiftVoucherService;
 use App\Services\LoyaltyService;
@@ -56,6 +57,10 @@ class BookingObserver
         // เช็คอินคือเหตุการณ์ที่ลูกค้ากำลังยืนดูหน้าจอล็อกอยู่ตรงนั้น — การ์ดวันเดินทาง
         // ต้องพลิกเป็น "ขึ้นรถเรียบร้อยแล้ว" เดี๋ยวนั้น ไม่ใช่รอรอบซิงก์นาทีถัดไป
         // (ผ่าน observer เพื่อให้ครอบคลุมทุกทางที่เช็คอินได้: แอปคนขับ, แอดมิน, แก้ใบจอง)
+        if ($booking->wasChanged('checked_in')) {
+            $this->syncPassengerCheckIn($booking);
+        }
+
         if ($booking->wasChanged('checked_in') && $booking->checked_in) {
             SyncTripActivityJob::dispatch($booking->id);
         }
@@ -106,6 +111,38 @@ class BookingObserver
         // ทริปที่ยกเลิกไม่ได้ไปจริง จึงไม่ควรค้างอยู่ในจำนวนทริปสะสมที่ใช้ตัดสินระดับ
         if (in_array($booking->status, self::REVERSING_STATUSES, true)) {
             $this->loyaltyService->reverseForBooking($booking);
+        }
+    }
+
+    /**
+     * ให้เช็คอินรายคนตามระดับใบจองเสมอ
+     *
+     * ทางที่เขียน bookings.checked_in ตรง ๆ (แอปสตาฟรุ่นก่อนเช็คอินรายคน, แอดมิน
+     * แก้ใบจอง/กดเช็คอินจากหลังบ้าน) ไม่รู้จักรายคน — ใบที่ถูกพลิกเป็นเช็คอินโดยยัง
+     * ไม่มีใครขึ้นรถเลย แปลว่าเช็คอินยกใบ จึงนับทุกคนที่ยังรออยู่ ส่วนการถอนเช็คอิน
+     * ทั้งใบก็ถอนทุกคน ทางใหม่ (PassengerCheckInService) เขียนรายคนก่อนพลิกใบ
+     * จึงไม่ตกเงื่อนไขนี้
+     */
+    private function syncPassengerCheckIn(Booking $booking): void
+    {
+        $passengers = BookingPassenger::where('booking_id', $booking->id);
+
+        if (! $booking->checked_in) {
+            $passengers->whereNotNull('checked_in_at')->update(['checked_in_at' => null]);
+
+            return;
+        }
+
+        if ($passengers->clone()->whereNotNull('checked_in_at')->exists()) {
+            return;
+        }
+
+        $at = $booking->checked_in_at ?? now();
+        $marked = $passengers->clone()->whereNull('not_going_at')->update(['checked_in_at' => $at]);
+
+        // ทุกคนเคยแจ้งไม่ไป แต่สตาฟเช็คอินยกใบ = มีคนมาจริง ข้อมูลที่แจ้งไว้ไม่จริงแล้ว
+        if ($marked === 0) {
+            $passengers->update(['checked_in_at' => $at, 'not_going_at' => null]);
         }
     }
 

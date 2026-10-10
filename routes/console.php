@@ -3,6 +3,7 @@
 use App\Jobs\AbandonedBookingWinbackJob;
 use App\Jobs\AnnounceDepartedTripsJob;
 use App\Jobs\AnnounceSaleCampaignJob;
+use App\Jobs\AskTripAttendanceJob;
 use App\Jobs\AwardTripMedalsJob;
 use App\Jobs\BroadcastLowSeatsJob;
 use App\Jobs\ClearEndedTripDriverPinsJob;
@@ -62,6 +63,8 @@ Schedule::command('installment:remind')->dailyAt('08:00')->timezone('Asia/Bangko
 Schedule::command('deposit:remind-balance')->dailyAt('08:10')->timezone('Asia/Bangkok');
 Schedule::command('sms:booking-reminders')->dailyAt('08:15')->timezone('Asia/Bangkok');
 Schedule::job(new SendTripReminderNotificationsJob)->dailyAt('08:20')->timezone('Asia/Bangkok');
+// "พรุ่งนี้ไปครบไหม" — ใบจองหลายคน ถามคนจองวันก่อนรถออก สตาฟจะได้ไม่ยืนรอคนที่ไม่มา
+Schedule::job(new AskTripAttendanceJob)->dailyAt('10:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // เตือน push ~2–3 ชม. ก่อนเวลาออกรถจริง (departs_at) — เติมช่องว่างระหว่าง
 // เตือน 1 วันก่อน กับ ETA จุดรับ; รองรับรถที่ออกคืนก่อนวันทริป
 Schedule::job(new SendDepartureSoonRemindersJob)->everyFifteenMinutes()->withoutOverlapping();

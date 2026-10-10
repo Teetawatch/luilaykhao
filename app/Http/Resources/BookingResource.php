@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Booking;
 use App\Services\BookingDocumentService;
+use App\Services\CheckInPassService;
 use App\Services\ForceMajeureService;
 use App\Services\PickupStatusService;
 use App\Services\SeatHandoverService;
@@ -134,6 +135,14 @@ class BookingResource extends JsonResource
             ),
             'checked_in' => $this->checked_in,
             'checked_in_at' => $this->checked_in_at?->toISOString(),
+            // บัตรขึ้นรถรายคนที่ผู้เรียกควรเห็น (เจ้าของ = ทุกคน, เพื่อน = ของตัวเอง)
+            // ส่งมากับใบจองเพื่อให้แอปเปิดได้ตอนไม่มีสัญญาณ — null สำหรับคนนอกใบจอง
+            'check_in_passes' => $this->when(
+                $request->user() !== null && $this->relationLoaded('passengers'),
+                fn () => app(CheckInPassService::class)->passesFor($this->resource, $request->user()),
+            ),
+            // ยืนยันแล้วว่าไปกี่คน (ถามก่อนวันเดินทาง)
+            'attendance_confirmed_at' => $this->attendance_confirmed_at?->toISOString(),
             // สถานะที่ลูกค้ากดบอกเองที่จุดนัด — อ่านผ่าน freshPickupStatus() เสมอ
             // เพื่อไม่ให้ป้ายของเมื่อวานกลับมาแสดงในเช้าวันเดินทาง
             'pickup_status' => $this->freshPickupStatus(),

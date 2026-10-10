@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
+use App\Models\BookingMember;
+use App\Models\BookingPassenger;
 use App\Models\SchedulePickupPoint;
 use App\Models\ScheduleVehicleOption;
 use App\Models\SmartNotification;
@@ -12,6 +14,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\VehicleInspection;
 use App\Services\DriverLoginCodeService;
+use App\Services\PassengerCheckInService;
 use App\Services\PickupArrivalService;
 use App\Services\TripDepartureService;
 use App\Support\SeatLayoutFactory;
@@ -144,25 +147,34 @@ class DriverController extends Controller
             'schedule_id' => ['nullable', 'integer', 'exists:trip_schedules,id'],
         ]);
 
-        $booking = $this->resolveCheckInBooking(
+        $resolved = $this->resolveCheckInBooking(
             $request,
             $validated['qr_code'],
             $validated['schedule_id'] ?? null
         );
 
-        if ($booking instanceof JsonResponse) {
-            return $booking;
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
         }
+
+        [$booking, $scanned] = $resolved;
 
         return $this->success(
             new BookingResource($booking),
-            'พบข้อมูลการจอง',
+            $scanned ? 'พบบัตรขึ้นรถของ '.$scanned->displayName() : 'พบข้อมูลการจอง',
             200,
-            $this->checkInMeta($booking)
+            $this->checkInMeta($booking, $scanned)
         );
     }
 
-    public function checkIn(Request $request): JsonResponse
+    /**
+     * เช็คอินรายคน
+     *
+     * - สแกน QR รายคน (ไม่ส่ง passenger_ids) = เช็คอินคนนั้นคนเดียว
+     * - สแกน QR ของใบจอง/เลขที่จอง แล้วส่ง passenger_ids = คนที่สตาฟติ๊กว่ามาจริง
+     * - ไม่ส่ง passenger_ids เลย (แอปสตาฟรุ่นก่อน) = ทุกคนที่ยังรออยู่ เหมือนเดิม
+     */
+    public function checkIn(Request $request, PassengerCheckInService $checkIns): JsonResponse
     {
         if (! $this->hasDriverAccess($request)) {
             return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
@@ -171,20 +183,24 @@ class DriverController extends Controller
         $validated = $request->validate([
             'qr_code' => ['required', 'string'],
             'schedule_id' => ['nullable', 'integer', 'exists:trip_schedules,id'],
+            'passenger_ids' => ['nullable', 'array', 'max:100'],
+            'passenger_ids.*' => ['integer'],
             // เช็คอินที่สตาฟกดตอนไม่มีสัญญาณ แล้วแอปส่งตามมาทีหลัง — เวลาที่บันทึก
             // ต้องเป็นตอนที่คนขึ้นรถจริง ไม่ใช่ตอนที่สัญญาณกลับมาบนยอดดอย
             'checked_in_at' => ['nullable', 'date'],
         ]);
 
-        $booking = $this->resolveCheckInBooking(
+        $resolved = $this->resolveCheckInBooking(
             $request,
             $validated['qr_code'],
             $validated['schedule_id'] ?? null
         );
 
-        if ($booking instanceof JsonResponse) {
-            return $booking;
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
         }
+
+        [$booking, $scanned] = $resolved;
 
         if ($booking->status !== 'confirmed') {
             return $this->error('การจองนี้ยังไม่ได้รับการยืนยัน (สถานะ: '.$booking->status.')', 422);
@@ -192,8 +208,36 @@ class DriverController extends Controller
 
         $queued = array_key_exists('checked_in_at', $validated) && $validated['checked_in_at'] !== null;
 
-        if ($booking->checked_in) {
-            $when = 'เช็คอินแล้วเมื่อ '.$booking->checked_in_at?->format('d/m/Y H:i');
+        $requestedIds = array_key_exists('passenger_ids', $validated) && $validated['passenger_ids'] !== null
+            ? array_values(array_unique(array_map('intval', $validated['passenger_ids'])))
+            : ($scanned ? [(int) $scanned->id] : null);
+
+        if ($requestedIds === []) {
+            return $this->error('เลือกผู้เดินทางที่มาถึงอย่างน้อย 1 คน', 422);
+        }
+
+        $passengers = $booking->passengers;
+
+        // เช็คอินยกใบทั้งที่ทุกคนเคยแจ้งว่าไม่ไป และยังไม่มีใครขึ้นรถ = มีคนมาจริง
+        // นับทุกคน (ไม่ใช่ตอบว่า "เช็คอินแล้ว" ทั้งที่ยังไม่มีใครขึ้นสักคน)
+        if ($requestedIds === null
+            && $passengers->isNotEmpty()
+            && ! $passengers->contains(fn ($p) => $p->isAwaitingBoarding() || $p->isCheckedIn())) {
+            $requestedIds = $passengers->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        // ทุกคนที่ขอมาขึ้นรถไปแล้ว (หรือใบนี้ไม่มีใครเหลือให้รอ)
+        $pending = $requestedIds === null
+            ? $passengers->filter(fn ($p) => $p->isAwaitingBoarding())
+            : $passengers->whereIn('id', $requestedIds)->filter(fn ($p) => ! $p->isCheckedIn());
+
+        $allKnown = $requestedIds === null
+            || $passengers->whereIn('id', $requestedIds)->count() === count($requestedIds);
+
+        $nothingLeft = $passengers->isEmpty() ? (bool) $booking->checked_in : $pending->isEmpty();
+
+        if ($nothingLeft && $allKnown) {
+            $when = $this->alreadyCheckedInLabel($booking, $scanned, $requestedIds);
 
             // คิวที่ค้างอยู่บนเครื่องสตาฟส่งซ้ำได้ (เปิดแอปใหม่ สัญญาณติด ๆ ดับ ๆ)
             // และคนคนนั้นก็เช็คอินไปแล้วจริง ๆ — ตอบว่าเรียบร้อยเพื่อให้คิวปล่อย
@@ -203,39 +247,140 @@ class DriverController extends Controller
                     new BookingResource($booking->fresh($this->checkInRelations())),
                     $when,
                     200,
-                    $this->checkInMeta($booking)
+                    $this->checkInMeta($booking, $scanned)
                 );
             }
 
             return $this->error($when, 422);
         }
 
-        $booking->update([
-            'checked_in' => true,
-            'checked_in_at' => $this->resolveCheckInTime($validated['checked_in_at'] ?? null),
-        ]);
-
-        $this->notifyCheckIn($booking);
-
-        // When this check-in completes everyone at the booking's pickup point,
-        // close the point and immediately notify the next stop's passengers.
-        $auto = $this->maybeAutoCompletePickup($booking);
-
-        $message = 'เช็คอินสำเร็จ';
-        if ($auto !== null) {
-            $message = $auto['next']
-                ? "เช็คอินสำเร็จ • จุดนี้ครบแล้ว แจ้งจุดถัดไป: {$auto['next']['label']}"
-                : 'เช็คอินสำเร็จ • รับครบทุกจุดแล้ว';
+        try {
+            $result = $checkIns->checkIn(
+                $booking,
+                $requestedIds,
+                $this->resolveCheckInTime($validated['checked_in_at'] ?? null),
+            );
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 422);
         }
 
         $fresh = $booking->fresh($this->checkInRelations());
+
+        $this->notifyCheckIn($fresh, $result['checked_in_ids'], $result['booking_flipped']);
+
+        // When this check-in completes everyone at the booking's pickup point,
+        // close the point and immediately notify the next stop's passengers.
+        $auto = $this->maybeAutoCompletePickup($fresh, $result['checked_in_ids']);
+
+        $message = $this->checkInMessage($fresh, $result['checked_in_ids']);
+        if ($auto !== null) {
+            $message .= $auto['next']
+                ? " • จุดนี้ครบแล้ว แจ้งจุดถัดไป: {$auto['next']['label']}"
+                : ' • รับครบทุกจุดแล้ว';
+        }
 
         return $this->success(
             new BookingResource($fresh),
             $message,
             200,
+            $this->checkInMeta($fresh, $scanned ? $fresh->passengers->firstWhere('id', $scanned->id) : null)
+        );
+    }
+
+    /**
+     * สตาฟติ๊กผิดคน — ถอนเช็คอินของผู้เดินทางคนหนึ่ง
+     */
+    public function undoCheckIn(Request $request, PassengerCheckInService $checkIns): JsonResponse
+    {
+        if (! $this->hasDriverAccess($request)) {
+            return $this->error('บัญชีนี้ยังไม่ได้รับสิทธิ์คนขับหรือสตาฟ', 403);
+        }
+
+        $validated = $request->validate([
+            'qr_code' => ['required', 'string'],
+            'passenger_id' => ['required', 'integer'],
+            'schedule_id' => ['nullable', 'integer', 'exists:trip_schedules,id'],
+        ]);
+
+        $resolved = $this->resolveCheckInBooking(
+            $request,
+            $validated['qr_code'],
+            $validated['schedule_id'] ?? null
+        );
+
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
+        }
+
+        [$booking] = $resolved;
+
+        $passenger = $booking->passengers->firstWhere('id', (int) $validated['passenger_id']);
+
+        if (! $passenger) {
+            return $this->error('ไม่พบผู้เดินทางคนนี้ในใบจอง', 404);
+        }
+
+        if (! $passenger->isCheckedIn()) {
+            return $this->error($passenger->displayName().' ยังไม่ได้เช็คอิน', 422);
+        }
+
+        $checkIns->undo($booking, $passenger);
+
+        $fresh = $booking->fresh($this->checkInRelations());
+
+        return $this->success(
+            new BookingResource($fresh),
+            'ยกเลิกเช็คอินของ '.$passenger->displayName().' แล้ว',
+            200,
             $this->checkInMeta($fresh)
         );
+    }
+
+    /** ข้อความตอบกลับเมื่อทุกคนที่ขอมาเช็คอินไปแล้ว */
+    private function alreadyCheckedInLabel(Booking $booking, ?BookingPassenger $scanned, ?array $requestedIds): string
+    {
+        $one = $scanned
+            ?? (is_array($requestedIds) && count($requestedIds) === 1
+                ? $booking->passengers->firstWhere('id', $requestedIds[0])
+                : null);
+
+        if ($one && $one->checked_in_at) {
+            return $one->displayName().' เช็คอินแล้วเมื่อ '.$this->thaiClock($one->checked_in_at);
+        }
+
+        if ($one && $one->isNotGoing()) {
+            return $one->displayName().' แจ้งไว้ว่าไม่ไป';
+        }
+
+        return 'เช็คอินแล้วเมื่อ '.$this->thaiClock($booking->checked_in_at);
+    }
+
+    /** "เช็คอินสำเร็จ" + ใครบ้าง / ขาดใคร */
+    private function checkInMessage(Booking $booking, array $newIds): string
+    {
+        $passengers = $booking->passengers;
+
+        if ($passengers->isEmpty()) {
+            return 'เช็คอินสำเร็จ';
+        }
+
+        $new = $passengers->whereIn('id', $newIds);
+        $message = $new->count() === 1
+            ? 'เช็คอิน '.$new->first()->displayName().' สำเร็จ'
+            : 'เช็คอินสำเร็จ '.$new->count().' คน';
+
+        if ($passengers->count() > 1) {
+            $aboard = $passengers->filter(fn ($p) => $p->isCheckedIn())->count();
+            $message .= " (ใบนี้ขึ้นรถแล้ว {$aboard}/{$passengers->count()})";
+        }
+
+        return $message;
+    }
+
+    /** เวลาแบบที่สตาฟอ่าน — ตามเวลาไทย */
+    private function thaiClock(?Carbon $at): string
+    {
+        return $at ? $at->copy()->timezone('Asia/Bangkok')->format('d/m/Y H:i') : '-';
     }
 
     /**
@@ -263,22 +408,59 @@ class DriverController extends Controller
     }
 
     /**
-     * แจ้งเตือน (in-app + FCM push) ให้เจ้าของการจองและเพื่อนร่วมทริปที่มีบัญชี
-     * ทราบว่าเช็คอินสำเร็จแล้ว เรียกครั้งเดียวตอน QR ถูกสแกนสำเร็จเท่านั้น
+     * แจ้งเตือน (in-app + FCM push) ว่าเช็คอินสำเร็จ
+     *
+     * เพื่อนที่ผูกกับชื่อตัวเองได้ข่าวเมื่อ "ตัวเอง" ขึ้นรถเท่านั้น — เพื่อนที่ไม่ได้มา
+     * ไม่ควรได้ข้อความว่าเช็คอินเรียบร้อย ส่วนเจ้าของใบจองและเพื่อนที่ยังไม่ได้
+     * เลือกชื่อ ได้ข่าวครั้งเดียวตอนใบจองมีคนขึ้นรถคนแรก
+     *
+     * @param  array<int, int>  $newIds  ผู้โดยสารที่เพิ่งขึ้นรถรอบนี้
      */
-    private function notifyCheckIn(Booking $booking): void
+    private function notifyCheckIn(Booking $booking, array $newIds, bool $bookingFlipped): void
     {
         $tripTitle = $booking->schedule?->trip?->title;
         $body = $tripTitle
             ? "เช็คอินทริป {$tripTitle} เรียบร้อยแล้ว ขอให้เดินทางปลอดภัย"
             : 'เช็คอินเรียบร้อยแล้ว ขอให้เดินทางปลอดภัย';
 
-        foreach ($booking->accessUserIds() as $userId) {
+        $passengers = $booking->passengers;
+        $ownerBody = $body;
+        if ($passengers->count() > 1) {
+            $aboard = $passengers->filter(fn ($p) => $p->isCheckedIn())->count();
+            $ownerBody = ($tripTitle ? "เช็คอินทริป {$tripTitle} แล้ว" : 'เช็คอินแล้ว')
+                ." {$aboard} จาก {$passengers->count()} คน ขอให้เดินทางปลอดภัย";
+        }
+
+        $recipients = [];
+
+        if ($bookingFlipped && $booking->user_id) {
+            $recipients[(int) $booking->user_id] = $ownerBody;
+        }
+
+        $members = BookingMember::where('booking_id', $booking->id)
+            ->where('status', BookingMember::STATUS_ACTIVE)
+            ->whereNotNull('user_id')
+            ->get(['user_id', 'passenger_id']);
+
+        foreach ($members as $member) {
+            $mine = $member->passenger_id !== null
+                && $passengers->contains('id', (int) $member->passenger_id);
+
+            $shouldTell = $mine
+                ? in_array((int) $member->passenger_id, $newIds, true)
+                : $bookingFlipped;
+
+            if ($shouldTell) {
+                $recipients[(int) $member->user_id] ??= $mine ? $body : $ownerBody;
+            }
+        }
+
+        foreach ($recipients as $userId => $text) {
             SmartNotification::send(
                 $userId,
                 'checked_in',
                 'เช็คอินสำเร็จ ✓',
-                $body,
+                $text,
                 [
                     'booking_ref' => $booking->booking_ref,
                     'route' => 'booking',
@@ -287,19 +469,21 @@ class DriverController extends Controller
         }
     }
 
-    private function resolveCheckInBooking(Request $request, string $rawCode, ?int $scheduleId = null): Booking|JsonResponse
+    /**
+     * @return array{0: Booking, 1: BookingPassenger|null}|JsonResponse
+     */
+    private function resolveCheckInBooking(Request $request, string $rawCode, ?int $scheduleId = null): array|JsonResponse
     {
-        $code = $this->extractCode($rawCode);
-        $booking = Booking::with($this->checkInRelations())
-            ->where(function (Builder $query) use ($code) {
-                $query->where('qr_code', $code)
-                    ->orWhere('booking_ref', $code);
-            })
-            ->first();
+        $resolved = app(PassengerCheckInService::class)->resolve(
+            $this->extractCode($rawCode),
+            $this->checkInRelations(),
+        );
 
-        if (! $booking) {
+        if (! $resolved) {
             return $this->error('ไม่พบการจองสำหรับ QR Code นี้', 404);
         }
+
+        $booking = $resolved['booking'];
 
         if ($scheduleId && (int) $booking->schedule_id !== (int) $scheduleId) {
             return $this->error('QR Code นี้ไม่ใช่ผู้เดินทางของรอบที่เลือก', 422);
@@ -309,7 +493,7 @@ class DriverController extends Controller
             return $this->error('คุณไม่มีสิทธิ์เช็คอินรายการนี้', 403);
         }
 
-        return $booking;
+        return [$booking, $resolved['passenger']];
     }
 
     private function checkInRelations(): array
@@ -327,30 +511,53 @@ class DriverController extends Controller
         ];
     }
 
-    private function checkInMeta(Booking $booking): array
+    /**
+     * สิ่งที่หน้าสแกนต้องรู้นอกจากตัวใบจอง: รายคนพร้อมสถานะ (ไว้ติ๊กว่าใครมาจริง),
+     * คนที่ถูกสแกน (QR รายคน) และสรุปของจุดรับ
+     */
+    private function checkInMeta(Booking $booking, ?BookingPassenger $scanned = null): array
     {
         $pickupGroup = $this->pickupGroupSummary($booking);
+        $passengers = $booking->passengers;
+        $roster = app(PassengerCheckInService::class)->roster($passengers);
+        $aboard = $passengers->filter(fn ($p) => $p->isCheckedIn())->count();
 
-        if ($booking->checked_in) {
-            return [
-                'can_check_in' => false,
-                'block_reason' => 'เช็คอินแล้วเมื่อ '.$booking->checked_in_at?->format('d/m/Y H:i'),
-                'pickup_group' => $pickupGroup,
-            ];
-        }
+        $meta = [
+            'pickup_group' => $pickupGroup,
+            'passengers' => $roster,
+            'scanned_passenger_id' => $scanned?->id,
+            'checked_in_passengers' => $aboard,
+            'total_passengers' => $passengers->count(),
+        ];
 
         if ($booking->status !== 'confirmed') {
-            return [
+            return $meta + [
                 'can_check_in' => false,
                 'block_reason' => 'การจองยังไม่ได้รับการยืนยัน',
-                'pickup_group' => $pickupGroup,
             ];
         }
 
-        return [
+        if ($scanned && $scanned->isCheckedIn()) {
+            return $meta + [
+                'can_check_in' => false,
+                'block_reason' => $scanned->displayName().' เช็คอินแล้วเมื่อ '.$this->thaiClock($scanned->checked_in_at),
+            ];
+        }
+
+        $allAboard = $passengers->isEmpty()
+            ? (bool) $booking->checked_in
+            : $aboard === $passengers->count();
+
+        if ($allAboard) {
+            return $meta + [
+                'can_check_in' => false,
+                'block_reason' => 'เช็คอินครบทุกคนแล้ว เมื่อ '.$this->thaiClock($booking->checked_in_at),
+            ];
+        }
+
+        return $meta + [
             'can_check_in' => true,
             'block_reason' => null,
-            'pickup_group' => $pickupGroup,
         ];
     }
 
@@ -358,47 +565,82 @@ class DriverController extends Controller
      * สรุปจุดรับของการจองที่กำลังเช็คอิน พร้อมจำนวนผู้เดินทาง "ทั้งหมด" ที่จุดนี้
      * ในรอบเดียวกัน (ไม่ใช่แค่การจองนี้) และจำนวนที่เช็คอินไปแล้ว เพื่อให้สตาฟรู้ว่า
      * จุดนี้ต้องรับกี่คน เก็บครบหรือยัง จุดปักหมุดเองนับเฉพาะการจองนั้นเพราะเป็นจุดเฉพาะตัว
+     *
+     * นับรายคน: คนที่แจ้งไว้ว่าไม่ไปไม่ต้องรอรับ จึงไม่อยู่ในยอดที่ต้องรับ
      */
     private function pickupGroupSummary(Booking $booking): array
     {
         $schedule = $booking->schedule;
         $pointId = $booking->pickup_point_id;
         $thisBookingHeads = $booking->passengers->count();
+        $arrivals = app(PickupArrivalService::class);
 
-        $isCustom = ! $pointId
-            && $booking->custom_pickup_lat !== null
-            && $booking->custom_pickup_lng !== null
-            && $booking->custom_pickup_status !== 'rejected';
+        $tally = function (Collection $bookings, ?callable $atPoint = null): array {
+            $total = 0;
+            $checkedIn = 0;
 
-        if ($isCustom) {
+            foreach ($bookings as $b) {
+                if ($b->passengers->isEmpty()) {
+                    if ($atPoint === null || $atPoint($b, null)) {
+                        $total++;
+                        $checkedIn += $b->checked_in ? 1 : 0;
+                    }
+
+                    continue;
+                }
+
+                foreach ($b->passengers as $p) {
+                    if ($atPoint !== null && ! $atPoint($b, $p)) {
+                        continue;
+                    }
+
+                    if ($p->isCheckedIn()) {
+                        $total++;
+                        $checkedIn++;
+                    } elseif (! $p->isNotGoing()) {
+                        $total++;
+                    }
+                }
+            }
+
+            return [$total, $checkedIn];
+        };
+
+        if ($arrivals->hasCustomPickup($booking)) {
+            [$total, $checkedIn] = $tally(collect([$booking]));
+
             return [
                 'point_id' => null,
                 'label' => $booking->custom_pickup_label ?: 'จุดรับที่ปักหมุดเอง',
                 'is_custom' => true,
-                'total_passengers' => $thisBookingHeads,
-                'checked_in_passengers' => $booking->checked_in ? $thisBookingHeads : 0,
+                'total_passengers' => $total,
+                'checked_in_passengers' => $checkedIn,
                 'this_booking_passengers' => $thisBookingHeads,
             ];
         }
 
         $point = $pointId ? $schedule?->pickupPoints->firstWhere('id', $pointId) : null;
+        $validIds = $schedule?->pickupPoints->pluck('id')->map(fn ($id) => (int) $id)->all() ?? [];
 
-        // ทุกการจองในรอบนี้ที่อยู่จุดรับเดียวกัน (จุดตายตัว = pickup_point_id ตรงกัน,
-        // ไม่ระบุจุด = ไม่มีทั้ง pickup point และหมุด)
-        $siblings = Booking::where('schedule_id', $schedule?->id)
+        // ทุกคนในรอบนี้ที่ขึ้นจุดเดียวกัน (จุดรายคนก่อน แล้วจุดของใบจอง) — ไม่ระบุจุด =
+        // ไม่มีทั้งจุดรับและหมุด
+        $siblings = Booking::with('passengers:id,booking_id,pickup_point_id,checked_in_at,not_going_at')
+            ->where('schedule_id', $schedule?->id)
             ->where('status', 'confirmed')
-            ->when(
-                $pointId,
-                fn ($q) => $q->where('pickup_point_id', $pointId),
-                fn ($q) => $q->whereNull('pickup_point_id')
-                    ->where(fn ($q2) => $q2->whereNull('custom_pickup_lat')
-                        ->orWhereNull('custom_pickup_lng'))
-            )
-            ->withCount('passengers')
-            ->get(['id', 'checked_in']);
+            ->get(['id', 'pickup_point_id', 'checked_in', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_status']);
 
-        $total = (int) $siblings->sum('passengers_count');
-        $checkedIn = (int) $siblings->where('checked_in', true)->sum('passengers_count');
+        $targetPoint = in_array((int) $pointId, $validIds, true) ? (int) $pointId : null;
+
+        [$total, $checkedIn] = $tally(
+            $siblings->reject(fn (Booking $b) => $arrivals->hasCustomPickup($b)),
+            function (Booking $b, ?BookingPassenger $p) use ($arrivals, $validIds, $targetPoint) {
+                $resolved = $p
+                    ? $arrivals->passengerPointId($b, $p, $validIds)
+                    : (in_array((int) $b->pickup_point_id, $validIds, true) ? (int) $b->pickup_point_id : null);
+
+                return $resolved === $targetPoint;
+            },
+        );
 
         return [
             'point_id' => $pointId,
@@ -590,10 +832,15 @@ class DriverController extends Controller
 
             $passengers = $booking->passengers
                 ->map(fn ($passenger) => [
+                    'id' => $passenger->id,
                     'name' => trim(($passenger->title ? $passenger->title.' ' : '').$passenger->name),
                     'nickname' => $passenger->nickname,
                     'phone' => $passenger->phone,
                     'seat_label' => $seatByName->get(trim((string) $passenger->name))?->seat_id,
+                    // เช็คอินรายคน — ใบจองเดียวกันขึ้นรถไม่พร้อมกันได้
+                    'checked_in' => $passenger->isCheckedIn(),
+                    'checked_in_at' => $passenger->checked_in_at?->toIso8601String(),
+                    'not_going' => $passenger->isNotGoing(),
                 ])
                 ->values();
 
@@ -654,8 +901,13 @@ class DriverController extends Controller
                 'bookings' => $bookings->count(),
                 'checked_in' => $bookings->where('checked_in', true)->count(),
                 'passengers' => $bookings->sum(fn (Booking $booking) => $booking->passengers->count()),
-                'checked_in_passengers' => $bookings->where('checked_in', true)
-                    ->sum(fn (Booking $booking) => $booking->passengers->count()),
+                'checked_in_passengers' => $bookings->sum(
+                    fn (Booking $booking) => $booking->passengers->filter(fn ($p) => $p->isCheckedIn())->count()
+                ),
+                // แจ้งล่วงหน้าว่าไม่ไป — สตาฟไม่ต้องรอ
+                'not_going_passengers' => $bookings->sum(
+                    fn (Booking $booking) => $booking->passengers->filter(fn ($p) => $p->isNotGoing())->count()
+                ),
                 // แยกหัวคนตามชนิดการจอง — สตาฟใช้เทียบว่าต้องรับขึ้นรถกี่คน
                 // และมีอีกกี่คนที่จะมาเจอกันเองหน้างาน
                 'join_trip_passengers' => $bookings
@@ -733,7 +985,8 @@ class DriverController extends Controller
                     'name' => $name !== '' ? $name : ($booking->user?->name ?? ''),
                     'nickname' => $passenger?->nickname,
                     'booking_ref' => $booking->booking_ref,
-                    'checked_in' => (bool) $booking->checked_in,
+                    // คนบนที่นั่งนี้ขึ้นรถแล้วหรือยัง (รายคน) — ที่นั่งที่จับคู่ชื่อไม่ได้ใช้ระดับใบจอง
+                    'checked_in' => $passenger ? $passenger->isCheckedIn() : (bool) $booking->checked_in,
                 ];
             }
         }
@@ -886,7 +1139,12 @@ class DriverController extends Controller
                     'is_join_trip' => (bool) $booking->is_join_trip,
                     'phone' => $passenger->phone ?: $booking->user?->phone,
                     'seat_label' => $seatByName->get(trim((string) $passenger->name))?->seat_id,
-                    'checked_in' => (bool) $booking->checked_in,
+                    'passenger_id' => $passenger->id,
+                    // เช็คอินรายคน — แตะชื่อในรายชื่อแล้วเช็คอินเฉพาะคนนั้น
+                    'checked_in' => $passenger->isCheckedIn(),
+                    'checked_in_at' => $passenger->checked_in_at?->toIso8601String(),
+                    'not_going' => $passenger->isNotGoing(),
+                    'booking_checked_in' => (bool) $booking->checked_in,
                     'booking_ref' => $booking->booking_ref,
                     // ลูกค้ากดบอกเองว่ากำลังไป/ถึงแล้ว/อาจสาย — ระดับใบจอง จึงติด
                     // เหมือนกันทุกคนในใบเดียวกัน ป้ายที่เก่าเกินครึ่งวันถูกตัดทิ้ง
@@ -920,6 +1178,8 @@ class DriverController extends Controller
                 $group['passenger_count'] = count($group['passengers']);
                 $group['checked_in_count'] = collect($group['passengers'])
                     ->where('checked_in', true)->count();
+                $group['not_going_count'] = collect($group['passengers'])
+                    ->where('not_going', true)->count();
                 // "กี่คนบอกว่าถึงแล้ว" — ตัวเลขที่สตาฟมองหาก่อนตัดสินใจว่ารถจะรอ
                 // ต่อหรือออก นับเฉพาะคนที่ยังไม่ได้เช็คอิน เพราะคนที่เช็คอินแล้ว
                 // อยู่บนรถแล้ว ไม่ใช่ "คนที่กำลังจะมา"
@@ -1010,33 +1270,29 @@ class DriverController extends Controller
      *
      * @return array{next: ?array, notified: int}|null ผลของจุดสุดท้ายที่ปิด
      */
-    private function maybeAutoCompletePickup(Booking $booking): ?array
+    /**
+     * @param  array<int, int>  $newPassengerIds  คนที่เพิ่งขึ้นรถ — จุดที่ "เพิ่งมีคนขึ้น" คือจุดของคนเหล่านี้
+     */
+    private function maybeAutoCompletePickup(Booking $booking, array $newPassengerIds = []): ?array
     {
         $schedule = $booking->schedule;
         if (! $schedule) {
             return null;
         }
 
-        $validIds = $schedule->pickupPoints->pluck('id')->all();
-        $touched = $this->effectivePickupPointIds($booking, $validIds);
+        $arrivals = app(PickupArrivalService::class);
+        $validIds = $schedule->pickupPoints->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $touched = $booking->passengers->isEmpty()
+            ? $arrivals->effectivePickupPointIds($booking, $validIds)
+            : $arrivals->effectivePickupPointIds($booking, $validIds, onlyPassengerIds: $newPassengerIds);
 
         if (empty($touched)) {
             return null;
         }
 
-        // จุดไหนยังมีคนรออยู่บ้าง — ดูจากการจองที่ยังไม่เช็คอินทั้งรอบ
-        $waiting = [];
-        $pending = Booking::with('passengers:id,booking_id,pickup_point_id')
-            ->where('schedule_id', $schedule->id)
-            ->where('status', 'confirmed')
-            ->where('checked_in', false)
-            ->get(['id', 'pickup_point_id', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_status']);
-
-        foreach ($pending as $other) {
-            foreach ($this->effectivePickupPointIds($other, $validIds) as $id) {
-                $waiting[$id] = true;
-            }
-        }
+        // จุดไหนยังมีคนรออยู่บ้าง — นับรายคน คนที่ยังไม่ขึ้นรถ (และไม่ได้แจ้งว่าไม่ไป)
+        // ทำให้จุดนั้นยังไม่ครบ แม้คนอื่นในใบจองเดียวกันจะขึ้นรถไปแล้ว
+        $waiting = array_filter($arrivals->waitingCounts($schedule));
 
         // ปิดไล่ตามลำดับการเดินรถ เพื่อให้ "จุดถัดไป" ที่คำนวณได้เป็นจุดที่ถูกต้อง
         $points = $schedule->pickupPoints
@@ -1054,21 +1310,6 @@ class DriverController extends Controller
         }
 
         return $result;
-    }
-
-    /**
-     * จุดรับทั้งหมดที่ผู้โดยสารของการจองนี้ยืนรออยู่จริง
-     *
-     * กติกาอยู่ที่ PickupArrivalService ที่เดียว เพราะฝั่งสตาฟ ("รถถึงจุดนี้แล้ว")
-     * ต้องหาคนกลุ่มเดียวกันเป๊ะ ๆ กับที่นี่ใช้ปิดจุด ถ้าสองฝั่งตีความจุดรับ
-     * รายคนต่างกัน จะมีคนถูกทิ้งไว้ที่จุดรับโดยไม่มีใครรู้
-     *
-     * @param  array<int, int>  $validIds  id ของจุดรับที่อยู่ในรอบนี้จริง
-     * @return array<int, int>
-     */
-    private function effectivePickupPointIds(Booking $booking, array $validIds): array
-    {
-        return app(PickupArrivalService::class)->effectivePickupPointIds($booking, $validIds);
     }
 
     /**

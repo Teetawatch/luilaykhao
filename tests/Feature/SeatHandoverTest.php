@@ -159,6 +159,8 @@ class SeatHandoverTest extends TestCase
     {
         $recipient = User::factory()->create(['name' => 'มานะ ขยันดี']);
         $token = $this->createLink($this->owner, $this->friendSeat, ['note' => 'ไปแทนหญิงนะ']);
+        $this->friendSeat->forceFill(['pass_token' => 'old-friend-link-token'])->save();
+        $oldBoardingCode = $this->friendSeat->fresh()->qr_code;
 
         $preview = $this->actingAs($recipient, 'sanctum')
             ->getJson("/api/v1/seat-handovers/{$token}")
@@ -183,6 +185,10 @@ class SeatHandoverTest extends TestCase
         // ข้อมูลส่วนตัวของคนเดิมต้องไม่เหลือติดชื่อคนใหม่
         $this->assertNull($seat->allergies);
         $this->assertNull($seat->health_notes);
+        // บัตรขึ้นรถและลิงก์ของเพื่อนคนเดิมใช้ไม่ได้อีก
+        $this->assertNotNull($seat->qr_code);
+        $this->assertNotSame($oldBoardingCode, $seat->qr_code);
+        $this->assertNull($seat->pass_token);
         $this->assertSame('มานะ ขยันดี', BookingSeat::where('seat_id', 'A2')->value('passenger_name'));
 
         $this->assertDatabaseMissing('booking_members', ['booking_id' => $this->booking->id, 'user_id' => $this->friend->id]);

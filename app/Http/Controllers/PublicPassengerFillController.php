@@ -97,13 +97,16 @@ class PublicPassengerFillController extends Controller
 
         return redirect()
             ->route('public.passenger-fill.done')
-            ->with('passenger_name', $passenger->name);
+            ->with('passenger_name', $passenger->name)
+            // มาจากลิงก์ของเพื่อน — พากลับไปต่อที่บัตรขึ้นรถ/เข้าแอป ไม่ใช่จบที่ทางตัน
+            ->with('pass_url', $passenger->passUrl());
     }
 
     public function done(): View
     {
         return view('passenger-fill.done', [
             'name' => session('passenger_name'),
+            'passUrl' => session('pass_url'),
         ]);
     }
 

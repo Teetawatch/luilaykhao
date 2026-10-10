@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\BookingMember;
+use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -21,11 +22,17 @@ class BookingMemberService
             throw new \Exception('การจองนี้ไม่สามารถเชิญเพื่อนได้');
         }
 
-        if ($this->occupiedSlots($booking) >= $this->maxMembers($booking)) {
+        $passengerId = $this->validatePassengerId($booking, $passengerId);
+
+        // คำเชิญที่ผูกกับชื่อคนใดคนหนึ่ง มีได้คนละหนึ่งใบตามจำนวนผู้เดินทางอยู่แล้ว
+        // จึงไม่ต้องนับโควตารวม (คนจองที่ไม่ได้ไปเองจองให้เพื่อน 4 คน ต้องเชิญได้ครบ 4)
+        if ($passengerId !== null) {
+            if ($this->passengerIsClaimed($booking, $passengerId)) {
+                throw new \Exception('ผู้เดินทางคนนี้มีคำเชิญหรือเข้าร่วมในแอปแล้ว');
+            }
+        } elseif ($this->occupiedSlots($booking) >= $this->maxMembers($booking)) {
             throw new \Exception('เชิญสมาชิกครบตามจำนวนผู้เดินทางแล้ว');
         }
-
-        $passengerId = $this->validatePassengerId($booking, $passengerId);
 
         return BookingMember::create([
             'booking_id' => $booking->id,
@@ -92,6 +99,85 @@ class BookingMemberService
         app(SplitPaymentService::class)->linkMemberToShare($member);
 
         return $member;
+    }
+
+    /**
+     * คำเชิญที่รอรับของผู้เดินทางคนนี้ — มีอยู่แล้วใช้ใบเดิม ไม่มีก็ออกให้
+     *
+     * ใช้กับลิงก์ของเพื่อน (/f/{token}): เพื่อนเปิดลิงก์แล้วกด "เข้าแอป" ต้องได้
+     * คำเชิญที่ผูกกับชื่อตัวเองเสมอ คืน null เมื่อที่นั่งนี้มีคนรับไปแล้ว
+     */
+    public function pendingInviteForPassenger(Booking $booking, BookingPassenger $passenger): ?BookingMember
+    {
+        if (! $this->bookingIsActive($booking) || (int) $passenger->booking_id !== (int) $booking->id) {
+            return null;
+        }
+
+        $existing = BookingMember::where('booking_id', $booking->id)
+            ->where('passenger_id', $passenger->id)
+            ->whereIn('status', [BookingMember::STATUS_PENDING, BookingMember::STATUS_ACTIVE])
+            ->first();
+
+        if ($existing) {
+            return $existing->isPending() ? $existing : null;
+        }
+
+        return BookingMember::create([
+            'booking_id' => $booking->id,
+            'user_id' => null,
+            'passenger_id' => $passenger->id,
+            'role' => BookingMember::ROLE_COMPANION,
+            'status' => BookingMember::STATUS_PENDING,
+            'invite_token' => $this->generateToken(),
+            'invite_label' => $passenger->displayName(),
+            'invited_by' => $booking->user_id,
+        ]);
+    }
+
+    /**
+     * เพื่อนที่เข้าร่วมแล้วแต่ยังไม่ได้บอกว่าตัวเองคือใครในรายชื่อ เลือกชื่อตัวเอง —
+     * จากนั้นเห็นบัตรขึ้นรถของตัวเองใบเดียว
+     */
+    public function claimPassenger(Booking $booking, User $user, int $passengerId): BookingMember
+    {
+        return DB::transaction(function () use ($booking, $user, $passengerId) {
+            $member = BookingMember::where('booking_id', $booking->id)
+                ->where('user_id', $user->id)
+                ->where('status', BookingMember::STATUS_ACTIVE)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $member) {
+                throw new \Exception('คุณยังไม่ได้เป็นสมาชิกของการจองนี้');
+            }
+
+            if ($member->passenger_id !== null) {
+                throw new \Exception('คุณเลือกชื่อของตัวเองไว้แล้ว ถ้าเลือกผิด ให้เจ้าของการจองนำคุณออกแล้วเชิญใหม่');
+            }
+
+            $passenger = BookingPassenger::where('booking_id', $booking->id)->whereKey($passengerId)->first();
+
+            if (! $passenger) {
+                throw new \Exception('ไม่พบผู้เดินทางคนนี้ในการจอง');
+            }
+
+            $claimed = BookingMember::where('booking_id', $booking->id)
+                ->where('passenger_id', $passenger->id)
+                ->whereIn('status', [BookingMember::STATUS_PENDING, BookingMember::STATUS_ACTIVE])
+                ->lockForUpdate()
+                ->first();
+
+            if ($claimed && $claimed->isPending() && $claimed->user_id === null) {
+                // คำเชิญของชื่อนี้ที่ยังไม่มีใครกดรับ — เจ้าตัวมาเลือกเองแล้ว ใบนั้นหมดหน้าที่
+                $claimed->delete();
+            } elseif ($claimed) {
+                throw new \Exception('ชื่อนี้มีคนเลือกไปแล้ว');
+            }
+
+            $member->forceFill(['passenger_id' => $passenger->id])->save();
+
+            return $member->fresh();
+        });
     }
 
     /**
@@ -163,6 +249,7 @@ class BookingMemberService
             'status' => $m->status,
             'role' => $m->role,
             'invite_label' => $m->invite_label,
+            'passenger_id' => $m->passenger_id,
             'passenger_name' => $m->passenger?->nickname ?: $m->passenger?->name,
             'accepted_at' => $m->accepted_at?->toISOString(),
             // คำเชิญที่ยังไม่ถูกรับ — เจ้าของส่งลิงก์เดิมซ้ำได้ ไม่ต้องสร้างใบใหม่
@@ -294,6 +381,14 @@ class BookingMemberService
         $belongs = $booking->passengers()->whereKey($passengerId)->exists();
 
         return $belongs ? $passengerId : null;
+    }
+
+    private function passengerIsClaimed(Booking $booking, int $passengerId): bool
+    {
+        return BookingMember::where('booking_id', $booking->id)
+            ->where('passenger_id', $passengerId)
+            ->whereIn('status', [BookingMember::STATUS_PENDING, BookingMember::STATUS_ACTIVE])
+            ->exists();
     }
 
     private function bookingIsActive(Booking $booking): bool

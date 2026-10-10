@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Services\PickupStatusService;
+use App\Services\TripAttendanceService;
 use App\Services\TripBriefService;
 use App\Support\TripBriefCalendar;
 use Illuminate\Http\RedirectResponse;
@@ -120,6 +121,43 @@ class PublicTripBriefController extends Controller
         }
 
         return $back->with('pickup_saved', true);
+    }
+
+    /**
+     * "ไปครบไหม" จากใบเดินทาง — ติ๊กคนที่ไป คนที่ไม่ได้ติ๊กคือแจ้งว่าไม่ไป
+     *
+     * สำหรับคนจองที่ไม่มีแอป (ได้คำถามทาง LINE) กติกาทั้งหมดอยู่ที่ TripAttendanceService
+     */
+    public function attendance(Request $request, string $token, TripAttendanceService $attendance): RedirectResponse
+    {
+        $booking = Booking::with(['schedule.trip', 'passengers'])
+            ->where('brief_token', $token)
+            ->first();
+
+        if (! $booking || ! $this->briefs->isViewable($booking)) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'going' => ['nullable', 'array', 'max:100'],
+            'going.*' => ['integer'],
+        ]);
+
+        $going = array_map('intval', $validated['going'] ?? []);
+        $notGoing = $booking->passengers
+            ->reject(fn ($p) => in_array((int) $p->id, $going, true))
+            ->pluck('id')
+            ->all();
+
+        $back = redirect()->to(route('public.trip-brief.show', $token).'#attendance');
+
+        try {
+            $attendance->confirm($booking, $notGoing);
+        } catch (\Exception $e) {
+            return $back->with('attendance_error', $e->getMessage());
+        }
+
+        return $back->with('attendance_saved', true);
     }
 
     /**

@@ -131,6 +131,13 @@ class LineMessagingService
      */
     private function linkFor(SmartNotification $notification): ?string
     {
+        // การแจ้งเตือนที่มีหน้าเว็บของตัวเอง (เช่น ใบเดินทางที่มีปุ่มตอบ "ไปครบไหม")
+        // ส่งลิงก์นั้นตรง ๆ — LIFF ไม่มีทุกหน้า รับเฉพาะลิงก์ในโดเมนของเราเท่านั้น
+        $webUrl = (string) ($notification->data['web_url'] ?? '');
+        if ($webUrl !== '' && str_starts_with($webUrl, rtrim((string) config('app.url'), '/').'/')) {
+            return $webUrl;
+        }
+
         $liffId = trim((string) config('line.liff_id'));
 
         if ($liffId === '') {

@@ -26,7 +26,7 @@ class UniversalLinksTest extends TestCase
                     'appID' => 'ABCDE12345.com.luilaykhao.app',
                     // /reset-password ต้องอยู่ในนี้ ไม่งั้นลิงก์ตั้งรหัสผ่านใหม่ที่เมล
                     // ไปหาลูกค้าจะเปิดเบราว์เซอร์แทนที่จะเข้าแอปที่ติดตั้งอยู่
-                    'paths' => ['/gift/*', '/reset-password*', '/handover/*', '/voucher/*'],
+                    'paths' => ['/gift/*', '/reset-password*', '/handover/*', '/voucher/*', '/join/*'],
                 ]],
             ],
         ]);

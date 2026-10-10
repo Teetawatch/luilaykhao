@@ -66,7 +66,7 @@ class StaffController extends Controller
                 // needs the headcount, matching the admin manifest endpoint.
                 $bookings = Booking::where('schedule_id', $s->id)
                     ->whereIn('status', ['confirmed', 'completed'])
-                    ->with(['passengers:id,booking_id,pickup_point_id,name,nickname,phone'])
+                    ->with(['passengers:id,booking_id,pickup_point_id,name,nickname,phone,checked_in_at,not_going_at'])
                     ->get(['id', 'pickup_point_id', 'checked_in', 'is_join_trip']);
 
                 // Flatten each booking into per-passenger rows so headcount,
@@ -76,7 +76,9 @@ class StaffController extends Controller
                         // Passengers can override the booking-level pickup
                         // (added 2026-05); fall back to the booking when null.
                         'pickup_point_id' => $p->pickup_point_id ?? $b->pickup_point_id,
-                        'checked_in' => (bool) $b->checked_in,
+                        // รายคน — ใบจองเดียวกันขึ้นรถไม่พร้อมกันได้
+                        'checked_in' => $p->checked_in_at !== null,
+                        'not_going' => $p->not_going_at !== null && $p->checked_in_at === null,
                         'name' => trim((string) ($p->nickname ?: $p->name)) ?: 'ผู้โดยสาร',
                         'phone' => $p->phone,
                         // จอยทริป = ไปเจอกันเองหน้างาน ไม่ได้ขึ้นรถของรอบ
@@ -94,6 +96,7 @@ class StaffController extends Controller
                         'name' => $r['name'],
                         'phone' => $r['phone'],
                         'checked_in' => $r['checked_in'],
+                        'not_going' => $r['not_going'],
                         'is_join_trip' => $r['is_join_trip'],
                     ])
                     ->values();

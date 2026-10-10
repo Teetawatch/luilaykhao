@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleMaintenance;
 use App\Rules\ThaiName;
+use App\Services\PassengerCheckInService;
 use App\Support\Countries;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
@@ -941,34 +942,59 @@ class AdminExtendedController extends Controller
 
     // ─── QR Code Check-in ──────────────────────────────────────
 
-    public function checkIn(Request $request): JsonResponse
+    /**
+     * เช็คอินจากหน้าแอดมิน — สแกนได้ทั้ง QR ของใบจอง (ทุกคนที่ยังรอ) และบัตรรายคน
+     * (เฉพาะคนนั้น) กติกาเดียวกับแอปสตาฟ ผ่าน PassengerCheckInService
+     */
+    public function checkIn(Request $request, PassengerCheckInService $checkIns): JsonResponse
     {
         $request->validate([
             'qr_code' => ['required', 'string'],
         ]);
 
-        $booking = Booking::where('qr_code', $request->qr_code)
-            ->with(['schedule.trip', 'user', 'passengers', 'seats'])
-            ->first();
+        $resolved = $checkIns->resolve($request->qr_code, ['schedule.trip', 'user', 'passengers', 'seats']);
 
-        if (! $booking) {
+        if (! $resolved) {
             return $this->error('ไม่พบการจองสำหรับ QR Code นี้', 404);
         }
+
+        /** @var Booking $booking */
+        $booking = $resolved['booking'];
+        $scanned = $resolved['passenger'];
 
         if ($booking->status !== 'confirmed') {
             return $this->error('การจองนี้ยังไม่ได้รับการยืนยัน (สถานะ: '.$booking->status.')', 422);
         }
 
-        if ($booking->checked_in) {
-            return $this->error('เช็คอินแล้วเมื่อ '.$booking->checked_in_at->format('d/m/Y H:i'), 422);
+        if ($scanned && $scanned->isCheckedIn()) {
+            return $this->error(
+                $scanned->displayName().' เช็คอินแล้วเมื่อ '.$scanned->checked_in_at->copy()->timezone('Asia/Bangkok')->format('d/m/Y H:i'),
+                422,
+            );
         }
 
-        $booking->update([
-            'checked_in' => true,
-            'checked_in_at' => now(),
-        ]);
+        $nobodyWaiting = $booking->passengers->isEmpty()
+            ? (bool) $booking->checked_in
+            : ! $booking->passengers->contains(fn ($p) => $p->isAwaitingBoarding());
 
-        return $this->success(new BookingResource($booking->fresh()), 'เช็คอินสำเร็จ');
+        if (! $scanned && $nobodyWaiting) {
+            return $this->error('เช็คอินแล้วเมื่อ '.$booking->checked_in_at?->copy()->timezone('Asia/Bangkok')->format('d/m/Y H:i'), 422);
+        }
+
+        $result = $checkIns->checkIn($booking, $scanned ? [(int) $scanned->id] : null, now());
+
+        $fresh = $booking->fresh(['schedule.trip', 'user', 'passengers', 'seats']);
+        $aboard = $fresh->passengers->filter(fn ($p) => $p->isCheckedIn())->count();
+        $new = $fresh->passengers->whereIn('id', $result['checked_in_ids']);
+
+        $message = $new->count() === 1
+            ? 'เช็คอิน '.$new->first()->displayName().' สำเร็จ'
+            : 'เช็คอินสำเร็จ';
+        if ($fresh->passengers->count() > 1) {
+            $message .= " (ขึ้นรถแล้ว {$aboard}/{$fresh->passengers->count()})";
+        }
+
+        return $this->success(new BookingResource($fresh), $message);
     }
 
     public function checkInByRef(string $ref): JsonResponse

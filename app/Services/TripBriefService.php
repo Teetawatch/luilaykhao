@@ -198,6 +198,7 @@ class TripBriefService
             'announcements' => $this->announcementsBlock($schedule),
             'todo' => $this->todoBlock($booking),
             'checkin' => $this->checkinBlock($booking, $schedule),
+            'attendance' => $this->attendanceBlock($booking),
             'pickup_status' => $this->pickupStatusBlock($booking, $schedule),
             'progress' => $this->progressBlock($schedule),
             'payment' => $this->paymentBlock($booking),
@@ -690,11 +691,18 @@ class TripBriefService
      */
     private function checkinBlock(Booking $booking, ?TripSchedule $schedule): array
     {
-        if ($booking->checked_in) {
+        // เช็คอินเป็นรายคน — ใบที่ขึ้นรถไปแล้วบางคนยังต้องโชว์ QR ให้คนที่เหลือ
+        $passengers = $booking->passengers;
+        $aboard = $passengers->filter(fn ($p) => $p->isCheckedIn())->count();
+        $stillWaiting = $passengers->contains(fn ($p) => $p->isAwaitingBoarding());
+        $expected = $passengers->reject(fn ($p) => $p->isNotGoing())->count();
+
+        if ($booking->checked_in && ! $stillWaiting) {
             return [
                 'show' => false,
                 'checked_in' => true,
-                'checked_in_label' => $booking->checked_in_at?->timezone(self::TIMEZONE)->format('H:i'),
+                'checked_in_label' => $booking->checked_in_at?->copy()->timezone(self::TIMEZONE)->format('H:i'),
+                'aboard_label' => $passengers->count() > 1 ? "ขึ้นรถแล้ว {$aboard}/{$expected} คน" : null,
             ];
         }
 
@@ -707,8 +715,41 @@ class TripBriefService
             'show' => $show,
             'checked_in' => false,
             'checked_in_label' => null,
+            'aboard_label' => $booking->checked_in && $passengers->count() > 1
+                ? "ขึ้นรถแล้ว {$aboard}/{$expected} คน"
+                : null,
             'code' => $show ? $booking->qr_code : null,
             'qr' => $show ? $this->qrCodes->svgDataUri($booking->qr_code, 220) : null,
+        ];
+    }
+
+    /**
+     * "ไปครบไหม" — ใบจองหลายคนบอกได้ว่าใครไม่ไป (กติกาอยู่ที่ TripAttendanceService)
+     *
+     * อยู่บนใบเดินทางเพราะคนที่ได้คำถามนี้ทาง LINE ไม่มีแอป ลิงก์ในข้อความจึงพามาที่นี่
+     *
+     * @return array<string, mixed>
+     */
+    private function attendanceBlock(Booking $booking): array
+    {
+        $passengers = $booking->passengers->sortBy('id')->values();
+        $service = app(TripAttendanceService::class);
+
+        $show = $passengers->count() >= 2 && $service->isOpen($booking);
+
+        return [
+            'show' => $show,
+            'confirmed' => $booking->attendance_confirmed_at !== null,
+            'going_count' => $passengers->reject(fn ($p) => $p->isNotGoing())->count(),
+            'total' => $passengers->count(),
+            'passengers' => $show
+                ? $passengers->map(fn ($p) => [
+                    'id' => $p->id,
+                    'name' => $p->displayName(),
+                    'going' => ! $p->isNotGoing(),
+                    'checked_in' => $p->isCheckedIn(),
+                ])->all()
+                : [],
         ];
     }
 
