@@ -101,10 +101,23 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+CURRENT_STEP="ตรวจ syntax PHP"
+# lint ด้วย PHP ของเครื่องนี้เอง — เครื่อง dev อาจใช้ PHP ใหม่กว่า prod (เคยเกิด: dev 8.5
+# prod 8.3) syntax ที่ prod ไม่รู้จักจะโผล่ตรงนี้ แทนที่จะโผล่เป็นหน้า 500 ของลูกค้า
+step "ตรวจ syntax PHP ด้วย $(php -r 'echo PHP_VERSION;')"
+LINT_ERRORS="$(find app bootstrap config database routes -name '*.php' -print0 \
+  | xargs -0 -n 50 -P 4 php -l 2>&1 | grep -v '^No syntax errors detected' || true)"
+if [ -n "$LINT_ERRORS" ]; then
+  printf '%s\n' "$LINT_ERRORS"
+  die "มีไฟล์ที่ PHP $(php -r 'echo PHP_VERSION;') บนเครื่องนี้อ่านไม่ออก (ด้านบน)"
+fi
+
 CURRENT_STEP="composer install"
 # ทุกครั้ง ไม่ใช่เฉพาะเมื่อ lock เปลี่ยนระหว่าง commit — vendor/ บนเครื่องอาจไม่ตรงกับ
 # lock ด้วยเหตุอื่น (เคยมีคนรัน composer update บนเซิร์ฟเวอร์) ไม่มีอะไรเปลี่ยนก็จบในไม่กี่วินาที
 step "composer install"
+# root + non-interactive = composer ปิด plugin เงียบ ๆ (php-http/discovery) — ให้เหมือนตอนรันมือ
+if [ "$DEPLOYER" = "root" ]; then export COMPOSER_ALLOW_SUPERUSER=1; fi
 as_deployer composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 
 # ---------------------------------------------------------------------------
