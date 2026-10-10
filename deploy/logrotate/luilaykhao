@@ -1,0 +1,26 @@
+# หมุนไฟล์ storage/logs/laravel.log ทุกวัน เก็บย้อนหลัง 14 วัน (บีบอัด)
+#
+# ติดตั้ง:
+#   sudo cp deploy/logrotate/luilaykhao /etc/logrotate.d/luilaykhao
+#   sudo logrotate -d /etc/logrotate.d/luilaykhao   # ลองดูก่อน ไม่เปลี่ยนอะไร
+#
+# copytruncate: คัดลอกแล้วตัดไฟล์เดิมให้ว่าง ไฟล์ laravel.log จึงเป็นของ www-data
+# ตลอด — ไม่ใช้ LOG_STACK=daily ของ Laravel เพราะไฟล์รายวันถูกสร้างโดยใครก็ได้ที่
+# เขียน log คนแรกของวัน ถ้าเป็น root (เช่นรัน artisan ด้วย sudo) เว็บจะเขียน log
+# ไม่ได้ทั้งวัน
+#
+# horizon.log / worker.log ไม่ต้องใส่ — supervisor หมุนเองที่ 50MB อยู่แล้ว
+
+/var/www/luilaykhao/storage/logs/laravel.log {
+    su www-data www-data
+    daily
+    maxsize 200M
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    dateext
+    dateformat -%Y%m%d-%s
+}

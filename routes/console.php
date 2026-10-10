@@ -13,6 +13,7 @@ use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\IssueBirthdayCouponsJob;
 use App\Jobs\NotifyStalledIntakesJob;
+use App\Jobs\PingHeartbeatJob;
 use App\Jobs\PostTripChatTimelineJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PruneSosPhotosJob;
@@ -40,6 +41,7 @@ use App\Jobs\SendYearReviewReadyJob;
 use App\Jobs\SettleChatPollsJob;
 use App\Jobs\StartScheduledFlashSalesJob;
 use App\Jobs\WarnExpiringLoyaltyPointsJob;
+use App\Services\OpsHealthService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -47,6 +49,14 @@ use Illuminate\Support\Facades\Schedule;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// เฝ้าระบบเบื้องหลัง — ต้องอยู่บนสุด: scheduler รันงานตามลำดับ ตัวนับนี้จึงได้เวลา
+// ของนาทีที่ cron เรียกจริง ไม่ถูกงานช้า ๆ ข้างบนดันเลื่อนออกไป (ดู OpsHealthService)
+Schedule::call(fn () => app(OpsHealthService::class)->recordSchedulerTick())->everyMinute()->name('ops:scheduler-tick');
+// คิวค้าง / Horizon ตาย / งานสำคัญเงียบหาย → อีเมลหาแอดมิน (ส่งตรงไม่ผ่านคิว)
+Schedule::command('ops:alert')->everyTenMinutes()->environments(['production'])->withoutOverlapping(30)->runInBackground();
+// สัญญาณ "ยังอยู่" ไปบริการภายนอก ผ่านคิวจริง — ปิดอยู่จนกว่าจะตั้ง HEARTBEAT_URL
+Schedule::job(new PingHeartbeatJob)->everyFiveMinutes()->when(fn () => filled(config('ops.heartbeat_url')));
 
 Schedule::command('installment:remind')->dailyAt('08:00')->timezone('Asia/Bangkok');
 Schedule::command('deposit:remind-balance')->dailyAt('08:10')->timezone('Asia/Bangkok');

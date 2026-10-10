@@ -1,0 +1,11 @@
+# crontab ของ www-data — ต้องมีที่นี่ที่เดียว (sudo crontab -e -u www-data)
+#
+# ห้ามใส่ซ้ำใน crontab ของ root หรือ user อื่น: งานทุกตัวจะถูกส่งเข้าคิวสองเท่า
+# และกันซ้ำไม่ทันเมื่อสองรอบวิ่งพร้อมกัน ops:doctor ตรวจเจอและ ops:alert แจ้งเตือน
+#
+# เช็คว่ามีที่เดียว:
+#   sudo crontab -l -u www-data | grep schedule:run   # ต้องเจอ 1 บรรทัด
+#   crontab -l | grep schedule:run                    # ต้องไม่เจอ
+#   sudo crontab -l | grep schedule:run               # (root) ต้องไม่เจอ
+
+* * * * * cd /var/www/luilaykhao && php artisan schedule:run >> /dev/null 2>&1

@@ -95,7 +95,9 @@ Trip (slug-routed)
 ### Observability & ops
 
 - **Error tracking** — Sentry (`sentry/sentry-laravel`), wired in `bootstrap/app.php` `withExceptions()`. No-op unless `SENTRY_LARAVEL_DSN` is set. The Flutter apps report crashes separately via Firebase Crashlytics (`AnalyticsService`).
-- **Queues** — Redis-backed; run `php artisan horizon` in production to process/monitor jobs (dashboard at `/horizon`, gated to `admin` role via `viewHorizon`). Local dev still uses `queue:listen` in `composer dev`.
+- **Queues** — Redis-backed; run `php artisan horizon` in production to process/monitor jobs (dashboard at `/horizon`, gated to `admin` role via `viewHorizon`). Local dev still uses `queue:listen` in `composer dev`. Horizon works only the queues listed in `config/horizon.php` (`default`, `reminders`, `sms`) — a new `onQueue('x')` must be added there or its jobs sit in Redis forever with no error (`HorizonQueuesTest` guards it).
+- **Background health** — `OpsHealthService` checks Horizon, per-queue backlog, the scheduler (and a doubled cron), and when each job in `config/ops.php` `monitored_jobs` last *finished on a worker* (`RecordMonitoredJobRun` on `JobProcessed`). `php artisan ops:doctor` prints it; `ops:alert` (every 10 min, production only) emails admins / `OPS_ALERT_EMAILS` on failures — sent synchronously, never via the queue — with re-alerts every 6 h and a recovery mail. `PingHeartbeatJob` pings `HEARTBEAT_URL` (healthchecks.io) through the queue every 5 min for whole-machine outages.
+- **Server setup & deploy** — `deploy/README.md` is the source of truth for what prod runs (one www-data cron, Horizon + Reverb in supervisor, no `queue:work`, logrotate). Deploy with `bash deploy/deploy.sh`.
 
 ### Auth & roles
 
