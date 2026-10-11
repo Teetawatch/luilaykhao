@@ -88,6 +88,9 @@ class StaffController extends Controller
 
                 $totalConfirmed = $passengerRows->count();
                 $checkedInCount = $passengerRows->where('checked_in', true)->count();
+                // คนที่แจ้ง "ไปไม่ได้" ยังมีที่นั่งอยู่ในใบจอง แต่ไม่ใช่คนที่ต้องรอ —
+                // ไม่หักออก หลอดเช็คอินของรอบที่มีคนไม่ไปจะไม่มีวันขึ้นว่าครบ
+                $notGoingCount = $passengerRows->where('not_going', true)->count();
 
                 // แปลงกลุ่มผู้โดยสารเป็นรายชื่อย่อ (ชื่อ/เบอร์/สถานะเช็คอิน) ให้แอป
                 // กดขยายแต่ละจุดแล้วเห็นว่าใครขึ้นจุดไหนได้เลย
@@ -154,6 +157,7 @@ class StaffController extends Controller
                     'booked_seats' => $s->booked_seats,
                     'total_confirmed' => $totalConfirmed,
                     'checked_in_count' => $checkedInCount,
+                    'not_going_count' => $notGoingCount,
                     'pickup_breakdown' => $pickupBreakdown,
                     'no_pickup_count' => $noPickupCount,
                     'no_pickup_passengers' => $roster($noPickupRows),

@@ -15,7 +15,6 @@ use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 
@@ -146,7 +145,7 @@ class VehicleTrackingController extends Controller
             ->unique('vehicle_id');
 
         $locations = $schedules->map(function (TripSchedule $schedule) {
-            $trackingSince = $this->trackingWindowStart($schedule);
+            $trackingSince = $this->locations->trackingSince($schedule);
 
             // พิกัดต้องอยู่ในกรอบเวลาของรอบนี้ ไม่งั้นจะได้จุดสุดท้ายของทริปก่อนหน้า
             $latest = VehicleLocation::where('vehicle_id', $schedule->vehicle_id)
@@ -161,49 +160,25 @@ class VehicleTrackingController extends Controller
     }
 
     /**
-     * เริ่มนับพิกัดของรอบตั้งแต่เมื่อไหร่ — เผื่อ 6 ชม. ก่อนเวลาออกรถจริง
-     * (บางรอบรถออกตั้งแต่คืนก่อนวันเดินทาง)
-     */
-    private function trackingWindowStart(TripSchedule $schedule): Carbon
-    {
-        $departureDay = $schedule->departure_date
-            ? $schedule->departure_date->copy()->startOfDay()
-            : now(self::TIMEZONE)->startOfDay();
-
-        $start = $schedule->departs_at
-            ? $schedule->departs_at->copy()->min($departureDay)
-            : $departureDay;
-
-        return $start->subHours(6);
-    }
-
-    /**
      * ดึงตำแหน่งล่าสุดของรถคันเดียว
      */
-    public function currentLocation(int $vehicleId): JsonResponse
+    public function currentLocation(Request $request, int $vehicleId): JsonResponse
     {
         $vehicle = Vehicle::findOrFail($vehicleId);
 
-        // ลองอ่านจาก Redis
-        $cached = $this->locations->cached($vehicleId);
-        if ($cached) {
-            return $this->success($cached, 'ตำแหน่งล่าสุด');
-        }
-
-        $latest = VehicleLocation::where('vehicle_id', $vehicleId)
-            ->orderByDesc('recorded_at')
-            ->first();
-
-        if (! $latest) {
-            return $this->error('ไม่พบข้อมูลตำแหน่ง', 404);
-        }
-
-        $schedule = $this->locations->activeScheduleFor($vehicleId);
-
-        return $this->success(
-            $this->locations->format($vehicle, $latest, $schedule),
-            'ตำแหน่งล่าสุด',
+        // นับเฉพาะพิกัดของรอบที่ลูกค้ากำลังรอ — จุดสุดท้ายของทริปก่อนหน้าไม่ใช่
+        // "ตำแหน่งล่าสุด" ของรอบนี้ ถึงจะเป็นรถคันเดียวกันก็ตาม
+        $schedule = $this->locations->scheduleForTracking(
+            $vehicleId,
+            $request->integer('schedule_id') ?: null,
         );
+        $location = $schedule ? $this->locations->latestForSchedule($vehicle, $schedule) : null;
+
+        if (! $location) {
+            return $this->error('รถยังไม่เริ่มส่งตำแหน่งของรอบนี้', 404);
+        }
+
+        return $this->success($location, 'ตำแหน่งล่าสุด');
     }
 
     /**
@@ -531,7 +506,7 @@ class VehicleTrackingController extends Controller
         }
 
         $vehicleId = $schedule?->vehicle_id;
-        $location = $vehicleId ? $this->resolveVehicleLocation($vehicleId) : null;
+        $location = ($vehicle && $schedule) ? $this->locations->latestForSchedule($vehicle, $schedule) : null;
 
         if (! $vehicleId || ! $location) {
             // คำยืนยันของสตาฟชนะการไม่มีสัญญาณ — หน้านี้เคยบอกว่า "รถยังไม่เริ่ม
@@ -567,33 +542,6 @@ class VehicleTrackingController extends Controller
         $payload['trackable'] = true;
 
         return $this->success($payload, 'ข้อมูลการติดตาม');
-    }
-
-    /**
-     * ดึงตำแหน่งล่าสุดของรถ — อ่านจาก Redis ก่อน ถ้าไม่มี fallback ไป DB
-     */
-    private function resolveVehicleLocation(int $vehicleId): ?array
-    {
-        $cached = $this->locations->cached($vehicleId);
-        if ($cached && isset($cached['latitude'], $cached['longitude'])) {
-            return $cached;
-        }
-
-        $latest = VehicleLocation::where('vehicle_id', $vehicleId)
-            ->orderByDesc('recorded_at')
-            ->first();
-
-        if (! $latest) {
-            return null;
-        }
-
-        return [
-            'latitude' => $latest->latitude,
-            'longitude' => $latest->longitude,
-            'speed' => $latest->speed,
-            'heading' => $latest->heading,
-            'recorded_at' => $latest->recorded_at?->toIso8601String(),
-        ];
     }
 
     /**

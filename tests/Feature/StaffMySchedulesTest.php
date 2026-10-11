@@ -67,6 +67,34 @@ class StaffMySchedulesTest extends TestCase
         $this->assertSame(3, $payload['checked_in_count']);
     }
 
+    public function test_not_going_count_lets_the_check_in_bar_reach_full(): void
+    {
+        Role::create(['name' => 'staff']);
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $schedule = $this->makeSchedule();
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
+
+        // กลุ่ม 3 คน: ขึ้นรถแล้ว 1, แจ้งไปไม่ได้ 1, ยังรออยู่ 1
+        $group = $this->makeBooking($schedule, passengerCount: 3);
+        [$aboard, $notGoing] = $group->passengers()->orderBy('id')->take(2)->get()->all();
+        $aboard->forceFill(['checked_in_at' => now()])->save();
+        $notGoing->forceFill(['not_going_at' => now()])->save();
+
+        // แจ้งว่าไม่ไปแต่สุดท้ายมาขึ้นรถ — นับเป็นคนขึ้นรถ ไม่ใช่คนไม่ไป
+        $changedMind = $this->makeBooking($schedule)->passengers()->first();
+        $changedMind->forceFill(['not_going_at' => now(), 'checked_in_at' => now()])->save();
+
+        $payload = $this->actingAs($staff, 'sanctum')
+            ->getJson('/api/v1/staff/schedules/my')
+            ->json('data.schedules.0');
+
+        $this->assertSame(4, $payload['total_confirmed']);
+        $this->assertSame(2, $payload['checked_in_count']);
+        $this->assertSame(1, $payload['not_going_count']);
+    }
+
     public function test_pickup_breakdown_groups_passengers_by_per_passenger_pickup(): void
     {
         Role::create(['name' => 'staff']);

@@ -107,6 +107,85 @@ class VehicleLocationService
     }
 
     /**
+     * รอบที่หน้าติดตามรถควรใช้วัด "พิกัดนี้ของรอบไหน"
+     *
+     * แอปรู้ว่าตัวเองติดตามรอบไหนจึงส่ง [scheduleId] มา (ต้องเป็นรอบของรถคันนี้)
+     * ถ้าไม่ส่งมาใช้รอบที่กำลังวิ่งอยู่ ไม่มีก็รอบถัดไป — เช้ามืดวันเดินทางที่รถ
+     * ยังไม่ออก รอบของวันนี้ยังไม่ "กำลังวิ่ง" แต่เป็นรอบที่ลูกค้ารออยู่
+     */
+    public function scheduleForTracking(int $vehicleId, ?int $scheduleId = null): ?TripSchedule
+    {
+        if ($scheduleId) {
+            $schedule = TripSchedule::with('trip')
+                ->where('vehicle_id', $vehicleId)
+                ->find($scheduleId);
+
+            if ($schedule) {
+                return $schedule;
+            }
+        }
+
+        return $this->activeScheduleFor($vehicleId)
+            ?? TripSchedule::with('trip')
+                ->where('vehicle_id', $vehicleId)
+                ->where('status', '!=', 'cancelled')
+                ->whereDate('departure_date', '>=', $this->nowThai()->toDateString())
+                ->orderBy('departure_date')
+                ->first();
+    }
+
+    /**
+     * พิกัดของรถนับเป็นของรอบนี้ตั้งแต่เมื่อไหร่ — 6 ชม. ก่อนวันเดินทาง (หรือก่อน
+     * เวลารถออก ถ้ารถออกตั้งแต่คืนก่อนวันทริป)
+     *
+     * คืนเป็นเวลาจริงแบบ UTC เพื่อเทียบกับ recorded_at ได้ตรง ๆ: departure_date /
+     * departs_at เก็บตัวเลขนาฬิกาไทยในคอลัมน์ชนิด UTC ถ้าเทียบดิบ ๆ จุดเริ่มจะช้า
+     * กว่าจริง 7 ชม. รอบที่รถออก 22:30 คืนก่อนจะไม่มีพิกัดให้เห็นชั่วโมงแรก
+     */
+    public function trackingSince(TripSchedule $schedule): Carbon
+    {
+        $departureDay = $schedule->departure_date
+            ? $schedule->departure_date->copy()->startOfDay()
+            : $this->nowThai()->startOfDay();
+
+        $start = $schedule->departs_at
+            ? $schedule->departs_at->copy()->min($departureDay)
+            : $departureDay;
+
+        return Carbon::parse($start->subHours(6)->format('Y-m-d H:i:s'), self::TIMEZONE)->utc();
+    }
+
+    /**
+     * พิกัดล่าสุดของรถที่เป็นของรอบนี้จริง — null เมื่อรอบนี้ยังไม่มีใครส่งพิกัดมา
+     *
+     * รถคันเดียววิ่งหลายรอบ ถ้าหยิบ "จุดล่าสุด" เฉย ๆ เช้าวันเดินทางก่อนสตาฟเปิดแอป
+     * ลูกค้าจะเห็นรถจอดอยู่ปลายทางของทริปเมื่อวานเหมือนเป็นตำแหน่งสด และ ETA ก็
+     * คำนวณจากจุดนั้นไปด้วย
+     *
+     * @return array<string, mixed>|null รูปแบบเดียวกับ [format]
+     */
+    public function latestForSchedule(Vehicle $vehicle, TripSchedule $schedule): ?array
+    {
+        $since = $this->trackingSince($schedule);
+
+        $cached = $this->cached($vehicle->id);
+        if (
+            $cached
+            && isset($cached['latitude'], $cached['longitude'], $cached['recorded_at'])
+            && Carbon::parse($cached['recorded_at'])->gte($since)
+        ) {
+            return $cached;
+        }
+
+        $latest = VehicleLocation::where('vehicle_id', $vehicle->id)
+            ->where('recorded_at', '>=', $since)
+            ->orderByDesc('recorded_at')
+            ->first();
+
+        return $latest ? $this->format($vehicle, $latest, $schedule, $since) : null;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function format(
