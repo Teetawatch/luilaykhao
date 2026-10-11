@@ -15,7 +15,7 @@ class UniversalLinksTest extends TestCase
 
     public function test_aasa_returns_app_owned_paths_when_configured(): void
     {
-        config(['app.ios_app_id' => 'ABCDE12345.com.luilaykhao.app']);
+        config(['app.ios_app_id' => 'ABCDE12345.com.luilaykhao.app', 'app.claim_opens_app' => false]);
 
         $response = $this->get('/.well-known/apple-app-site-association')->assertOk();
         $response->assertHeader('content-type', 'application/json');
@@ -30,6 +30,27 @@ class UniversalLinksTest extends TestCase
                 ]],
             ],
         ]);
+    }
+
+    /**
+     * /claim/* เข้า AASA ต่อเมื่อเปิด CLAIM_OPENS_APP เท่านั้น — iPhone ที่ยังเป็นแอปเก่า
+     * (ไม่รู้จักลิงก์นี้) จะเปิดแอปขึ้นมาเฉย ๆ แทนที่จะได้หน้าเว็บตั้งรหัสผ่าน
+     */
+    public function test_aasa_hands_claim_links_to_the_app_only_once_switched_on(): void
+    {
+        config(['app.ios_app_id' => 'ABCDE12345.com.luilaykhao.app']);
+
+        config(['app.claim_opens_app' => false]);
+        $this->assertNotContains(
+            '/claim/*',
+            $this->get('/.well-known/apple-app-site-association')->json('applinks.details.0.paths'),
+        );
+
+        config(['app.claim_opens_app' => true]);
+        $paths = $this->get('/.well-known/apple-app-site-association')->json('applinks.details.0.paths');
+        $this->assertContains('/claim/*', $paths);
+        // /claim-done ต้องเปิดในเว็บเสมอ — ห้ามเป็น /claim* ที่กินไปด้วย
+        $this->assertNotContains('/claim*', $paths);
     }
 
     public function test_assetlinks_returns_404_when_not_configured(): void

@@ -303,6 +303,8 @@ Route::prefix('v1')->group(function () {
         // ใบจองที่ทีมงานเปิดให้ก่อนลูกค้าจะมีบัญชี — ผูกเข้าบัญชีตัวเองด้วยเลขที่จอง
         Route::get('me/claimable-bookings', [AccountClaimController::class, 'index']);
         Route::post('bookings/claim', [AccountClaimController::class, 'claim'])->middleware('throttle:10,1');
+        // ลิงก์ SMS เปิดในแอป → รับเข้าบัญชีที่ล็อกอินอยู่ (LINE/Google/อีเมล) ไม่ต้องตั้งรหัสผ่าน
+        Route::post('me/claim/{token}', [AccountClaimController::class, 'claimIntoMe'])->middleware('throttle:10,1');
         Route::get('bookings/{ref}', [BookingController::class, 'show']);
         Route::post('bookings/{ref}/cancel', [BookingController::class, 'cancel']);
         Route::post('bookings/{ref}/story-link', [BookingController::class, 'storyLink']);

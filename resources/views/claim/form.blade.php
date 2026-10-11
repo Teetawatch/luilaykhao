@@ -42,6 +42,17 @@
                 </div>
             @endif
 
+            {{-- มีแอปอยู่แล้ว (เข้าด้วย LINE/Google ก็ได้) ไม่ต้องตั้งรหัสผ่าน — ปกติลิงก์จาก SMS
+                 จะเปิดแอปให้เอง ปุ่มนี้คือทางสำรองตอนลิงก์ถูกเปิดในเบราว์เซอร์ของแอปแชท
+                 ซ่อนไว้จนกว่าจะเปิด CLAIM_OPENS_APP — แอปเก่ากดแล้วไม่เกิดอะไรขึ้น --}}
+            @if (config('app.claim_opens_app'))
+            <a class="btn" href="luilaykhao://claim/{{ $token }}"
+               style="text-align:center;text-decoration:none;margin-bottom:8px;background:#fff;color:#059669;border:1.5px solid #059669">มีแอปแล้ว เปิดในแอป</a>
+            <p class="note" style="margin:0 0 22px">ในแอปกดรับการจองได้เลย เข้าสู่ระบบด้วย LINE, Google หรืออีเมลก็ได้</p>
+
+            <div class="pax-name" style="font-size:14px">ยังไม่มีแอป? ตั้งรหัสผ่านที่นี่</div>
+            @endif
+
             <form method="POST" action="{{ route('public.claim.submit', $token) }}">
                 @csrf
                 <label class="field" for="claim-email">อีเมลของคุณ</label>

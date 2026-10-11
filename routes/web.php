@@ -178,7 +178,13 @@ Route::get('/.well-known/apple-app-site-association', function () {
                 // /handover/*: ลิงก์ส่งต่อที่นั่ง — คนรับมีแอปก็รับในแอปเลย
                 // /voucher/*: บัตรของขวัญ — ผู้รับที่มีแอปเพิ่มบัตรเข้าบัญชีได้เลย
                 // /join/*: คำเชิญเข้าการจอง (รวมปุ่ม "เข้าร่วมทริปในแอป" บนลิงก์ของเพื่อน)
-                'paths' => ['/gift/*', '/reset-password*', '/handover/*', '/voucher/*', '/join/*'],
+                // /claim/*: SMS "ทีมงานเปิดการจองให้คุณแล้ว" — มีแอปก็รับเข้าบัญชีที่ล็อกอิน
+                // อยู่ได้เลย (ไม่ใช่ /claim* เพราะหน้า /claim-done ต้องเปิดในเว็บ) เปิดด้วย
+                // CLAIM_OPENS_APP หลังแอปที่รู้จักลิงก์นี้ขึ้นสโตร์แล้ว
+                'paths' => array_values(array_filter([
+                    '/gift/*', '/reset-password*', '/handover/*', '/voucher/*', '/join/*',
+                    config('app.claim_opens_app') ? '/claim/*' : null,
+                ])),
             ]],
         ],
     ]);

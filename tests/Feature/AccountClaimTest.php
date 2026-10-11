@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\BookingMember;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -245,6 +246,154 @@ class AccountClaimTest extends TestCase
             ->assertSessionHasErrors('email');
 
         $this->assertTrue($booking->fresh()->user->is_shadow);
+    }
+
+    /** ลูกค้าที่เข้าแอปด้วย LINE — ไม่มีรหัสผ่าน ไม่มีเบอร์ ไม่เคยรู้เลขที่จอง */
+    private function lineCustomer(array $overrides = []): User
+    {
+        return User::factory()->create(array_merge([
+            'email' => 'U'.uniqid().'@line.luilaykhao.com',
+            'password' => null,
+            'phone' => null,
+            'social_provider' => 'line',
+            'social_id' => 'U'.uniqid(),
+        ], $overrides));
+    }
+
+    public function test_claim_page_offers_the_app_only_once_switched_on(): void
+    {
+        $booking = $this->bookManually($this->makeSchedule());
+        $token = app(AccountClaimService::class)->issueClaimToken($booking->user);
+
+        // ก่อนแอปใหม่ขึ้นสโตร์ — ปุ่มนี้พาแอปเก่าไปที่ที่ไม่มีอะไรรออยู่
+        config(['app.claim_opens_app' => false]);
+        $this->get('/claim/'.$token)
+            ->assertOk()
+            ->assertDontSee('luilaykhao://claim/', false)
+            ->assertSee('เปิดใช้บัญชี');
+
+        config(['app.claim_opens_app' => true]);
+        $this->get('/claim/'.$token)
+            ->assertOk()
+            ->assertSee('luilaykhao://claim/'.$token, false)
+            ->assertSee('เปิดใช้บัญชี');
+    }
+
+    public function test_app_preview_of_the_claim_link_shows_the_trip_without_logging_in(): void
+    {
+        $booking = $this->bookManually($this->makeSchedule());
+        $token = app(AccountClaimService::class)->issueClaimToken($booking->user);
+
+        $this->getJson('/api/v1/account/claim/'.$token)
+            ->assertOk()
+            ->assertJsonPath('data.phone_hint', '5678')
+            ->assertJsonPath('data.bookings.0.booking_ref', $booking->booking_ref);
+    }
+
+    public function test_line_customer_takes_the_booking_into_their_account_from_the_sms_link(): void
+    {
+        $booking = $this->bookManually($this->makeSchedule());
+        $shadow = $booking->user;
+        $token = app(AccountClaimService::class)->issueClaimToken($shadow);
+        $customer = $this->lineCustomer();
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/v1/me/claim/'.$token)
+            ->assertOk()
+            ->assertJsonPath('data.bookings_moved', 1)
+            ->assertJsonPath('data.bookings.0.booking_ref', $booking->booking_ref);
+
+        $this->assertSame($customer->id, $booking->fresh()->user_id);
+        $this->assertFalse($shadow->fresh()->is_shadow);
+        $this->assertNull($shadow->fresh()->claim_token);
+        // เบอร์ที่ลิงก์ถูกส่งไปถึง เติมให้บัญชี LINE ที่ยังไม่มีเบอร์
+        $this->assertSame($shadow->phone, $customer->fresh()->phone);
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson('/api/v1/bookings')
+            ->assertOk()
+            ->assertJsonPath('data.0.booking_ref', $booking->booking_ref);
+    }
+
+    public function test_claiming_from_the_app_moves_every_booking_the_shadow_holds(): void
+    {
+        $schedule = $this->makeSchedule();
+        $first = $this->bookManually($schedule);
+        $second = $this->bookManually($this->makeSchedule());
+        $this->assertSame($first->user_id, $second->user_id);
+        $token = app(AccountClaimService::class)->issueClaimToken($first->user);
+        $customer = $this->lineCustomer();
+
+        $this->actingAs($customer, 'sanctum')
+            ->postJson('/api/v1/me/claim/'.$token)
+            ->assertOk()
+            ->assertJsonPath('data.bookings_moved', 2);
+
+        $this->assertSame($customer->id, $first->fresh()->user_id);
+        $this->assertSame($customer->id, $second->fresh()->user_id);
+    }
+
+    public function test_claiming_from_the_app_keeps_a_phone_the_customer_set_themselves(): void
+    {
+        $booking = $this->bookManually($this->makeSchedule());
+        $token = app(AccountClaimService::class)->issueClaimToken($booking->user);
+        $customer = $this->lineCustomer(['phone' => '0899999999']);
+
+        $this->actingAs($customer, 'sanctum')->postJson('/api/v1/me/claim/'.$token)->assertOk();
+
+        $this->assertSame('0899999999', $customer->fresh()->phone);
+    }
+
+    public function test_the_claim_link_works_only_once_from_the_app(): void
+    {
+        $booking = $this->bookManually($this->makeSchedule());
+        $token = app(AccountClaimService::class)->issueClaimToken($booking->user);
+        $first = $this->lineCustomer();
+        $second = $this->lineCustomer();
+
+        $this->actingAs($first, 'sanctum')->postJson('/api/v1/me/claim/'.$token)->assertOk();
+        $this->actingAs($second, 'sanctum')->postJson('/api/v1/me/claim/'.$token)->assertStatus(422);
+        $this->actingAs($first, 'sanctum')->postJson('/api/v1/me/claim/'.$token)->assertStatus(422);
+
+        $this->assertSame($first->id, $booking->fresh()->user_id);
+        $this->getJson('/api/v1/account/claim/'.$token)->assertNotFound();
+    }
+
+    public function test_claiming_from_the_app_needs_a_login_and_a_real_link(): void
+    {
+        $booking = $this->bookManually($this->makeSchedule());
+        $token = app(AccountClaimService::class)->issueClaimToken($booking->user);
+
+        // bookManually() ล็อกอินเป็นแอดมินค้างไว้ — ล้างก่อนลองแบบไม่ล็อกอิน
+        $this->app['auth']->forgetGuards();
+        $this->postJson('/api/v1/me/claim/'.$token)->assertUnauthorized();
+        $this->actingAs($this->lineCustomer(), 'sanctum')
+            ->postJson('/api/v1/me/claim/not-a-real-token')
+            ->assertStatus(422);
+
+        $this->assertTrue($booking->fresh()->user->is_shadow);
+    }
+
+    public function test_claiming_from_the_app_retires_the_customers_companion_row_on_that_booking(): void
+    {
+        $booking = $this->bookManually($this->makeSchedule());
+        $token = app(AccountClaimService::class)->issueClaimToken($booking->user);
+        $customer = $this->lineCustomer();
+        $member = BookingMember::create([
+            'booking_id' => $booking->id,
+            'user_id' => $customer->id,
+            'role' => BookingMember::ROLE_COMPANION,
+            'status' => BookingMember::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($customer, 'sanctum')->postJson('/api/v1/me/claim/'.$token)->assertOk();
+
+        $this->assertSame(BookingMember::STATUS_REVOKED, $member->fresh()->status);
+        // ขึ้นในหน้าการจองของฉันใบเดียว ไม่ใช่สองครั้ง (เจ้าของ + ผู้ร่วมเดินทาง)
+        $this->actingAs($customer, 'sanctum')
+            ->getJson('/api/v1/bookings')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
     }
 
     public function test_admin_can_resend_the_claim_link(): void

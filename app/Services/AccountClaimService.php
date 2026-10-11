@@ -216,6 +216,57 @@ class AccountClaimService
     }
 
     /**
+     * ลูกค้าเปิดลิงก์ในแอปแล้วกด "รับการจองเข้าบัญชีนี้" — บัญชีที่ล็อกอินอยู่คือ
+     * ปลายทาง จะเข้าด้วย LINE, Google หรืออีเมลก็ได้ ไม่ต้องมีรหัสผ่านเลย
+     *
+     * ลิงก์ที่ส่งเข้าเบอร์ลูกค้าคือหลักฐานชุดเดียวกับทางตั้งรหัสผ่าน ([activate])
+     * ซึ่งให้คนถือลิงก์ยึดบัญชีเงาไปทั้งใบได้อยู่แล้ว ทางนี้จึงไม่ได้ให้สิทธิ์อะไรเพิ่ม
+     * แค่ไม่บังคับให้คนที่เข้าด้วย LINE/Google ต้องไปตั้งรหัสผ่านที่ไม่เคยมี
+     *
+     * @return Collection<int, Booking> ใบจองที่ยังใช้งานอยู่ซึ่งเพิ่งย้ายเข้ามา
+     *
+     * @throws \Exception
+     */
+    public function claimIntoAccount(User $user, string $token): Collection
+    {
+        $shadow = $this->resolveClaimToken($token);
+
+        if (! $shadow) {
+            throw new \Exception('ลิงก์นี้ใช้ไม่ได้แล้ว อาจถูกใช้ไปแล้วหรือหมดอายุ');
+        }
+
+        if ((int) $shadow->id === (int) $user->id || $user->is_shadow) {
+            throw new \Exception('กรุณาเข้าสู่ระบบด้วยบัญชีของคุณเองก่อนรับการจอง');
+        }
+
+        return DB::transaction(function () use ($user, $shadow) {
+            // กดซ้ำสองครั้ง หรือเปิดลิงก์เดียวกันจากสองเครื่องพร้อมกัน — ล็อกแถวไว้
+            // แล้วเช็ก token อีกรอบ คนที่มาทีหลังต้องเจอ "ลิงก์ถูกใช้แล้ว" ไม่ใช่ย้ายซ้ำ
+            $locked = User::whereKey($shadow->id)
+                ->where('is_shadow', true)
+                ->where('claim_token', $shadow->claim_token)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                throw new \Exception('ลิงก์นี้ถูกใช้ไปแล้ว ถ้าคุณกดรับไปแล้ว การจองจะอยู่ในหน้า "การจองของฉัน"');
+            }
+
+            $bookings = $this->bookingsOf($locked);
+
+            // เบอร์ของบัญชีเงาคือเบอร์ที่ลิงก์นี้ถูกส่งไปถึง — เติมให้บัญชีที่ยังไม่มีเบอร์
+            // (ส่วนใหญ่คือคนที่เข้าด้วย LINE/Google) แต่ไม่ทับเบอร์ที่ลูกค้าตั้งไว้เอง
+            if (blank($user->phone) && filled($locked->phone)) {
+                $user->forceFill(['phone' => $locked->phone])->save();
+            }
+
+            $this->mergeInto($user, $locked);
+
+            return $bookings;
+        });
+    }
+
+    /**
      * ลูกค้าที่ "สมัครไปแล้ว" เปิดลิงก์ — ย้ายใบจองทั้งหมดจากบัญชีเงามาบัญชีจริง
      * แล้วปิดบัญชีเงาไม่ให้ถูกใช้ซ้ำ คืนจำนวนใบจองที่ย้ายมา
      */

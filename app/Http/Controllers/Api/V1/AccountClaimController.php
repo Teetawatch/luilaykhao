@@ -74,7 +74,31 @@ class AccountClaimController extends Controller
     }
 
     /**
-     * GET /account/claim/{token} — พรีวิวก่อนตั้งรหัสผ่าน (ใช้โดยหน้าเว็บ /claim)
+     * POST /me/claim/{token} — เปิดลิงก์ในแอปแล้วกด "รับการจองเข้าบัญชีนี้"
+     * ย้ายเข้าบัญชีที่ล็อกอินอยู่ (LINE/Google/อีเมล) โดยไม่ต้องใช้รหัสผ่าน
+     */
+    public function claimIntoMe(Request $request, string $token): JsonResponse
+    {
+        try {
+            $bookings = $this->claims->claimIntoAccount($request->user(), $token);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success([
+            'bookings_moved' => $bookings->count(),
+            'bookings' => $bookings
+                ->map(fn (Booking $booking) => [
+                    'booking_ref' => $booking->booking_ref,
+                    'trip_title' => $booking->schedule?->trip?->title,
+                    'departure_date' => $booking->schedule?->departure_date?->toDateString(),
+                ])
+                ->values(),
+        ], 'รับการจองเข้าบัญชีของคุณแล้ว');
+    }
+
+    /**
+     * GET /account/claim/{token} — พรีวิวก่อนรับการจอง (หน้าเว็บ /claim และหน้าในแอป)
      */
     public function preview(string $token): JsonResponse
     {
