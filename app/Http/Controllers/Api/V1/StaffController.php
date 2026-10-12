@@ -731,10 +731,26 @@ class StaffController extends Controller
             return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
         }
 
+        $userId = $request->user()->id;
+
         $reviews = StaffReview::with(['reviewer', 'schedule.trip'])
-            ->where('staff_user_id', $request->user()->id)
+            ->where('staff_user_id', $userId)
             ->orderByDesc('created_at')
-            ->paginate($request->get('per_page', 20));
+            ->orderByDesc('id')
+            ->paginate(min(max((int) $request->get('per_page', 20), 1), 50));
+
+        // ภาพรวมทั้งหมด ไม่ใช่แค่หน้านี้ — หัวหน้ารีวิวในแอปโชว์ว่าได้กี่ดาวกี่ครั้ง
+        $counts = StaffReview::where('staff_user_id', $userId)
+            ->selectRaw('rating, COUNT(*) as total')
+            ->groupBy('rating')
+            ->pluck('total', 'rating');
+        $total = (int) $counts->sum();
+        $breakdown = collect([5, 4, 3, 2, 1])
+            ->mapWithKeys(fn ($star) => [(string) $star => (int) ($counts[$star] ?? 0)])
+            ->all();
+        $avg = $total > 0
+            ? round($counts->map(fn ($n, $star) => $n * (int) $star)->sum() / $total, 2)
+            : null;
 
         return $this->paginated($reviews->through(fn ($review) => [
             'id' => $review->id,
@@ -744,7 +760,13 @@ class StaffController extends Controller
             'trip_title' => $review->schedule?->trip?->title,
             'departure_date' => $review->schedule?->departure_date?->toDateString(),
             'created_at' => $review->created_at?->toISOString(),
-        ]));
+        ]), meta: [
+            'summary' => [
+                'total_reviews' => $total,
+                'avg_rating' => $avg,
+                'breakdown' => $breakdown,
+            ],
+        ]);
     }
 
     public function storeReview(Request $request): JsonResponse
