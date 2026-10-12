@@ -11,25 +11,19 @@ use App\Models\SchedulePhoto;
 use App\Models\Trip;
 use App\Models\TripPhoto;
 use App\Models\TripSchedule;
+use App\Services\SchedulePhotoService;
 use App\Support\MediaDisk;
-use App\Support\Thumbnailer;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class PhotoController extends Controller
 {
     use ApiResponse;
 
-    private const MAX_FILES_PER_REQUEST = 20;
-
-    private const MAX_FILE_SIZE_KB = 15360; // 15 MB per photo
-
-    private const ALLOWED_MIMES = 'jpeg,jpg,png,webp,heic,heif';
+    public function __construct(private SchedulePhotoService $photos) {}
 
     private function disk(): string
     {
@@ -50,10 +44,7 @@ class PhotoController extends Controller
     {
         $trip = Trip::findOrFail($tripId);
 
-        $request->validate([
-            'files' => ['required', 'array', 'max:'.self::MAX_FILES_PER_REQUEST],
-            'files.*' => ['required', 'file', 'mimes:'.self::ALLOWED_MIMES, 'max:'.self::MAX_FILE_SIZE_KB],
-        ]);
+        $request->validate(SchedulePhotoService::uploadRules());
 
         $disk = $this->disk();
         $baseSort = (int) $trip->photos()->max('sort_order');
@@ -64,7 +55,7 @@ class PhotoController extends Controller
         $uploads = [];
         foreach ($request->file('files') as $file) {
             /** @var UploadedFile $file */
-            $uploads[] = $this->storeFile($file, "trips/{$trip->id}", $disk);
+            $uploads[] = $this->photos->storeFile($file, "trips/{$trip->id}", $disk);
         }
 
         $stored = [];
@@ -121,7 +112,7 @@ class PhotoController extends Controller
     public function scheduleIndex(int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($scheduleId);
-        $photos = $schedule->photos()->get();
+        $photos = $schedule->photos()->with('uploader:id,name')->get();
 
         return $this->success(SchedulePhotoResource::collection($photos));
     }
@@ -130,37 +121,9 @@ class PhotoController extends Controller
     {
         $schedule = TripSchedule::findOrFail($scheduleId);
 
-        $request->validate([
-            'files' => ['required', 'array', 'max:'.self::MAX_FILES_PER_REQUEST],
-            'files.*' => ['required', 'file', 'mimes:'.self::ALLOWED_MIMES, 'max:'.self::MAX_FILE_SIZE_KB],
-        ]);
+        $request->validate(SchedulePhotoService::uploadRules());
 
-        $disk = $this->disk();
-        $baseSort = (int) $schedule->photos()->max('schedule_photo.sort_order');
-
-        // R2 round-trips first, transaction after — see tripUpload().
-        $uploads = [];
-        foreach ($request->file('files') as $file) {
-            /** @var UploadedFile $file */
-            $uploads[] = $this->storeFile($file, "schedules/{$schedule->id}", $disk);
-        }
-
-        $ids = [];
-
-        DB::transaction(function () use ($schedule, $uploads, $disk, $baseSort, &$ids) {
-            foreach ($uploads as $idx => $info) {
-                $photo = SchedulePhoto::create($info + ['disk' => $disk]);
-                $schedule->photos()->attach($photo->id, ['sort_order' => $baseSort + $idx + 1]);
-                $ids[] = $photo->id;
-            }
-        });
-
-        foreach ($ids as $id) {
-            GeneratePhotoThumbnailJob::dispatch(SchedulePhoto::class, $id)->afterCommit();
-        }
-
-        // Reload through the relation so each resource carries its pivot (sort_order).
-        $photos = $schedule->photos()->whereIn('schedule_photos.id', $ids)->get();
+        $photos = $this->photos->upload($schedule, $request->file('files'), $request->user());
 
         return $this->success(
             SchedulePhotoResource::collection($photos),
@@ -235,13 +198,7 @@ class PhotoController extends Controller
         $schedule = TripSchedule::findOrFail($scheduleId);
         $photo = $schedule->photos()->where('schedule_photos.id', $photoId)->firstOrFail();
 
-        DB::transaction(function () use ($schedule, $photo) {
-            // Detach from this round only; remove the file from R2 once no round uses it.
-            $schedule->photos()->detach($photo->id);
-            if ($photo->schedules()->count() === 0) {
-                $photo->delete(); // model boot hook removes the file from disk
-            }
-        });
+        $this->photos->detach($schedule, $photo);
 
         return $this->success(null, 'ลบรูปสำเร็จ');
     }
@@ -254,7 +211,7 @@ class PhotoController extends Controller
     public function scheduleDestroyAll(int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($scheduleId);
-        $photos = $schedule->photos()->get();
+        $photos = $schedule->photos()->with('uploader:id,name')->get();
 
         if ($photos->isEmpty()) {
             return $this->success(
@@ -352,39 +309,4 @@ class PhotoController extends Controller
     }
 
     /* ───── Shared upload helper ────────────────────────────── */
-
-    /**
-     * Store the original on the media disk. Reading the dimensions only parses the
-     * file header, so it stays here; the thumbnail needs a full GD decode and is
-     * left to {@see GeneratePhotoThumbnailJob}.
-     */
-    private function storeFile(UploadedFile $file, string $folder, string $disk): array
-    {
-        $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'jpg');
-        $filename = date('YmdHis').'_'.Str::random(10).'.'.$ext;
-        $path = trim($folder, '/').'/'.$filename;
-
-        $stream = fopen($file->getRealPath(), 'r');
-        Storage::disk($disk)->put($path, $stream, [
-            'visibility' => 'public',
-            'ContentType' => $file->getMimeType(),
-        ]);
-        if (is_resource($stream)) {
-            fclose($stream);
-        }
-
-        [$width, $height] = Thumbnailer::dimensions($file->getRealPath());
-
-        return [
-            'path' => $path,
-            'thumb_path' => null,
-            'url' => Storage::disk($disk)->url($path),
-            'thumb_url' => null,
-            'original_name' => $file->getClientOriginalName(),
-            'mime' => $file->getMimeType(),
-            'size' => $file->getSize(),
-            'width' => $width,
-            'height' => $height,
-        ];
-    }
 }

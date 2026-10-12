@@ -345,6 +345,9 @@
               <span v-if="expiryBadge(photo)" class="expiry-badge" :class="expiryBadge(photo).tone">
                 {{ expiryBadge(photo).label }}
               </span>
+              <span v-if="photo.uploader_name" class="uploader-badge" :title="`อัปโดย ${photo.uploader_name}`">
+                {{ photo.uploader_name }}
+              </span>
               <a
                 class="photo-open"
                 :href="photo.url"
@@ -1964,6 +1967,22 @@ onBeforeUnmount(() => {
   font-size: 11px;
   font-weight: 800;
   color: #fff;
+}
+
+.uploader-badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  max-width: 46%;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(17, 24, 39, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .expiry-badge.warn { background: rgba(180, 83, 9, 0.9); }

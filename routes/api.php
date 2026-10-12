@@ -87,6 +87,7 @@ use App\Http\Controllers\Api\V1\ShoppingListController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SplitPaymentController;
 use App\Http\Controllers\Api\V1\StaffController;
+use App\Http\Controllers\Api\V1\StaffPhotoController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TravelDocumentController;
 use App\Http\Controllers\Api\V1\TripAlertController;
@@ -558,6 +559,12 @@ Route::prefix('v1')->group(function () {
         Route::post('staff/schedules/{id}/ledger', [StaffController::class, 'storeLedgerEntry']);
         Route::post('staff/schedules/{id}/ledger/{entry}', [StaffController::class, 'updateLedgerEntry']);
         Route::delete('staff/schedules/{id}/ledger/{entry}', [StaffController::class, 'deleteLedgerEntry']);
+
+        // อัลบั้มรอบ — สตาฟอัปรูปทริปจากมือถือขึ้น R2 ทีละหลายรูป ลบได้เฉพาะรูปของตัวเอง
+        Route::get('staff/schedules/{id}/photos', [StaffPhotoController::class, 'index']);
+        Route::post('staff/schedules/{id}/photos', [StaffPhotoController::class, 'store'])
+            ->middleware('throttle:60,1');
+        Route::delete('staff/schedules/{id}/photos/{photoId}', [StaffPhotoController::class, 'destroy']);
 
         // ใบซื้อของก่อนออกทริป — ติ๊กของที่ซื้อแล้ว + ส่งรายงานพร้อมรูปให้แอดมิน
         Route::get('staff/schedules/{id}/shopping', [ShoppingListController::class, 'show']);

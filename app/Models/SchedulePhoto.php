@@ -7,6 +7,7 @@ use App\Jobs\PurgeExpiredSchedulePhotosJob;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Storage;
 
@@ -30,6 +31,7 @@ class SchedulePhoto extends Model
             'size' => 'integer',
             'width' => 'integer',
             'height' => 'integer',
+            'uploaded_by' => 'integer',
         ];
     }
 
@@ -65,6 +67,12 @@ class SchedulePhoto extends Model
     public function mediaPaths(): array
     {
         return array_values(array_filter([$this->path, $this->thumb_path]));
+    }
+
+    /** คนที่อัปรูปนี้ — null สำหรับรูปเก่าก่อนมีคอลัมน์ หรือบัญชีที่ถูกลบไปแล้ว */
+    public function uploader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
     }
 
     public function schedules(): BelongsToMany

@@ -13,6 +13,7 @@ use App\Services\PickupArrivalService;
 use App\Services\RentalHandoutService;
 use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleLedgerService;
+use App\Services\SchedulePhotoService;
 use App\Services\StaffIntroService;
 use App\Services\VehicleLocationService;
 use App\Traits\ApiResponse;
@@ -32,6 +33,7 @@ class StaffController extends Controller
         private PickupArrivalService $pickupArrivals,
         private VehicleLocationService $vehicleLocations,
         private StaffIntroService $intros,
+        private SchedulePhotoService $schedulePhotos,
     ) {}
 
     public function mySchedules(Request $request): JsonResponse
@@ -43,9 +45,21 @@ class StaffController extends Controller
         $userId = $request->user()->id;
 
         $schedules = TripSchedule::with(['trip', 'vehicle', 'pickupPoints'])
+            ->withCount('photos')
             ->whereHas('activeStaff', fn ($q) => $q->where('users.id', $userId))
             ->orderBy('departure_date')
             ->get();
+
+        // รอบที่จบแล้ว (ถูกปลดไปแล้ว) แต่ยังอยู่ในกรอบอัปรูป — หายไปจากรายการงานตั้งแต่
+        // ตีสี่ของวันหลังกลับ ทั้งที่สตาฟมักคัดรูปตอนถึงบ้าน แอปจึงต้องมีทางกลับมาอัปต่อ
+        $photoRounds = TripSchedule::with('trip:id,title')
+            ->withCount('photos')
+            ->whereHas('releasedStaff', fn ($q) => $q->where('users.id', $userId))
+            ->whereDate('departure_date', '>=', now()->subDays(60)->toDateString())
+            ->orderByDesc('departure_date')
+            ->get()
+            ->filter(fn (TripSchedule $s) => $this->schedulePhotos->staffWindowOpen($s))
+            ->values();
 
         $summary = StaffReview::where('staff_user_id', $userId)
             ->selectRaw('COUNT(*) as total_reviews, AVG(rating) as avg_rating')
@@ -163,8 +177,18 @@ class StaffController extends Controller
                     'no_pickup_passengers' => $roster($noPickupRows),
                     'join_trip_count' => $joinTripRows->count(),
                     'join_trip_passengers' => $roster($joinTripRows),
+                    'photos_count' => (int) $s->photos_count,
+                    'photo_upload_open' => $this->schedulePhotos->staffWindowOpen($s),
                 ];
             })->values(),
+            'photo_rounds' => $photoRounds->map(fn (TripSchedule $s) => [
+                'id' => $s->id,
+                'trip_title' => $s->trip?->title,
+                'departure_date' => $s->departure_date?->toDateString(),
+                'return_date' => $s->return_date?->toDateString(),
+                'photos_count' => (int) $s->photos_count,
+                'upload_until' => $this->schedulePhotos->staffWindowEndsOn($s),
+            ])->values(),
         ]);
     }
 
