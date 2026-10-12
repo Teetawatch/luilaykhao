@@ -68,6 +68,17 @@ class RealtimeHealthTest extends TestCase
         $this->assertStringContainsString('127.0.0.1', $probe['hint']);
     }
 
+    /** สิ่งที่เกิดบน prod 2026-10-12: REVERB_SCHEME=http กับ REVERB_PORT=443 */
+    public function test_plain_http_to_the_https_port_says_the_scheme_is_wrong(): void
+    {
+        $this->reverbAnswers(new Response(400, [], '<html><center>The plain HTTP request was sent to HTTPS port</center></html>'));
+
+        $probe = $this->probe();
+
+        $this->assertSame(OpsHealthService::FAIL, $probe['status']);
+        $this->assertStringContainsString('REVERB_SCHEME ไม่ตรงกับ REVERB_PORT', $probe['hint']);
+    }
+
     public function test_a_wrong_secret_says_so(): void
     {
         $this->reverbAnswers(new Response(401, [], 'Authentication signature invalid.'));
