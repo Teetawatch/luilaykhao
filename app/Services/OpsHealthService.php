@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -130,6 +131,7 @@ class OpsHealthService
         $checks[] = $this->diskCheck();
         $checks[] = $this->logSizeCheck();
         $checks[] = $this->smsCheck();
+        $checks[] = $this->realtimeCheck();
         $checks[] = $this->heartbeatCheck();
         $checks[] = $this->alertingCheck();
 
@@ -310,6 +312,75 @@ class OpsHealthService
         return $this->sms->isConfigured()
             ? $this->result('sms', 'ผู้ให้บริการ SMS', self::OK, 'ThaiBulkSMS พร้อมส่ง')
             : $this->result('sms', 'ผู้ให้บริการ SMS', self::WARN, 'ยังไม่ได้ตั้งค่า ThaiBulkSMS — SMS จะค้างสถานะรอส่ง');
+    }
+
+    private function realtimeCheck(): array
+    {
+        $probe = $this->probeRealtime();
+
+        return $this->result('realtime', 'อัปเดตสด (Reverb)', $probe['status'],
+            $probe['hint'] ? $probe['detail'].' — '.$probe['hint'] : $probe['detail']);
+    }
+
+    /**
+     * ส่ง event ทดสอบเข้า Reverb จริง ๆ ทางเดียวกับที่ event แชต/ที่นั่ง/ชำระเงินใช้
+     *
+     * ถ้าส่งไม่ได้ ทุก event ที่ broadcast ล้มเหลวในคิวทั้งหมด (เคยเกิด 2026-10-12)
+     * แอปยังใช้ได้ปกติ แค่ข้อความแชตไม่เด้ง ผังที่นั่งไม่อัปเดตจนกว่าจะรีเฟรช
+     * ใช้ทั้ง ops:doctor และ reverb:check
+     *
+     * @return array{status: string, detail: string, hint: ?string, target: ?string}
+     */
+    public function probeRealtime(): array
+    {
+        $name = (string) config('broadcasting.default');
+        $config = (array) config("broadcasting.connections.{$name}", []);
+        $driver = $config['driver'] ?? $name;
+
+        if (! in_array($driver, ['reverb', 'pusher'], true)) {
+            return [
+                'status' => self::WARN,
+                'detail' => "ปิดอยู่ (BROADCAST_CONNECTION = {$name})",
+                'hint' => app()->environment('production') ? 'แชตและผังที่นั่งจะไม่อัปเดตสด' : null,
+                'target' => null,
+            ];
+        }
+
+        $options = (array) ($config['options'] ?? []);
+        $target = $driver === 'reverb'
+            ? sprintf('%s://%s:%s', $options['scheme'] ?? 'https', $options['host'] ?? '—', $options['port'] ?? '—')
+            : 'Pusher';
+
+        // timeout สั้น — ops:alert รันทุก 10 นาทีแบบ synchronous ห้ามค้างนาน
+        $config['options'] = ['timeout' => 5] + $options;
+        $config['client_options'] = ['connect_timeout' => 3] + (array) ($config['client_options'] ?? []);
+
+        try {
+            app(BroadcastManager::class)->pusher($config)
+                ->trigger('ops-health', 'probe', ['at' => now()->timestamp]);
+        } catch (\Throwable $e) {
+            return [
+                'status' => self::FAIL,
+                'detail' => "ส่งไป {$target} ไม่ได้: ".mb_strimwidth(trim(strip_tags($e->getMessage())), 0, 160, '…'),
+                'hint' => $this->realtimeHint((int) $e->getCode(), $e->getMessage()),
+                'target' => $target,
+            ];
+        }
+
+        return ['status' => self::OK, 'detail' => "ส่งถึง {$target}", 'hint' => null, 'target' => $target];
+    }
+
+    /** แปลง error ของการ publish เป็นสิ่งที่ต้องไปแก้ */
+    private function realtimeHint(int $status, string $message): string
+    {
+        return match (true) {
+            $status === 401, $status === 403 => 'Reverb ปฏิเสธลายเซ็น: REVERB_APP_ID/KEY/SECRET ใน .env ไม่ตรงกับที่ Reverb ตัวที่รันอยู่ใช้ (แก้ .env แล้วต้อง restart reverb ด้วย)',
+            $status === 404, $status === 405 => 'มีเซิร์ฟเวอร์ตอบแต่ไม่ใช่ Reverb (มักเป็น nginx ที่ไม่ได้ส่ง /apps/ ต่อให้) — ฝั่ง Laravel ควรชี้ตรงไป REVERB_HOST=127.0.0.1 REVERB_PORT=8080 REVERB_SCHEME=http',
+            $status === 413 => 'ข้อมูล event ใหญ่เกินที่ Reverb รับ (max_request_size)',
+            $status >= 500 => 'Reverb ตอบ error — ดู log ของ supervisor reverb',
+            str_contains($message, 'SSL') || str_contains($message, 'certificate') => 'TLS ไม่ผ่าน — ถ้า Reverb อยู่เครื่องเดียวกัน ให้ชี้ตรงไป REVERB_HOST=127.0.0.1 REVERB_PORT=8080 REVERB_SCHEME=http',
+            default => 'ต่อไม่ติด: Reverb ไม่ได้รัน (sudo supervisorctl status reverb) หรือ REVERB_HOST/PORT ใน .env ชี้ผิดที่ — ฝั่ง Laravel ควรชี้ตรงไป 127.0.0.1:8080 http',
+        };
     }
 
     private function heartbeatCheck(): array

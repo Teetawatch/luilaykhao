@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendBroadcastNotificationChunkJob;
 use App\Jobs\SendBroadcastNotificationJob;
 use App\Models\BroadcastDispatch;
 use App\Models\FcmToken;
@@ -153,6 +154,34 @@ class BroadcastNotificationTest extends TestCase
         ]);
         $this->assertSame(0, SmartNotification::where('user_id', $optedOut->id)->count());
         $this->assertSame(0, SmartNotification::where('user_id', $noToken->id)->count());
+    }
+
+    /**
+     * One job sending FCM to the whole base ran into Horizon's 60 s timeout and
+     * was killed halfway (2026-10-12). The sending now happens in small slices.
+     */
+    public function test_fanout_sends_in_slices_small_enough_to_finish_inside_the_timeout(): void
+    {
+        $users = collect(range(1, SendBroadcastNotificationJob::CHUNK_SIZE + 1))
+            ->map(fn () => $this->userWithToken());
+        $dispatch = BroadcastDispatch::create([
+            'event_type' => 'new_trip', 'dedupe_key' => 'slices', 'title' => 't', 'body' => 'b',
+        ]);
+
+        Queue::fake([SendBroadcastNotificationChunkJob::class]);
+        (new SendBroadcastNotificationJob('new_trip', 'ทริปใหม่', 'มาแล้ว', [], $dispatch->id))->handle();
+
+        Queue::assertPushed(SendBroadcastNotificationChunkJob::class, 2);
+        Queue::assertPushed(SendBroadcastNotificationChunkJob::class,
+            fn ($job) => count($job->userIds) === SendBroadcastNotificationJob::CHUNK_SIZE && $job->dispatchId === $dispatch->id);
+        $this->assertSame(0, SmartNotification::count(), 'the parent job only fans out');
+        $this->assertSame($users->count(), $dispatch->fresh()->recipients_count);
+
+        // each slice sends to exactly its own users
+        $first = Queue::pushed(SendBroadcastNotificationChunkJob::class)->first();
+        $first->handle();
+        $this->assertSame(count($first->userIds), SmartNotification::whereIn('user_id', $first->userIds)->count());
+        $this->assertSame(count($first->userIds), SmartNotification::count());
     }
 
     public function test_low_seats_sweep_blasts_once_per_round(): void

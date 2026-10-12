@@ -38,6 +38,9 @@ php artisan apns:check
 
 # Verify the LINE Messaging API token (add --to=<user id> to send a real test message)
 php artisan line:check
+
+# Verify Laravel can publish to Reverb (realtime chat/seats/payments); explains the failure if not
+php artisan reverb:check
 ```
 
 ### Flutter apps

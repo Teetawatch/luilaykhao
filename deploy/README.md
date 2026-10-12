@@ -93,6 +93,30 @@ heartbeat แก้ตรงนี้: ระบบยิงสัญญาณ "
    ```
 7. ภายใน 5 นาที หน้า healthchecks.io ต้องขึ้นสถานะ **up** สีเขียว
 
+## อัปเดตสด (Reverb)
+
+แชต ผังที่นั่ง สถานะชำระเงิน และตำแหน่งรถ เด้งสดผ่าน Reverb ถ้า Laravel ส่งเข้า Reverb
+ไม่ได้ แอปยังใช้ได้ทุกอย่าง แค่ไม่มีอะไรเด้ง และ event ทุกตัว (`ChatMessageSent`,
+`SeatLocked`, `PaymentConfirmed` …) ไปกองที่ `/horizon/failed` (เคยเกิด 2026-10-12)
+
+มีสองทาง อย่าสับสนกัน:
+
+| ใคร → Reverb | ค่าที่ใช้ | prod ควรเป็น |
+|---|---|---|
+| Laravel ส่ง event (เซิร์ฟเวอร์) | `REVERB_HOST` / `REVERB_PORT` / `REVERB_SCHEME` | `127.0.0.1` / `8080` / `http` — ตรงเข้า process ไม่ผ่าน nginx |
+| แอป/เว็บต่อ WebSocket | dart_defines, `VITE_REVERB_*` | `luilaykhao.com` / `443` / `https` ผ่าน nginx `location /app/` |
+
+`VITE_REVERB_PORT` และ `VITE_REVERB_SCHEME` ต้องเขียนค่าตรง ๆ ห้ามเป็น `"${REVERB_PORT}"`
+ไม่งั้นเว็บจะพยายามต่อ 8080 จากข้างนอก
+
+```bash
+cd /var/www/luilaykhao && sudo -u www-data php artisan reverb:check
+```
+
+บอกว่าส่งไปที่ไหน ล้มเพราะอะไร และต้องแก้อะไร (`ops:doctor` / `ops:alert` ตรวจข้อนี้ด้วย)
+แก้ `.env` แล้ว: `config:clear` → `horizon:terminate` → `sudo supervisorctl restart reverb`
+event สดที่ล้มไปแล้วหมดความหมายแล้ว ไม่ต้อง retry (`queue:flush` ล้างได้ แต่ล้าง*ทุก*งานที่ล้ม — ดูก่อนว่าไม่มีงานอื่นปน)
+
 ## Log
 
 `storage/logs/laravel.log` หมุนทุกวันด้วย logrotate เก็บ 14 ไฟล์ (บีบอัด)

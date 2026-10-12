@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\Booking;
 use App\Models\BroadcastDispatch;
 use App\Models\FcmToken;
-use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,6 +33,9 @@ class SendBroadcastNotificationJob implements ShouldQueue
 
     public int $tries = 1;
 
+    /** Users per SendBroadcastNotificationChunkJob — small enough to finish well inside the 60 s timeout. */
+    public const CHUNK_SIZE = 50;
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -51,27 +53,27 @@ class SendBroadcastNotificationJob implements ShouldQueue
     {
         $sent = 0;
 
+        // Only resolves the audience; the sending happens in small slices — see
+        // SendBroadcastNotificationChunkJob for why one job can't do it all.
         $this->audienceQuery()
             ->select('users.id')
-            ->chunkById(500, function ($users) use (&$sent) {
-                foreach ($users as $user) {
-                    SmartNotification::send(
-                        $user->id,
-                        $this->type,
-                        $this->title,
-                        $this->body,
-                        $this->data,
-                        $this->dispatchId,
-                    );
-                    $sent++;
-                }
+            ->chunkById(self::CHUNK_SIZE, function ($users) use (&$sent) {
+                SendBroadcastNotificationChunkJob::dispatch(
+                    $users->pluck('id')->all(),
+                    $this->type,
+                    $this->title,
+                    $this->body,
+                    $this->data,
+                    $this->dispatchId,
+                );
+                $sent += $users->count();
             });
 
         if ($this->dispatchId) {
             BroadcastDispatch::whereKey($this->dispatchId)->update(['recipients_count' => $sent]);
         }
 
-        Log::info('SendBroadcastNotificationJob completed', [
+        Log::info('SendBroadcastNotificationJob fanned out', [
             'type' => $this->type,
             'audience' => $this->audience,
             'audience_id' => $this->audienceId,
