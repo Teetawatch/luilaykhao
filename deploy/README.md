@@ -26,7 +26,7 @@ bash /var/www/luilaykhao/deploy/deploy.sh
 |---|---|---|
 | cron `schedule:run` ทุกนาที | crontab ของ **www-data เท่านั้น** | `deploy/cron/luilaykhao` |
 | Horizon (ตัวรับงานจากคิวตัวเดียว) | supervisor `luilaykhao-horizon` | `deploy/supervisor/luilaykhao-horizon.conf` |
-| Reverb (websocket) | supervisor `reverb` | — |
+| Reverb (websocket) | supervisor `reverb` | `deploy/supervisor/reverb.conf` |
 | หมุนไฟล์ log | `/etc/logrotate.d/luilaykhao` | `deploy/logrotate/luilaykhao` |
 | nginx | `/etc/nginx/sites-available/luilaykhao` | `deploy/nginx/luilaykhao.conf` |
 
