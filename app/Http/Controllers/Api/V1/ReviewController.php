@@ -341,6 +341,8 @@ class ReviewController extends Controller
             'user_id' => $r->user_id,
             'trip_id' => $r->trip_id,
             'trip_title' => $r->trip?->title ?? '-',
+            // ลิงก์หน้าทริปในคำบรรยายตอนลูกค้าแชร์การ์ดคำรีวิวลงสตอรี่
+            'trip_slug' => $r->trip?->slug,
             'booking_id' => $r->booking_id,
             'rating' => $r->rating,
             'rating_guide' => $r->rating_guide,
