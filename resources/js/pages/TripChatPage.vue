@@ -137,6 +137,9 @@
                 <img v-if="m.image_url" :src="m.image_url" alt="รูปภาพ"
                   class="max-w-[220px] rounded-xl mb-1 cursor-pointer"
                   @click="openImage(m.image_url)" />
+                <!-- ข้อความเสียง (อัดจากแอป) — บนเว็บฟังได้ด้วยตัวเล่นของเบราว์เซอร์ -->
+                <audio v-if="m.audio_url" :src="m.audio_url" controls preload="none"
+                  style="display:block;width:240px;max-width:100%;height:36px"></audio>
                 <span v-if="m.body">{{ m.body }}</span>
               </div>
 

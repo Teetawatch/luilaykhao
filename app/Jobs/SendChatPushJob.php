@@ -80,9 +80,12 @@ class SendChatPushJob implements ShouldQueue
         $tripTitle = $message->schedule->trip?->title ?? 'ทริปของคุณ';
         $senderName = $message->user?->nickname
             ?: ($message->user?->name ?? 'ทีมงาน');
-        $preview = filled($message->body)
-            ? Str::limit($message->body, 120)
-            : ($message->image_path ? '📷 ส่งรูปภาพ' : '');
+        $preview = match (true) {
+            filled($message->body) => Str::limit($message->body, 120),
+            (bool) $message->audio_path => ChatMessage::audioPreview($message->audio_duration_ms),
+            (bool) $message->image_path => '📷 ส่งรูปภาพ',
+            default => '',
+        };
 
         $mentioned = collect($this->mentionedUserIds)->map(fn ($id) => (int) $id);
         $fromTeam = in_array($message->sender_role, ['staff', 'admin'], true);

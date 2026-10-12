@@ -6,6 +6,7 @@ use App\Events\ChatMessageSent;
 use App\Events\ChatRestStopUpdated;
 use App\Events\ChatStopRequestsUpdated;
 use App\Jobs\SendChatPushJob;
+use App\Models\BookingPassenger;
 use App\Models\ChatMessage;
 use App\Models\ChatRestStop;
 use App\Models\ChatRestStopBoarding;
@@ -133,6 +134,208 @@ class ChatRestStopService
         return $stop->fresh('boardings');
     }
 
+    // ── เช็คถึงบ้าน ─────────────────────────────────────────────────────────
+
+    /**
+     * ทีมงานเปิดการ์ด "ถึงบ้านแล้ว" หลังส่งทุกคนลงรถ — ส่งคนลงตอนดึกแล้วไม่รู้ว่าใคร
+     * ถึงบ้านหรือยัง การ์ดนี้ให้ลูกทริปกดบอก (คนจองกดแทนทั้งกลุ่มได้) ครบเมื่อไหร่
+     * ปิดเองพร้อมบอกทีมงาน ยังไม่ครบ HOME_NUDGE_AFTER_MINUTES เตือนคนที่ยังไม่กด
+     * ครั้งเดียว (ไม่เด้งกลางดึก) และปิดเองเมื่อครบ HOME_CLOSE_AFTER_HOURS
+     */
+    public function openHome(User $staff, TripSchedule $schedule): ChatRestStop
+    {
+        if (! $this->homeWindowOpen($schedule)) {
+            throw new \Exception('เปิดเช็คถึงบ้านได้ตั้งแต่วันสุดท้ายของทริปจนถึงวันถัดไปครับ');
+        }
+
+        $stop = DB::transaction(function () use ($staff, $schedule) {
+            // สตาฟสองคนกดพร้อมกันต้องได้การ์ดใบเดียว
+            TripSchedule::whereKey($schedule->id)->lockForUpdate()->first();
+
+            if ($this->openHomeStop($schedule)) {
+                throw new \Exception('มีการ์ดเช็คถึงบ้านเปิดอยู่แล้วในห้องนี้ครับ');
+            }
+
+            $stop = ChatRestStop::create([
+                'schedule_id' => $schedule->id,
+                'created_by_id' => $staff->id,
+                'kind' => ChatRestStop::KIND_HOME,
+                'return_at' => now()->addHours(ChatRestStop::HOME_CLOSE_AFTER_HOURS),
+            ]);
+
+            $message = ChatMessage::create([
+                'schedule_id' => $schedule->id,
+                'user_id' => $staff->id,
+                'sender_role' => $this->chatService->senderRole($staff, $schedule),
+                'body' => '🏠 ถึงบ้านแล้วบอกทีมงานหน่อยนะครับ — กด "ถึงบ้านแล้ว" ในการ์ดนี้ '
+                    .'(กดแทนคนในกลุ่มที่คุณจองให้ได้) ทีมงานจะได้หายห่วง ขอบคุณที่เดินทางกับเราครับ 🙏',
+            ]);
+
+            $stop->update(['message_id' => $message->id]);
+
+            return $stop;
+        });
+
+        $message = $stop->message()->with(['user', 'replyTo.user', 'reactions', 'restStop.boardings'])->first();
+        if ($message) {
+            broadcast(new ChatMessageSent($message))->toOthers();
+        }
+
+        return $stop->fresh('boardings');
+    }
+
+    /** เปิดการ์ดถึงบ้านได้ตั้งแต่วันสุดท้ายของทริปถึงวันถัดไป (ส่งคนลงหลังเที่ยงคืนก็ยังได้) */
+    public function homeWindowOpen(TripSchedule $schedule): bool
+    {
+        $lastDay = $schedule->return_date ?? $schedule->departure_date;
+
+        if (! $lastDay || $schedule->status === 'cancelled') {
+            return false;
+        }
+
+        $today = now('Asia/Bangkok')->toDateString();
+
+        return $today >= $lastDay->toDateString()
+            && $today <= $lastDay->copy()->addDay()->toDateString();
+    }
+
+    /** ปุ่มเปิดการ์ดในเมนูของทีมงาน — อยู่ในช่วงวัน และยังไม่มีใบที่เปิดค้างอยู่ */
+    public function canOpenHome(TripSchedule $schedule): bool
+    {
+        return $this->homeWindowOpen($schedule) && ! $this->openHomeStop($schedule);
+    }
+
+    private function openHomeStop(TripSchedule $schedule): bool
+    {
+        return ChatRestStop::where('schedule_id', $schedule->id)
+            ->where('kind', ChatRestStop::KIND_HOME)
+            ->whereNull('departed_at')
+            ->exists();
+    }
+
+    /**
+     * ถึงบ้านครบทุกคน — ปิดการ์ด ประกาศในห้อง และบอกทีมงาน (ครั้งเดียว)
+     */
+    private function finishHomeIfComplete(ChatRestStop $stop): void
+    {
+        [$total, $home] = $this->counts($stop);
+        if ($total === 0 || $home < $total) {
+            return;
+        }
+
+        $claimed = ChatRestStop::whereKey($stop->id)->whereNull('departed_at')->update(['departed_at' => now()]);
+        if ($claimed === 0) {
+            return;
+        }
+
+        $schedule = $stop->schedule;
+        $this->chatService->postSystem(
+            $schedule,
+            "🏠 ทุกคนถึงบ้านปลอดภัยแล้ว ({$total}/{$total} คน) ขอบคุณที่เดินทางกับเราครับ แล้วเจอกันทริปหน้านะครับ 🙏",
+        );
+
+        $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
+        foreach ($this->homeStaffIds($stop) as $staffId) {
+            $this->send($staffId, ['🏠 ทุกคนถึงบ้านแล้ว', "ครบ {$total} คน · {$tripTitle}"], $this->pushData($stop));
+        }
+    }
+
+    /**
+     * งานตามเวลาของการ์ดถึงบ้าน: ครบเวลาแล้วปิด, ยังไม่ครบตามรอบเตือน → เตือนคน
+     * ที่ยังไม่กดหนึ่งครั้ง และบอกทีมงานว่าเหลือใคร
+     */
+    private function settleHome(ChatRestStop $stop): void
+    {
+        if ($stop->return_at->lte(now())) {
+            $this->depart($stop);
+
+            return;
+        }
+
+        $nudgeAt = $this->homeNudgeAt($stop);
+        if ($stop->reminded_at || now()->lt($nudgeAt) || $nudgeAt->gte($stop->return_at)) {
+            return;
+        }
+
+        $claimed = ChatRestStop::whereKey($stop->id)->whereNull('reminded_at')->update(['reminded_at' => now()]);
+        if ($claimed === 0) {
+            return;
+        }
+
+        $missing = $this->missing($stop);
+        if ($missing->isEmpty()) {
+            return;
+        }
+
+        $schedule = $stop->schedule;
+        $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
+        $data = $this->pushData($stop);
+
+        foreach ($missing->pluck('user_id')->filter()->unique() as $userId) {
+            $names = $missing->where('user_id', $userId)->pluck('name');
+            $who = $names->count() > 1 ? ' ('.$names->join(', ').')' : '';
+
+            $this->send((int) $userId, [
+                "🏠 ถึงบ้านแล้วหรือยังครับ?{$who}",
+                "กด \"ถึงบ้านแล้ว\" ในแชทให้ทีมงานหายห่วงหน่อยนะครับ · {$tripTitle}",
+            ], $data);
+        }
+
+        $names = $missing->pluck('name');
+        $list = $names->take(8)->join(', ').($names->count() > 8 ? ' และอีก '.($names->count() - 8).' คน' : '');
+        foreach ($this->homeStaffIds($stop) as $staffId) {
+            $this->send($staffId, ["🏠 ยังไม่ได้บอกว่าถึงบ้าน {$names->count()} คน", $list], $data);
+        }
+    }
+
+    /**
+     * เวลาเตือนของการ์ดถึงบ้าน — หลังเปิด HOME_NUDGE_AFTER_MINUTES แต่ถ้าตกช่วงดึก
+     * (HOME_QUIET_FROM_HOUR ถึง HOME_NUDGE_MORNING_HOUR) เลื่อนไปเช้า คนที่ถึงบ้านตีหนึ่ง
+     * แล้วหลับไปไม่ควรถูกปลุกด้วยคำถามว่าถึงบ้านหรือยัง
+     */
+    private function homeNudgeAt(ChatRestStop $stop): Carbon
+    {
+        $at = $stop->created_at->copy()->timezone('Asia/Bangkok')
+            ->addMinutes(ChatRestStop::HOME_NUDGE_AFTER_MINUTES);
+
+        if ($at->hour >= ChatRestStop::HOME_QUIET_FROM_HOUR) {
+            return $at->addDay()->setTime(ChatRestStop::HOME_NUDGE_MORNING_HOUR, 0);
+        }
+
+        if ($at->hour < ChatRestStop::HOME_NUDGE_MORNING_HOUR) {
+            return $at->setTime(ChatRestStop::HOME_NUDGE_MORNING_HOUR, 0);
+        }
+
+        return $at;
+    }
+
+    /**
+     * ทีมงานที่ต้องรู้เรื่องถึงบ้าน — ทุกคนที่ทำงานรอบนี้ (รวมที่ถูกปลดหลังจบทริปตอนตีสี่
+     * แล้ว เพราะเช้าวันรุ่งขึ้นยังเป็นคนที่ส่งลูกทริปลงรถ) และคนที่เปิดการ์ด
+     *
+     * @return Collection<int, int>
+     */
+    private function homeStaffIds(ChatRestStop $stop): Collection
+    {
+        return $stop->schedule->staff()->pluck('users.id')
+            ->push($stop->created_by_id)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    /** @return array<string, string> */
+    private function pushData(ChatRestStop $stop): array
+    {
+        return [
+            'type' => 'rest_stop',
+            'route' => 'chat',
+            'schedule_id' => (string) $stop->schedule_id,
+            'message_id' => (string) $stop->message_id,
+        ];
+    }
+
     /**
      * ติ๊กขึ้นรถ/ยังไม่ขึ้น — ลูกทริปติ๊กได้เฉพาะคนที่ตัวเองดูแล สตาฟติ๊กได้ทุกคน
      *
@@ -141,7 +344,7 @@ class ChatRestStopService
     public function setBoarded(User $user, ChatRestStop $stop, array $passengerIds, bool $boarded, bool $asStaff): ChatRestStop
     {
         if ($stop->isDeparted()) {
-            throw new \Exception($stop->isMeetup() ? 'นัดนี้จบไปแล้ว' : 'รถออกไปแล้ว');
+            throw new \Exception($this->closedText($stop));
         }
 
         // กด "มาถึงแล้ว" ล่วงหน้าทั้งคืนไม่ได้ — ไม่งั้นรายชื่อตอนเช้าโกหก
@@ -179,6 +382,11 @@ class ChatRestStopService
             }
         });
 
+        // คนสุดท้ายกดถึงบ้าน — ปิดการ์ดและบอกทีมงานทันที ไม่ต้องรอใครกดปิด
+        if ($boarded && $stop->isHome()) {
+            $this->finishHomeIfComplete($stop);
+        }
+
         return $this->broadcastUpdate($stop);
     }
 
@@ -186,7 +394,10 @@ class ChatRestStopService
     public function extend(ChatRestStop $stop, int $minutes): ChatRestStop
     {
         if ($stop->isDeparted()) {
-            throw new \Exception($stop->isMeetup() ? 'นัดนี้จบไปแล้ว' : 'รถออกไปแล้ว');
+            throw new \Exception($this->closedText($stop));
+        }
+        if ($stop->isHome()) {
+            throw new \Exception('การ์ดเช็คถึงบ้านไม่มีเวลานัดให้ขยายครับ');
         }
 
         $minutes = min(max($minutes, 1), 60);
@@ -211,30 +422,42 @@ class ChatRestStopService
         return $fresh;
     }
 
-    /** ออกรถ — ปิดการ์ด แล้วบอกห้องว่าขึ้นครบไหม */
+    /** ออกรถ (หรือปิดการ์ดนัด/ถึงบ้าน) — ปิดการ์ด แล้วบอกห้องว่าครบไหม */
     public function depart(ChatRestStop $stop): ChatRestStop
     {
-        if ($stop->isDeparted()) {
+        // จองการปิดก่อน — ทีมงานกดปิดพร้อมกับที่ job ปิดเองจะได้ไม่ประกาศซ้ำสองข้อความ
+        $claimed = ChatRestStop::whereKey($stop->id)->whereNull('departed_at')->update(['departed_at' => now()]);
+        if ($claimed === 0) {
             return $stop->fresh('boardings');
         }
 
-        $stop->update(['departed_at' => now()]);
         $fresh = $this->broadcastUpdate($stop);
 
         [$total, $boarded] = $this->counts($fresh);
         $complete = $total > 0 && $boarded >= $total;
-        $this->chatService->postSystem(
-            $stop->schedule,
-            $stop->isMeetup()
-                ? ($complete
-                    ? "📍 มากันครบ {$total}/{$total} คน ไปกันเลย!"
-                    : '📍 เริ่มแล้ว'.($total > 0 ? " (มาถึงจุดนัด {$boarded}/{$total} คน)" : ''))
-                : ($complete
-                    ? "🚐 ออกรถแล้ว — ขึ้นครบ {$total}/{$total} คน ไปต่อกันเลย!"
-                    : '🚐 ออกรถแล้ว'.($total > 0 ? " (เช็คชื่อขึ้นรถ {$boarded}/{$total} คน)" : '')),
-        );
+        $this->chatService->postSystem($stop->schedule, match (true) {
+            $stop->isHome() => $complete
+                ? "🏠 ทุกคนถึงบ้านปลอดภัยแล้ว ({$total}/{$total} คน) ขอบคุณที่เดินทางกับเราครับ 🙏"
+                : '🏠 ปิดเช็คถึงบ้านแล้ว'.($total > 0 ? " (บอกว่าถึงบ้าน {$boarded}/{$total} คน)" : ''),
+            $stop->isMeetup() => $complete
+                ? "📍 มากันครบ {$total}/{$total} คน ไปกันเลย!"
+                : '📍 เริ่มแล้ว'.($total > 0 ? " (มาถึงจุดนัด {$boarded}/{$total} คน)" : ''),
+            default => $complete
+                ? "🚐 ออกรถแล้ว — ขึ้นครบ {$total}/{$total} คน ไปต่อกันเลย!"
+                : '🚐 ออกรถแล้ว'.($total > 0 ? " (เช็คชื่อขึ้นรถ {$boarded}/{$total} คน)" : ''),
+        });
 
         return $fresh;
+    }
+
+    /** ข้อความเมื่อการ์ดปิดไปแล้ว */
+    private function closedText(ChatRestStop $stop): string
+    {
+        return match (true) {
+            $stop->isHome() => 'ปิดเช็คถึงบ้านไปแล้วครับ',
+            $stop->isMeetup() => 'นัดนี้จบไปแล้ว',
+            default => 'รถออกไปแล้ว',
+        };
     }
 
     /**
@@ -270,6 +493,13 @@ class ChatRestStopService
 
     private function settleOne(ChatRestStop $stop): void
     {
+        // การ์ดถึงบ้านไม่มีเวลานัด — return_at คือเวลาปิดเอง กติกาต่างจากจุดพักทั้งชุด
+        if ($stop->isHome()) {
+            $this->settleHome($stop);
+
+            return;
+        }
+
         if ($stop->return_at->lte(now()->subMinutes(ChatRestStop::AUTO_DEPART_AFTER_MINUTES))) {
             $stop->update(['departed_at' => now()]);
             $this->broadcastUpdate($stop);
@@ -712,7 +942,20 @@ class ChatRestStopService
      */
     private function rosterOf(ChatRestStop $stop): Collection
     {
-        return $this->roster->passengers($stop->schedule, includeJoinTrip: $stop->isMeetup());
+        if (! $stop->isHome()) {
+            return $this->roster->passengers($stop->schedule, includeJoinTrip: $stop->isMeetup());
+        }
+
+        // ถึงบ้าน: คนที่นั่งรถกลับมากับเรา — ไม่นับคนจอยทริป (กลับเอง) และคนที่แจ้ง
+        // ว่าไปไม่ได้แล้วไม่ได้ขึ้นรถ (BookingPassenger::isNotGoing) ไม่งั้นการ์ดไม่มีวันครบ
+        $roster = $this->roster->passengers($stop->schedule, includeJoinTrip: false);
+        $notGoing = BookingPassenger::whereIn('id', $roster->pluck('passenger_id'))
+            ->whereNotNull('not_going_at')
+            ->whereNull('checked_in_at')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        return $roster->reject(fn ($p) => $notGoing->contains($p['passenger_id']))->values();
     }
 
     /** "04:30" ถ้าเป็นวันนี้, "พรุ่งนี้ 04:30", หรือ "ศ. 9 ต.ค. 04:30" */

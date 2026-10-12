@@ -3,6 +3,7 @@
 use App\Models\GroupPlan;
 use App\Models\SupportConversation;
 use App\Models\TripSchedule;
+use App\Services\ChatPrivateService;
 use App\Services\ChatService;
 use App\Services\SosParticipantService;
 use Illuminate\Support\Facades\Broadcast;
@@ -24,6 +25,26 @@ Broadcast::channel('chat.schedule.{scheduleId}', function ($user, $scheduleId) {
 
     return $schedule
         && app(ChatService::class)->canAccess($user, $schedule);
+});
+
+// ถามทีมงานแบบส่วนตัว — เจ้าของเธรดฟังได้เฉพาะเธรดของตัวเอง ทีมงานของรอบฟังได้ทุกเธรด
+Broadcast::channel('chat.private.{scheduleId}.{userId}', function ($user, $scheduleId, $userId) {
+    $schedule = TripSchedule::find($scheduleId);
+    if (! $schedule) {
+        return false;
+    }
+
+    $private = app(ChatPrivateService::class);
+
+    return ((int) $user->id === (int) $userId && $private->canAsk($user, $schedule))
+        || $private->canAnswer($user, $schedule);
+});
+
+// กล่องข้อความรวมของทีมงานรอบนั้น — ทุกเธรดส่วนตัวมาทางช่องเดียว
+Broadcast::channel('chat.private-staff.{scheduleId}', function ($user, $scheduleId) {
+    $schedule = TripSchedule::find($scheduleId);
+
+    return $schedule && app(ChatPrivateService::class)->canAnswer($user, $schedule);
 });
 
 // ประกาศจากผู้จัด — สมาชิกรอบเดียวกัน (เกณฑ์เดียวกับห้องแชท) เท่านั้นที่ฟังได้

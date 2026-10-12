@@ -339,14 +339,18 @@ class ChatService
      */
     public function deleteMessage(ChatMessage $message): void
     {
-        if ($message->image_path) {
-            Storage::disk(MediaDisk::name())->delete($message->image_path);
+        foreach ([$message->image_path, $message->audio_path] as $path) {
+            if ($path) {
+                Storage::disk(MediaDisk::name())->delete($path);
+            }
         }
 
         $message->forceFill([
             'is_deleted' => true,
             'body' => null,
             'image_path' => null,
+            'audio_path' => null,
+            'audio_duration_ms' => null,
             'mentions' => null,
             'pinned_at' => null,
             'pinned_by_id' => null,
@@ -476,6 +480,8 @@ class ChatService
             'schedule_id' => $message->schedule_id,
             'body' => $deleted ? null : $message->body,
             'image_url' => $deleted ? null : $message->image_url,
+            'audio_url' => $deleted ? null : $message->audio_url,
+            'audio_duration_ms' => $deleted ? null : $message->audio_duration_ms,
             'sender_role' => $message->sender_role,
             'is_mine' => $currentUserId !== null && $message->user_id === $currentUserId,
             'is_deleted' => $deleted,
@@ -598,6 +604,7 @@ class ChatService
             'sender_role' => $message->sender_role,
             'body' => $message->body ? Str::limit($message->body, 120) : null,
             'has_image' => $message->image_path !== null,
+            'has_audio' => $message->audio_path !== null,
         ];
     }
 
@@ -615,8 +622,10 @@ class ChatService
 
         return [
             'id' => $message->id,
-            'body' => $message->body,
+            // ข้อความเสียงไม่มีตัวหนังสือ — แถบหมุดโชว์ป้ายแทนแถบว่าง
+            'body' => $message->body ?? ($message->audio_path ? ChatMessage::audioPreview($message->audio_duration_ms) : null),
             'image_url' => $message->image_url,
+            'has_audio' => $message->audio_path !== null,
             'sender_role' => $message->sender_role,
             'sender_name' => $message->sender_role === 'system' ? 'ระบบ' : ($author ?? 'ผู้ใช้'),
             'pinned_by' => $pinnedBy,

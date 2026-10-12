@@ -15,6 +15,7 @@ use App\Models\ChatSupplyRequest;
 use App\Models\LostItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
+use App\Services\ChatPrivateService;
 use App\Support\MediaDisk;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -62,6 +63,10 @@ class PurgeEndedTripChatsJob implements ShouldQueue
 
         $pickupPhotos = $this->purgePickupArrivalPhotos($endedScheduleIds->all());
 
+        // เธรดถามทีมงานแบบส่วนตัวหายไปพร้อมห้อง — เก็บเรื่องสุขภาพ/เงินไว้นานกว่าทริปไม่ได้
+        // (ไล่จากรอบที่จบแล้วทั้งหมด ไม่ใช่เฉพาะรอบที่ยังมีข้อความในห้องรวม)
+        $privateFiles = app(ChatPrivateService::class)->purge($endedScheduleIds->all());
+
         // Only the ones that still have a chat to purge.
         $scheduleIds = ChatMessage::whereIn('schedule_id', $endedScheduleIds)
             ->distinct()
@@ -95,10 +100,11 @@ class PurgeEndedTripChatsJob implements ShouldQueue
             $purged++;
         }
 
-        if ($purged > 0 || $pickupPhotos > 0) {
+        if ($purged > 0 || $pickupPhotos > 0 || $privateFiles > 0) {
             Log::info('PurgeEndedTripChatsJob completed', [
                 'rooms_purged' => $purged,
                 'images_deleted' => $imagesDeleted,
+                'private_files_deleted' => $privateFiles,
                 'pickup_photos_deleted' => $pickupPhotos,
             ]);
         }
@@ -149,10 +155,12 @@ class PurgeEndedTripChatsJob implements ShouldQueue
         // เฉพาะไฟล์ที่ห้องแชทเป็นเจ้าของจริง ๆ — ข้อความระบบ "รถถึงจุดรับแล้ว"
         // ใช้รูปใบเดียวกับที่ schedule_pickup_points ถืออยู่ ถ้าลบตรงนี้ด้วย แถว
         // ของจุดรับจะชี้ไปยังไฟล์ที่ไม่มีอยู่แล้ว (ลบที่เดียวใน purgePickupArrivalPhotos)
+        // รูปและข้อความเสียงของห้อง (เสียงอยู่ใต้ chat/audio/ จึงผ่านเงื่อนไขเดียวกัน)
         $paths = ChatMessage::where('schedule_id', $scheduleId)
-            ->whereNotNull('image_path')
-            ->pluck('image_path')
-            ->filter(fn ($p) => $p !== '' && str_starts_with((string) $p, 'chat/'))
+            ->where(fn ($q) => $q->whereNotNull('image_path')->orWhereNotNull('audio_path'))
+            ->get(['image_path', 'audio_path'])
+            ->flatMap(fn (ChatMessage $m) => [$m->image_path, $m->audio_path])
+            ->filter(fn ($p) => $p !== null && $p !== '' && str_starts_with((string) $p, 'chat/'))
             ->values();
 
         if ($paths->isEmpty()) {

@@ -260,8 +260,12 @@ class ModerationService
         return match ($report->reportable_type) {
             'chat_message' => [
                 'exists' => true,
-                'excerpt' => $target->is_deleted ? '(ข้อความถูกลบ)' : (string) $target->body,
+                'excerpt' => $target->is_deleted
+                    ? '(ข้อความถูกลบ)'
+                    : (string) ($target->body ?? ($target->audio_path ? ChatMessage::audioPreview($target->audio_duration_ms) : '')),
                 'image_url' => $target->image_url,
+                // ข้อความเสียงที่ถูกรายงาน — ทีมงานต้องฟังได้ก่อนตัดสินว่าซ่อนไหม
+                'audio_url' => $target->audio_url,
                 'hidden' => $target->hidden_at !== null,
                 'schedule_id' => $target->schedule_id,
             ],

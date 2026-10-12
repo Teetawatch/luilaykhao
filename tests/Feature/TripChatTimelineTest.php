@@ -5,17 +5,21 @@ namespace Tests\Feature;
 use App\Jobs\PostTripChatTimelineJob;
 use App\Models\Booking;
 use App\Models\ChatMessage;
+use App\Models\ChatRestStop;
 use App\Models\ScheduleItineraryItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\WeatherForecast;
 use App\Services\TripChatTimelineService;
 use App\Services\TripFactsService;
+use App\Services\WeatherService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class TripChatTimelineTest extends TestCase
@@ -615,5 +619,204 @@ class TripChatTimelineTest extends TestCase
             1,
             ChatMessage::where('schedule_id', $booked->id)->where('system_key', 'countdown_7d')->count(),
         );
+    }
+
+    // ── สรุปพรุ่งนี้ (ทริปหลายวัน) ─────────────────────────────────────────────
+
+    private function threeDayTrip(array $tripOverrides = []): TripSchedule
+    {
+        return $this->makeSchedule(['return_date' => '2026-08-17'], $tripOverrides);
+    }
+
+    private function meetup(TripSchedule $schedule, string $bangkokAt, ?string $place = null, bool $departed = false): ChatRestStop
+    {
+        return ChatRestStop::create([
+            'schedule_id' => $schedule->id,
+            'created_by_id' => User::factory()->create()->id,
+            'kind' => ChatRestStop::KIND_MEETUP,
+            'place' => $place,
+            'return_at' => $this->bangkok($bangkokAt)->utc(),
+            'departed_at' => $departed ? now() : null,
+        ]);
+    }
+
+    private function briefBody(TripSchedule $schedule, int $day): ?string
+    {
+        return ChatMessage::where('schedule_id', $schedule->id)
+            ->where('system_key', TripChatTimelineService::DAY_BRIEF_PREFIX.$day)
+            ->value('body');
+    }
+
+    public function test_day_brief_posts_tomorrows_plan_the_night_before(): void
+    {
+        $schedule = $this->threeDayTrip();
+        $this->addItineraryItem($schedule, '2026-08-15', '09:00', 'ถึงที่พัก');
+        $this->addItineraryItem($schedule, '2026-08-16', '05:00', 'ขึ้นจุดชมวิว', "เดินขึ้นชัน 40 นาที\nใส่รองเท้าหุ้มส้น");
+        $this->addItineraryItem($schedule, '2026-08-16', '08:00', 'อาหารเช้า');
+        $this->addItineraryItem($schedule, '2026-08-17', '10:00', 'เดินทางกลับ');
+
+        // ยังไม่ถึงสองทุ่มของวันแรก — ยังไม่โพสต์
+        $this->assertNotContains('day_brief_2', $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-15 19:55')));
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-15 20:05'));
+
+        $this->assertContains('day_brief_2', $posted);
+        $body = $this->briefBody($schedule, 2);
+        $this->assertStringContainsString('🌙 สรุปพรุ่งนี้ — วันที่ 2 จาก 3', $body);
+        $this->assertStringContainsString('16 สิงหาคม 2569', $body);
+        $this->assertStringContainsString('• 05:00 น. ขึ้นจุดชมวิว', $body);
+        // ยกรายละเอียดมาแค่บรรทัดแรก ฉบับเต็มอยู่ในหน้ากำหนดการ
+        $this->assertStringContainsString('  เดินขึ้นชัน 40 นาที', $body);
+        $this->assertStringNotContainsString('ใส่รองเท้าหุ้มส้น', $body);
+        $this->assertStringContainsString('• 08:00 น. อาหารเช้า', $body);
+        // เฉพาะของพรุ่งนี้ — วันนี้กับวันกลับไม่ปนมา
+        $this->assertStringNotContainsString('ถึงที่พัก', $body);
+        $this->assertStringNotContainsString('เดินทางกลับ', $body);
+        $this->assertStringNotContainsString('วันสุดท้าย', $body);
+        $this->assertStringContainsString('ชาร์จโทรศัพท์', $body);
+        $this->assertSame('system', ChatMessage::where('system_key', 'day_brief_2')->value('sender_role'));
+    }
+
+    public function test_day_brief_on_the_eve_of_the_last_day_says_so_and_reminds_to_pack(): void
+    {
+        $schedule = $this->threeDayTrip();
+        $this->addItineraryItem($schedule, '2026-08-17', '10:00', 'เช็คเอาท์');
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-16 20:10'));
+
+        $this->assertContains('day_brief_3', $posted);
+        $body = $this->briefBody($schedule, 3);
+        $this->assertStringContainsString('วันสุดท้าย (วันที่ 3 จาก 3)', $body);
+        $this->assertStringContainsString('เช็คห้องพักอีกรอบก่อนออก', $body);
+        $this->assertStringContainsString('เช็คเอาท์', $body);
+    }
+
+    public function test_day_brief_lists_tomorrows_meetups_and_suggests_a_headlamp_before_dawn(): void
+    {
+        $schedule = $this->threeDayTrip();
+        $this->meetup($schedule, '2026-08-16 04:30', 'หน้าลานกางเต็นท์');
+        $this->meetup($schedule, '2026-08-16 13:00');
+        $this->meetup($schedule, '2026-08-16 06:00', 'ยกเลิกไปแล้ว', departed: true);
+        $this->meetup($schedule, '2026-08-17 05:00', 'นัดของมะรืน');
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-15 20:05'));
+
+        $body = $this->briefBody($schedule, 2);
+        $this->assertNotNull($body, 'มีนัดพรุ่งนี้ก็พอจะโพสต์แล้ว แม้ไม่มีกำหนดการ');
+        $this->assertStringContainsString('⏰ นัดรวมพล 04:30 น. ที่หน้าลานกางเต็นท์', $body);
+        $this->assertStringContainsString('⏰ นัดรวมพล 13:00 น.', $body);
+        $this->assertTrue(
+            strpos($body, '04:30') < strpos($body, '13:00'),
+            'นัดเรียงตามเวลา',
+        );
+        $this->assertStringNotContainsString('ยกเลิกไปแล้ว', $body);
+        $this->assertStringNotContainsString('นัดของมะรืน', $body);
+        $this->assertStringContainsString('ไฟฉายคาดหัว', $body);
+        $this->assertStringNotContainsString('📋 แผนพรุ่งนี้', $body);
+    }
+
+    public function test_day_brief_brings_the_forecast_and_what_to_pack_for_it(): void
+    {
+        $schedule = $this->threeDayTrip(['latitude' => 19.8, 'longitude' => 99.9]);
+
+        $this->mock(WeatherService::class, function (MockInterface $m) {
+            $m->shouldReceive('forecastFor')
+                ->andReturnUsing(fn ($lat, $lng, $date) => $date === '2026-08-16'
+                    ? new WeatherForecast([
+                        'description_th' => 'ฝนฟ้าคะนอง',
+                        'temp_min' => 12.4,
+                        'temp_max' => 21.0,
+                        'pop' => 0.7,
+                        'severity' => 'warning',
+                    ])
+                    : null);
+        });
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-15 20:05'));
+
+        $body = $this->briefBody($schedule, 2);
+        $this->assertNotNull($body, 'มีแค่พยากรณ์อากาศก็โพสต์ได้');
+        $this->assertStringContainsString('🌤️ อากาศ: ฝนฟ้าคะนอง · 12–21°C · โอกาสฝน 70%', $body);
+        $this->assertStringContainsString('เสื้อกันฝน และถุงกันน้ำ', $body);
+        $this->assertStringContainsString('เสื้อกันหนาว — เช้ามืดอาจเหลือ 12°C', $body);
+        $this->assertStringNotContainsString('ครีมกันแดด', $body);
+    }
+
+    public function test_day_brief_stays_quiet_when_there_is_nothing_to_say(): void
+    {
+        $schedule = $this->threeDayTrip();
+
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-15 20:05'));
+
+        $this->assertNotContains('day_brief_2', $posted);
+        $this->assertNull($this->briefBody($schedule, 2));
+    }
+
+    public function test_day_brief_is_not_posted_after_midnight(): void
+    {
+        $schedule = $this->threeDayTrip();
+        $this->addItineraryItem($schedule, '2026-08-16', '05:00', 'ขึ้นจุดชมวิว');
+
+        // ตีหนึ่ง "พรุ่งนี้" ในข้อความจะกลายเป็นมะรืน — ปล่อยตกไป
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-16 01:00'));
+
+        $this->assertNotContains('day_brief_2', $posted);
+    }
+
+    public function test_day_brief_is_posted_once_per_night(): void
+    {
+        $schedule = $this->threeDayTrip();
+        $this->addItineraryItem($schedule, '2026-08-16', '05:00', 'ขึ้นจุดชมวิว');
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-15 20:05'));
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-15 20:20'));
+
+        $this->assertSame(1, ChatMessage::where('system_key', 'day_brief_2')->count());
+    }
+
+    public function test_single_day_trips_get_no_day_brief(): void
+    {
+        $schedule = $this->makeSchedule(['return_date' => '2026-08-15']);
+        $this->addItineraryItem($schedule, '2026-08-15', '09:00', 'เดินป่า');
+
+        foreach (['2026-08-14 20:05', '2026-08-15 20:05'] as $at) {
+            $posted = $this->timeline()->syncFor($schedule, $this->bangkok($at));
+            $this->assertSame([], array_filter($posted, fn ($k) => str_starts_with($k, 'day_brief_')));
+        }
+    }
+
+    public function test_day_brief_uses_the_dated_trip_plan_when_the_round_has_none(): void
+    {
+        $schedule = $this->threeDayTrip([
+            'itinerary' => [
+                ['day' => 1, 'title' => 'ออกเดินทาง'],
+                ['day' => 2, 'title' => '05:30 ขึ้นดอยดูทะเลหมอก'],
+                ['day' => 3, 'title' => 'เดินทางกลับ'],
+            ],
+        ]);
+
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-15 20:05'));
+
+        $body = $this->briefBody($schedule, 2);
+        $this->assertNotNull($body);
+        $this->assertStringContainsString('ขึ้นดอยดูทะเลหมอก', $body);
+        $this->assertStringContainsString('แผนของทริปนี้', $body);
+        $this->assertStringNotContainsString('เดินทางกลับ', $body);
+    }
+
+    public function test_job_keeps_briefing_a_long_trip_in_the_middle_of_it(): void
+    {
+        // ทริป 20 วัน: วันนี้คือวันที่ 10 — ทั้งวันออกและวันกลับอยู่นอกช่วงที่ job ดูแล
+        $schedule = $this->makeSchedule(['departure_date' => '2026-08-01', 'return_date' => '2026-08-20']);
+        $this->bookOnto($schedule);
+        $this->addItineraryItem($schedule, '2026-08-11', '07:00', 'ล่องแก่ง');
+        $this->travelTo($this->bangkok('2026-08-10 20:05'));
+
+        (new PostTripChatTimelineJob)->handle($this->timeline());
+
+        $body = $this->briefBody($schedule, 11);
+        $this->assertNotNull($body);
+        $this->assertStringContainsString('วันที่ 11 จาก 20', $body);
+        $this->assertStringContainsString('ล่องแก่ง', $body);
     }
 }

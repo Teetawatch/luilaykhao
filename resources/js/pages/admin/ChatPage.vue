@@ -66,7 +66,7 @@
               <span class="conv-preview" v-if="conv.last_message">
                 <template v-if="conv.last_message.sender_name">{{ conv.last_message.sender_name }}: </template>
                 <i v-if="conv.last_message.image_url" class="fas fa-image preview-img-icon"></i>
-                {{ conv.last_message.body || (conv.last_message.image_url ? 'รูปภาพ' : '') }}
+                {{ conv.last_message.body || (conv.last_message.image_url ? 'รูปภาพ' : (conv.last_message.has_audio ? '🎤 ข้อความเสียง' : '')) }}
               </span>
               <span class="conv-preview muted" v-else>ยังไม่มีข้อความ — เริ่มแชทได้เลย</span>
               <span class="conv-flags">
@@ -190,7 +190,7 @@
                       <div v-if="m.reply_to" class="reply-quote" @click="jumpTo(m.reply_to.id)">
                         <span class="reply-author">{{ m.reply_to.sender_name }}</span>
                         <span class="reply-body">
-                          {{ m.reply_to.body || (m.reply_to.image_url ? 'รูปภาพ' : 'ข้อความถูกลบแล้ว') }}
+                          {{ m.reply_to.body || (m.reply_to.has_audio ? '🎤 ข้อความเสียง' : ((m.reply_to.has_image || m.reply_to.image_url) ? 'รูปภาพ' : 'ข้อความถูกลบแล้ว')) }}
                         </span>
                       </div>
 
@@ -199,6 +199,9 @@
                         <div v-if="m.image_url" class="msg-image" @click="lightbox = m.image_url">
                           <img :src="m.image_url" alt="รูปภาพ" />
                         </div>
+                        <!-- ข้อความเสียงจากแอป -->
+                        <audio v-if="m.audio_url" :src="m.audio_url" controls preload="none"
+                          style="display:block;width:260px;max-width:100%;height:36px;margin:4px 0"></audio>
                         <div v-if="m.body" class="msg-body">{{ m.body }}</div>
 
                         <!-- โพลในห้อง (แอดมินดูผลและปิดโหวตได้ แต่ไม่ลงคะแนนแทนใคร) -->
@@ -280,7 +283,7 @@
             <i class="fas fa-reply"></i>
             <div class="reply-bar-text">
               <strong>ตอบกลับ {{ replyTo.sender_name }}</strong>
-              <span>{{ replyTo.body || (replyTo.image_url ? 'รูปภาพ' : '') }}</span>
+              <span>{{ replyTo.body || (replyTo.image_url ? 'รูปภาพ' : (replyTo.has_audio ? '🎤 ข้อความเสียง' : '')) }}</span>
             </div>
             <button @click="replyTo = null"><i class="fas fa-times"></i></button>
           </div>
@@ -745,6 +748,7 @@ function startReply(m) {
     sender_name: isSystem(m) ? 'ระบบ' : senderName(m),
     body: m.body,
     image_url: m.image_url,
+    has_audio: !!m.audio_url,
   };
   textareaEl.value?.focus();
 }
@@ -920,6 +924,7 @@ function bumpConversation(msg) {
   conv.last_message = {
     body: msg.body,
     image_url: msg.image_url,
+    has_audio: !!msg.audio_url,
     sender_role: msg.sender_role,
     sender_name: msg.user?.nickname || msg.user?.name,
     created_at: msg.created_at,

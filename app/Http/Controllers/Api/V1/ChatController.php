@@ -13,6 +13,7 @@ use App\Jobs\PostChatAutoAnswerJob;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatMessage;
 use App\Models\ChatPoll;
+use App\Models\ChatPrivateThread;
 use App\Models\ChatRead;
 use App\Models\ChatRoomPreference;
 use App\Models\ChatStopRequest;
@@ -20,6 +21,7 @@ use App\Models\ChatSupplyRequest;
 use App\Models\TripSchedule;
 use App\Services\ChatAutoAnswerService;
 use App\Services\ChatPollService;
+use App\Services\ChatPrivateService;
 use App\Services\ChatRestStopService;
 use App\Services\ChatService;
 use App\Services\ChatSupplyService;
@@ -34,6 +36,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class ChatController extends Controller
@@ -126,8 +129,11 @@ class ChatController extends Controller
     public function store(Request $request, int $scheduleId): JsonResponse
     {
         $validated = $request->validate([
-            'body' => ['nullable', 'string', 'max:2000', 'required_without:image'],
-            'image' => ['nullable', 'image', 'max:5120'],
+            'body' => ['nullable', 'string', 'max:2000', 'required_without_all:image,audio'],
+            'image' => ['nullable', 'image', 'max:5120', 'prohibits:audio'],
+            // ข้อความเสียง — ส่งมาเดี่ยว ๆ (ไม่มีข้อความ/รูปประกอบ) พร้อมความยาวที่แอปวัดได้
+            'audio' => ['nullable', 'file', 'mimes:'.implode(',', ChatMessage::AUDIO_EXTENSIONS), 'max:'.ChatMessage::AUDIO_MAX_KB, 'prohibits:body'],
+            'audio_duration_ms' => ['nullable', 'required_with:audio', 'integer', 'min:'.ChatMessage::AUDIO_MIN_MS, 'max:'.((ChatMessage::AUDIO_MAX_SECONDS + 5) * 1000)],
             // Reply must point at a message in this same room.
             'reply_to_id' => [
                 'nullable', 'integer',
@@ -152,6 +158,10 @@ class ChatController extends Controller
         $imagePath = $request->hasFile('image')
             ? $request->file('image')->store('chat/'.date('Y/m'), MediaDisk::name())
             : null;
+        // ใต้ chat/ เหมือนรูป — ห้องถูกล้างเมื่อไหร่ PurgeEndedTripChatsJob ลบไปด้วยกัน
+        $audioPath = $request->hasFile('audio')
+            ? $request->file('audio')->store('chat/audio/'.date('Y/m'), MediaDisk::name())
+            : null;
 
         $body = isset($validated['body']) ? trim($validated['body']) : null;
         $mentions = $this->chatService->sanitizeMentions($schedule, $validated['mentions'] ?? []);
@@ -163,6 +173,8 @@ class ChatController extends Controller
             'sender_role' => $this->chatService->senderRole($user, $schedule),
             'body' => $body !== '' ? $body : null,
             'image_path' => $imagePath,
+            'audio_path' => $audioPath,
+            'audio_duration_ms' => $audioPath ? (int) $validated['audio_duration_ms'] : null,
             'mentions' => $mentions ?: null,
         ]);
         $message->load($this->messageRelations());
@@ -218,7 +230,7 @@ class ChatController extends Controller
         if ($message->user_id !== $user->id) {
             return $this->error('แก้ไขได้เฉพาะข้อความของคุณเอง', 403);
         }
-        if ($message->is_deleted || $message->sender_role === 'system' || $message->image_path) {
+        if ($message->is_deleted || $message->sender_role === 'system' || $message->image_path || $message->audio_path) {
             return $this->error('ข้อความนี้แก้ไขไม่ได้', 422);
         }
 
@@ -698,6 +710,11 @@ class ChatController extends Controller
                 ? app(ChatSupplyService::class)->pendingCount($schedule)
                 : 0,
             'can_request_stop' => $this->restStops->isWithinTripWindow($schedule),
+            // เมนู "เช็คถึงบ้าน" ของทีมงาน — วันสุดท้ายของทริปถึงวันถัดไป และยังไม่มีใบเปิดค้าง
+            'can_open_home_check' => $this->chatService->canModerate($user, $schedule)
+                && $this->restStops->canOpenHome($schedule),
+            // ถามทีมงานแบบส่วนตัว — ลูกทริป: ยังไม่อ่าน + ทีมงานที่จะได้อ่าน, ทีมงาน: กี่คนรอคำตอบ
+            'private_chat' => app(ChatPrivateService::class)->roomSummary($user, $schedule),
             // มีห้องพักให้ดูไหม — ลูกทริปเห็นเมนู "ห้องพัก" เมื่อทีมงานจัดไว้แล้ว
             'has_rooms' => app(ScheduleRoomService::class)->hasRooms($schedule),
             'reaction_emojis' => ChatService::REACTION_EMOJIS,
@@ -761,7 +778,9 @@ class ChatController extends Controller
             ->whereIn('schedule_id', $schedules->pluck('id'))
             ->pluck('notify_level', 'schedule_id');
 
-        $conversations = $schedules->map(function ($schedule) use ($messagesBySchedule, $reads, $user, $notifyLevels) {
+        $privateUnread = $this->privateUnreadBySchedule($user, $schedules);
+
+        $conversations = $schedules->map(function ($schedule) use ($messagesBySchedule, $reads, $user, $notifyLevels, $privateUnread) {
             $messages = $messagesBySchedule->get($schedule->id) ?? collect();
             $last = $messages->sortByDesc('id')->first();
             $lastReadId = (int) ($reads[$schedule->id] ?? 0);
@@ -780,10 +799,14 @@ class ChatController extends Controller
                 'return_date' => $schedule->return_date?->toDateString(),
                 'status' => $schedule->status,
                 'unread_count' => $unread,
+                // ข้อความส่วนตัวที่ยังไม่อ่าน (ลูกทริป: จากทีมงาน, ทีมงาน: จากลูกทริปทุกเธรด)
+                'private_unread' => $privateUnread[$schedule->id] ?? 0,
                 'notify_level' => $notifyLevels[$schedule->id] ?? ChatRoomPreference::LEVEL_ALL,
                 'last_message' => $last ? [
                     'body' => $last->body,
                     'image_url' => $last->image_url,
+                    'has_audio' => $last->audio_path !== null,
+                    'audio_duration_ms' => $last->audio_duration_ms,
                     'sender_role' => $last->sender_role,
                     'sender_name' => $last->user?->nickname ?: $last->user?->name,
                     'created_at' => $last->created_at?->toISOString(),
@@ -812,6 +835,34 @@ class ChatController extends Controller
             ->values();
 
         return $this->success($withMessages->concat($empty)->all());
+    }
+
+    /**
+     * ข้อความส่วนตัวที่ยังไม่อ่านต่อรอบ — ดึงเธรดทุกรอบในรายการทีเดียว
+     *
+     * @param  Collection<int, TripSchedule>  $schedules
+     * @return array<int, int> schedule_id => จำนวน
+     */
+    private function privateUnreadBySchedule($user, $schedules): array
+    {
+        $private = app(ChatPrivateService::class);
+        $out = [];
+
+        $staffScheduleIds = $schedules->filter(fn ($s) => $private->canAnswer($user, $s))->pluck('id');
+        $ownScheduleIds = $schedules->pluck('id')->diff($staffScheduleIds);
+
+        $staffThreads = ChatPrivateThread::whereIn('schedule_id', $staffScheduleIds)->get();
+        foreach ($private->unreadByThread($staffThreads, asStaff: true) as $threadId => $count) {
+            $sid = (int) $staffThreads->firstWhere('id', $threadId)->schedule_id;
+            $out[$sid] = ($out[$sid] ?? 0) + $count;
+        }
+
+        $ownThreads = ChatPrivateThread::whereIn('schedule_id', $ownScheduleIds)->where('user_id', $user->id)->get();
+        foreach ($private->unreadByThread($ownThreads, asStaff: false) as $threadId => $count) {
+            $out[(int) $ownThreads->firstWhere('id', $threadId)->schedule_id] = $count;
+        }
+
+        return $out;
     }
 
     /**
@@ -887,6 +938,8 @@ class ChatController extends Controller
                 'last_message' => $last ? [
                     'body' => $last->body,
                     'image_url' => $last->image_url,
+                    'has_audio' => $last->audio_path !== null,
+                    'audio_duration_ms' => $last->audio_duration_ms,
                     'sender_role' => $last->sender_role,
                     'sender_name' => $last->user?->nickname ?: $last->user?->name,
                     'created_at' => $last->created_at?->toISOString(),

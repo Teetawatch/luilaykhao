@@ -33,10 +33,12 @@ class ChatRestStopController extends Controller
     /** สตาฟประกาศพัก — การ์ดนับถอยหลังลงห้อง และเด้งแจ้งทุกคน */
     public function store(Request $request, int $scheduleId): JsonResponse
     {
-        // minutes = พักรถตอนนี้, meet_at = นัดรวมพลล่วงหน้า (ISO-8601 มีโซนเวลา)
+        // minutes = พักรถตอนนี้, meet_at = นัดรวมพลล่วงหน้า (ISO-8601 มีโซนเวลา),
+        // kind=home = เช็คถึงบ้านหลังส่งทุกคนลงรถ (ไม่มีเวลานัด)
         $validated = $request->validate([
-            'minutes' => ['required_without:meet_at', 'nullable', 'integer', 'min:'.ChatRestStop::MIN_MINUTES, 'max:'.ChatRestStop::MAX_MINUTES],
-            'meet_at' => ['required_without:minutes', 'nullable', 'date'],
+            'kind' => ['nullable', Rule::in([ChatRestStop::KIND_REST, ChatRestStop::KIND_MEETUP, ChatRestStop::KIND_HOME])],
+            'minutes' => ['exclude_if:kind,'.ChatRestStop::KIND_HOME, 'required_without:meet_at', 'nullable', 'integer', 'min:'.ChatRestStop::MIN_MINUTES, 'max:'.ChatRestStop::MAX_MINUTES],
+            'meet_at' => ['exclude_if:kind,'.ChatRestStop::KIND_HOME, 'required_without:minutes', 'nullable', 'date'],
             'place' => ['nullable', 'string', 'max:120'],
         ]);
 
@@ -50,9 +52,11 @@ class ChatRestStopController extends Controller
         $place = isset($validated['place']) ? trim($validated['place']) : null;
 
         try {
-            $stop = ! empty($validated['meet_at'])
-                ? $this->restStops->openMeetup($user, $schedule, Carbon::parse($validated['meet_at'])->utc(), $place)
-                : $this->restStops->open($user, $schedule, (int) $validated['minutes'], $place);
+            $stop = match (true) {
+                ($validated['kind'] ?? null) === ChatRestStop::KIND_HOME => $this->restStops->openHome($user, $schedule),
+                ! empty($validated['meet_at']) => $this->restStops->openMeetup($user, $schedule, Carbon::parse($validated['meet_at'])->utc(), $place),
+                default => $this->restStops->open($user, $schedule, (int) $validated['minutes'], $place),
+            };
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
@@ -71,7 +75,11 @@ class ChatRestStopController extends Controller
 
         return $this->success(
             $message ? $this->chatService->presentMessage($message, $user->id) : null,
-            $stop->isMeetup() ? 'ประกาศนัดรวมพลแล้ว' : 'ประกาศเวลาพักแล้ว',
+            match (true) {
+                $stop->isHome() => 'เปิดเช็คถึงบ้านแล้ว',
+                $stop->isMeetup() => 'ประกาศนัดรวมพลแล้ว',
+                default => 'ประกาศเวลาพักแล้ว',
+            },
             201,
         );
     }
@@ -139,7 +147,11 @@ class ChatRestStopController extends Controller
             return $error;
         }
 
-        return $this->payload($this->restStops->depart($stop), true, 'ออกรถแล้ว');
+        return $this->payload($this->restStops->depart($stop), true, match (true) {
+            $stop->isHome() => 'ปิดเช็คถึงบ้านแล้ว',
+            $stop->isMeetup() => 'เริ่มแล้ว',
+            default => 'ออกรถแล้ว',
+        });
     }
 
     /**

@@ -38,9 +38,14 @@ class PostTripChatTimelineJob implements ShouldQueue
         $schedules = TripSchedule::query()
             ->where('status', '!=', 'cancelled')
             ->where(function ($q) use ($from, $to) {
-                // ครอบทั้งรอบที่ยังไม่ออกและรอบที่เพิ่งจบ (เทียบวันกลับถ้ามี)
+                // ครอบทั้งรอบที่ยังไม่ออกและรอบที่เพิ่งจบ (เทียบวันกลับถ้ามี) และรอบยาว
+                // ที่กำลังเดินทางอยู่ — ออกไปนานแล้วและอีกนานกว่าจะกลับ แต่ยังต้องได้
+                // สรุปพรุ่งนี้ทุกคืน
                 $q->whereBetween('departure_date', [$from, $to])
-                    ->orWhereBetween('return_date', [$from, $to]);
+                    ->orWhereBetween('return_date', [$from, $to])
+                    ->orWhere(fn ($running) => $running
+                        ->where('departure_date', '<', $from)
+                        ->where('return_date', '>', $to));
             })
             ->with(['trip', 'vehicle'])
             ->get();

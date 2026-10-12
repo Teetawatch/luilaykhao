@@ -19,6 +19,23 @@ class ChatRestStop extends Model
 
     public const KIND_MEETUP = 'meetup';
 
+    /**
+     * เช็คถึงบ้าน — หลังส่งทุกคนลงรถในวันสุดท้าย ลูกทริปกด "ถึงบ้านแล้ว"
+     * return_at ของการ์ดชนิดนี้คือเวลาปิดการ์ดเอง ไม่ใช่เวลานัด
+     */
+    public const KIND_HOME = 'home';
+
+    /** การ์ดเช็คถึงบ้านปิดเองหลังเปิดไปนานเท่านี้ — คนที่ยังไม่กดถึงตอนนั้นคงลืมไปแล้ว */
+    public const HOME_CLOSE_AFTER_HOURS = 16;
+
+    /** เปิดการ์ดไปนานเท่านี้แล้วยังไม่กด — เตือนคนนั้นหนึ่งครั้ง และบอกทีมงานว่าเหลือใคร */
+    public const HOME_NUDGE_AFTER_MINUTES = 120;
+
+    /** ไม่เด้งเตือนเรื่องถึงบ้านกลางดึก (เวลาไทย) — เลื่อนไปเตือนตอน HOME_NUDGE_MORNING_HOUR */
+    public const HOME_QUIET_FROM_HOUR = 22;
+
+    public const HOME_NUDGE_MORNING_HOUR = 8;
+
     /** เตือนคนที่ยังไม่ขึ้นรถก่อนถึงเวลากี่นาที */
     public const REMIND_BEFORE_MINUTES = 5;
 
@@ -71,6 +88,11 @@ class ChatRestStop extends Model
     public function isMeetup(): bool
     {
         return $this->kind === self::KIND_MEETUP;
+    }
+
+    public function isHome(): bool
+    {
+        return $this->kind === self::KIND_HOME;
     }
 
     /** เตือนคนที่ยังไม่มาก่อนถึงเวลากี่นาที */

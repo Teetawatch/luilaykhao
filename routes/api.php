@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\V1\CharterRequestController;
 use App\Http\Controllers\Api\V1\ChatCollectionController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ChatFoodOrderController;
+use App\Http\Controllers\Api\V1\ChatPrivateController;
 use App\Http\Controllers\Api\V1\ChatRestStopController;
 use App\Http\Controllers\Api\V1\ChatSupplyController;
 use App\Http\Controllers\Api\V1\ConciergeController;
@@ -431,6 +432,13 @@ Route::prefix('v1')->group(function () {
         Route::delete('schedules/{id}/chat/stop-requests/mine', [ChatRestStopController::class, 'cancelRequest']);
         Route::post('schedules/{id}/chat/stop-requests/ack', [ChatRestStopController::class, 'acknowledge']);
         // ขอยา/ของจำเป็นจากสตาฟ ส่งถึงที่นั่ง
+        // ถามทีมงานแบบส่วนตัว — เธรดแยกต่อลูกทริป ไม่ขึ้นในห้องรวม
+        Route::get('schedules/{id}/chat/private/threads', [ChatPrivateController::class, 'threads']);
+        Route::get('schedules/{id}/chat/private/messages', [ChatPrivateController::class, 'messages']);
+        Route::post('schedules/{id}/chat/private/messages', [ChatPrivateController::class, 'store'])->middleware('throttle:chat');
+        Route::delete('schedules/{id}/chat/private/messages/{messageId}', [ChatPrivateController::class, 'destroy']);
+        Route::post('schedules/{id}/chat/private/read', [ChatPrivateController::class, 'read'])->middleware('throttle:60,1');
+
         Route::get('schedules/{id}/chat/supplies', [ChatSupplyController::class, 'index']);
         Route::post('schedules/{id}/chat/supplies', [ChatSupplyController::class, 'store'])->middleware('throttle:20,1');
         Route::delete('schedules/{id}/chat/supplies/{requestId}', [ChatSupplyController::class, 'destroy']);

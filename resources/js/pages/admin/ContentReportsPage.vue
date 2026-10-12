@@ -58,6 +58,9 @@
             </p>
             <img v-if="report.preview?.image_url" :src="report.preview.image_url" class="report-img"
                  @click="previewImage = report.preview.image_url" />
+            <!-- ข้อความเสียงที่ถูกรายงาน — ฟังก่อนตัดสินว่าซ่อนไหม -->
+            <audio v-if="report.preview?.audio_url" :src="report.preview.audio_url" controls preload="none"
+                   style="display:block;width:260px;max-width:100%;height:36px;margin-top:6px"></audio>
 
             <p v-if="report.note" class="report-note">
               <span class="material-symbols-rounded chip-icon">chat_bubble</span> {{ report.note }}

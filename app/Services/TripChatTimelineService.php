@@ -4,10 +4,13 @@ namespace App\Services;
 
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Models\ChatMessage;
+use App\Models\ChatRestStop;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
+use App\Models\WeatherForecast;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -17,7 +20,8 @@ use Illuminate\Support\Str;
  * ห้องแชทเดิมเงียบจนกว่าจะมีคนพิมพ์ ทั้งที่ช่วงก่อนเดินทางคือช่วงที่ลูกค้าอยาก
  * รู้มากที่สุด บริการนี้จึงโพสต์ข้อความระบบตามจังหวะของทริป (นับถอยหลัง →
  * เตรียมของ → ทีมงาน+คนขับพร้อมเบอร์โทร → คำถามที่พบบ่อย → อากาศ →
- * จุดรับคืนก่อนเดินทาง → เช้าวันเดินทาง → ปิดทริป → เตือนก่อนห้องแชทถูกลบ)
+ * จุดรับคืนก่อนเดินทาง → เช้าวันเดินทาง → [ทริปหลายวัน: สรุปพรุ่งนี้ทุกคืน] →
+ * ปิดทริป → เตือนก่อนห้องแชทถูกลบ)
  *
  * หลักการ
  * - ทุกข้อความมี `system_key` ประจำห้อง (unique ระดับ DB) → job ยิงซ้ำกี่รอบก็ไม่ซ้ำ
@@ -43,14 +47,34 @@ class TripChatTimelineService
     /** ยกคำถามที่พบบ่อยลงห้องแชทกี่ข้อ (ที่เหลืออ่านต่อในแอป) */
     private const FAQ_LIMIT = 5;
 
+    /**
+     * สรุปพรุ่งนี้ของทริปหลายวัน — คีย์ day_brief_{N} (N = วันที่ของทริป เริ่มที่ 2
+     * เพราะวันแรกมี pickup_eve/departure_soon ดูแลอยู่แล้ว) โพสต์คืนก่อนวันนั้น
+     */
+    public const DAY_BRIEF_PREFIX = 'day_brief_';
+
+    /** โพสต์สรุปพรุ่งนี้ตอนกี่โมง (เวลาไทย) — ตรงกับเตือนนัดรวมพลคืนก่อน */
+    public const DAY_BRIEF_HOUR = 20;
+
+    /** เลยเที่ยงคืนไปแล้วไม่ต้องโพสต์ — "พรุ่งนี้" ในข้อความจะผิดวันทันที */
+    private const DAY_BRIEF_GRACE_HOURS = 3;
+
+    /** ทริปยาวกว่านี้ไม่ไล่สร้างคีย์ต่อ (กันข้อมูลวันกลับผิดแล้ววนสร้างเป็นร้อยคีย์) */
+    private const DAY_BRIEF_MAX_DAYS = 21;
+
+    /** แผนพรุ่งนี้ยกลงห้องกี่รายการ ที่เหลือชี้ไปปุ่มกำหนดการ */
+    private const DAY_BRIEF_ITEM_LIMIT = 12;
+
     public function __construct(
         private ChatService $chatService,
         private WeatherService $weatherService,
         private TripFactsService $facts,
+        private ScheduleItineraryService $itinerary,
     ) {}
 
     /**
      * คีย์ทั้งหมดตามลำดับเวลา — ใช้ในเทสและเวลาดีบัก
+     * (ไม่รวม day_brief_{N} ซึ่งมีจำนวนตามความยาวของทริป)
      *
      * @return array<int, string>
      */
@@ -184,6 +208,8 @@ class TripChatTimelineService
                 $endDate?->addDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS - 1)->setTime(10, 0),
                 self::DEFAULT_GRACE_HOURS,
             ],
+            // ทริปหลายวัน: คืนก่อนวันที่ 2, 3, … สรุปแผน/นัด/อากาศ/ของที่ต้องเตรียมของพรุ่งนี้
+            ...$this->dayBriefTimes($departureDate, $endDate),
         ];
     }
 
@@ -192,6 +218,10 @@ class TripChatTimelineService
      */
     private function body(string $key, TripSchedule $schedule, CarbonImmutable $now): ?string
     {
+        if (str_starts_with($key, self::DAY_BRIEF_PREFIX)) {
+            return $this->dayBriefBody($schedule, (int) substr($key, strlen(self::DAY_BRIEF_PREFIX)));
+        }
+
         return match ($key) {
             'countdown_7d' => $this->countdownBody($schedule),
             'prepare_3d' => $this->prepareBody($schedule),
@@ -391,19 +421,235 @@ class TripChatTimelineService
             : null;
     }
 
-    private function weatherBody(TripSchedule $schedule): ?string
+    /**
+     * เวลาของสรุปพรุ่งนี้แต่ละคืน — คืนก่อนวันที่ 2 ไปจนถึงคืนก่อนวันกลับ
+     *
+     * @return array<string, array{0: ?CarbonImmutable, 1: int}>
+     */
+    private function dayBriefTimes(?CarbonImmutable $departureDate, ?CarbonImmutable $endDate): array
+    {
+        $out = [];
+        $days = $this->tripDayCount($departureDate, $endDate);
+
+        for ($day = 2; $day <= $days; $day++) {
+            $out[self::DAY_BRIEF_PREFIX.$day] = [
+                $departureDate->addDays($day - 2)->setTime(self::DAY_BRIEF_HOUR, 0),
+                self::DAY_BRIEF_GRACE_HOURS,
+            ];
+        }
+
+        return $out;
+    }
+
+    /** ทริปกี่วัน (นับวันออกเดินทางเป็นวันที่ 1) — ไม่มีวันกลับ = ทริปวันเดียว */
+    private function tripDayCount(?CarbonImmutable $departureDate, ?CarbonImmutable $endDate): int
+    {
+        if ($departureDate === null || $endDate === null || $endDate->lte($departureDate)) {
+            return 1;
+        }
+
+        return min(self::DAY_BRIEF_MAX_DAYS, (int) round($departureDate->diffInDays($endDate)) + 1);
+    }
+
+    /**
+     * สรุปพรุ่งนี้ของทริปหลายวัน: นัดรวมพลที่ทีมงานตั้งไว้ แผนของวันนั้น อากาศ และของ
+     * ที่ควรเตรียมไว้ตั้งแต่คืนนี้ — ระหว่างทริปคนถามซ้ำทุกคืนว่า "พรุ่งนี้ตื่นกี่โมง
+     * ไปไหนบ้าง" ทั้งที่คำตอบอยู่ในกำหนดการอยู่แล้ว
+     *
+     * ไม่มีอะไรจะบอกเลย (ไม่มีแผนของวันนั้น ไม่มีนัด ไม่มีพยากรณ์) = null ไม่โพสต์ข้อความ
+     * ที่มีแต่หัวเรื่อง
+     */
+    private function dayBriefBody(TripSchedule $schedule, int $day): ?string
+    {
+        if (! $schedule->departure_date) {
+            return null;
+        }
+
+        $departureDate = CarbonImmutable::parse($schedule->departure_date->toDateString(), self::TIMEZONE);
+        $endDate = $schedule->return_date
+            ? CarbonImmutable::parse($schedule->return_date->toDateString(), self::TIMEZONE)
+            : $departureDate;
+        $total = $this->tripDayCount($departureDate, $endDate);
+
+        if ($day < 2 || $day > $total) {
+            return null;
+        }
+
+        $date = $departureDate->addDays($day - 1);
+        $isLast = $day === $total;
+
+        [$plan, $fromTrip] = $this->dayPlanLines($schedule, $date);
+        $meetups = $this->meetupsOn($schedule, $date);
+        $forecast = $this->forecastOn($schedule, $date->toDateString());
+
+        if ($plan === [] && $meetups->isEmpty() && $forecast === null) {
+            return null;
+        }
+
+        $lines = [
+            '🌙 สรุปพรุ่งนี้ — '.($isLast ? "วันสุดท้าย (วันที่ {$day} จาก {$total})" : "วันที่ {$day} จาก {$total}")
+                .' · '.ThaiDate::full($date),
+        ];
+
+        foreach ($meetups as $meetup) {
+            $place = $meetup->place ? " ที่{$meetup->place}" : '';
+            $lines[] = '⏰ นัดรวมพล '.$meetup->return_at->copy()->timezone(self::TIMEZONE)->format('H:i')." น.{$place}";
+        }
+
+        if ($plan !== []) {
+            $lines[] = '';
+            $lines[] = '📋 แผนพรุ่งนี้';
+            if ($fromTrip) {
+                $lines[] = '(แผนของทริปนี้ ทีมงานยังไม่ได้ลงกำหนดการเฉพาะรอบ)';
+            }
+            $lines = array_merge($lines, $plan);
+        }
+
+        if ($forecast !== null) {
+            $lines[] = '';
+            $lines[] = '🌤️ อากาศ: '.$this->forecastLine($forecast);
+        }
+
+        $lines[] = '';
+        $lines[] = '🎒 เตรียมไว้ตั้งแต่คืนนี้';
+        foreach ($this->dayBriefBring($forecast, $meetups, $isLast) as $item) {
+            $lines[] = "• {$item}";
+        }
+
+        $lines[] = '';
+        $lines[] = 'เวลาอาจขยับตามหน้างานและสภาพอากาศ ทีมงานจะแจ้งในห้องนี้ครับ พักผ่อนให้เต็มที่นะครับ 🌿';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * รายการกำหนดการของวันนั้น (ของรอบ หรือแผนของทริปที่ระบุวันไว้) เป็นบรรทัดพร้อมโพสต์
+     * รายการที่ไม่ได้ระบุวันข้ามไป — ทริปหลายวันเดาไม่ได้ว่าเป็นของวันไหน
+     *
+     * @return array{0: array<int, string>, 1: bool} [บรรทัด, มาจากแผนของทริปไหม]
+     */
+    private function dayPlanLines(TripSchedule $schedule, CarbonImmutable $date): array
+    {
+        $payload = $this->itinerary->payload($schedule);
+        $target = $date->toDateString();
+
+        $items = array_values(array_filter(
+            $payload['items'],
+            fn (array $item) => trim((string) ($item['item_date'] ?? '')) === $target,
+        ));
+
+        if ($items === []) {
+            return [[], false];
+        }
+
+        $lines = [];
+
+        foreach (array_slice($items, 0, self::DAY_BRIEF_ITEM_LIMIT) as $item) {
+            $time = trim((string) ($item['time'] ?? ''));
+            $title = trim((string) ($item['title'] ?? ''));
+            $lines[] = '• '.($time !== '' ? "{$time} น. " : '').$title;
+
+            // บรรทัดแรกของรายละเอียดมักเป็นสิ่งที่ต้องรู้ ("เดินขึ้นชัน 2 ชม. ใส่รองเท้าหุ้มส้น")
+            // ฉบับเต็มอยู่ในหน้ากำหนดการ สรุปพรุ่งนี้จึงยกแค่บรรทัดเดียว
+            $detail = trim((string) strtok((string) ($item['detail'] ?? ''), "\r\n"));
+            if ($detail !== '' && $detail !== $title) {
+                $lines[] = '  '.Str::limit(preg_replace('/\s+/u', ' ', $detail), 90);
+            }
+        }
+
+        $more = count($items) - self::DAY_BRIEF_ITEM_LIMIT;
+        if ($more > 0) {
+            $lines[] = "ยังมีอีก {$more} รายการ — กดปุ่ม \"กำหนดการ\" เหนือช่องพิมพ์ ดูฉบับเต็มได้ครับ";
+        }
+
+        return [$lines, ($payload['source'] ?? '') === 'trip'];
+    }
+
+    /**
+     * นัดรวมพลล่วงหน้าที่ทีมงานตั้งไว้ในวันนั้น (ยังไม่จบ) เรียงตามเวลา
+     *
+     * @return Collection<int, ChatRestStop>
+     */
+    private function meetupsOn(TripSchedule $schedule, CarbonImmutable $date): Collection
+    {
+        return ChatRestStop::where('schedule_id', $schedule->id)
+            ->where('kind', ChatRestStop::KIND_MEETUP)
+            ->whereNull('departed_at')
+            ->whereBetween('return_at', [$date->startOfDay()->utc(), $date->endOfDay()->utc()])
+            ->orderBy('return_at')
+            ->get();
+    }
+
+    /** "ฝนฟ้าคะนอง · 18–27°C · โอกาสฝน 60%" */
+    private function forecastLine(WeatherForecast $forecast): string
+    {
+        $parts = [];
+
+        if ($forecast->description_th) {
+            $parts[] = $forecast->description_th;
+        }
+        if ($forecast->temp_min !== null && $forecast->temp_max !== null) {
+            $parts[] = round((float) $forecast->temp_min).'–'.round((float) $forecast->temp_max).'°C';
+        }
+        $parts[] = 'โอกาสฝน '.(int) round(((float) ($forecast->pop ?? 0)) * 100).'%';
+
+        return implode(' · ', $parts);
+    }
+
+    /**
+     * ของที่ควรเตรียมไว้คืนนี้ — คิดจากนัด อากาศ และวันสุดท้าย ไม่ใช่รายการตายตัว
+     *
+     * @param  Collection<int, ChatRestStop>  $meetups
+     * @return array<int, string>
+     */
+    private function dayBriefBring(?WeatherForecast $forecast, Collection $meetups, bool $isLast): array
+    {
+        $items = [];
+
+        $earliest = $meetups->first()?->return_at?->copy()->timezone(self::TIMEZONE);
+        if ($earliest !== null && $earliest->hour < 6) {
+            $items[] = 'ไฟฉายคาดหัว และตั้งนาฬิกาปลุกเผื่อเวลาแต่งตัว — นัดก่อนฟ้าสาง';
+        }
+
+        if ($forecast !== null) {
+            $pop = (float) ($forecast->pop ?? 0);
+
+            if ($forecast->severity === 'warning' || $pop >= 0.5) {
+                $items[] = 'เสื้อกันฝน และถุงกันน้ำใส่โทรศัพท์/ของสำคัญ';
+            } elseif ($forecast->severity === 'watch' || $pop >= 0.3) {
+                $items[] = 'เสื้อกันฝนติดกระเป๋าไว้';
+            }
+
+            if ($forecast->temp_min !== null && (float) $forecast->temp_min < 16) {
+                $items[] = 'เสื้อกันหนาว — เช้ามืดอาจเหลือ '.round((float) $forecast->temp_min).'°C';
+            }
+
+            if ($forecast->temp_max !== null && (float) $forecast->temp_max >= 33) {
+                $items[] = 'น้ำดื่ม หมวก และครีมกันแดด — กลางวันร้อนถึง '.round((float) $forecast->temp_max).'°C';
+            }
+        }
+
+        if ($isLast) {
+            $items[] = 'เก็บของลงกระเป๋าให้พร้อม แล้วเช็คห้องพักอีกรอบก่อนออก จะได้ไม่ลืมของไว้';
+        }
+
+        $items[] = 'ชาร์จโทรศัพท์และพาวเวอร์แบงก์ให้เต็ม';
+
+        return $items;
+    }
+
+    /**
+     * พยากรณ์อากาศ ณ พิกัดของทริปในวันที่ระบุ — ทริปไม่มีพิกัด หรือดึงไม่ได้ = null
+     */
+    private function forecastOn(TripSchedule $schedule, string $date): ?WeatherForecast
     {
         $trip = $schedule->trip;
-        if (! $trip || $trip->latitude === null || $trip->longitude === null || ! $schedule->departure_date) {
+        if (! $trip || $trip->latitude === null || $trip->longitude === null) {
             return null;
         }
 
         try {
-            $forecast = $this->weatherService->forecastFor(
-                (float) $trip->latitude,
-                (float) $trip->longitude,
-                $schedule->departure_date->toDateString(),
-            );
+            return $this->weatherService->forecastFor((float) $trip->latitude, (float) $trip->longitude, $date);
         } catch (\Throwable $e) {
             Log::warning('TripChatTimeline: ดึงพยากรณ์อากาศไม่สำเร็จ', [
                 'schedule_id' => $schedule->id,
@@ -412,6 +658,15 @@ class TripChatTimelineService
 
             return null;
         }
+    }
+
+    private function weatherBody(TripSchedule $schedule): ?string
+    {
+        if (! $schedule->departure_date) {
+            return null;
+        }
+
+        $forecast = $this->forecastOn($schedule, $schedule->departure_date->toDateString());
 
         if (! $forecast) {
             return null;

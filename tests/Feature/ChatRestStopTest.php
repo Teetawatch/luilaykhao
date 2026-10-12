@@ -12,6 +12,7 @@ use App\Models\ChatRestStop;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\ChatRestStopService;
 use App\Services\FcmService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -662,5 +663,256 @@ class ChatRestStopTest extends TestCase
 
         $this->ask($staff, $schedule, 'toilet')->assertForbidden();
         $this->ask($a, $schedule, 'karaoke')->assertStatus(422);
+    }
+
+    // ── เช็คถึงบ้าน ──────────────────────────────────────────────────────────
+
+    /** รอบที่วันนี้ (เวลาไทย) คือวันกลับ — ช่วงที่เปิดการ์ดถึงบ้านได้ */
+    private function homeSchedule(): TripSchedule
+    {
+        $schedule = $this->makeSchedule();
+        $schedule->update([
+            'departure_date' => now('Asia/Bangkok')->subDay()->toDateString(),
+            'return_date' => now('Asia/Bangkok')->toDateString(),
+        ]);
+
+        return $schedule->fresh();
+    }
+
+    private function openHome(User $staff, TripSchedule $schedule)
+    {
+        return $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops", ['kind' => 'home']);
+    }
+
+    private function homeAt(string $bangkok): void
+    {
+        $this->travelTo(Carbon::parse($bangkok, 'Asia/Bangkok'));
+    }
+
+    public function test_staff_opens_a_home_check_listing_everyone_who_rode_back(): void
+    {
+        $this->homeAt('2026-10-12 18:00');
+        $schedule = $this->homeSchedule();
+        $staff = $this->staff($schedule);
+        [, , $family] = $this->party($schedule, ['มานะ', 'มานี']);
+        $this->party($schedule, ['ชูใจ'], ['is_join_trip' => true]);
+        [, , $dropped] = $this->party($schedule, ['ปิติ', 'วีระ']);
+        $dropped[1]->forceFill(['not_going_at' => now()])->save();
+
+        $data = $this->openHome($staff, $schedule)->assertCreated()->json('data');
+
+        $this->assertSame('home', $data['rest_stop']['kind']);
+        $this->assertFalse($data['rest_stop']['is_departed']);
+        // คนจอยทริปกลับเอง และคนที่แจ้งว่าไม่ไปไม่ได้นั่งรถกลับมา — ไม่อยู่ในรายชื่อ
+        $this->assertEqualsCanonicalizing(
+            ['มานะ', 'มานี', 'ปิติ'],
+            array_column($data['rest_stop']['passengers'], 'name'),
+        );
+        $this->assertSame(3, $data['rest_stop']['total']);
+        $this->assertStringContainsString('ถึงบ้านแล้ว', $data['body']);
+        $this->assertSame((int) $family[0]->booking_id, $data['rest_stop']['passengers'][0]['booking_id']);
+
+        // ทุกคนได้ push ชวนกด (ข้ามระดับ "เฉพาะสำคัญ")
+        Bus::assertDispatched(SendChatPushJob::class, fn ($job) => $job->messageId === $data['id'] && $job->callToAction);
+    }
+
+    public function test_home_check_opens_only_from_the_last_day_and_only_once(): void
+    {
+        $this->homeAt('2026-10-12 18:00');
+        $early = $this->makeSchedule(); // กลับพรุ่งนี้
+        $earlyStaff = $this->staff($early);
+        $this->party($early, ['มานะ']);
+
+        $this->openHome($earlyStaff, $early)->assertStatus(422);
+        $this->actingAs($earlyStaff, 'sanctum')
+            ->getJson("/api/v1/schedules/{$early->id}/chat/room")
+            ->assertJsonPath('data.can_open_home_check', false);
+
+        $schedule = $this->homeSchedule();
+        $staff = $this->staff($schedule);
+        $this->party($schedule, ['มานะ']);
+
+        $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.can_open_home_check', true);
+
+        $this->openHome($staff, $schedule)->assertCreated();
+        $this->openHome($staff, $schedule)->assertStatus(422);
+        $this->assertSame(1, ChatRestStop::where('kind', 'home')->count());
+
+        $this->actingAs($staff, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.can_open_home_check', false);
+
+        // วันถัดไปยังเปิดได้ (ส่งคนลงหลังเที่ยงคืน) แต่วันที่สองหลังกลับไม่ได้แล้ว
+        $this->homeAt('2026-10-14 09:00');
+        $this->assertFalse(app(ChatRestStopService::class)->homeWindowOpen($schedule->fresh()));
+    }
+
+    public function test_customers_cannot_open_a_home_check(): void
+    {
+        $this->homeAt('2026-10-12 18:00');
+        $schedule = $this->homeSchedule();
+        $this->staff($schedule);
+        [$owner] = $this->party($schedule, ['มานะ']);
+
+        $this->openHome($owner, $schedule)->assertStatus(403);
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.can_open_home_check', false);
+    }
+
+    public function test_last_traveller_home_closes_the_card_and_tells_staff_even_after_release(): void
+    {
+        $this->homeAt('2026-10-12 21:00');
+        $schedule = $this->homeSchedule();
+        $staff = $this->staff($schedule);
+        [$ownerA, , $family] = $this->party($schedule, ['มานะ', 'มานี']);
+        [$ownerB, , $solo] = $this->party($schedule, ['ชูใจ']);
+
+        $stopId = $this->openHome($staff, $schedule)->json('data.rest_stop.id');
+
+        // ตีสี่สตาฟถูกปลดจากรอบแล้ว แต่ยังเป็นคนที่ต้องรู้ว่าทุกคนถึงบ้าน
+        $schedule->staff()->updateExistingPivot($staff->id, ['released_at' => now()]);
+
+        $this->board($ownerA, $schedule, $stopId, [$family[0]->id, $family[1]->id])
+            ->assertOk()
+            ->assertJsonPath('data.rest_stop.is_departed', false);
+        $this->assertSame([], $this->pushesTo($staff));
+
+        $this->board($ownerB, $schedule, $stopId, [$solo[0]->id])
+            ->assertOk()
+            ->assertJsonPath('data.rest_stop.is_departed', true)
+            ->assertJsonPath('data.rest_stop.boarded_count', 3);
+
+        $this->assertSame(1, ChatMessage::where('schedule_id', $schedule->id)
+            ->where('body', 'like', '%ทุกคนถึงบ้านปลอดภัยแล้ว (3/3 คน)%')->count());
+        $staffPushes = $this->pushesTo($staff);
+        $this->assertCount(1, $staffPushes);
+        $this->assertSame('🏠 ทุกคนถึงบ้านแล้ว', $staffPushes[0]['title']);
+
+        // ปิดแล้วกดต่อไม่ได้
+        $this->board($ownerB, $schedule, $stopId, [$solo[0]->id], false)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'ปิดเช็คถึงบ้านไปแล้วครับ');
+    }
+
+    public function test_home_check_nudges_once_after_two_hours_and_tells_staff_who_is_missing(): void
+    {
+        $this->homeAt('2026-10-12 15:00');
+        $schedule = $this->homeSchedule();
+        $staff = $this->staff($schedule);
+        [$ownerA, , $family] = $this->party($schedule, ['มานะ', 'มานี']);
+        [$ownerB, , $solo] = $this->party($schedule, ['ชูใจ']);
+
+        $stopId = $this->openHome($staff, $schedule)->json('data.rest_stop.id');
+        $this->board($ownerB, $schedule, $stopId, [$solo[0]->id])->assertOk();
+
+        $this->homeAt('2026-10-12 16:58');
+        $this->settle();
+        $this->assertSame([], $this->pushes);
+
+        $this->homeAt('2026-10-12 17:01');
+        $this->settle();
+
+        $nudge = $this->pushesTo($ownerA);
+        $this->assertCount(1, $nudge);
+        $this->assertStringContainsString('ถึงบ้านแล้วหรือยัง', $nudge[0]['title']);
+        $this->assertStringContainsString('มานะ, มานี', $nudge[0]['title']);
+        // คนที่กดแล้วไม่โดนเตือน
+        $this->assertSame([], $this->pushesTo($ownerB));
+
+        $toStaff = $this->pushesTo($staff);
+        $this->assertCount(1, $toStaff);
+        $this->assertSame('🏠 ยังไม่ได้บอกว่าถึงบ้าน 2 คน', $toStaff[0]['title']);
+        $this->assertSame('มานะ, มานี', $toStaff[0]['body']);
+
+        // เตือนครั้งเดียว
+        $this->homeAt('2026-10-12 18:30');
+        $this->settle();
+        $this->assertCount(2, $this->pushes);
+    }
+
+    public function test_home_check_nudge_waits_for_the_morning_instead_of_ringing_at_night(): void
+    {
+        $this->homeAt('2026-10-12 21:30');
+        $schedule = $this->homeSchedule();
+        $staff = $this->staff($schedule);
+        [$owner] = $this->party($schedule, ['มานะ']);
+
+        $this->openHome($staff, $schedule)->assertCreated();
+
+        $this->homeAt('2026-10-12 23:45');
+        $this->settle();
+        $this->homeAt('2026-10-13 07:55');
+        $this->settle();
+        $this->assertSame([], $this->pushes);
+
+        $this->homeAt('2026-10-13 08:01');
+        $this->settle();
+        $this->assertCount(1, $this->pushesTo($owner));
+        $this->assertCount(1, $this->pushesTo($staff));
+    }
+
+    public function test_home_check_closes_itself_with_a_summary(): void
+    {
+        $this->homeAt('2026-10-12 19:00');
+        $schedule = $this->homeSchedule();
+        $staff = $this->staff($schedule);
+        [$owner, , $p] = $this->party($schedule, ['มานะ']);
+        $this->party($schedule, ['ชูใจ', 'ปิติ']);
+
+        $stopId = $this->openHome($staff, $schedule)->json('data.rest_stop.id');
+        $this->board($owner, $schedule, $stopId, [$p[0]->id])->assertOk();
+
+        $this->homeAt('2026-10-13 10:59');
+        $this->settle();
+        $this->assertNull(ChatRestStop::find($stopId)->departed_at);
+
+        $this->homeAt('2026-10-13 11:01');
+        $this->settle();
+        $this->settle();
+
+        $this->assertNotNull(ChatRestStop::find($stopId)->departed_at);
+        $this->assertSame(1, ChatMessage::where('schedule_id', $schedule->id)
+            ->where('body', '🏠 ปิดเช็คถึงบ้านแล้ว (บอกว่าถึงบ้าน 1/3 คน)')->count());
+    }
+
+    public function test_home_check_cannot_be_extended_and_closing_twice_announces_once(): void
+    {
+        $this->homeAt('2026-10-12 19:00');
+        $schedule = $this->homeSchedule();
+        $staff = $this->staff($schedule);
+        $this->party($schedule, ['มานะ']);
+
+        $stopId = $this->openHome($staff, $schedule)->json('data.rest_stop.id');
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops/{$stopId}/extend", ['minutes' => 10])
+            ->assertStatus(422);
+
+        foreach ([1, 2] as $_) {
+            $this->actingAs($staff, 'sanctum')
+                ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops/{$stopId}/depart")
+                ->assertOk()
+                ->assertJsonPath('data.rest_stop.is_departed', true);
+        }
+
+        $this->assertSame(1, ChatMessage::where('schedule_id', $schedule->id)
+            ->where('body', 'like', '🏠 ปิดเช็คถึงบ้านแล้ว%')->count());
+    }
+
+    public function test_opening_a_rest_stop_leaves_an_open_home_check_alone(): void
+    {
+        $this->homeAt('2026-10-12 19:00');
+        $schedule = $this->homeSchedule();
+        $staff = $this->staff($schedule);
+        $this->party($schedule, ['มานะ']);
+
+        $homeId = $this->openHome($staff, $schedule)->json('data.rest_stop.id');
+        $this->openStop($staff, $schedule);
+
+        $this->assertNull(ChatRestStop::find($homeId)->departed_at);
     }
 }
