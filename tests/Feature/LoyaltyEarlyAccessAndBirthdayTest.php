@@ -71,6 +71,30 @@ class LoyaltyEarlyAccessAndBirthdayTest extends TestCase
 
     // ── สิทธิ์จองก่อนใคร ──
 
+    public function test_schedule_list_tells_each_viewer_when_they_can_book(): void
+    {
+        $opensAt = now()->addHours(6)->startOfMinute();
+        $schedule = $this->makeSchedule(['booking_opens_at' => $opensAt]);
+        $slug = $schedule->trip->slug;
+
+        // ผู้ชมทั่วไป (ไม่ล็อกอิน) เห็นเวลาเปิดสาธารณะ
+        $public = $this->getJson("/api/v1/trips/{$slug}/schedules")->assertOk()->json('data.0.booking_opens_at');
+        $this->assertTrue($opensAt->equalTo(\Illuminate\Support\Carbon::parse($public)));
+
+        // สมาชิกระดับสูงเห็นเวลาที่ตัวเองเริ่มจองได้ ซึ่งเร็วกว่า — ตรงกับที่ BookingService ใช้ตัดสิน
+        $insider = $this->userAtTier(LoyaltyTier::INSIDER);
+        $mine = $this->actingAs($insider, 'sanctum')
+            ->getJson("/api/v1/trips/{$slug}/schedules")->json('data.0.booking_opens_at');
+        $this->assertTrue($schedule->bookingOpensAtFor($insider->id)->equalTo(\Illuminate\Support\Carbon::parse($mine)));
+        $this->assertTrue(\Illuminate\Support\Carbon::parse($mine)->lt($opensAt));
+
+        // รอบที่ไม่ได้ตั้งเวลา = null
+        $plain = $this->makeSchedule();
+        $this->assertNull(
+            $this->getJson("/api/v1/trips/{$plain->trip->slug}/schedules")->json('data.0.booking_opens_at')
+        );
+    }
+
     public function test_a_schedule_without_an_opening_time_is_open_to_everyone(): void
     {
         $schedule = $this->makeSchedule();

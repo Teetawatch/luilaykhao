@@ -105,6 +105,13 @@ class TripScheduleResource extends JsonResource
             ),
             'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
             'status' => $this->status,
+            // เวลาที่ "ผู้ชมคนนี้" เริ่มจองได้ (สมาชิกระดับสูงได้ก่อนตามชั่วโมงของระดับ)
+            // แอปใช้ปิดปุ่มจองไว้จนถึงเวลา ไม่งั้นลูกค้ากรอกฟอร์มจนจบแล้วค่อยโดน
+            // BookingService ปฏิเสธ — null = เปิดจองแล้ว/ไม่ได้ตั้งเวลา
+            // ใช้ guard sanctum ตรง ๆ เพราะ endpoint รายการรอบเป็น route สาธารณะ
+            'booking_opens_at' => $this->booking_opens_at
+                ? $this->bookingOpensAtFor($request->user('sanctum')?->id)?->toISOString()
+                : null,
             // ยกเลิกเพราะเหตุสุดวิสัย — ลูกค้าในรอบได้สิทธิ์เลือกรอบใหม่ (ForceMajeureService)
             'force_majeure_at' => $this->force_majeure_at?->toISOString(),
             'force_majeure_reason' => $this->force_majeure_reason,
