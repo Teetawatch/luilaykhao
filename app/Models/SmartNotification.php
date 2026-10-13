@@ -70,4 +70,48 @@ class SmartNotification extends Model
 
         return $notification;
     }
+
+    /**
+     * [send] for a whole broadcast slice: every row is written first, then the
+     * pushes go out together through [FcmService::sendNotifications] rather than
+     * one FCM call after another — see SendBroadcastNotificationChunkJob.
+     *
+     * @param  array<int, int>  $userIds
+     * @return array<int, self>
+     */
+    public static function sendMany(
+        array $userIds,
+        string $type,
+        string $title,
+        string $body,
+        array $data = [],
+        ?int $dispatchId = null,
+    ): array {
+        $notifications = array_map(fn (int $userId) => static::create([
+            'user_id' => $userId,
+            'type' => $type,
+            'title' => $title,
+            'body' => $body,
+            'data' => $data,
+            'broadcast_dispatch_id' => $dispatchId,
+        ]), $userIds);
+
+        try {
+            app(FcmService::class)->sendNotifications($notifications);
+        } catch (\Throwable $e) {
+            Log::warning('Unable to send push notifications', [
+                'type' => $type,
+                'count' => count($notifications),
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        if (app(LineMessagingService::class)->shouldNotify($type)) {
+            foreach ($notifications as $notification) {
+                SendLineMessageJob::dispatch($notification->id);
+            }
+        }
+
+        return $notifications;
+    }
 }

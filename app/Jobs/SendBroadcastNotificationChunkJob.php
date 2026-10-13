@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Log;
  * after the cut never got the message, with nothing to say who. A slice this
  * small finishes in seconds, and a failure costs one slice, not the rest.
  *
+ * Slicing alone wasn't enough: sent one after another, a slice of 50 still
+ * hit the timeout (2026-10-12/13), so a slice pushes its FCM calls in
+ * parallel ([SmartNotification::sendMany]).
+ *
  * Not retried: a slice that died halfway has already pushed to some of its
  * users, and a retry would push to them twice.
  */
@@ -40,16 +44,14 @@ class SendBroadcastNotificationChunkJob implements ShouldQueue
 
     public function handle(): void
     {
-        foreach ($this->userIds as $userId) {
-            SmartNotification::send(
-                $userId,
-                $this->type,
-                $this->title,
-                $this->body,
-                $this->data,
-                $this->dispatchId,
-            );
-        }
+        SmartNotification::sendMany(
+            $this->userIds,
+            $this->type,
+            $this->title,
+            $this->body,
+            $this->data,
+            $this->dispatchId,
+        );
     }
 
     public function failed(\Throwable $exception): void

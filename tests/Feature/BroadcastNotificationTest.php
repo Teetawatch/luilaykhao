@@ -11,8 +11,11 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\BroadcastNotificationService;
+use App\Services\FcmService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -182,6 +185,35 @@ class BroadcastNotificationTest extends TestCase
         $first->handle();
         $this->assertSame(count($first->userIds), SmartNotification::whereIn('user_id', $first->userIds)->count());
         $this->assertSame(count($first->userIds), SmartNotification::count());
+    }
+
+    /**
+     * Sent one FCM call after another, a slice of 50 still ran past the 60 s
+     * timeout (2026-10-13). A slice now pushes in parallel, a pool at a time.
+     */
+    public function test_slice_pushes_every_device_in_parallel_and_retires_dead_tokens(): void
+    {
+        config(['services.fcm.project_id' => 'demo-project']);
+        Cache::put('fcm_access_token', 'test-token', 60);
+        Http::fake(fn ($request) => str_contains($request->body(), '"tok-dead"')
+            ? Http::response(['error' => ['status' => 'NOT_FOUND', 'details' => [['errorCode' => 'UNREGISTERED']]]], 404)
+            : Http::response(['name' => 'ok']));
+
+        $users = collect(range(1, FcmService::POOL_SIZE + 5))->map(fn () => $this->userWithToken());
+        $twoDevices = $users->first();
+        FcmToken::create(['user_id' => $twoDevices->id, 'token' => 'tok-dead', 'platform' => 'ios', 'is_active' => true]);
+
+        (new SendBroadcastNotificationChunkJob($users->pluck('id')->all(), 'new_trip', 'ทริปใหม่', 'มาแล้ว', ['trip_id' => 7]))->handle();
+
+        Http::assertSentCount($users->count() + 1);
+        $this->assertSame($users->count(), SmartNotification::where('type', 'new_trip')->count());
+        $this->assertFalse(FcmToken::where('token', 'tok-dead')->value('is_active'));
+        $this->assertSame($users->count(), FcmToken::whereNotNull('last_used_at')->count());
+
+        $message = Http::recorded()->first()[0]->data()['message'];
+        $this->assertSame('new_trip', $message['data']['type']);
+        $this->assertSame('7', $message['data']['trip_id']);
+        $this->assertSame('ทริปใหม่', $message['notification']['title']);
     }
 
     public function test_low_seats_sweep_blasts_once_per_round(): void

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\FcmToken;
 use App\Models\SmartNotification;
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +16,14 @@ class FcmService
     private const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
 
     private const SOS_TYPE = 'sos_alert';
+
+    /** Seconds. Without these a stalled FCM call waits Laravel's default 30 s. */
+    private const CONNECT_TIMEOUT = 5;
+
+    private const REQUEST_TIMEOUT = 10;
+
+    /** Requests in flight at once when pushing a batch — see [sendNotifications]. */
+    public const POOL_SIZE = 20;
 
     public function sendNotification(SmartNotification $notification): void
     {
@@ -26,14 +36,93 @@ class FcmService
                 $token,
                 $notification->title,
                 $notification->body,
-                [
-                    'notification_id' => (string) $notification->id,
-                    'type' => $notification->type,
-                    ...$this->stringData($notification->data ?? []),
-                ],
+                $this->notificationData($notification),
                 $notification->type,
             );
         }
+    }
+
+    /**
+     * Push many inbox notifications at once — the broadcast path.
+     *
+     * One request at a time, each FCM call opens a fresh TLS connection and
+     * costs roughly half a second from our server, so a 50-user broadcast slice
+     * with a device or two each ran past Horizon's 60 s timeout and was killed
+     * partway (2026-10-12/13). Here the requests go out [POOL_SIZE] at a time.
+     *
+     * @param  iterable<SmartNotification>  $notifications
+     */
+    public function sendNotifications(iterable $notifications): void
+    {
+        $projectId = config('services.fcm.project_id');
+        if (! $projectId) {
+            return;
+        }
+
+        $notifications = collect($notifications);
+        $tokensByUser = FcmToken::whereIn('user_id', $notifications->pluck('user_id')->unique()->all())
+            ->where('is_active', true)
+            ->get(['user_id', 'token'])
+            ->groupBy('user_id');
+
+        $messages = [];
+        foreach ($notifications as $notification) {
+            foreach ($tokensByUser->get($notification->user_id, []) as $fcmToken) {
+                $messages[] = [
+                    'token' => $fcmToken->token,
+                    'payload' => $this->messagePayload(
+                        $fcmToken->token,
+                        $notification->title,
+                        $notification->body,
+                        $this->notificationData($notification),
+                        $notification->type,
+                    ),
+                ];
+            }
+        }
+
+        if ($messages === []) {
+            return;
+        }
+
+        try {
+            $accessToken = $this->accessToken();
+        } catch (\Throwable $e) {
+            Log::warning('FCM send exception', ['message' => $e->getMessage()]);
+
+            return;
+        }
+
+        foreach (array_chunk($messages, self::POOL_SIZE) as $batch) {
+            $responses = Http::pool(fn (Pool $pool) => array_map(
+                fn (array $message) => $pool->withToken($accessToken)
+                    ->acceptJson()
+                    ->connectTimeout(self::CONNECT_TIMEOUT)
+                    ->timeout(self::REQUEST_TIMEOUT)
+                    ->post($this->sendUrl($projectId), ['message' => $message['payload']]),
+                $batch,
+            ));
+
+            foreach ($batch as $i => $message) {
+                $response = $responses[$i] ?? null;
+                if ($response instanceof Response) {
+                    $this->recordResult($message['token'], $response);
+                } else {
+                    Log::warning('FCM send exception', [
+                        'message' => $response instanceof \Throwable ? $response->getMessage() : 'no response',
+                    ]);
+                }
+            }
+        }
+    }
+
+    private function notificationData(SmartNotification $notification): array
+    {
+        return [
+            'notification_id' => (string) $notification->id,
+            'type' => $notification->type,
+            ...$this->stringData($notification->data ?? []),
+        ];
     }
 
     /**
@@ -86,7 +175,9 @@ class FcmService
         try {
             $response = Http::withToken($this->accessToken())
                 ->acceptJson()
-                ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                ->connectTimeout(self::CONNECT_TIMEOUT)
+                ->timeout(self::REQUEST_TIMEOUT)
+                ->post($this->sendUrl($projectId), [
                     'message' => [
                         'token' => $token,
                         'data' => $this->stringData($data),
@@ -119,6 +210,29 @@ class FcmService
             return;
         }
 
+        try {
+            $response = Http::withToken($this->accessToken())
+                ->acceptJson()
+                ->connectTimeout(self::CONNECT_TIMEOUT)
+                ->timeout(self::REQUEST_TIMEOUT)
+                ->post($this->sendUrl($projectId), [
+                    'message' => $this->messagePayload($token, $title, $body, $data, $type, $display),
+                ]);
+
+            $this->recordResult($token, $response);
+        } catch (\Throwable $e) {
+            Log::warning('FCM send exception', ['message' => $e->getMessage()]);
+        }
+    }
+
+    private function messagePayload(
+        string $token,
+        string $title,
+        string $body,
+        array $data = [],
+        ?string $type = null,
+        array $display = [],
+    ): array {
         $isSos = $type === self::SOS_TYPE;
 
         if ($isSos) {
@@ -130,7 +244,7 @@ class FcmService
             // no sound/vibration until tapped) — which is exactly the bug this
             // replaces. iOS keeps its apns alert, which already sounds while
             // killed. The `title`/`body` ride along in `data` for the handler.
-            $messagePayload = [
+            return [
                 'token' => $token,
                 'data' => $this->stringData([
                     ...$data,
@@ -160,86 +274,84 @@ class FcmService
                     ],
                 ],
             ];
-        } else {
-            $tag = isset($display['tag']) && $display['tag'] !== '' ? (string) $display['tag'] : null;
-            $quiet = (bool) ($display['quiet'] ?? false);
-
-            $androidNotification = [
-                'channel_id' => $display['android_channel'] ?? 'important_updates',
-                'notification_priority' => $quiet ? 'PRIORITY_LOW' : 'PRIORITY_HIGH',
-                'visibility' => 'PUBLIC',
-            ];
-            if (! $quiet) {
-                // Android 8+ เอาเสียง/การสั่นจาก channel อยู่แล้ว สองค่านี้มีผลแค่
-                // เครื่องรุ่นเก่า — ใบเงียบจึงไม่ใส่
-                $androidNotification['sound'] = 'default';
-                $androidNotification['default_vibrate_timings'] = true;
-            }
-            if ($tag !== null) {
-                $androidNotification['tag'] = $tag;
-            }
-
-            $apnsHeaders = [
-                'apns-priority' => '10',
-                'apns-push-type' => 'alert',
-            ];
-            $aps = [
-                'alert' => ['title' => $title, 'body' => $body],
-                'badge' => 1,
-                'content-available' => 1,
-                // passive = เข้าศูนย์แจ้งเตือนเงียบ ๆ ไม่ปลุกหน้าจอ ไม่มีเสียง
-                'interruption-level' => $quiet ? 'passive' : 'active',
-            ];
-            if (! $quiet) {
-                $aps['sound'] = 'default';
-            }
-            if ($tag !== null) {
-                // ใบใหม่ที่ collapse-id ตรงกันทับใบเดิมในศูนย์แจ้งเตือน (สูงสุด 64 ไบต์)
-                $apnsHeaders['apns-collapse-id'] = substr($tag, 0, 64);
-                $aps['thread-id'] = $display['thread'] ?? $tag;
-            }
-
-            $messagePayload = array_filter([
-                'token' => $token,
-                'notification' => ['title' => $title, 'body' => $body],
-                'data' => $this->stringData($data),
-                'android' => [
-                    'priority' => 'HIGH',
-                    'notification' => $androidNotification,
-                ],
-                'apns' => [
-                    'headers' => $apnsHeaders,
-                    'payload' => [
-                        'aps' => $aps,
-                    ],
-                ],
-            ]);
         }
 
-        try {
-            $response = Http::withToken($this->accessToken())
-                ->acceptJson()
-                ->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
-                    'message' => $messagePayload,
-                ]);
+        $tag = isset($display['tag']) && $display['tag'] !== '' ? (string) $display['tag'] : null;
+        $quiet = (bool) ($display['quiet'] ?? false);
 
-            if ($response->successful()) {
-                FcmToken::where('token', $token)->update(['last_used_at' => now()]);
-
-                return;
-            }
-
-            if ($this->isDeadToken($response->json())) {
-                FcmToken::where('token', $token)->update(['is_active' => false]);
-            }
-
-            Log::warning('FCM send failed', [
-                'status' => $response->status(),
-                'body' => $response->json() ?: $response->body(),
-            ]);
-        } catch (\Throwable $e) {
-            Log::warning('FCM send exception', ['message' => $e->getMessage()]);
+        $androidNotification = [
+            'channel_id' => $display['android_channel'] ?? 'important_updates',
+            'notification_priority' => $quiet ? 'PRIORITY_LOW' : 'PRIORITY_HIGH',
+            'visibility' => 'PUBLIC',
+        ];
+        if (! $quiet) {
+            // Android 8+ เอาเสียง/การสั่นจาก channel อยู่แล้ว สองค่านี้มีผลแค่
+            // เครื่องรุ่นเก่า — ใบเงียบจึงไม่ใส่
+            $androidNotification['sound'] = 'default';
+            $androidNotification['default_vibrate_timings'] = true;
         }
+        if ($tag !== null) {
+            $androidNotification['tag'] = $tag;
+        }
+
+        $apnsHeaders = [
+            'apns-priority' => '10',
+            'apns-push-type' => 'alert',
+        ];
+        $aps = [
+            'alert' => ['title' => $title, 'body' => $body],
+            'badge' => 1,
+            'content-available' => 1,
+            // passive = เข้าศูนย์แจ้งเตือนเงียบ ๆ ไม่ปลุกหน้าจอ ไม่มีเสียง
+            'interruption-level' => $quiet ? 'passive' : 'active',
+        ];
+        if (! $quiet) {
+            $aps['sound'] = 'default';
+        }
+        if ($tag !== null) {
+            // ใบใหม่ที่ collapse-id ตรงกันทับใบเดิมในศูนย์แจ้งเตือน (สูงสุด 64 ไบต์)
+            $apnsHeaders['apns-collapse-id'] = substr($tag, 0, 64);
+            $aps['thread-id'] = $display['thread'] ?? $tag;
+        }
+
+        return array_filter([
+            'token' => $token,
+            'notification' => ['title' => $title, 'body' => $body],
+            'data' => $this->stringData($data),
+            'android' => [
+                'priority' => 'HIGH',
+                'notification' => $androidNotification,
+            ],
+            'apns' => [
+                'headers' => $apnsHeaders,
+                'payload' => [
+                    'aps' => $aps,
+                ],
+            ],
+        ]);
+    }
+
+    private function recordResult(string $token, Response $response): void
+    {
+        if ($response->successful()) {
+            FcmToken::where('token', $token)->update(['last_used_at' => now()]);
+
+            return;
+        }
+
+        if ($this->isDeadToken($response->json())) {
+            FcmToken::where('token', $token)->update(['is_active' => false]);
+        }
+
+        Log::warning('FCM send failed', [
+            'status' => $response->status(),
+            'body' => $response->json() ?: $response->body(),
+        ]);
+    }
+
+    private function sendUrl(string $projectId): string
+    {
+        return "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
     }
 
     private function accessToken(): string
