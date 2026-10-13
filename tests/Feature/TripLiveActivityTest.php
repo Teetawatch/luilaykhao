@@ -306,6 +306,23 @@ class TripLiveActivityTest extends TestCase
         ]);
     }
 
+    public function test_a_long_push_token_from_newer_ios_is_accepted(): void
+    {
+        // Apple ไม่ได้กำหนดความยาว token — เคยมีเพดาน 200 แล้ว iOS รุ่นใหม่ส่งยาวกว่า
+        $token = str_repeat('ab', 160);
+
+        $this->actingAs($this->owner)->postJson('/api/v1/live-activities', [
+            'booking_ref' => $this->booking->booking_ref,
+            'push_token' => $token,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('live_activities', ['push_token' => $token]);
+
+        $this->actingAs($this->owner)
+            ->deleteJson('/api/v1/live-activities', ['push_token' => $token])
+            ->assertOk();
+    }
+
     public function test_registering_a_new_token_retires_the_previous_one(): void
     {
         $this->actingAs($this->owner)->postJson('/api/v1/live-activities', [

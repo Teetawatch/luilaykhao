@@ -8,6 +8,7 @@ use App\Models\SmartNotification;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
@@ -83,10 +84,23 @@ class NotificationController extends Controller
             'token' => ['required', 'string', 'max:512'],
             'platform' => ['nullable', 'string', 'max:32'],
             'device_id' => ['nullable', 'string', 'max:128'],
-            // iOS 17.2+ เท่านั้นที่มีค่านี้ — กุญแจที่ให้เซิร์ฟเวอร์เปิดการ์ด
-            // "วันเดินทาง" บนหน้าจอล็อกได้เองโดยลูกค้าไม่ต้องเปิดแอป
-            'live_activity_start_token' => ['nullable', 'string', 'max:200'],
         ]);
+
+        // iOS 17.2+ เท่านั้นที่มีค่านี้ — กุญแจที่ให้เซิร์ฟเวอร์เปิดการ์ด
+        // "วันเดินทาง" บนหน้าจอล็อกได้เองโดยลูกค้าไม่ต้องเปิดแอป
+        //
+        // เป็นของแถม ห้ามทำให้ FCM token ตกไปด้วย: เคยตรวจรวมกับข้างบนแล้ว
+        // token นี้ยาวเกินเพดาน ทั้งคำขอโดน 422 เครื่องนั้นเลยไม่ได้รับแจ้งเตือน
+        // อะไรเลย ค่าที่ใช้ไม่ได้จึงทิ้งเฉพาะตัวมัน แล้วบันทึก FCM token ต่อ
+        $startToken = $request->input('live_activity_start_token');
+        if ($startToken !== null && (! is_string($startToken) || strlen($startToken) > 512)) {
+            Log::warning('Ignoring unusable live_activity_start_token', [
+                'user_id' => $request->user()->id,
+                'length' => is_string($startToken) ? strlen($startToken) : null,
+            ]);
+            $startToken = null;
+        }
+        $validated['live_activity_start_token'] = $startToken;
 
         FcmToken::updateOrCreate(
             ['token' => $validated['token']],

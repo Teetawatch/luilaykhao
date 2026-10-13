@@ -32,7 +32,7 @@ class LiveActivityController extends Controller
     {
         $validated = $request->validate([
             'booking_ref' => ['required', 'string', 'max:40'],
-            'push_token' => ['required', 'string', 'max:200'],
+            'push_token' => ['required', 'string', 'max:512'],
             'activity_id' => ['nullable', 'string', 'max:100'],
             'platform' => ['nullable', 'string', 'in:ios,android'],
         ]);
@@ -83,7 +83,7 @@ class LiveActivityController extends Controller
     public function destroy(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'push_token' => ['required', 'string', 'max:200'],
+            'push_token' => ['required', 'string', 'max:512'],
         ]);
 
         LiveActivity::live()
