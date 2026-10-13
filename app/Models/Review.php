@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -26,6 +27,17 @@ class Review extends Model
             'rating_food' => 'integer',
             'rating_value' => 'integer',
         ];
+    }
+
+    /**
+     * รีวิวที่แนบรูปหรือวิดีโอจริง — คอลัมน์ทั้งสองเก็บ [] เมื่อไม่ได้แนบ
+     * (ReviewController::store) จึงใช้ whereNotNull ไม่ได้ ต้องนับความยาวอาร์เรย์
+     */
+    public function scopeWithMedia(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->whereJsonLength('images', '>', 0)
+            ->orWhereJsonLength('videos', '>', 0));
     }
 
     /**

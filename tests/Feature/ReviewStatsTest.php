@@ -7,6 +7,7 @@ use App\Models\Review;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Models\UserBlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -92,6 +93,60 @@ class ReviewStatsTest extends TestCase
         // ไม่มีใครให้คะแนนยานพาหนะ
         $this->assertSame(0, $data['categories']['vehicle']['count']);
         $this->assertNull($data['categories']['vehicle']['average']);
+    }
+
+    public function test_reviews_saved_with_empty_media_arrays_do_not_count_as_with_media(): void
+    {
+        $trip = $this->makeTrip();
+        $user = User::factory()->create();
+
+        // ReviewController::store บันทึก [] เมื่อไม่ได้แนบอะไร
+        $this->makeReview($trip, $user, ['rating' => 5, 'images' => [], 'videos' => []]);
+        $this->makeReview($trip, $user, ['rating' => 4, 'images' => [], 'videos' => ['v.mp4']]);
+        $this->makeReview($trip, $user, ['rating' => 4, 'images' => ['a.jpg'], 'videos' => []]);
+
+        $data = $this->getJson('/api/v1/reviews/stats')->assertOk()->json('data');
+
+        $this->assertSame(3, $data['total']);
+        $this->assertSame(2, $data['with_media']);
+    }
+
+    public function test_index_can_filter_to_reviews_with_photos_or_videos(): void
+    {
+        $trip = $this->makeTrip();
+        $user = User::factory()->create();
+
+        $this->makeReview($trip, $user, ['rating' => 5, 'images' => [], 'videos' => []]);
+        $withPhoto = $this->makeReview($trip, $user, ['rating' => 5, 'images' => ['a.jpg']]);
+        $withVideo = $this->makeReview($trip, $user, ['rating' => 3, 'videos' => ['v.mp4']]);
+
+        $ids = collect($this->getJson('/api/v1/reviews?has_media=1')->assertOk()->json('data'))
+            ->pluck('id')->sort()->values()->all();
+        $this->assertSame([$withPhoto->id, $withVideo->id], $ids);
+
+        // รวมกับตัวกรองดาวได้
+        $ids = collect($this->getJson('/api/v1/reviews?has_media=1&rating=5')->json('data'))->pluck('id')->all();
+        $this->assertSame([$withPhoto->id], $ids);
+
+        $this->assertCount(3, $this->getJson('/api/v1/reviews')->json('data'));
+    }
+
+    public function test_stats_leave_out_authors_the_viewer_blocked_like_the_list_does(): void
+    {
+        $trip = $this->makeTrip();
+        $viewer = User::factory()->create();
+        $blocked = User::factory()->create();
+        $other = User::factory()->create();
+
+        $this->makeReview($trip, $blocked, ['rating' => 1]);
+        $this->makeReview($trip, $other, ['rating' => 5]);
+        UserBlock::create(['blocker_id' => $viewer->id, 'blocked_id' => $blocked->id]);
+
+        $this->assertSame(2, $this->getJson('/api/v1/reviews/stats')->json('data.total'));
+
+        $data = $this->actingAs($viewer, 'sanctum')->getJson('/api/v1/reviews/stats')->json('data');
+        $this->assertSame(1, $data['total']);
+        $this->assertSame(0, $data['distribution']['1']);
     }
 
     public function test_stats_can_scope_to_a_single_trip(): void

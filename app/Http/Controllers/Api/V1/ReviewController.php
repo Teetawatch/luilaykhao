@@ -53,6 +53,10 @@ class ReviewController extends Controller
             $query->where('rating', $request->rating);
         }
 
+        if ($request->boolean('has_media')) {
+            $query->withMedia();
+        }
+
         $reviews = $query->orderByDesc('created_at')->paginate($request->get('per_page', 10));
 
         return $this->paginated($reviews->through(fn ($r) => $this->formatReview($r)));
@@ -64,7 +68,10 @@ class ReviewController extends Controller
      */
     public function stats(Request $request): JsonResponse
     {
-        $base = Review::where('is_approved', true);
+        // ตัดคนที่ผู้ชมบล็อกออกเหมือน index() — ตัวเลขบนชิปตัวกรองต้องตรงกับรายการที่เห็น
+        $blocked = $this->blockedAuthorIds();
+        $base = Review::where('is_approved', true)
+            ->when($blocked, fn ($q) => $q->whereNotIn('user_id', $blocked));
 
         if ($request->filled('trip_id')) {
             $base->where('trip_id', $request->trip_id);
@@ -93,7 +100,7 @@ class ReviewController extends Controller
             'total' => $total,
             'average' => (float) $average,
             'distribution' => $distribution,
-            'with_media' => (clone $base)->where(fn ($q) => $q->whereNotNull('images')->orWhereNotNull('videos'))->count(),
+            'with_media' => (clone $base)->withMedia()->count(),
             'with_reply' => (clone $base)->whereNotNull('admin_reply')->count(),
             'categories' => $categories,
         ]);
