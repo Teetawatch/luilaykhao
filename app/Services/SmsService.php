@@ -359,7 +359,7 @@ class SmsService
      * ส่งทาง SMS เท่านั้นโดยตั้งใจ: บัญชีแบบนี้ส่วนใหญ่ไม่มีอีเมลจริงในระบบ และ
      * การที่ลิงก์ไปโผล่ในเครื่องที่ถือเบอร์นั้นอยู่ คือสิ่งที่ยืนยันว่าเป็นเจ้าของจริง
      */
-    public function sendAccountClaimLink(Booking $booking, string $url, string $dedupeKey = 'default'): ?SmsLog
+    public function sendAccountClaimLink(Booking $booking, string $url, string $dedupeKey = 'default', bool $selfBooked = false): ?SmsLog
     {
         $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
@@ -368,7 +368,11 @@ class SmsService
             type: 'account_claim',
             dedupeKey: $dedupeKey,
             message: sprintf(
-                'ทีมงานเปิดการจอง %s ทริป %s ให้คุณแล้ว เปิดใช้บัญชีเพื่อดูในแอป %s',
+                // ลูกค้าที่จองเองจากลิงก์กรอกข้อมูลไม่ได้คุยกับทีมงาน — "ทีมงานเปิดให้"
+                // จะทำให้เขาสงสัยว่ามีใครจองซ้อนให้อีกใบหรือเปล่า
+                $selfBooked
+                    ? 'ยืนยันการจอง %s ทริป %s แล้ว เปิดใช้บัญชีเพื่อดูในแอป %s'
+                    : 'ทีมงานเปิดการจอง %s ทริป %s ให้คุณแล้ว เปิดใช้บัญชีเพื่อดูในแอป %s',
                 $booking->booking_ref,
                 $this->tripTitle($booking),
                 $url,

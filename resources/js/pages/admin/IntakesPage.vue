@@ -919,10 +919,10 @@ const removePerson = async (person) => {
  */
 const statusChipLabel = (intake) => {
   if (intake.status !== 'booked') return 'เก็บเข้ากรุ';
-  if (intake.booking_status === 'pending') return 'รอลูกค้าชำระเงิน';
+  if (intake.booking_status === 'pending') return intake.self_booked ? 'ลูกค้ากดจองเอง · รอชำระ' : 'รอลูกค้าชำระเงิน';
   if (['cancelled', 'refunded'].includes(intake.booking_status)) return 'การจองถูกยกเลิก';
 
-  return 'จองแล้ว';
+  return intake.self_booked ? 'ลูกค้าจองเองแล้ว' : 'จองแล้ว';
 };
 
 const statusChipClass = (intake) => {
@@ -941,6 +941,10 @@ const failedBookingLabel = (intake) => {
   if (!intake.booking_ref) return null;
 
   // อยู่ในหมวด "ยังไม่ได้จอง" ทั้งที่มีเลขใบจองติดอยู่ = ใบนั้นล่มแล้วระบบคืนกลุ่มมาให้
+  if (intake.reopened && intake.self_booked) {
+    // ลูกค้ากดจองเองแล้วจ่ายไม่ทัน = อยากไปจริง แค่ติดขัดตอนโอน คือสายที่ควรโทรก่อน
+    return `ลูกค้ากดจอง ${intake.booking_ref} เองแต่ชำระไม่ทัน (${intake.self_booking_attempts} ครั้ง) — โทรตามได้เลย`;
+  }
   if (intake.reopened) return `การจอง ${intake.booking_ref} ไม่สำเร็จ — ดึงไปจองใหม่ได้เลย`;
 
   return ['cancelled', 'refunded'].includes(intake.booking_status)

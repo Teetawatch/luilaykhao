@@ -156,7 +156,7 @@ class AccountClaimService
      * $force คือปุ่ม "ส่งซ้ำ" ของแอดมิน — ปกติข้อความนี้ถูกกันซ้ำต่อใบจอง เพราะ
      * เส้นทางอัตโนมัติตอนเปิดใบจองไม่ควรยิงซ้ำถ้าแอดมินกดแก้ใบจองอีกรอบ
      */
-    public function sendClaimLink(Booking $booking, bool $force = false): bool
+    public function sendClaimLink(Booking $booking, bool $force = false, bool $selfBooked = false): bool
     {
         $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
         $owner = $booking->user;
@@ -169,6 +169,7 @@ class AccountClaimService
             $booking,
             $this->claimUrl($owner),
             $force ? 'resend:'.now()->timestamp : 'default',
+            $selfBooked,
         );
         $owner->forceFill(['claim_token_sent_at' => now()])->save();
 

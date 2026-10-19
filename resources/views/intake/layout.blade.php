@@ -580,5 +580,7 @@
         });
     </script>
     @stack('scripts')
+    {{-- QR ของเกตเวย์ (payment.partials.gateway-qr) ดันสคริปต์เฝ้าสถานะมาที่นี่ --}}
+    @stack('beam-scripts')
 </body>
 </html>

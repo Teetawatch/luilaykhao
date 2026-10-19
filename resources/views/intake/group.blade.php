@@ -10,9 +10,13 @@
     $filledCount = count($filled);
     $partySize = max($intake->party_size, $filledCount);
     $percent = $partySize > 0 ? min(100, (int) round($filledCount / $partySize * 100)) : 0;
+    $canBook = $intake->acceptsSubmissions() && ! ($bookBlock ?? 'x');
     $heroSub = match (true) {
+        ($groupBooking ?? null)?->status === 'confirmed' => 'กลุ่มนี้จองสำเร็จแล้ว',
+        ($groupBooking ?? null)?->status === 'pending' => 'รอชำระเงินเพื่อยืนยันที่นั่ง',
         ! $intake->acceptsSubmissions() => 'ทีมงานเปิดการจองให้กลุ่มนี้เรียบร้อยแล้ว',
         ($closed ?? false) => 'รอบนี้เต็มแล้ว ทีมงานจะติดต่อกลับเรื่องรอบอื่นหรือคิวรอที่นั่ง',
+        $canBook && $intake->isComplete() => 'กรอกครบทุกคนแล้ว กดจองและชำระเงินด้านล่างได้เลย',
         $intake->isComplete() => 'กรอกครบทุกคนแล้ว ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่ง',
         default => 'ส่งลิงก์นี้ให้เพื่อนในกลุ่ม แล้วแต่ละคนกรอกข้อมูลของตัวเองได้เลย',
     };
@@ -97,13 +101,21 @@
             @include('intake.icon', ['name' => 'check-circle'])
             <div>
                 <strong>บันทึกข้อมูลของ {{ $justFilled }} เรียบร้อยแล้ว</strong>
-                @if ($intake->isComplete())
+                @if ($intake->isComplete() && $canBook)
+                    ครบทุกคนแล้ว กดจองและชำระเงินด้านล่างได้เลย ไม่ต้องรอทีมงาน
+                @elseif ($intake->isComplete())
                     ครบทุกคนแล้ว ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่ง
                 @else
                     ยังรอเพื่อนอีก {{ $intake->missingCount() }} คน ส่งลิงก์ด้านล่างให้เขาได้เลย
                 @endif
             </div>
         </div>
+    @endif
+
+    {{-- กลุ่มที่กรอกครบมาก่อนเห็นปุ่มจองก่อนลิงก์แชร์ — นั่นคือสิ่งที่เขาต้องทำต่อ
+         ส่วนกลุ่มที่ยังรอเพื่อน ลิงก์แชร์สำคัญกว่า การ์ดจึงไปอยู่ใต้ความคืบหน้า --}}
+    @if (($groupBooking ?? null) || $intake->isComplete() || ! $intake->acceptsSubmissions())
+        @include('intake.book-card')
     @endif
 
     <div class="share">
@@ -158,6 +170,10 @@
         </div>
     </div>
 
+    @unless (($groupBooking ?? null) || $intake->isComplete() || ! $intake->acceptsSubmissions())
+        @include('intake.book-card')
+    @endunless
+
     @if ($errors->any())
         <div class="callout callout--error">
             @include('intake.icon', ['name' => 'alert'])
@@ -198,7 +214,8 @@
                 </button>
             </div>
         </form>
-    @else
+    @elseif (! ($groupBooking ?? null))
+        {{-- ทีมงานดึงไปเปิดใบจองเองแล้ว (การ์ดจองด้านบนพูดแทนเมื่อมีใบที่ยังรอ/จ่ายแล้ว) --}}
         <div class="callout callout--ok">
             @include('intake.icon', ['name' => 'check-circle'])
             <div>

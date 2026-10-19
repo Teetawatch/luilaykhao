@@ -11,6 +11,7 @@ use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicFriendPassController;
 use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicGiftVoucherController;
+use App\Http\Controllers\PublicIntakeBookingController;
 use App\Http\Controllers\PublicIntakeController;
 use App\Http\Controllers\PublicPassengerFillController;
 use App\Http\Controllers\PublicPassportController;
@@ -259,6 +260,21 @@ Route::post('/g/{token}', [PublicIntakeController::class, 'groupSubmit'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:10,1')
     ->name('public.intake.group.submit');
+
+// กลุ่มที่กรอกครบแล้วกดจองและจ่ายเงินเองได้เลย ไม่ต้องรอทีมงานส่ง QR ในแชท
+// (ช่วงรอนั้นที่นั่งไม่ได้ถูกกันไว้ คนที่จองในแอปแล้วจ่ายก่อนจึงได้ไปก่อน)
+Route::post('/g/{token}/book', [PublicIntakeBookingController::class, 'book'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:5,1')
+    ->name('public.intake.book');
+Route::get('/g/{token}/pay', [PublicIntakeBookingController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('public.intake.pay.show');
+Route::post('/g/{token}/pay', [PublicIntakeBookingController::class, 'pay'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:payment')
+    ->name('public.intake.pay.submit');
 
 // ลิงก์ "เปิดใช้บัญชี" จาก SMS หลังทีมงานเปิดใบจองแทนลูกค้า — ตั้งรหัสผ่านครั้งเดียว
 // แล้วใบจองที่ค้างอยู่ในบัญชีเงาก็ขึ้นในแอปของลูกค้า

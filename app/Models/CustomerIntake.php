@@ -35,6 +35,7 @@ class CustomerIntake extends Model
         'intake_link_id', 'trip_schedule_id', 'booking_type', 'contact_name', 'contact_phone',
         'contact_email', 'party_size', 'source', 'note', 'status',
         'booking_id', 'converted_at', 'last_activity_at', 'team_notified_at',
+        'self_booked_at', 'self_booking_attempts',
     ];
 
     protected function casts(): array
@@ -44,6 +45,8 @@ class CustomerIntake extends Model
             'converted_at' => 'datetime',
             'last_activity_at' => 'datetime',
             'team_notified_at' => 'datetime',
+            'self_booked_at' => 'datetime',
+            'self_booking_attempts' => 'integer',
         ];
     }
 
@@ -75,6 +78,18 @@ class CustomerIntake extends Model
     public function groupUrl(): string
     {
         return route('public.intake.group.show', $this->token);
+    }
+
+    /** หน้าชำระเงินของกลุ่มนี้ — ลูกค้ากดจองเองแล้วจ่ายต่อได้ทันที ไม่ต้องรอ QR จากทีมงาน */
+    public function payUrl(): string
+    {
+        return route('public.intake.pay.show', $this->token);
+    }
+
+    /** ใบจองล่าสุดของกลุ่มนี้ลูกค้าเปิดเองจากลิงก์ ไม่ใช่ทีมงานดึงไปเปิดให้ */
+    public function wasSelfBooked(): bool
+    {
+        return $this->self_booked_at !== null && $this->booking_id !== null;
     }
 
     /** ยังรอเพื่อนอีกกี่คน — ติดลบไม่ได้ เพราะมากันเกินที่แจ้งไว้ก็เกิดขึ้นจริง */

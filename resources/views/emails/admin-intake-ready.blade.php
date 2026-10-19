@@ -43,6 +43,9 @@
     <div class="alert-box alert-red">
       <p class="alert-title">🔁 การจอง {{ $intake->booking->booking_ref }} ถูกยกเลิก</p>
       <p class="alert-text">
+        @if ($intake->self_booked_at)
+          ลูกค้ากดจองเองจากลิงก์กลุ่มแต่ชำระไม่ทัน (ครั้งที่ {{ $intake->self_booking_attempts }}) — น่าจะอยากไปจริง ควรโทรตาม<br />
+        @endif
         {{ $intake->booking->cancellation_reason ?: 'ยกเลิกก่อนได้รับชำระเงิน' }}<br />
         ที่นั่งถูกคืนเข้ารอบแล้ว — ถ้าลูกค้ายังอยากไป ดึงกลุ่มนี้ไปเปิดการจองใหม่ได้ทันที ข้อมูลผู้เดินทางยังอยู่ครบ
       </p>

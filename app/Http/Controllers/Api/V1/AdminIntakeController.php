@@ -328,6 +328,10 @@ class AdminIntakeController extends Controller
             'booking_ref' => $intake->booking?->booking_ref,
             'booking_status' => $intake->booking?->status,
             'reopened' => $intake->wasReopened(),
+            // ใบล่าสุดลูกค้ากดจองเองจากลิงก์กลุ่ม — ทีมงานไม่ต้องดึงไปจองซ้ำ และถ้าใบนั้น
+            // ล่ม แปลว่าลูกค้าตั้งใจจะจองแต่จ่ายไม่ทัน ควรโทรตาม
+            'self_booked' => $intake->wasSelfBooked(),
+            'self_booking_attempts' => (int) $intake->self_booking_attempts,
             'converted_at' => $intake->converted_at?->toIso8601String(),
             'last_activity_at' => $intake->last_activity_at?->toIso8601String(),
             'created_at' => $intake->created_at?->toIso8601String(),

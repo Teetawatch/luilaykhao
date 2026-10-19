@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use App\Models\CustomerIntake;
 use App\Models\IntakeLink;
 use App\Models\SchedulePickupPoint;
@@ -9,7 +10,9 @@ use App\Models\TripSchedule;
 use App\Rules\ThaiIdCard;
 use App\Rules\ThaiName;
 use App\Services\CustomerIntakeService;
+use App\Services\IntakeBookingService;
 use App\Services\IntakeSeatService;
+use App\Support\LegalPolicy;
 use App\Support\TripRentalItems;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -38,6 +41,7 @@ class PublicIntakeController extends Controller
     public function __construct(
         private readonly CustomerIntakeService $intakes,
         private readonly IntakeSeatService $seats,
+        private readonly IntakeBookingService $bookings,
     ) {}
 
     public function show(string $token): View
@@ -155,6 +159,15 @@ class PublicIntakeController extends Controller
             // ชื่อเล่นเท่านั้น — ลิงก์นี้อยู่ในแชทกลุ่ม ใครเปิดก็ได้
             'filled' => $intake->people()->get()->map->publicLabel()->all(),
             'justFilled' => session('intake_just_filled'),
+            // จองและจ่ายเองได้เลยไหม — ไม่ได้ก็บอกเหตุผลที่ลูกค้าทำอะไรต่อได้
+            'bookBlock' => $this->bookings->blockReason($intake),
+            'estimate' => $intake->acceptsSubmissions() ? $this->bookings->estimate($intake) : null,
+            'bookingTerms' => LegalPolicy::bookingTerms(),
+            // ใบจองที่ยังมีชีวิตของกลุ่มนี้ (รอชำระ/จ่ายแล้ว) — ใบที่หมดเวลาไปแล้ว
+            // ไม่นับ กลุ่มจะกลับมาให้กดจองใหม่เอง
+            'groupBooking' => $intake->booking_id
+                ? Booking::whereKey($intake->booking_id)->whereIn('status', ['pending', 'confirmed'])->first()
+                : null,
         ]);
     }
 

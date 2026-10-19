@@ -42,6 +42,7 @@ use App\Models\VehiclePickupPoint;
 use App\Services\AccountClaimService;
 use App\Services\BookingService;
 use App\Services\CharterRequestService;
+use App\Services\CustomerAccountService;
 use App\Services\ChatRoomEventService;
 use App\Services\DriverLoginCodeService;
 use App\Services\ForceMajeureService;
@@ -57,7 +58,6 @@ use App\Services\TripBriefService;
 use App\Services\VehicleDriverService;
 use App\Support\MediaDisk;
 use App\Support\PaymentQuote;
-use App\Support\PhoneNumber;
 use App\Support\Polyline;
 use App\Support\ThaiDate;
 use App\Support\TripDocumentRequirements;
@@ -2751,39 +2751,15 @@ class AdminController extends Controller
             }
         }
 
-        // หาบัญชีเดิมของลูกค้าให้เจอก่อนสร้างใหม่ — เทียบทั้งอีเมล (พิมพ์เล็กเสมอ
-        // เหมือนตอนสมัคร) และเบอร์ทุกรูปแบบที่คนพิมพ์กันจริง เพราะบัญชีซ้ำหนึ่งใบ
-        // แปลว่าลูกค้าเข้าแอปแล้วไม่เห็นใบจองของตัวเอง
-        $email = filled($request->input('email')) ? mb_strtolower(trim($request->input('email'))) : null;
-        $phoneVariants = PhoneNumber::variants($request->phone);
-
         // คำขอเหมาทริปมาจากบัญชีที่ลูกค้าล็อกอินอยู่แล้ว — ใช้บัญชีนั้นตรง ๆ ไม่ต้องเดา
         // จากเบอร์/อีเมล และไม่ทับชื่อในบัญชีด้วยชื่อผู้ติดต่อของคำขอ
-        $charterUser = $charterRequest?->user;
-
-        $user = $charterUser
-            ?? ($email ? User::where('email', $email)->first() : null)
-            // บัญชีจริงของลูกค้ามาก่อนบัญชีเงาเสมอ ถ้าเบอร์เดียวกันมีทั้งสองแบบค้างอยู่
-            ?? User::query()->whereIn('phone', $phoneVariants)->orderBy('is_shadow')->first();
-
-        if (! $user) {
-            $user = User::create([
-                'name' => $fullName,
-                'phone' => $request->phone,
-                'email' => $email ?: 'manual_'.time().'_'.Str::random(4).'@luilaykhao.com',
-                'password' => Hash::make(Str::random(16)),
-            ]);
-            $user->forceFill(['is_shadow' => true])->save();
-            $user->assignRole('customer');
-        } elseif (! $charterUser) {
-            // อีเมลของบัญชีที่ลูกค้าสมัครเองห้ามถูกทับด้วยอีเมลที่แอดมินพิมพ์มา —
-            // ทับแล้วลูกค้าล็อกอินด้วยอีเมลเดิมไม่ได้อีก
-            $user->update(array_filter([
-                'name' => $fullName ?: null,
-                'phone' => $request->phone ?: null,
-                'email' => ($email && $user->is_shadow) ? $email : null,
-            ], fn ($value) => filled($value)));
-        }
+        $user = $charterRequest?->user
+            ?? app(CustomerAccountService::class)->findOrCreate(
+                $fullName,
+                (string) $request->phone,
+                $request->input('email'),
+                mayUpdateRealAccount: true,
+            );
 
         // ยอดรวมบวกทีละคนตามจุดที่คนนั้นขึ้น — คูณราคาเดียวด้วยจำนวนคนไม่ได้อีกแล้ว
         // เมื่อในใบเดียวกันมีหลายจุดรับ (ตรรกะเดียวกับฝั่งลูกค้าใน BookingService)
@@ -3058,6 +3034,9 @@ class AdminController extends Controller
             'status' => 'booked',
             'booking_id' => $booking->id,
             'converted_at' => now(),
+            // ใบนี้ทีมงานเปิดให้ — ล้างร่องรอยว่าลูกค้าเคยกดจองเองครั้งก่อน
+            // หน้ากลุ่มจะได้ไม่บอกลูกค้าว่า "คุณจองเอง" ทั้งที่ทีมงานเป็นคนเปิด
+            'self_booked_at' => null,
             'updated_at' => now(),
         ]);
     }
