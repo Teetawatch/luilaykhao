@@ -43,7 +43,7 @@ class TripFactsTest extends TestCase
             'departure_date' => now()->addDays(10)->toDateString(),
             'return_date' => now()->addDays(11)->toDateString(),
             'total_seats' => 12,
-            'booked_seats' => 1,
+            'booked_seats' => 8,  // ครบขั้นต่ำ — รอบที่ยังไม่ครบถูกระงับข้อความการเดินทาง (ดู UnderfilledTravelHoldTest)
             'transport_type' => 'van',
             'status' => 'open',
         ], $overrides));

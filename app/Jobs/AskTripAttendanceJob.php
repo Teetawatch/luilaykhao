@@ -44,7 +44,9 @@ class AskTripAttendanceJob implements ShouldQueue
                 // now('Asia/Bangkok') ไม่ใช่ now() — แอปตั้งโซนเป็น UTC ช่วงเช้ามืดเวลาไทย
                 // "พรุ่งนี้" จาก UTC คือวันนี้ของไทย
                 ->departingOn(now('Asia/Bangkok')->addDay())
-                ->where('status', '!=', 'cancelled'))
+                ->where('status', '!=', 'cancelled')
+                // รอบที่ยังไม่ครบขั้นต่ำ ถาม "พรุ่งนี้ไปครบไหม" = บอกว่ารอบออกแน่แล้ว
+                ->travelMessagesAllowed())
             ->has('passengers', '>=', 2)
             ->with(['schedule.trip'])
             ->withCount('passengers')

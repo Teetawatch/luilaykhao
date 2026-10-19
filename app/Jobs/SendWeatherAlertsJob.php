@@ -33,7 +33,9 @@ class SendWeatherAlertsJob implements ShouldQueue
             ->whereNotNull('user_id')
             ->whereHas('schedule', function ($query) use ($date) {
                 $query->whereDate('departure_date', $date)
-                    ->where('status', '!=', 'cancelled');
+                    ->where('status', '!=', 'cancelled')
+                    // รอบที่ยังไม่ครบขั้นต่ำ — "เตรียมรับมืออากาศพรุ่งนี้" ฟังเหมือนไปแน่
+                    ->travelMessagesAllowed();
             })
             ->whereHas('schedule.trip', function ($query) {
                 $query->whereNotNull('latitude')->whereNotNull('longitude');

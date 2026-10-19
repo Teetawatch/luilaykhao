@@ -46,7 +46,7 @@ class TripChatTimelineTest extends TestCase
             'departure_date' => '2026-08-15',
             'return_date' => '2026-08-16',
             'total_seats' => 12,
-            'booked_seats' => 2,
+            'booked_seats' => 8,  // ครบขั้นต่ำ — รอบที่ยังไม่ครบถูกระงับข้อความการเดินทาง (ดู UnderfilledTravelHoldTest)
             'transport_type' => 'van',
             'status' => 'open',
         ], $overrides));

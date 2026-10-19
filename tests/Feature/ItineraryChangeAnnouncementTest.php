@@ -44,7 +44,7 @@ class ItineraryChangeAnnouncementTest extends TestCase
             'departure_date' => now('Asia/Bangkok')->addDays(2)->toDateString(),
             'return_date' => now('Asia/Bangkok')->addDays(3)->toDateString(),
             'total_seats' => 12,
-            'booked_seats' => 2,
+            'booked_seats' => 8,  // ครบขั้นต่ำ — รอบที่ยังไม่ครบถูกระงับข้อความการเดินทาง (ดู UnderfilledTravelHoldTest)
             'transport_type' => 'van',
             'status' => 'open',
         ], $overrides));

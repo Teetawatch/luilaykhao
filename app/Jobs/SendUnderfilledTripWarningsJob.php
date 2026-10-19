@@ -6,9 +6,9 @@ use App\Models\Booking;
 use App\Models\EmailLog;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
+use App\Services\ChatRoomEventService;
 use App\Services\MailService;
 use App\Services\SmsService;
-use App\Support\SiteSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
@@ -42,16 +42,10 @@ class SendUnderfilledTripWarningsJob implements ShouldQueue
      */
     public const LAST_DAYS_BEFORE = 2;
 
-    /** เกณฑ์ที่นั่งขั้นต่ำ — แอดมินปรับได้ที่หน้าตั้งค่าระบบ */
-    private function minSeats(): int
-    {
-        return max(1, SiteSettings::int('underfilled_min_seats'));
-    }
-
-    public function handle(MailService $mailService, SmsService $smsService): void
+    public function handle(MailService $mailService, SmsService $smsService, ChatRoomEventService $chatEvents): void
     {
         $totals = ['schedules' => 0, 'bookings' => 0, 'first_warnings' => 0];
-        $minSeats = $this->minSeats();
+        $minSeats = TripSchedule::underfilledMinSeats();
         $today = now('Asia/Bangkok')->startOfDay();
 
         foreach (range(self::DAYS_BEFORE, self::LAST_DAYS_BEFORE) as $daysLeft) {
@@ -60,6 +54,8 @@ class SendUnderfilledTripWarningsJob implements ShouldQueue
                 ->where('status', '!=', 'cancelled')
                 // รอบเหมาคันออกเดินทางแน่นอน ไม่มีเรื่องคนไม่ครบ
                 ->where('is_charter', false)
+                // ทีมงานยืนยันแล้วว่าออกแม้คนไม่ครบ — ห้ามบอกลูกค้าว่ารอบอาจไม่ได้ไป
+                ->whereNull('departure_confirmed_at')
                 ->where('booked_seats', '<', $minSeats)
                 ->where('booked_seats', '>', 0)
                 ->with('trip')
@@ -67,6 +63,9 @@ class SendUnderfilledTripWarningsJob implements ShouldQueue
 
             foreach ($schedules as $schedule) {
                 $totals['schedules']++;
+
+                // ลูกค้าหลายคนเปิดห้องแชทบ่อยกว่าอีเมล — บอกในห้องด้วย (ครั้งเดียวต่อรอบ)
+                $chatEvents->roundUnderfilled($schedule, (int) $schedule->booked_seats, $minSeats);
 
                 foreach ($this->bookingsToWarn($schedule) as $booking) {
                     $totals['bookings']++;
@@ -146,6 +145,7 @@ class SendUnderfilledTripWarningsJob implements ShouldQueue
                 'อัปเดตการยืนยันรอบเดินทาง',
                 "ทริป{$schedule->trip->title} ตอนนี้มีผู้ร่วมทริป {$bookedSeats}/{$minSeats} ท่าน "
                     ."ขาดอีก {$seatsShort} ท่านก็ออกเดินทางตามกำหนดครับ "
+                    .'รายละเอียดการเดินทางจะส่งให้เมื่อรอบยืนยันออกเดินทางแล้ว '
                     .'เปิดใบจองเพื่อส่งลิงก์ชวนเพื่อนมาร่วมทาง หรือทักทีมงานเพื่อย้ายไปรอบอื่นได้เลย '
                     .'และหากรอบนี้ไม่ได้ออกเดินทาง เราคืนเงินเต็มจำนวนครับ',
                 ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],

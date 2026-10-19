@@ -27,7 +27,10 @@ class SendBookingRemindersJob implements ShouldQueue
                     // นับวันจากเวลาออกเดินทางจริง (departs_at) ไม่ใช่วันทริป
                     // เวลาไทยเสมอ — ดู SendTripReminderNotificationsJob
                     $query->departingOn(now('Asia/Bangkok')->addDays($daysBefore))
-                        ->where('status', '!=', 'cancelled');
+                        ->where('status', '!=', 'cancelled')
+                        // รอบที่ยังไม่ครบขั้นต่ำ — ข้อความเตรียมตัวทำให้ลูกค้าเข้าใจว่าไปปกติ
+                        // (ลูกค้าได้ข้อความ "คนยังไม่ครบ" แทน ดู TripSchedule::holdsTravelMessages)
+                        ->travelMessagesAllowed();
                 })
                 ->with(['user', 'passengers', 'schedule.trip', 'pickupPoint'])
                 ->get();

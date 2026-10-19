@@ -65,6 +65,25 @@ class TripChatTimelineService
     /** แผนพรุ่งนี้ยกลงห้องกี่รายการ ที่เหลือชี้ไปปุ่มกำหนดการ */
     private const DAY_BRIEF_ITEM_LIMIT = 12;
 
+    /**
+     * ข้อความ "เตรียมตัวเดินทาง" ที่เก็บไว้ก่อนระหว่างรอบยังไม่ครบขั้นต่ำ — อ่านแล้ว
+     * เหมือนทริปไปปกติ (ดู TripSchedule::holdsTravelMessages) ห้องได้ข้อความ
+     * "คนยังไม่ครบ" จาก ChatRoomEventService แทน ข้อความที่ผ่อนผันยาวถึงเวลารถออก
+     * (ทีมงาน/กำหนดการ/คำถาม) จะลงห้องเองเมื่อรอบครบหรือทีมงานยืนยันว่าออก
+     *
+     * ไม่รวมข้อความวันเดินทาง (departure_soon) — ถึงวันนั้นรอบที่ยังไม่ถูกยกเลิก
+     * คือรอบที่ออกจริง และข้อความหลังทริปไม่เกี่ยว
+     */
+    private const HELD_WHILE_UNDERFILLED = [
+        'countdown_7d',
+        'prepare_3d',
+        'itinerary_2d',
+        'crew_contacts',
+        'trip_faq',
+        'weather_2d',
+        'pickup_eve',
+    ];
+
     public function __construct(
         private ChatService $chatService,
         private WeatherService $weatherService,
@@ -108,6 +127,7 @@ class TripChatTimelineService
         }
 
         $posted = [];
+        $held = $schedule->holdsTravelMessages();
         $existing = ChatMessage::where('schedule_id', $schedule->id)
             ->whereNotNull('system_key')
             ->pluck('system_key')
@@ -115,6 +135,10 @@ class TripChatTimelineService
 
         foreach ($this->due($schedule, $now) as $key) {
             if (in_array($key, $existing, true)) {
+                continue;
+            }
+
+            if ($held && in_array($key, self::HELD_WHILE_UNDERFILLED, true)) {
                 continue;
             }
 

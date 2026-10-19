@@ -57,7 +57,8 @@ class TripBriefDeliveryTest extends TestCase
             'trip_id' => $trip->id,
             'departure_date' => $departureDate,
             'return_date' => $departureDate,
-            'total_seats' => 10, 'booked_seats' => 1,
+            // ครบขั้นต่ำ — รอบที่ยังไม่ครบถูกระงับใบเดินทาง (ดู UnderfilledTravelHoldTest)
+            'total_seats' => 10, 'booked_seats' => 8,
             'transport_type' => 'van', 'status' => 'open',
         ]);
 

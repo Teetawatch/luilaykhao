@@ -31,10 +31,11 @@ class SendTripBriefs extends Command
         app()->call([$job, 'handle']);
 
         $this->info(sprintf(
-            'ส่งใหม่ %d · อัปเดต %d · รอข้อมูลรถ/ทีมงาน %d · ข้าม %d',
+            'ส่งใหม่ %d · อัปเดต %d · รอข้อมูลรถ/ทีมงาน %d · ระงับ (คนยังไม่ครบ) %d · ข้าม %d',
             $job->summary['sent'],
             $job->summary['updated'],
             $job->summary['waiting'],
+            $job->summary['held'],
             $job->summary['skipped'],
         ));
 
@@ -77,7 +78,7 @@ class SendTripBriefs extends Command
                 mb_strimwidth((string) $booking->schedule?->trip?->title, 0, 24, '…'),
                 $booking->schedule?->departure_date?->toDateString(),
                 $channel,
-                $booking->brief_sent_at ? ($briefs->digest($booking) === $booking->brief_digest ? 'ส่งแล้ว' : 'มีอัปเดต') : ($briefs->isReady($booking) ? 'พร้อมส่ง' : 'รอข้อมูล'),
+                $booking->schedule?->holdsTravelMessages() ? 'ระงับ — คนยังไม่ครบ' : ($booking->brief_sent_at ? ($briefs->digest($booking) === $booking->brief_digest ? 'ส่งแล้ว' : 'มีอัปเดต') : ($briefs->isReady($booking) ? 'พร้อมส่ง' : 'รอข้อมูล')),
             ];
         });
 

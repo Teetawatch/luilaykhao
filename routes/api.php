@@ -805,6 +805,9 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/rally-nudge', [AdminAtRiskScheduleController::class, 'nudge']);
         Route::get('schedules/{id}/underfilled-sms', [AdminAtRiskScheduleController::class, 'underfilledSmsPreview']);
         Route::post('schedules/{id}/underfilled-sms', [AdminAtRiskScheduleController::class, 'sendUnderfilledSms']);
+        // ออกเดินทางแม้คนไม่ครบ — ปลดข้อความการเดินทางที่ระงับไว้ (DELETE = ย้อน)
+        Route::post('schedules/{id}/confirm-departure', [AdminAtRiskScheduleController::class, 'confirmDeparture']);
+        Route::delete('schedules/{id}/confirm-departure', [AdminAtRiskScheduleController::class, 'revokeDepartureConfirmation']);
         // หลักฐานการแจ้งคนไม่ครบ 7 วันก่อนเดินทาง (อีเมล + แจ้งในแอป)
         Route::get('underfilled-emails', [AdminUnderfilledEmailController::class, 'index']);
         Route::get('underfilled-emails/{id}', [AdminUnderfilledEmailController::class, 'show'])->whereNumber('id');

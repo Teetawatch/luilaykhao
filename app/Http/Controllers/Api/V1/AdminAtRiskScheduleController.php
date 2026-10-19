@@ -63,6 +63,34 @@ class AdminAtRiskScheduleController extends Controller
         );
     }
 
+    /**
+     * "ออกเดินทางแม้คนไม่ครบ" — ปลดใบเดินทาง/SMS เตือนที่ระงับไว้ และแจ้งลูกค้าว่ารอบออกแน่
+     * DELETE = ย้อนการยืนยัน (กดผิดรอบ)
+     */
+    public function confirmDeparture(Request $request, int $id): JsonResponse
+    {
+        $schedule = TripSchedule::with('trip')->findOrFail($id);
+
+        try {
+            $result = $this->radar->confirmDeparture($schedule, $request->user());
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success(
+            $result + ['departure_confirmed_at' => $schedule->departure_confirmed_at?->toISOString()],
+            "ยืนยันออกเดินทางแล้ว แจ้งผู้ร่วมทริป {$result['notified']} ท่าน",
+        );
+    }
+
+    public function revokeDepartureConfirmation(int $id): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($id);
+        $this->radar->revokeDepartureConfirmation($schedule);
+
+        return $this->success(null, 'ยกเลิกการยืนยันแล้ว ข้อความการเดินทางจะถูกระงับจนกว่ารอบจะครบ');
+    }
+
     /** ตัวอย่าง SMS แจ้งคนไม่ครบ + รายชื่อผู้รับ ก่อนทีมงานกดส่งจริง */
     public function underfilledSmsPreview(int $id): JsonResponse
     {

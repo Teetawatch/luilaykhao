@@ -75,6 +75,8 @@ class SendWeatherAlertsJobTest extends TestCase
         // BookingService may create the booking as pending; the alert targets
         // confirmed bookings.
         $booking->update(['status' => 'confirmed']);
+        // ครบขั้นต่ำ — รอบที่ยังไม่ครบถูกระงับข้อความการเดินทาง (ดู UnderfilledTravelHoldTest)
+        $schedule->forceFill(['booked_seats' => 8])->save();
 
         return $booking->fresh();
     }

@@ -488,6 +488,8 @@ class ForceMajeurePostponementTest extends TestCase
         $this->actingAs($booking->user)
             ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", ['target_schedule_id' => $next->id])
             ->assertOk();
+        // รอบใหม่ครบขั้นต่ำ — รอบที่ยังไม่ครบไม่ได้เตือนก่อนเดินทาง (ดู UnderfilledTravelHoldTest)
+        $next->forceFill(['booked_seats' => 8])->save();
 
         (new SendTripReminderNotificationsJob)->handle();
 

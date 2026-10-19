@@ -278,6 +278,8 @@ class FriendPassAndAttendanceTest extends TestCase
         [$later] = $this->booking(['ซี', 'ดี'], departsInDays: 3);
         [$answered] = $this->booking(['อี', 'เอฟ'], departsInDays: 1);
         $answered->forceFill(['attendance_confirmed_at' => now()])->saveQuietly();
+        // ครบขั้นต่ำทุกรอบ — รอบที่ยังไม่ครบไม่ถูกถาม (ดู UnderfilledTravelHoldTest)
+        TripSchedule::query()->update(['booked_seats' => 8]);
 
         (new AskTripAttendanceJob)->handle();
         (new AskTripAttendanceJob)->handle();

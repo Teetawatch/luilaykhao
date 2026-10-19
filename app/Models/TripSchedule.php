@@ -121,6 +121,7 @@ class TripSchedule extends Model
             'photo_views_count' => 'integer',
             'shopping_seeded_at' => 'datetime',
             'force_majeure_at' => 'datetime',
+            'departure_confirmed_at' => 'datetime',
         ];
     }
 
@@ -301,6 +302,42 @@ class TripSchedule extends Model
                     $query->whereNull('departs_at')
                         ->whereDate('departure_date', $dateString);
                 });
+        });
+    }
+
+    /**
+     * ที่นั่งขั้นต่ำฝั่งปฏิบัติการ — ต่ำกว่านี้ถือว่ารอบ "ยังไม่ครบ" (แจ้งลูกค้า,
+     * ขึ้นเรดาร์รอบเสี่ยง, ระงับข้อความการเดินทาง) แอดมินปรับได้ที่หน้าตั้งค่าระบบ
+     */
+    public static function underfilledMinSeats(): int
+    {
+        return max(1, SiteSettings::int('underfilled_min_seats'));
+    }
+
+    /**
+     * รอบนี้ยังไม่ครบขั้นต่ำและทีมงานยังไม่ได้ยืนยันว่าออก — ระหว่างนี้ห้ามส่งข้อความ
+     * "เตรียมตัวเดินทาง" (ใบเดินทาง, SMS/push เตือนก่อนวันเดินทาง, ไทม์ไลน์ในแชท)
+     * เพราะลูกค้าอ่านแล้วเข้าใจว่าทริปไปตามปกติ ทั้งที่รอบอาจไม่ได้ออก
+     * ลูกค้าได้ข้อความ "คนยังไม่ครบ" แทน (SendUnderfilledTripWarningsJob)
+     *
+     * ครบเมื่อไหร่ หรือทีมงานกด "ยืนยันออกเดินทาง" ข้อความทั้งหมดกลับมาส่งตามปกติ
+     */
+    public function holdsTravelMessages(): bool
+    {
+        return ! $this->is_charter
+            && $this->departure_confirmed_at === null
+            && (int) $this->booked_seats < self::underfilledMinSeats();
+    }
+
+    /**
+     * Scope คู่กับ holdsTravelMessages() — รอบที่ส่งข้อความการเดินทางได้
+     */
+    public function scopeTravelMessagesAllowed(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query) {
+            $query->where('is_charter', true)
+                ->orWhereNotNull('departure_confirmed_at')
+                ->orWhere('booked_seats', '>=', self::underfilledMinSeats());
         });
     }
 
@@ -982,6 +1019,11 @@ class TripSchedule extends Model
             return null;
         }
 
+        // ทีมงานยืนยันแล้วว่าออกแม้คนยังไม่ครบ — ป้ายต้องไม่บอกลูกค้าว่า "ยังลุ้น"
+        if ($this->departure_confirmed_at !== null) {
+            return self::STATUS_GUARANTEED;
+        }
+
         $booked = (int) $this->booked_seats;
 
         if ($booked >= self::guaranteeMinSeats()) {
@@ -1000,6 +1042,10 @@ class TripSchedule extends Model
      */
     public function seatsToGuarantee(): int
     {
+        if ($this->departure_confirmed_at !== null) {
+            return 0;
+        }
+
         return max(0, self::guaranteeMinSeats() - (int) $this->booked_seats);
     }
 

@@ -50,7 +50,7 @@ class SendTripBriefsJob implements ShouldQueue
      *
      * @var array<string, int>
      */
-    public array $summary = ['sent' => 0, 'updated' => 0, 'waiting' => 0, 'skipped' => 0];
+    public array $summary = ['sent' => 0, 'updated' => 0, 'waiting' => 0, 'held' => 0, 'skipped' => 0];
 
     /**
      * ส่งใบจองใบเดียวทันที แทนที่จะกวาดทั้งช่วง
@@ -99,6 +99,13 @@ class SendTripBriefsJob implements ShouldQueue
 
         if ($this->hasLikelyLeftToday($booking)) {
             return 'skipped';
+        }
+
+        // รอบที่ยังไม่ครบขั้นต่ำและทีมงานยังไม่ยืนยันว่าออก — ใบเดินทางทำให้ลูกค้า
+        // เข้าใจว่าทริปไปปกติ เก็บไว้ก่อน ครบหรือยืนยันเมื่อไหร่รอบกวาดถัดไปส่งเอง
+        // (ทีมงานกดส่งเองจากหน้าใบจองยังได้ เพราะไม่ผ่าน job นี้)
+        if ($booking->schedule?->holdsTravelMessages()) {
+            return 'held';
         }
 
         $digest = $briefs->digest($booking);

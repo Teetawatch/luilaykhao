@@ -2,13 +2,14 @@
 
 namespace App\Services;
 
+use App\Jobs\SendTripBriefsJob;
 use App\Jobs\SendUnderfilledTripWarningsJob;
 use App\Models\Booking;
 use App\Models\FlexiDepartureOffer;
 use App\Models\SmartNotification;
 use App\Models\SmsLog;
 use App\Models\TripSchedule;
-use App\Support\SiteSettings;
+use App\Models\User;
 use App\Support\ThaiDate;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -46,11 +47,103 @@ class AtRiskScheduleService
 
     public function __construct(
         private SmsService $sms,
+        private ChatRoomEventService $chatEvents,
     ) {}
 
     public function minSeats(): int
     {
-        return max(1, SiteSettings::int('underfilled_min_seats'));
+        return TripSchedule::underfilledMinSeats();
+    }
+
+    /**
+     * "ออกเดินทางแม้คนไม่ครบ" — ทีมงานตัดสินใจแล้วว่ารอบนี้ไป ปลดข้อความการเดินทาง
+     * ที่ระงับไว้ (ดู TripSchedule::holdsTravelMessages) หยุดเตือนเรื่องคนไม่ครบ
+     * และบอกลูกค้าทั้งในแจ้งเตือนและในห้องแชทว่ารอบนี้ออกแน่แล้ว
+     *
+     * ไม่มีปุ่มนี้ รอบเล็กที่ออกจริงจะไม่ได้ใบเดินทาง/SMS เตือนเลยสักฉบับ
+     *
+     * @return array{notified: int, briefs_queued: int}
+     */
+    public function confirmDeparture(TripSchedule $schedule, User $by): array
+    {
+        $schedule->loadMissing('trip');
+
+        if ($schedule->status === 'cancelled') {
+            throw new \Exception('รอบนี้ถูกยกเลิกไปแล้ว');
+        }
+
+        if ($schedule->is_charter) {
+            throw new \Exception('รอบเหมาคันออกเดินทางแน่นอนอยู่แล้ว');
+        }
+
+        if ($schedule->departure_confirmed_at !== null) {
+            throw new \Exception('รอบนี้ยืนยันออกเดินทางไปแล้ว');
+        }
+
+        if ($schedule->effectiveDepartsAt()?->isPast()) {
+            throw new \Exception('รอบนี้ออกเดินทางไปแล้ว');
+        }
+
+        $schedule->forceFill([
+            'departure_confirmed_at' => now(),
+            'departure_confirmed_by' => $by->id,
+        ])->save();
+
+        $this->chatEvents->departureConfirmed($schedule);
+
+        $bookings = Booking::query()
+            ->where('schedule_id', $schedule->id)
+            ->where(function ($query) {
+                $query->where('status', 'confirmed')
+                    ->orWhere(fn ($query) => $query->where('status', 'pending')->where('paid_amount', '>', 0));
+            })
+            ->get(['id', 'user_id', 'booking_ref', 'status']);
+
+        $tripTitle = $schedule->trip?->title ?? 'ทริป';
+        $notified = 0;
+
+        foreach ($bookings->whereNotNull('user_id')->unique('user_id') as $booking) {
+            SmartNotification::send(
+                (int) $booking->user_id,
+                'trip_departure_confirmed',
+                'ยืนยันออกเดินทางแล้ว ✅',
+                "ทริป{$tripTitle} รอบ {$schedule->departureLabelThai()} ออกเดินทางตามกำหนดครับ "
+                    .'รายละเอียดการเดินทางจะส่งให้ตามปกติ เตรียมตัวได้เลย',
+                [
+                    'booking_ref' => $booking->booking_ref,
+                    'schedule_id' => $schedule->id,
+                    'route' => 'booking',
+                ],
+            );
+            $notified++;
+        }
+
+        // ใบเดินทางที่ค้างไว้เพราะคนไม่ครบ — ถึงคิวส่งแล้วก็ไม่ต้องรอรอบกวาด 18:05
+        // (ลูกค้าที่ได้แค่ SMS ไม่มีแอป/LINE รู้ว่ารอบออกจากใบเดินทางฉบับนี้)
+        $briefsQueued = 0;
+        $daysAway = (int) Carbon::now('Asia/Bangkok')->startOfDay()
+            ->diffInDays($schedule->departure_date->copy()->startOfDay(), false);
+
+        if ($daysAway >= 0 && $daysAway <= SendTripBriefsJob::LEAD_DAYS) {
+            foreach ($bookings->where('status', 'confirmed') as $booking) {
+                SendTripBriefsJob::dispatch($booking->id);
+                $briefsQueued++;
+            }
+        }
+
+        return ['notified' => $notified, 'briefs_queued' => $briefsQueued];
+    }
+
+    /**
+     * ย้อนการยืนยัน (กดผิดรอบ) — ข้อความการเดินทางกลับไปถูกระงับ ไม่แจ้งลูกค้า
+     * เพราะสิ่งที่เขาได้ยินล่าสุดคือ "ออกแน่" ทีมงานควรบอกเองว่าเกิดอะไรขึ้น
+     */
+    public function revokeDepartureConfirmation(TripSchedule $schedule): void
+    {
+        $schedule->forceFill([
+            'departure_confirmed_at' => null,
+            'departure_confirmed_by' => null,
+        ])->save();
     }
 
     /**
@@ -235,6 +328,10 @@ class AtRiskScheduleService
 
         if ((int) $schedule->booked_seats >= $this->minSeats()) {
             throw new \Exception('รอบนี้ครบจำนวนออกเดินทางแล้ว');
+        }
+
+        if ($schedule->departure_confirmed_at !== null) {
+            throw new \Exception('รอบนี้ยืนยันออกเดินทางแล้ว ไม่ต้องแจ้งเรื่องคนไม่ครบ');
         }
 
         $recipients = $this->underfilledSmsRecipients($schedule);
@@ -450,6 +547,9 @@ class AtRiskScheduleService
             'merge_candidates' => $context['merge'][$schedule->id] ?? [],
             'underfilled_sms_count' => (int) ($sms->sms_count ?? 0),
             'underfilled_sms_at' => $sms?->last_at ? Carbon::parse($sms->last_at)->toISOString() : null,
+            // ทีมงานยืนยันออกแม้คนไม่ครบ / ระหว่างนี้ใบเดินทางและ SMS เตือนถูกระงับอยู่
+            'departure_confirmed_at' => $schedule->departure_confirmed_at?->toISOString(),
+            'travel_messages_held' => $schedule->holdsTravelMessages(),
         ];
     }
 

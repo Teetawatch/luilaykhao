@@ -44,7 +44,9 @@ class SendTripReminderNotificationsJob implements ShouldQueue
                     // จาก now() จึงกลายเป็น "วันนี้" และข้อความ "พรุ่งนี้ออกเดินทางแล้ว!"
                     // จะไปหาคนที่รถออกเช้านี้แทน
                     $query->departingOn(now('Asia/Bangkok')->addDays($daysBefore))
-                        ->where('status', '!=', 'cancelled');
+                        ->where('status', '!=', 'cancelled')
+                        // รอบที่ยังไม่ครบขั้นต่ำไม่บอกว่า "ใกล้ถึงแล้ว" — ดู TripSchedule::holdsTravelMessages
+                        ->travelMessagesAllowed();
                 })
                 ->with(['schedule.trip', 'schedule.vehicle', 'schedule.pickupPoints', 'pickupPoint'])
                 ->get();

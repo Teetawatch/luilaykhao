@@ -161,6 +161,26 @@
               ยื่น Flexi-Price
             </button>
             <button
+              v-if="!row.departure_confirmed_at"
+              class="btn-secondary btn-confirm-go"
+              :disabled="busyId === row.id || row.bookings_count === 0"
+              title="รอบนี้ออกแน่แม้คนยังไม่ครบ — ปลดใบเดินทาง/SMS เตือนที่ระงับไว้ และแจ้งลูกค้าในแอป LINE และห้องแชท"
+              @click="confirmDeparture(row)"
+            >
+              <span class="material-symbols-rounded">check_circle</span>
+              ยืนยันออกเดินทาง
+            </button>
+            <button
+              v-else
+              class="btn-secondary"
+              :disabled="busyId === row.id"
+              title="กดยืนยันผิดรอบ — ข้อความการเดินทางจะกลับไปถูกระงับจนกว่ารอบจะครบ (ไม่แจ้งลูกค้า)"
+              @click="revokeDeparture(row)"
+            >
+              <span class="material-symbols-rounded">undo</span>
+              ยกเลิกการยืนยัน
+            </button>
+            <button
               class="btn-secondary btn-cancel-round"
               :disabled="busyId === row.id || row.bookings_count === 0"
               title="ยกเลิกรอบนี้ ลูกค้าเลือกเองว่าจะไปรอบใหม่ (ราคาเดิม) หรือรับเงินคืนเต็มจำนวน"
@@ -429,6 +449,12 @@ function seatPercent(row) {
 
 function badges(row) {
   const out = [];
+  if (row.departure_confirmed_at) {
+    out.push({ icon: 'check_circle', text: `ยืนยันออกเดินทางแล้ว ${relativeTime(row.departure_confirmed_at)}`, tone: 'ok' });
+  } else if (row.travel_messages_held && row.bookings_count > 0) {
+    // ลูกค้าจะไม่ได้ใบเดินทาง/SMS เตือนก่อนวันเดินทางจนกว่าจะครบหรือกดยืนยัน
+    out.push({ icon: 'pause_circle', text: 'ระงับใบเดินทางและ SMS เตือนอยู่', tone: 'warn' });
+  }
   if (row.flash_sale_active) out.push({ icon: 'bolt', text: 'กำลังลดราคาอยู่', tone: 'ok' });
   if (row.flexi_offer) out.push({ icon: 'interests', text: 'มีข้อเสนอ Flexi-Price รออยู่', tone: 'info' });
   if (row.rally_nudged_at) {
@@ -615,6 +641,45 @@ async function submitFlexi() {
 }
 
 /**
+ * ทีมงานตัดสินใจไปแม้คนไม่ครบ — ไม่กดปุ่มนี้ ลูกค้าจะไม่ได้ใบเดินทางหรือ SMS เตือนเลย
+ */
+async function confirmDeparture(row) {
+  const ok = window.confirm(
+    `ยืนยันว่ารอบ ${row.departure_label} ของ ${row.trip_title} ออกเดินทาง `
+    + `แม้มีผู้ร่วมทริป ${row.booked_seats}/${row.min_seats} ท่าน?\n\n`
+    + 'ระบบจะหยุดแจ้งเรื่องคนไม่ครบ แจ้งลูกค้าในแอป LINE และห้องแชทว่ารอบนี้ออกแน่ '
+    + 'แล้วส่งใบเดินทางและ SMS เตือนตามปกติ',
+  );
+  if (!ok) return;
+
+  busyId.value = row.id;
+  try {
+    const res = await api.post(`/admin/schedules/${row.id}/confirm-departure`);
+    toast.success(res.data.message || 'ยืนยันออกเดินทางแล้ว');
+    await load();
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ยืนยันไม่สำเร็จ');
+  } finally {
+    busyId.value = null;
+  }
+}
+
+async function revokeDeparture(row) {
+  if (!window.confirm('ยกเลิกการยืนยันออกเดินทางของรอบนี้? ลูกค้าจะไม่ได้รับแจ้ง')) return;
+
+  busyId.value = row.id;
+  try {
+    const res = await api.delete(`/admin/schedules/${row.id}/confirm-departure`);
+    toast.success(res.data.message || 'ยกเลิกการยืนยันแล้ว');
+    await load();
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ยกเลิกการยืนยันไม่สำเร็จ');
+  } finally {
+    busyId.value = null;
+  }
+}
+
+/**
  * ทางสุดท้ายเมื่อทุกวิธีข้างบนไม่ได้ผล — ยกเลิกรอบแต่ไม่ยกเลิกใบจอง ลูกค้าเลือกเองว่า
  * ไปรอบใหม่ราคาเดิม หรือรับเงินคืนเต็มจำนวน (ForceMajeureService kind=underfilled)
  */
@@ -668,6 +733,7 @@ onMounted(load);
 <style scoped>
 .spin { animation: spin 0.8s linear infinite; }
 .btn-cancel-round { color: #b45309; }
+.btn-confirm-go { color: #047857; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -746,6 +812,7 @@ onMounted(load);
 .badge .material-symbols-rounded { font-size: 15px !important; }
 .badge.ok { background: #ecfdf5; color: #047857; }
 .badge.info { background: #eff6ff; color: #1d4ed8; }
+.badge.warn { background: #fffbeb; color: #b45309; }
 .badge.muted { background: #f8fafc; color: #94a3b8; }
 
 .merge-block { margin-top: 14px; padding-top: 13px; border-top: 1px dashed #e5e7eb; }
