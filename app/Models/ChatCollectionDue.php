@@ -8,8 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ChatCollectionDue extends Model
 {
     protected $fillable = [
-        'collection_id', 'passenger_id', 'amount', 'paid_claimed_at', 'paid_at', 'paid_marked_by_id',
+        'collection_id', 'passenger_id', 'amount', 'paid_claimed_at', 'slip_path', 'paid_at', 'paid_method', 'paid_marked_by_id',
     ];
+
+    public const METHOD_TRANSFER = 'transfer';
+
+    public const METHOD_CASH = 'cash';
 
     protected function casts(): array
     {
@@ -23,6 +27,11 @@ class ChatCollectionDue extends Model
     public function collection(): BelongsTo
     {
         return $this->belongsTo(ChatCollection::class, 'collection_id');
+    }
+
+    public function markedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'paid_marked_by_id');
     }
 
     public function status(): string

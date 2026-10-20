@@ -9,8 +9,11 @@ use App\Models\ChatCollectionDue;
 use App\Models\ChatMessage;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\MediaDisk;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * เก็บเงินหน้างาน — ค่าใช้จ่ายนอกแพ็กเกจที่ต้องเก็บกันตรงนั้น (ค่าเข้าอุทยานของ
@@ -21,6 +24,10 @@ use Illuminate\Support\Facades\DB;
  *
  * ยอดอิงผู้โดยสาร (TripRosterService) — คนที่จองให้ทั้งกลุ่มเห็นยอดรวมของกลุ่ม
  * และจ่ายทีเดียว ส่วนสตาฟเลือกได้ว่าเก็บทุกคนหรือเฉพาะบางคน (เช่น ชาวต่างชาติ)
+ *
+ * กันโกง: แจ้งโอนต้องแนบสลิป (ไฟล์อยู่บนดิสก์ส่วนตัว ดูได้เฉพาะทีมงานกับคนจ่าย
+ * ผ่าน [self::slipUrl]) และสตาฟยืนยัน "โอน" ได้เฉพาะยอดที่มีสลิป — เงินสดต้องกด
+ * แยก ระบบจำวิธีรับและสตาฟคนที่รับไว้ ยอดปิดท้ายจึงแยกได้ว่าเงินสดอยู่กับใคร
  */
 class ChatCollectionService
 {
@@ -130,11 +137,18 @@ class ChatCollectionService
         return $this->broadcastUpdate($collection);
     }
 
-    /** ลูกทริปกด "โอนแล้ว" (หรือถอน) — ทุกคนที่ตัวเองดูแลที่ยังไม่ได้ยืนยัน */
-    public function claim(User $user, ChatCollection $collection, bool $claimed): ChatCollection
+    /**
+     * ลูกทริปแจ้งโอนพร้อมสลิป (หรือถอน) — ทุกคนที่ตัวเองดูแลที่ยังไม่ได้ยืนยัน
+     * สลิปใบเดียวผูกทุกแถวนั้น เพราะ QR ของบัญชีคือยอดรวมของทั้งกลุ่ม
+     */
+    public function claim(User $user, ChatCollection $collection, bool $claimed, ?UploadedFile $slip = null): ChatCollection
     {
         if ($collection->isClosed()) {
             throw new \Exception('ทีมงานปิดยอดแล้ว ทักน้องสตาฟในแชทได้เลยครับ');
+        }
+
+        if ($claimed && $slip === null) {
+            throw new \Exception('แนบสลิปการโอนก่อนแจ้งทีมงานครับ (ถ้าไม่เห็นปุ่มแนบสลิป อัปเดตแอปก่อนนะครับ)');
         }
 
         $mine = $this->roster->passengerIdsFor($collection->schedule, $user->id);
@@ -142,22 +156,66 @@ class ChatCollectionService
             ->whereIn('passenger_id', $mine)
             ->whereNull('paid_at');
 
+        $oldSlips = (clone $dues)->whereNotNull('slip_path')->pluck('slip_path')->all();
         if (! (clone $dues)->exists()) {
             throw new \Exception('ไม่มียอดค้างของคุณในรายการนี้');
         }
 
-        $dues->update(['paid_claimed_at' => $claimed ? now() : null]);
+        $path = $claimed ? $this->storeSlip($slip) : null;
+
+        $dues->update([
+            'paid_claimed_at' => $claimed ? now() : null,
+            'slip_path' => $path,
+        ]);
+        $this->deleteUnusedSlips($oldSlips);
 
         return $this->broadcastUpdate($collection);
     }
 
     /**
-     * สตาฟยืนยัน/ยกเลิกว่าได้เงินแล้ว (โอนหรือเงินสด) — ทีละคนหรือทั้งกลุ่ม
+     * ลิงก์ชั่วคราวดูสลิปของผู้โดยสารคนนี้ — ผู้เรียกต้องเช็กสิทธิ์ก่อน (ทีมงาน หรือ
+     * บัญชีที่ดูแลผู้โดยสารคนนั้น)
+     */
+    public function slipUrl(ChatCollection $collection, int $passengerId): ?string
+    {
+        $path = ChatCollectionDue::where('collection_id', $collection->id)
+            ->where('passenger_id', $passengerId)
+            ->value('slip_path');
+
+        return MediaDisk::slipUrl($path);
+    }
+
+    /** ลบไฟล์สลิปของทุกรายการในรอบนี้ — ใช้ตอนล้างห้องแชทที่จบทริปแล้ว */
+    public function purgeSlips(int $scheduleId): void
+    {
+        $paths = ChatCollectionDue::whereIn('collection_id', ChatCollection::where('schedule_id', $scheduleId)->select('id'))
+            ->whereNotNull('slip_path')
+            ->pluck('slip_path')
+            ->unique()
+            ->all();
+
+        if ($paths !== []) {
+            Storage::disk(MediaDisk::slipDisk())->delete($paths);
+        }
+    }
+
+    /**
+     * สตาฟยืนยัน/ยกเลิกว่าได้เงินแล้ว — ทีละคนหรือทั้งกลุ่ม
+     *
+     * โอน ([ChatCollectionDue::METHOD_TRANSFER], ค่าตั้งต้นของแอปรุ่นก่อนที่ไม่ส่ง
+     * method) ยืนยันได้เฉพาะคนที่แนบสลิปแล้ว ส่วนเงินสดกดได้เสมอแต่ถูกบันทึกว่าเป็น
+     * เงินสดที่สตาฟคนนี้รับ ยกเลิก (paid=false) = สลิปไม่ผ่านด้วย — ล้างการแจ้งโอนกับ
+     * สลิป ให้ลูกทริปแนบใหม่
      *
      * @param  array<int, int>  $passengerIds
      */
-    public function setPaid(User $staff, ChatCollection $collection, array $passengerIds, bool $paid): ChatCollection
-    {
+    public function setPaid(
+        User $staff,
+        ChatCollection $collection,
+        array $passengerIds,
+        bool $paid,
+        string $method = ChatCollectionDue::METHOD_TRANSFER,
+    ): ChatCollection {
         $dues = ChatCollectionDue::where('collection_id', $collection->id)
             ->whereIn('passenger_id', collect($passengerIds)->map(fn ($id) => (int) $id));
 
@@ -165,9 +223,38 @@ class ChatCollectionService
             throw new \Exception('ไม่พบรายชื่อนี้ในรายการเก็บเงิน');
         }
 
-        $dues->update($paid
-            ? ['paid_at' => now(), 'paid_marked_by_id' => $staff->id]
-            : ['paid_at' => null, 'paid_claimed_at' => null, 'paid_marked_by_id' => null]);
+        if (! $paid) {
+            $oldSlips = (clone $dues)->whereNotNull('slip_path')->pluck('slip_path')->all();
+            $dues->update([
+                'paid_at' => null,
+                'paid_method' => null,
+                'paid_claimed_at' => null,
+                'slip_path' => null,
+                'paid_marked_by_id' => null,
+            ]);
+            $this->deleteUnusedSlips($oldSlips);
+
+            return $this->broadcastUpdate($collection);
+        }
+
+        if ($method === ChatCollectionDue::METHOD_TRANSFER) {
+            $missing = (clone $dues)->whereNull('paid_at')->whereNull('slip_path')->pluck('passenger_id');
+            if ($missing->isNotEmpty()) {
+                $names = $this->roster->passengers($collection->schedule)
+                    ->whereIn('passenger_id', $missing->all())
+                    ->pluck('name')
+                    ->join(', ');
+
+                throw new \Exception("ยังไม่มีสลิปโอนของ {$names} — รอให้แนบสลิปก่อน หรือถ้ารับเป็นเงินสดให้กด \"รับเงินสด\"");
+            }
+        }
+
+        // คนที่ยืนยันไปแล้วไม่ถูกเขียนทับ — วิธีรับและคนรับต้องเป็นของจริงตอนนั้น
+        $dues->whereNull('paid_at')->update([
+            'paid_at' => now(),
+            'paid_method' => $method,
+            'paid_marked_by_id' => $staff->id,
+        ]);
 
         return $this->broadcastUpdate($collection);
     }
@@ -207,7 +294,7 @@ class ChatCollectionService
      */
     public function present(ChatCollection $collection): array
     {
-        $collection->loadMissing('dues');
+        $collection->loadMissing('dues.markedBy:id,name,nickname');
         $roster = $this->roster->passengers($collection->schedule)->keyBy('passenger_id');
 
         $dues = $collection->dues
@@ -218,10 +305,20 @@ class ChatCollectionService
                 'user_id' => $roster[$d->passenger_id]['user_id'],
                 'amount' => (float) $d->amount,
                 'status' => $d->status(),
+                // แค่บอกว่ามีสลิป — ตัวไฟล์ขอผ่าน GET .../slip ที่เช็กสิทธิ์ เพราะ payload นี้
+                // กระจายให้ทั้งห้อง
+                'has_slip' => $d->slip_path !== null,
+                'method' => $d->paid_at !== null ? $d->paid_method : null,
+                'marked_by' => $d->paid_at !== null
+                    ? ($d->markedBy?->nickname ?: $d->markedBy?->name)
+                    : null,
             ])->values();
 
         $total = (float) $dues->sum('amount');
         $collected = (float) $dues->where('status', 'paid')->sum('amount');
+        $collectedCash = (float) $dues->where('status', 'paid')
+            ->where('method', ChatCollectionDue::METHOD_CASH)
+            ->sum('amount');
 
         // QR ต่อบัญชี = ผลรวมยอดที่ยังไม่ได้ยืนยันของทุกคนที่บัญชีนั้นดูแล
         $payloads = [];
@@ -244,6 +341,8 @@ class ChatCollectionService
             'is_closed' => $collection->isClosed(),
             'total' => round($total, 2),
             'collected' => round($collected, 2),
+            // ที่เหลือจาก collected คือโอน (รวมรายการเก่าที่ยืนยันก่อนมีช่องวิธีรับ)
+            'collected_cash' => round($collectedCash, 2),
             'outstanding' => round($total - $collected, 2),
             'due_count' => $dues->count(),
             'paid_count' => $dues->where('status', 'paid')->count(),
@@ -269,6 +368,31 @@ class ChatCollectionService
         return collect($passengerIds)->map(fn ($id) => (int) $id)->unique()
             ->filter(fn ($id) => $valid->contains($id))
             ->values();
+    }
+
+    private function storeSlip(UploadedFile $slip): string
+    {
+        $path = $slip->store('slips/chat-collections/'.date('Y/m'), MediaDisk::slipDisk());
+        if (! is_string($path) || $path === '') {
+            throw new \Exception('อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้งครับ');
+        }
+
+        return $path;
+    }
+
+    /** @param  array<int, string>  $paths */
+    private function deleteUnusedSlips(array $paths): void
+    {
+        $paths = array_values(array_unique(array_filter($paths)));
+        if ($paths === []) {
+            return;
+        }
+
+        $stillUsed = ChatCollectionDue::whereIn('slip_path', $paths)->pluck('slip_path')->all();
+        $unused = array_values(array_diff($paths, $stillUsed));
+        if ($unused !== []) {
+            Storage::disk(MediaDisk::slipDisk())->delete($unused);
+        }
     }
 
     private function broadcastUpdate(ChatCollection $collection): ChatCollection

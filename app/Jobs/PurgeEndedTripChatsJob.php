@@ -15,6 +15,7 @@ use App\Models\ChatSupplyRequest;
 use App\Models\LostItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
+use App\Services\ChatCollectionService;
 use App\Services\ChatPrivateService;
 use App\Support\MediaDisk;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -88,6 +89,8 @@ class PurgeEndedTripChatsJob implements ShouldQueue
             ChatPoll::where('schedule_id', $scheduleId)->delete();
             ChatFoodRound::where('schedule_id', $scheduleId)->delete();
             ChatRestStop::where('schedule_id', $scheduleId)->delete();
+            // สลิปเก็บเงินอยู่บนดิสก์ส่วนตัว ไม่ตามไปกับแถวที่ถูกลบ — ลบไฟล์ก่อน
+            app(ChatCollectionService::class)->purgeSlips($scheduleId);
             ChatCollection::where('schedule_id', $scheduleId)->delete();
             ChatStopRequest::where('schedule_id', $scheduleId)->delete();
             ChatSupplyRequest::where('schedule_id', $scheduleId)->delete();

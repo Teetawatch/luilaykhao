@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatCollection;
+use App\Models\ChatCollectionDue;
 use App\Models\ChatMessage;
 use App\Models\TripSchedule;
 use App\Services\ChatCollectionService;
@@ -129,22 +130,59 @@ class ChatCollectionController extends Controller
         return $this->payload($collection, 'แก้รายชื่อแล้ว');
     }
 
+    /** แจ้งโอน = multipart พร้อม `slip` (บังคับ) · ถอน = claimed=0 */
     public function claim(Request $request, int $scheduleId, int $collectionId): JsonResponse
     {
-        $validated = $request->validate(['claimed' => ['nullable', 'boolean']]);
+        $validated = $request->validate([
+            'claimed' => ['nullable', 'boolean'],
+            'slip' => ['nullable', 'image', 'max:10240'],
+        ]);
 
         [$schedule, $collection, $error] = $this->resolve($request, $scheduleId, $collectionId);
         if ($error) {
             return $error;
         }
 
+        $claimed = (bool) ($validated['claimed'] ?? true);
+
         try {
-            $collection = $this->collections->claim($request->user(), $collection, (bool) ($validated['claimed'] ?? true));
+            $collection = $this->collections->claim(
+                $request->user(),
+                $collection,
+                $claimed,
+                $claimed ? $request->file('slip') : null,
+            );
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
 
-        return $this->payload($collection, 'แจ้งทีมงานแล้ว');
+        return $this->payload($collection, $claimed ? 'ส่งสลิปให้ทีมงานแล้ว' : 'ถอนการแจ้งโอนแล้ว');
+    }
+
+    /** ลิงก์ชั่วคราวดูสลิป — ทีมงาน หรือบัญชีที่ดูแลผู้โดยสารคนนั้นเท่านั้น */
+    public function slip(Request $request, int $scheduleId, int $collectionId): JsonResponse
+    {
+        $validated = $request->validate(['passenger_id' => ['required', 'integer']]);
+
+        [$schedule, $collection, $error] = $this->resolve($request, $scheduleId, $collectionId);
+        if ($error) {
+            return $error;
+        }
+
+        $user = $request->user();
+        $passengerId = (int) $validated['passenger_id'];
+        $allowed = $this->chatService->canModerate($user, $schedule)
+            || collect($this->roster->passengerIdsFor($schedule, $user->id))->map(fn ($id) => (int) $id)->contains($passengerId);
+        if (! $allowed) {
+            return $this->error('ดูสลิปได้เฉพาะทีมงานและคนที่จ่าย', 403);
+        }
+
+        $url = $this->collections->slipUrl($collection, $passengerId);
+        if ($url === null) {
+            return $this->error('ยังไม่มีสลิป', 404);
+        }
+
+        return $this->success(['url' => $url]);
     }
 
     public function setPaid(Request $request, int $scheduleId, int $collectionId): JsonResponse
@@ -153,6 +191,8 @@ class ChatCollectionController extends Controller
             'passenger_ids' => ['required', 'array', 'min:1', 'max:200'],
             'passenger_ids.*' => ['integer'],
             'paid' => ['required', 'boolean'],
+            // ไม่ส่ง = โอน (แอปรุ่นก่อน) ซึ่งต้องมีสลิป
+            'method' => ['nullable', 'in:'.ChatCollectionDue::METHOD_TRANSFER.','.ChatCollectionDue::METHOD_CASH],
         ]);
 
         [$schedule, $collection, $error] = $this->resolve($request, $scheduleId, $collectionId, staffOnly: true);
@@ -161,12 +201,22 @@ class ChatCollectionController extends Controller
         }
 
         try {
-            $collection = $this->collections->setPaid($request->user(), $collection, $validated['passenger_ids'], (bool) $validated['paid']);
+            $collection = $this->collections->setPaid(
+                $request->user(),
+                $collection,
+                $validated['passenger_ids'],
+                (bool) $validated['paid'],
+                $validated['method'] ?? ChatCollectionDue::METHOD_TRANSFER,
+            );
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }
 
-        return $this->payload($collection, $validated['paid'] ? 'บันทึกว่าจ่ายแล้ว' : 'ยกเลิกแล้ว');
+        return $this->payload($collection, match (true) {
+            ! $validated['paid'] => 'ยกเลิกแล้ว',
+            ($validated['method'] ?? null) === ChatCollectionDue::METHOD_CASH => 'บันทึกรับเงินสดแล้ว',
+            default => 'ยืนยันยอดโอนแล้ว',
+        });
     }
 
     public function close(Request $request, int $scheduleId, int $collectionId): JsonResponse

@@ -449,6 +449,7 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/collections', [ChatCollectionController::class, 'store'])->middleware('throttle:chat');
         Route::put('schedules/{id}/chat/collections/{collectionId}/payers', [ChatCollectionController::class, 'setPayers']);
         Route::post('schedules/{id}/chat/collections/{collectionId}/claim', [ChatCollectionController::class, 'claim']);
+        Route::get('schedules/{id}/chat/collections/{collectionId}/slip', [ChatCollectionController::class, 'slip']);
         Route::post('schedules/{id}/chat/collections/{collectionId}/paid', [ChatCollectionController::class, 'setPaid']);
         Route::post('schedules/{id}/chat/collections/{collectionId}/close', [ChatCollectionController::class, 'close']);
         Route::post('schedules/{id}/chat/collections/{collectionId}/reopen', [ChatCollectionController::class, 'reopen']);
