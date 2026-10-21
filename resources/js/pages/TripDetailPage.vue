@@ -569,12 +569,31 @@
                 <div class="flex items-start gap-4 p-4 md:p-5 rounded-2xl border border-gray-200 bg-gray-50">
                   <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)] shrink-0 mt-0.5">menu_book</span>
                   <div class="min-w-0">
-                    <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
-                      พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง
-                    </p>
-                    <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
-                      กรอกเลขพาสปอร์ตตอนจอง หรือกรอกเพิ่มทีหลังจากลิงก์ที่เราส่งให้ทางอีเมลได้
-                    </p>
+                    <!-- "ไม่มีพาสปอร์ตไปได้ไหม" เป็นคำถามแรกของทริปลาว/กัมพูชาทางบก -->
+                    <template v-if="trip.travel_document_mode === 'passport_or_border_pass'">
+                      <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
+                        ใช้พาสปอร์ต หรือ Border Pass ก็ได้
+                      </p>
+                      <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
+                        ไม่มีพาสปอร์ตก็ไปได้ เลือก "ให้ทีมงานทำ Border Pass" ตอนจอง ทีมงานยื่นทำให้จากเลขบัตรประชาชน
+                      </p>
+                    </template>
+                    <template v-else-if="trip.travel_document_mode === 'on_site'">
+                      <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
+                        นำเอกสารเดินทางฉบับจริงมาในวันเดินทาง
+                      </p>
+                      <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
+                        ไม่ต้องกรอกเลขพาสปอร์ตตอนจอง ทีมงานตรวจฉบับจริงหน้างาน
+                      </p>
+                    </template>
+                    <template v-else>
+                      <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
+                        พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง
+                      </p>
+                      <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
+                        กรอกเลขพาสปอร์ตตอนจอง หรือกรอกเพิ่มทีหลังจากลิงก์ที่เราส่งให้ทางอีเมลได้
+                      </p>
+                    </template>
                   </div>
                 </div>
 

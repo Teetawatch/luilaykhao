@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Support\MediaDisk;
+use App\Support\TripDocumentRequirements;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * ผู้เดินทางหนึ่งคนที่กรอกข้อมูลของตัวเองเข้ามา ยังไม่ผูกกับการจอง
@@ -24,7 +27,7 @@ class CustomerIntakePerson extends Model
         'selected_rentals',
         'title', 'name', 'nickname', 'phone', 'email',
         'id_card', 'birth_date', 'blood_group', 'name_en', 'nationality',
-        'passport_no', 'passport_expires_at', 'emergency_contact', 'emergency_phone',
+        'passport_no', 'passport_expires_at', 'travel_document', 'emergency_contact', 'emergency_phone',
         'allergies', 'health_notes', 'halal_food', 'dive_cert_level', 'cert_number', 'weight',
         'consent_at', 'consent_ip', 'consent_text',
     ];
@@ -47,6 +50,50 @@ class CustomerIntakePerson extends Model
             'weight' => 'float',
             'consent_at' => 'datetime',
         ];
+    }
+
+    /** คอลัมน์ไฟล์บัตรประชาชนของ Border Pass ตามคีย์เอกสาร */
+    public const ID_FILE_COLUMNS = [
+        TripDocumentRequirements::BORDER_PASS_FRONT => 'border_pass_front_path',
+        TripDocumentRequirements::BORDER_PASS_BACK => 'border_pass_back_path',
+    ];
+
+    protected static function booted(): void
+    {
+        // ลบทีละแถว (แอดมินลบคน) ก็ต้องเก็บไฟล์บัตรตามไปด้วย ส่วนการลบทั้งกลุ่ม
+        // ผ่าน query builder ใช้ [purgeIdFilesOf] เพราะ model event ไม่ทำงาน
+        static::deleting(function (CustomerIntakePerson $person) {
+            $person->deleteIdFiles();
+        });
+    }
+
+    /**
+     * ลบไฟล์บัตรประชาชนของคนนี้ — เว้นไฟล์ที่ผูกเข้าใบจองไปแล้ว (ใบจองถือต่อ
+     * และงานลบของใบจองจะเก็บเองตามกำหนด)
+     */
+    public function deleteIdFiles(): void
+    {
+        foreach (self::ID_FILE_COLUMNS as $column) {
+            $path = $this->{$column};
+            if (blank($path) || BookingDocument::where('file_path', $path)->exists()) {
+                continue;
+            }
+
+            try {
+                Storage::disk(MediaDisk::slipDisk())->delete($path);
+            } catch (\Throwable) {
+                // แถวกำลังจะหาย ไฟล์ค้างไม่ควรทำให้การลบล้ม
+            }
+        }
+    }
+
+    /** ลบไฟล์บัตรของทุกคนในกลุ่มเหล่านี้ — เรียกก่อนลบกลุ่มด้วย query builder */
+    public static function purgeIdFilesOf(array $intakeIds): void
+    {
+        static::whereIn('customer_intake_id', $intakeIds)
+            ->where(fn ($q) => $q->whereNotNull('border_pass_front_path')->orWhereNotNull('border_pass_back_path'))
+            ->get()
+            ->each(fn (CustomerIntakePerson $person) => $person->deleteIdFiles());
     }
 
     public function intake(): BelongsTo
@@ -95,6 +142,7 @@ class CustomerIntakePerson extends Model
             'nationality' => $this->nationality,
             'passport_no' => $this->passport_no,
             'passport_expires_at' => $this->passport_expires_at?->toDateString(),
+            'travel_document' => $this->travel_document,
             'birth_date' => $this->birth_date?->toDateString(),
             'blood_group' => $this->blood_group,
             'emergency_contact' => $this->emergency_contact,

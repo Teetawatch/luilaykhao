@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Trip;
 use App\Rules\KnownCountry;
 use App\Support\MedalDesign;
 use Illuminate\Foundation\Http\FormRequest;
@@ -31,6 +32,7 @@ class StoreTripRequest extends FormRequest
                 new KnownCountry,
             ],
             'timezone' => ['nullable', 'string', 'max:64', 'timezone'],
+            'travel_document_mode' => ['nullable', Rule::in(Trip::TRAVEL_DOCUMENT_MODES)],
             'description' => ['nullable', 'string'],
             'difficulty' => ['required', 'in:easy,medium,hard'],
             'duration_days' => ['required', 'integer', 'min:1'],

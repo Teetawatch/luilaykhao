@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\CustomerIntake;
+use App\Models\CustomerIntakePerson;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -39,6 +40,8 @@ class PurgeStaleCustomerIntakesJob implements ShouldQueue
             ->orderBy('id')
             ->chunkById(self::CHUNK, function ($intakes) use (&$deleted) {
                 $ids = $intakes->pluck('id')->all();
+                // รูปบัตรประชาชน (Border Pass) ไม่ได้อยู่ในฐานข้อมูล cascade ลบให้ไม่ได้
+                CustomerIntakePerson::purgeIdFilesOf($ids);
                 // ลบผ่าน query builder ตัวเดียว — cascade ที่ customer_intake_people
                 // เก็บลูกให้เอง ไม่ต้องวนลบทีละแถว
                 CustomerIntake::whereIn('id', $ids)->delete();

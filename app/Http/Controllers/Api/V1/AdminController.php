@@ -24,6 +24,7 @@ use App\Models\BookingPassenger;
 use App\Models\BookingSeat;
 use App\Models\CharterRequest;
 use App\Models\CustomerIntake;
+use App\Models\CustomerIntakePerson;
 use App\Models\Driver;
 use App\Models\GalleryImage;
 use App\Models\HeroSlide;
@@ -40,10 +41,11 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
 use App\Services\AccountClaimService;
+use App\Services\BookingDocumentService;
 use App\Services\BookingService;
 use App\Services\CharterRequestService;
-use App\Services\CustomerAccountService;
 use App\Services\ChatRoomEventService;
+use App\Services\CustomerAccountService;
 use App\Services\DriverLoginCodeService;
 use App\Services\ForceMajeureService;
 use App\Services\MailService;
@@ -2552,6 +2554,13 @@ class AdminController extends Controller
             'passengers.*.phone' => ['nullable', 'string', 'max:20'],
             'passengers.*.email' => ['nullable', 'email', 'max:255'],
             'passengers.*.id_card' => ['nullable', 'string', 'max:100'],
+            // เอกสารเดินทางของทริปต่างประเทศ — มักมาจากลิงก์ที่ลูกค้ากรอกเอง (intake)
+            // แอดมินเว้นว่างได้ ระบบตามเก็บต่อเองผ่านหน้า /admin/passport-followup
+            'passengers.*.nationality' => ['nullable', 'string', 'size:2'],
+            'passengers.*.name_en' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z\s.\'-]+$/'],
+            'passengers.*.passport_no' => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]{5,20}$/'],
+            'passengers.*.passport_expires_at' => ['nullable', 'date'],
+            'passengers.*.travel_document' => ['nullable', Rule::in([Trip::DOC_PASSPORT, Trip::DOC_BORDER_PASS])],
             'passengers.*.birth_date' => ['nullable', 'date', 'before:today'],
             'passengers.*.blood_group' => ['nullable', 'string', 'max:10'],
             'passengers.*.allergies' => ['nullable', 'string'],
@@ -2894,8 +2903,18 @@ class AdminController extends Controller
                     'hold_by_id' => $holdUntil ? $request->user()?->id : null,
                 ]);
 
-                $passengerModels = $passengers->map(function ($passenger, $index) use ($booking, $passengerPickups) {
+                $passengerModels = $passengers->map(function ($passenger, $index) use ($booking, $passengerPickups, $schedule) {
+                    // Border Pass / ฉบับจริงหน้างาน — ทริปตัดสินว่าเก็บช่องพาสปอร์ตไหม
+                    $documents = $schedule->trip->applyTravelDocument([
+                        'nationality' => filled($passenger['nationality'] ?? null) ? strtoupper($passenger['nationality']) : 'TH',
+                        'name_en' => filled($passenger['name_en'] ?? null) ? strtoupper(trim($passenger['name_en'])) : null,
+                        'passport_no' => filled($passenger['passport_no'] ?? null) ? strtoupper(trim($passenger['passport_no'])) : null,
+                        'passport_expires_at' => ($passenger['passport_expires_at'] ?? null) ?: null,
+                        'travel_document' => $passenger['travel_document'] ?? null,
+                    ]);
+
                     return BookingPassenger::create([
+                        ...$documents,
                         'booking_id' => $booking->id,
                         // แถวรายคนคือสิ่งที่หน้าสตาฟและแอปคนขับอ่านก่อนหัวการจอง
                         'pickup_point_id' => ($passengerPickups[$index] ?? null)?->id,
@@ -3029,6 +3048,12 @@ class AdminController extends Controller
         if ($ids === []) {
             return;
         }
+
+        // รูปบัตรประชาชน (Border Pass) ที่ลูกค้าแนบมากับลิงก์ — ผูกเข้าใบจองด้วยเลขบัตร
+        app(BookingDocumentService::class)->adoptIntakeIdFiles(
+            $booking,
+            CustomerIntakePerson::whereIn('customer_intake_id', $ids)->get(),
+        );
 
         CustomerIntake::whereIn('id', $ids)->where('status', 'new')->update([
             'status' => 'booked',

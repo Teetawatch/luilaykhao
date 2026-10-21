@@ -29,7 +29,7 @@ class Trip extends Model
 
     protected $fillable = [
         'title', 'slug', 'type', 'location', 'region', 'description',
-        'destination_type', 'country_code', 'timezone',
+        'destination_type', 'country_code', 'timezone', 'travel_document_mode',
         'difficulty', 'duration_days', 'distance_km', 'elevation_gain_m', 'max_participants',
         'medal_name', 'medal_icon', 'medal_color', 'medal_image',
         'price_per_person', 'departure_point', 'latitude', 'longitude',
@@ -134,6 +134,121 @@ class Trip extends Model
     public function isInternational(): bool
     {
         return $this->destination_type === 'international';
+    }
+
+    /** ต้องกรอกพาสปอร์ตตอนจอง — ค่าเดิมของทุกทริปต่างประเทศ */
+    public const DOCS_PASSPORT = 'passport';
+
+    /** ให้ผู้เดินทางเลือก: มีพาสปอร์ต หรือให้ทีมงานทำ Border Pass (ลาว/กัมพูชาทางบก) */
+    public const DOCS_PASSPORT_OR_BORDER_PASS = 'passport_or_border_pass';
+
+    /** ไม่ต้องกรอกล่วงหน้า — ทีมงานดูเอกสารฉบับจริงหน้างาน */
+    public const DOCS_ON_SITE = 'on_site';
+
+    public const TRAVEL_DOCUMENT_MODES = [
+        self::DOCS_PASSPORT,
+        self::DOCS_PASSPORT_OR_BORDER_PASS,
+        self::DOCS_ON_SITE,
+    ];
+
+    /** คำตอบรายคนของ [DOCS_PASSPORT_OR_BORDER_PASS] */
+    public const DOC_PASSPORT = 'passport';
+
+    public const DOC_BORDER_PASS = 'border_pass';
+
+    /**
+     * ทริปนี้เก็บเอกสารเดินทางแบบไหน — null สำหรับทริปในประเทศ
+     *
+     * ทริปต่างประเทศที่ยังไม่เคยตั้งค่า (null ในคอลัมน์) = กรอกพาสปอร์ต เหมือน
+     * ก่อนมีตัวเลือกนี้ ทริปเก่าจึงทำงานเหมือนเดิมทุกอย่าง
+     */
+    public function travelDocumentMode(): ?string
+    {
+        if (! $this->isInternational()) {
+            return null;
+        }
+
+        return in_array($this->travel_document_mode, self::TRAVEL_DOCUMENT_MODES, true)
+            ? $this->travel_document_mode
+            : self::DOCS_PASSPORT;
+    }
+
+    /** มีช่องพาสปอร์ตให้กรอกในฟอร์มไหม (บังคับกับทุกคน หรือกับคนที่เลือกพาสปอร์ต) */
+    public function collectsPassport(): bool
+    {
+        return in_array($this->travelDocumentMode(), [self::DOCS_PASSPORT, self::DOCS_PASSPORT_OR_BORDER_PASS], true);
+    }
+
+    public function offersBorderPass(): bool
+    {
+        return $this->travelDocumentMode() === self::DOCS_PASSPORT_OR_BORDER_PASS;
+    }
+
+    /**
+     * เอกสารที่ผู้เดินทางคนนี้ใช้จริง หลังกรองคำตอบที่ทริปไม่ได้เปิดให้เลือก
+     *
+     * Border Pass ออกให้คนสัญชาติไทยเท่านั้น ชาวต่างชาติจึงตกเป็นพาสปอร์ตเสมอ
+     * คืน null เมื่อทริปไม่ได้ให้เลือก (ไม่มีอะไรต้องจำ)
+     */
+    public function resolveTravelDocument(?string $choice, ?string $nationality): ?string
+    {
+        if (! $this->offersBorderPass()) {
+            return null;
+        }
+
+        return $choice === self::DOC_BORDER_PASS && ($nationality ?: Countries::HOME) === Countries::HOME
+            ? self::DOC_BORDER_PASS
+            : self::DOC_PASSPORT;
+    }
+
+    /** คนนี้ต้องมีข้อมูลพาสปอร์ตในระบบไหม — ตัวตัดสินเดียวของทุกช่องทางที่กรอก */
+    public function needsPassportFor(?string $choice, ?string $nationality): bool
+    {
+        if (! $this->collectsPassport()) {
+            return false;
+        }
+
+        return $this->resolveTravelDocument($choice, $nationality) !== self::DOC_BORDER_PASS;
+    }
+
+    /**
+     * กฎ "ต้องมี" ของช่องพาสปอร์ตในฟอร์มที่กรอกทีละคน (ลิงก์กรอกเอง, ลิงก์รับ
+     * ข้อมูล, ส่งต่อที่นั่ง) — ทริปที่ให้เลือกบังคับเฉพาะคนที่ไม่ได้เลือก Border Pass
+     */
+    public function passportRule(string $choiceField = 'travel_document'): string
+    {
+        return match (true) {
+            ! $this->collectsPassport() => 'nullable',
+            $this->offersBorderPass() => "required_unless:{$choiceField},".self::DOC_BORDER_PASS,
+            default => 'required',
+        };
+    }
+
+    /**
+     * ปรับข้อมูลเอกสารของผู้เดินทางหนึ่งคนให้ตรงกับโหมดของทริป ก่อนบันทึก
+     *
+     * ทุกช่องทางที่สร้าง/แก้ผู้เดินทางเรียกตัวนี้ (จอง, ลิงก์กรอกเอง, ส่งต่อที่นั่ง,
+     * ลิงก์รับข้อมูล) — คำตอบ Border Pass เก็บเฉพาะทริปที่ให้เลือก และคนที่ไม่ต้อง
+     * ใช้พาสปอร์ตก็ไม่เก็บเลขพาสปอร์ตไว้ (ทีมงานจะไม่สับสนว่าใช้เอกสารไหน และไม่
+     * ถือข้อมูลที่ไม่ได้ใช้)
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function applyTravelDocument(array $data): array
+    {
+        $data['travel_document'] = $this->resolveTravelDocument(
+            $data['travel_document'] ?? null,
+            $data['nationality'] ?? null,
+        );
+
+        if ($this->isInternational() && ! $this->needsPassportFor($data['travel_document'], $data['nationality'] ?? null)) {
+            $data['name_en'] = null;
+            $data['passport_no'] = null;
+            $data['passport_expires_at'] = null;
+        }
+
+        return $data;
     }
 
     /** "🇳🇵 เนปาล" สำหรับติดป้ายบนการ์ดทริป; null เมื่อเป็นทริปในประเทศ */

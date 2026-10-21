@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\BookingDocument;
 use App\Models\BookingPassenger;
+use App\Models\CustomerIntakePerson;
+use App\Models\Trip;
 use App\Support\MediaDisk;
 use App\Support\TripDocumentRequirements;
 use Illuminate\Http\UploadedFile;
@@ -28,15 +30,37 @@ class BookingDocumentService
     public const MAX_FILES_PER_SLOT = 5;
 
     /**
-     * ทริปของการจองนี้ขออะไรบ้าง (จัดระเบียบแล้ว)
+     * การจองนี้ขอเอกสารอะไรบ้าง (จัดระเบียบแล้ว) — ของที่แอดมินตั้งบนทริป บวก
+     * บัตรประชาชนหน้า/หลังเมื่อมีคนในใบจองเลือกให้ทีมงานทำ Border Pass
      *
-     * @return array<int, array{key: string, label: string, note: string, required: bool}>
+     * แต่ละรายการมี `for` บอกว่าใช้กับใคร ดู [appliesTo]
+     *
+     * @return array<int, array{key: string, label: string, note: string, required: bool, for: string}>
      */
     public function requirementsFor(Booking $booking): array
     {
-        return TripDocumentRequirements::normalize(
-            $booking->schedule?->trip?->document_requirements
-        );
+        $trip = $booking->schedule?->trip;
+        $requirements = TripDocumentRequirements::normalize($trip?->document_requirements);
+
+        $booking->loadMissing('passengers');
+        if ($booking->passengers->contains(fn (BookingPassenger $passenger) => $this->isBorderPass($booking, $passenger))) {
+            $requirements = [...$requirements, ...TripDocumentRequirements::borderPass()];
+        }
+
+        return $requirements;
+    }
+
+    /** เอกสารรายการนี้ต้องขอจากผู้เดินทางคนนี้ไหม */
+    public function appliesTo(array $requirement, Booking $booking, BookingPassenger $passenger): bool
+    {
+        return ($requirement['for'] ?? TripDocumentRequirements::FOR_ALL) !== TripDocumentRequirements::FOR_BORDER_PASS
+            || $this->isBorderPass($booking, $passenger);
+    }
+
+    private function isBorderPass(Booking $booking, BookingPassenger $passenger): bool
+    {
+        return $booking->schedule?->trip?->resolveTravelDocument($passenger->travel_document, $passenger->nationality)
+            === Trip::DOC_BORDER_PASS;
     }
 
     public function isRequired(Booking $booking): bool
@@ -71,6 +95,7 @@ class BookingDocumentService
 
         foreach ($requirements as $requirement) {
             $names = $booking->passengers
+                ->filter(fn (BookingPassenger $passenger) => $this->appliesTo($requirement, $booking, $passenger))
                 ->filter(fn (BookingPassenger $passenger) => ($byPassenger->get($passenger->id) ?? collect())
                     ->where('requirement_key', $requirement['key'])
                     ->isEmpty())
@@ -106,16 +131,27 @@ class BookingDocumentService
         UploadedFile $file,
         ?int $uploadedById,
     ): BookingDocument {
-        $requirement = TripDocumentRequirements::find(
-            $booking->schedule?->trip?->document_requirements,
-            $requirementKey,
-        );
+        $requirement = collect($this->requirementsFor($booking))->firstWhere('key', $requirementKey);
 
         if (! $requirement) {
-            throw new \Exception('ทริปนี้ไม่ได้ขอเอกสารรายการนี้');
+            throw new \Exception(TripDocumentRequirements::isBorderPassKey($requirementKey)
+                ? 'บัตรประชาชนใช้สำหรับคนที่เลือกทำ Border Pass เท่านั้น'
+                : 'ทริปนี้ไม่ได้ขอเอกสารรายการนี้');
         }
 
-        $existing = BookingDocument::where('booking_passenger_id', $passenger->id)
+        if (! $this->appliesTo($requirement, $booking, $passenger)) {
+            throw new \Exception('บัตรประชาชนใช้สำหรับคนที่เลือกทำ Border Pass เท่านั้น');
+        }
+
+        // บัตรหน้า/หลังมีได้ใบเดียวต่อด้าน — แนบใหม่ = แทนที่ ไม่เก็บสำเนาบัตร
+        // ประชาชนค้างไว้หลายใบโดยไม่จำเป็น (ลบของเดิมหลังเก็บใบใหม่สำเร็จแล้ว)
+        $replacing = TripDocumentRequirements::isBorderPassKey($requirementKey)
+            ? BookingDocument::where('booking_passenger_id', $passenger->id)
+                ->where('requirement_key', $requirementKey)
+                ->get()
+            : collect();
+
+        $existing = $replacing->isNotEmpty() ? 0 : BookingDocument::where('booking_passenger_id', $passenger->id)
             ->where('requirement_key', $requirementKey)
             ->count();
 
@@ -129,7 +165,7 @@ class BookingDocumentService
             throw new \Exception('อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
         }
 
-        return BookingDocument::create([
+        $document = BookingDocument::create([
             'booking_id' => $booking->id,
             'booking_passenger_id' => $passenger->id,
             'requirement_key' => $requirement['key'],
@@ -142,6 +178,103 @@ class BookingDocumentService
             'size' => $file->getSize() ?: 0,
             'uploaded_by_id' => $uploadedById,
         ]);
+
+        $replacing->each(fn (BookingDocument $old) => $this->delete($old));
+
+        return $document;
+    }
+
+    private function isHeldByIntake(string $path): bool
+    {
+        return CustomerIntakePerson::where('border_pass_front_path', $path)
+            ->orWhere('border_pass_back_path', $path)
+            ->exists();
+    }
+
+    /**
+     * ผูกรูปบัตรประชาชนที่ลูกค้าแนบมากับลิงก์รับข้อมูลเข้ากับผู้เดินทางในใบจอง
+     *
+     * จับคู่ด้วยเลขบัตรประชาชน ไม่ใช่ลำดับ — หน้าจองแทนลูกค้ารวมหลายกลุ่ม ตัดคน
+     * ซ้ำ และให้แอดมินสลับลำดับได้ เลขบัตรคือสิ่งเดียวที่ชี้ตัวคนได้แน่นอน (และ
+     * คือเลขที่ด่านจะเทียบกับรูปอยู่แล้ว) ไฟล์ใช้ร่วมกัน ไม่คัดลอก
+     *
+     * @param  iterable<CustomerIntakePerson>  $people
+     */
+    public function adoptIntakeIdFiles(Booking $booking, iterable $people): int
+    {
+        $booking->load(['passengers', 'documents', 'schedule.trip']);
+        $digits = fn ($value) => preg_replace('/\D/', '', (string) $value);
+        $labels = collect(TripDocumentRequirements::borderPass())->keyBy('key');
+        $adopted = 0;
+
+        foreach ($people as $person) {
+            $idCard = $digits($person->id_card);
+            if ($idCard === '') {
+                continue;
+            }
+
+            $passenger = $booking->passengers->first(
+                fn (BookingPassenger $passenger) => $digits($passenger->id_card) === $idCard
+                    && $this->isBorderPass($booking, $passenger)
+            );
+            if (! $passenger) {
+                continue;
+            }
+
+            foreach (CustomerIntakePerson::ID_FILE_COLUMNS as $key => $column) {
+                $path = $person->{$column};
+                $already = $booking->documents
+                    ->where('booking_passenger_id', $passenger->id)
+                    ->where('requirement_key', $key)
+                    ->isNotEmpty();
+
+                if (blank($path) || $already) {
+                    continue;
+                }
+
+                BookingDocument::create([
+                    'booking_id' => $booking->id,
+                    'booking_passenger_id' => $passenger->id,
+                    'requirement_key' => $key,
+                    'label' => $labels[$key]['label'],
+                    'note' => $labels[$key]['note'],
+                    'file_path' => $path,
+                    'original_name' => $labels[$key]['label'],
+                    'mime_type' => $this->mimeOf($path),
+                    'size' => 0,
+                    'uploaded_by_id' => null,
+                ]);
+                $adopted++;
+            }
+        }
+
+        return $adopted;
+    }
+
+    private function mimeOf(string $path): string
+    {
+        return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'pdf' => 'application/pdf',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'heic', 'heif' => 'image/heic',
+            default => 'image/jpeg',
+        };
+    }
+
+    /**
+     * ลบบัตรประชาชนของ Border Pass ของคนนี้ทั้งหมด — เปลี่ยนไปใช้พาสปอร์ต
+     * ยกเลิกการจอง หรือจบทริปแล้ว ไม่มีเหตุให้ถือสำเนาบัตรต่อ
+     */
+    public function purgeBorderPass(BookingPassenger $passenger): int
+    {
+        $documents = BookingDocument::where('booking_passenger_id', $passenger->id)
+            ->whereIn('requirement_key', TripDocumentRequirements::BORDER_PASS_KEYS)
+            ->get();
+
+        $documents->each(fn (BookingDocument $document) => $this->delete($document));
+
+        return $documents->count();
     }
 
     /** ลบทั้งแถวและไฟล์จริง — ไฟล์ที่ไม่มีใครอ้างถึงแล้วไม่ควรค้างบนดิสก์ */
@@ -149,6 +282,12 @@ class BookingDocumentService
     {
         $path = $document->file_path;
         $document->delete();
+
+        // รูปบัตรที่มาจากลิงก์รับข้อมูลยังถูกกลุ่มลูกค้าถืออยู่ (ใบจองที่จ่ายไม่ทันแล้ว
+        // กลุ่มกลับมาจองใหม่ต้องได้ไฟล์เดิม) — กลุ่มถูกลบเมื่อไหร่ไฟล์ค่อยหายตาม
+        if ($this->isHeldByIntake($path) || BookingDocument::where('file_path', $path)->exists()) {
+            return;
+        }
 
         try {
             Storage::disk(MediaDisk::slipDisk())->delete($path);
@@ -169,24 +308,28 @@ class BookingDocumentService
         $booking->loadMissing(['passengers', 'documents']);
         $byPassenger = $booking->documents->groupBy('booking_passenger_id');
 
-        $passengers = $booking->passengers->map(function (BookingPassenger $passenger) use ($requirements, $byPassenger) {
+        $passengers = $booking->passengers->map(function (BookingPassenger $passenger) use ($booking, $requirements, $byPassenger) {
             $documents = $byPassenger->get($passenger->id) ?? collect();
 
             return [
                 'passenger_id' => $passenger->id,
                 'name' => $passenger->name,
-                'requirements' => collect($requirements)->map(function (array $requirement) use ($documents) {
-                    $files = $documents
-                        ->where('requirement_key', $requirement['key'])
-                        ->map(fn (BookingDocument $doc) => $this->filePayload($doc))
-                        ->values();
+                // เฉพาะรายการที่ขอจากคนนี้จริง — บัตรประชาชนของ Border Pass ขึ้นแค่
+                // กับคนที่เลือก Border Pass
+                'requirements' => collect($requirements)
+                    ->filter(fn (array $requirement) => $this->appliesTo($requirement, $booking, $passenger))
+                    ->map(function (array $requirement) use ($documents) {
+                        $files = $documents
+                            ->where('requirement_key', $requirement['key'])
+                            ->map(fn (BookingDocument $doc) => $this->filePayload($doc))
+                            ->values();
 
-                    return [
-                        ...$requirement,
-                        'files' => $files,
-                        'is_missing' => $requirement['required'] && $files->isEmpty(),
-                    ];
-                })->values(),
+                        return [
+                            ...$requirement,
+                            'files' => $files,
+                            'is_missing' => $requirement['required'] && $files->isEmpty(),
+                        ];
+                    })->values(),
             ];
         })->values();
 

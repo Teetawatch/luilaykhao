@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomerIntake;
+use App\Models\CustomerIntakePerson;
 use App\Models\IntakeLink;
 use App\Models\TripSchedule;
 use App\Services\IntakeSeatService;
@@ -218,6 +219,9 @@ class AdminIntakeController extends Controller
                 // อุปกรณ์ที่คนนี้ขอเช่า — ยอดรวมของกลุ่มอยู่ด้านบนแล้ว ตรงนี้ไว้ตอบ
                 // คำถามหน้างานว่า "ถุงนอนใบนี้ของใคร" ตอนแจกของ
                 'rentals' => $person->rentals(),
+                // ทริปที่ให้เลือก Border Pass — ทีมงานต้องยื่นทำให้คนนี้ไหม
+                'travel_document' => $intake->schedule?->trip?->resolveTravelDocument($person->travel_document, $person->nationality ?: 'TH'),
+                'has_passport' => filled($person->passport_no),
             ])->values(),
         ]);
     }
@@ -247,7 +251,10 @@ class AdminIntakeController extends Controller
 
     public function destroy(int $id): JsonResponse
     {
-        CustomerIntake::findOrFail($id)->delete();
+        $intake = CustomerIntake::findOrFail($id);
+        // cascade ลบคนให้ในฐานข้อมูล แต่ไม่ลบรูปบัตรบนดิสก์
+        CustomerIntakePerson::purgeIdFilesOf([$intake->id]);
+        $intake->delete();
 
         return $this->success(null, 'ลบข้อมูลลูกค้ากลุ่มนี้แล้ว');
     }
@@ -255,7 +262,8 @@ class AdminIntakeController extends Controller
     public function destroyPerson(int $id, int $personId): JsonResponse
     {
         $intake = CustomerIntake::findOrFail($id);
-        $intake->people()->where('id', $personId)->delete();
+        // ลบผ่านโมเดล — รูปบัตรประชาชนของคนนี้ (ถ้ามี) ถูกลบตามไปด้วย
+        $intake->people()->where('id', $personId)->get()->each->delete();
 
         return $this->success(null, 'ลบผู้เดินทางคนนี้แล้ว');
     }

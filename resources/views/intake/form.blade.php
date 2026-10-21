@@ -96,7 +96,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('public.intake.submit', $link->token) }}" data-guard>
+    <form method="POST" action="{{ route('public.intake.submit', $link->token) }}" enctype="multipart/form-data" data-guard>
         @csrf
 
         <div class="step">
@@ -148,7 +148,7 @@
         </div>
 
         @include('intake.person-fields', [
-                'isInternational' => (bool) $trip?->isInternational(),
+                'docMode' => $trip?->travelDocumentMode(),
                 'pickupPoints' => $pickupPoints ?? collect(),
                 'seatMap' => $seatMap ?? null,
             ])
@@ -197,4 +197,5 @@
             </span>
         </div>
     </form>
+    @include('partials.travel-document-toggle')
 @endsection

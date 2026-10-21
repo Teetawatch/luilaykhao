@@ -37,6 +37,7 @@ class IntakeBookingService
         private readonly IntakeSeatService $seats,
         private readonly SeatLockService $locks,
         private readonly AccountClaimService $claims,
+        private readonly BookingDocumentService $documents,
     ) {}
 
     /**
@@ -254,6 +255,9 @@ class IntakeBookingService
             vehicleOptionId: $optionId,
             termsConsent: $consent,
         );
+
+        // รูปบัตรประชาชน (Border Pass) ที่แนบมากับฟอร์ม — ใบจองต้องเห็นเหมือนแนบเอง
+        $this->documents->adoptIntakeIdFiles($booking, $people);
 
         $intake->forceFill([
             'status' => 'booked',

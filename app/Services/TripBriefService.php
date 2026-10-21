@@ -9,6 +9,7 @@ use App\Models\TripSchedule;
 use App\Support\AppLinks;
 use App\Support\SiteSettings;
 use App\Support\ThaiDate;
+use App\Support\TripDocumentRequirements;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -632,9 +633,10 @@ class TripBriefService
                 'title' => $requirement['label'],
                 'detail' => $this->whoLabel($requirement['passengers'], $booking)
                     .($requirement['note'] ? ' — '.$requirement['note'] : ''),
-                // ยังไม่มีหน้าอัปโหลดแบบไม่ต้องล็อกอิน ทางที่ไปถึงทีมงานได้จริงคือทักไลน์
-                'cta' => null,
-                'url' => null,
+                // บัตรประชาชนของ Border Pass แนบได้ที่หน้าเอกสารเดินทาง (ไม่ต้องล็อกอิน)
+                // ส่วนเอกสารอื่นยังไม่มีหน้าอัปโหลดแบบไม่ต้องล็อกอิน ทางที่ไปถึงทีมงานได้จริงคือทักไลน์
+                'cta' => TripDocumentRequirements::isBorderPassKey($requirement['key']) ? 'แนบรูปบัตรประชาชน' : null,
+                'url' => TripDocumentRequirements::isBorderPassKey($requirement['key']) ? $booking->passportUrl() : null,
             ];
         }
 

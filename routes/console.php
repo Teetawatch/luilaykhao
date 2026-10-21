@@ -19,6 +19,7 @@ use App\Jobs\PostTripChatTimelineJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PruneSosPhotosJob;
 use App\Jobs\PruneVehicleLocationsJob;
+use App\Jobs\PurgeBorderPassDocumentsJob;
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\PurgeExpiredSchedulePhotosJob;
 use App\Jobs\PurgeStaleCustomerIntakesJob;
@@ -123,6 +124,8 @@ Schedule::command('trip-activity:sync')->everyMinute()->withoutOverlapping();
 // ลบข้อมูลลูกค้าที่กรอกผ่านลิงก์แล้วไม่ได้ถูกใช้ต่อ — ตารางนี้เก็บเลขบัตรประชาชน
 // ของคนที่ยังไม่ได้เป็นลูกค้าเราด้วยซ้ำ เก็บเกินจำเป็นคือความเสี่ยงล้วน ๆ
 Schedule::job(new PurgeStaleCustomerIntakesJob)->dailyAt('03:45')->timezone('Asia/Bangkok')->withoutOverlapping();
+// สำเนาบัตรประชาชนของ Border Pass — ลบเมื่อยกเลิก หรือพ้น 7 วันหลังจบทริป
+Schedule::job(new PurgeBorderPassDocumentsJob)->dailyAt('03:50')->timezone('Asia/Bangkok')->withoutOverlapping();
 
 // กลุ่มที่กรอกค้างแล้วเงียบไป — บอกทีมงานตอนเช้าให้ไปตามในแชท ไม่ใช่ตอนตีสาม
 Schedule::job(new NotifyStalledIntakesJob)->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();

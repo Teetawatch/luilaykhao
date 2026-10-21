@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Booking;
 
 use App\Models\SeatHandover;
+use App\Models\Trip;
 use App\Rules\ThaiIdCard;
 use App\Rules\ThaiName;
 use App\Services\SeatHandoverService;
@@ -60,7 +61,8 @@ class ClaimSeatHandoverRequest extends FormRequest
     public function rules(): array
     {
         $isThai = $this->input('nationality', Countries::HOME) === Countries::HOME;
-        $passport = $this->isInternational() ? 'required' : 'nullable';
+        $trip = $this->handover()?->booking?->schedule?->trip;
+        $passport = $trip?->passportRule() ?? 'nullable';
         $womenOnly = (bool) $this->handover()?->booking?->schedule?->trip?->is_women_only;
 
         return [
@@ -81,6 +83,9 @@ class ClaimSeatHandoverRequest extends FormRequest
             'name_en' => [$passport, 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z\s.\'-]+$/'],
             'passport_no' => [$passport, 'nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]{5,20}$/'],
             'passport_expires_at' => [$passport, 'nullable', 'date', 'after:today'],
+            // ทริปที่ให้เลือก Border Pass — ไม่ส่งมา = พาสปอร์ต (แอปรุ่นก่อนหน้ามีแต่
+            // ช่องพาสปอร์ต จึงยังรับที่นั่งได้เหมือนเดิม)
+            'travel_document' => ['nullable', Rule::in([Trip::DOC_PASSPORT, Trip::DOC_BORDER_PASS])],
             'accept_terms' => ['accepted'],
             'terms_version' => ['nullable', 'string', 'max:20'],
             'channel' => ['nullable', 'string', 'in:web,app,liff'],
@@ -136,7 +141,7 @@ class ClaimSeatHandoverRequest extends FormRequest
 
             $departure = $this->handover()?->booking?->schedule?->departure_date;
             $expiresAt = $this->input('passport_expires_at');
-            if ($this->isInternational() && $departure && filled($expiresAt)) {
+            if ($this->needsPassport() && $departure && filled($expiresAt)) {
                 try {
                     $expiry = Carbon::parse($expiresAt);
                 } catch (\Throwable) {
@@ -154,9 +159,10 @@ class ClaimSeatHandoverRequest extends FormRequest
         });
     }
 
-    private function isInternational(): bool
+    private function needsPassport(): bool
     {
-        return (bool) $this->handover()?->booking?->schedule?->trip?->isInternational();
+        return (bool) $this->handover()?->booking?->schedule?->trip
+            ?->needsPassportFor($this->input('travel_document'), $this->input('nationality'));
     }
 
     private function handover(): ?SeatHandover

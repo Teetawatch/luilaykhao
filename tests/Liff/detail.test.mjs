@@ -67,7 +67,15 @@ const routes = {
   'GET /bookings': { data: [BOOKING], meta: { upcoming_count: 1, past_count: 0 } },
   'GET /bookings/LLK-20261205-0007': { data: BOOKING },
   'GET /bookings/LLK-20261205-0007/check-in-qr': { data: { code: 'LLKQR123', qr_data_uri: 'data:image/svg+xml;base64,PC8+', checked_in: false } },
-  'GET /bookings/LLK-20261205-0007/documents': { data: [{ id: 1, passenger_id: 51, requirement_key: 'id-copy', original_name: 'id.jpg' }] },
+  // รูปแบบจริงของ BookingDocumentService::payload — รายการที่ขอจากแต่ละคน + ไฟล์ที่แนบแล้ว
+  'GET /bookings/LLK-20261205-0007/documents': { data: {
+    booking_ref: 'LLK-20261205-0007',
+    passengers: [
+      { passenger_id: 51, name: 'สมหญิง ใจดี', requirements: [{ key: 'id-copy', label: 'สำเนาบัตรประชาชน', required: true, note: '', for: 'all', is_missing: false,
+        files: [{ id: 1, original_name: 'id.jpg' }] }] },
+      { passenger_id: 52, name: 'สมศรี ใจงาม', requirements: [{ key: 'id-copy', label: 'สำเนาบัตรประชาชน', required: true, note: '', for: 'all', is_missing: true, files: [] }] },
+    ],
+  } },
   'GET /bookings/LLK-20261205-0007/receipts': { data: [{ receipt_no: 'RC-1', kind_label: 'ใบเสร็จมัดจำ', amount: 4000, pdf_url: 'https://x/pdf' }] },
   'GET /bookings/LLK-20261205-0007/split': { data: { enabled: false, outstanding_amount: 6400, is_owner: true, shares: [] } },
   'GET /bookings/LLK-20261205-0007/tracking': { data: { share_url: 'https://llk/track/abc' } },
@@ -370,6 +378,36 @@ console.log('\n▶ เลื่อนไปรอบอื่น');
     const sent = world.bodies.find((b) => b.key === 'POST /bookings/LLK-20261205-0007/reschedule');
     assert(sent, 'ไม่ได้ยิง reschedule');
     assert(JSON.parse(sent.body).target_schedule_id === 22, 'ส่งรอบปลายทางผิด');
+  });
+}
+
+/* ═══════════ ทริปต่างประเทศ: วีซ่า เบอร์ฉุกเฉิน เอกสาร ═══════════ */
+console.log('\n▶ หน้ารายละเอียดทริปต่างประเทศ');
+{
+  const LAOS = {
+    ...TRIP, slug: 'laos', title: 'ลาวใต้ ปากเซ', destination_type: 'international', is_international: true,
+    is_women_only: false, country_label: '🇱🇦 ลาว', travel_document_mode: 'passport_or_border_pass',
+    visa: { status: 'visa_free', label: 'ไม่ต้องขอวีซ่า', days: 30, note: 'คนไทยเข้าได้โดยไม่ต้องขอวีซ่า' },
+    // Countries::emergency() เป็น {ป้าย: เบอร์} — เคยทำให้หน้านี้พังเพราะเรียก forEach
+    emergency_numbers: { 'ตำรวจ': '191', 'รถพยาบาล': '195' },
+  };
+  const world = makeWorld({
+    ...routes,
+    'GET /trips': { data: [LAOS], meta: { current_page: 1, last_page: 1, total: 1 } },
+    'GET /trips/laos': { data: LAOS },
+    'GET /trips/laos/schedules': { data: [SCHEDULE] },
+    'GET /trips/laos/related': { data: [] },
+  });
+  const { click, text } = world;
+  await wait();
+  click('.card');
+  await wait(80);
+
+  step('วีซ่า เบอร์ฉุกเฉิน และเอกสารที่ใช้ขึ้นครบ ไม่พังทั้งหน้า', () => {
+    assert(text().includes('ลาวใต้ ปากเซ'), 'หน้าไม่ขึ้น: ' + text().slice(0, 120));
+    assert(text().includes('ไม่ต้องขอวีซ่า · พำนักได้ 30 วัน'), 'ไม่มีวีซ่า');
+    assert(text().includes('รถพยาบาล') && text().includes('195'), 'ไม่มีเบอร์ฉุกเฉิน');
+    assert(text().includes('Border Pass'), 'ไม่บอกว่าใช้ Border Pass ได้');
   });
 }
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\BookingDocumentService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,7 +15,7 @@ class BookingPassenger extends Model
 
     protected $fillable = [
         'booking_id', 'title', 'name', 'nickname', 'id_card', 'birth_date', 'phone', 'email', 'health_notes',
-        'name_en', 'nationality', 'passport_no', 'passport_expires_at',
+        'name_en', 'nationality', 'passport_no', 'passport_expires_at', 'travel_document',
         'emergency_contact', 'emergency_phone',
         'dive_cert_level', 'cert_number', 'weight',
         'blood_group', 'allergies', 'halal_food', 'pickup_point_id',
@@ -71,6 +72,16 @@ class BookingPassenger extends Model
                     ->exists()) {
                     $passenger->checked_in_at = $booking->checked_in_at ?? now();
                 }
+            }
+        });
+
+        // เลิกใช้ Border Pass (เปลี่ยนไปใช้พาสปอร์ต) = สำเนาบัตรประชาชนที่แนบไว้
+        // หมดหน้าที่ทันที ไม่ต้องรอรอบลบหลังจบทริป
+        static::updated(function (BookingPassenger $passenger) {
+            if ($passenger->wasChanged('travel_document')
+                && $passenger->getOriginal('travel_document') === Trip::DOC_BORDER_PASS
+                && $passenger->travel_document !== Trip::DOC_BORDER_PASS) {
+                app(BookingDocumentService::class)->purgeBorderPass($passenger);
             }
         });
     }

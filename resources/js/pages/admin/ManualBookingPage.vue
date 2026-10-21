@@ -335,6 +335,39 @@
                     </label>
                   </div>
                 </div>
+                <!-- เอกสารเดินทางของทริปต่างประเทศ — มักมาครบจากลิงก์ที่ลูกค้ากรอกเอง
+                     เว้นว่างได้ ระบบตามเก็บต่อเองที่หน้า "ตามเก็บพาสปอร์ต" -->
+                <div v-if="collectsPassport" class="dive-fields full">
+                  <div class="dive-fields-title">
+                    <span class="material-symbols-rounded">badge</span>
+                    เอกสารเดินทาง
+                  </div>
+                  <label v-if="offersBorderPass" class="form-field">
+                    <span>มีพาสปอร์ตไหม</span>
+                    <select v-model="passenger.travel_document">
+                      <option value="">ยังไม่ระบุ (นับเป็นพาสปอร์ต)</option>
+                      <option value="passport">มีพาสปอร์ต</option>
+                      <option value="border_pass">ไม่มี · ทีมงานทำ Border Pass ให้</option>
+                    </select>
+                  </label>
+                  <template v-if="passenger.travel_document !== 'border_pass' || !offersBorderPass">
+                    <label class="form-field">
+                      <span>ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)</span>
+                      <input v-model.trim="passenger.name_en" placeholder="SOMCHAI JAIDEE" style="text-transform: uppercase"
+                        @input="passenger.name_en = passenger.name_en.toUpperCase()" />
+                    </label>
+                    <label class="form-field">
+                      <span>เลขที่พาสปอร์ต</span>
+                      <input v-model.trim="passenger.passport_no" maxlength="20" placeholder="AA1234567" style="text-transform: uppercase"
+                        @input="passenger.passport_no = passenger.passport_no.toUpperCase().replace(/[^A-Z0-9]/g, '')" />
+                    </label>
+                    <label class="form-field">
+                      <span>วันหมดอายุพาสปอร์ต</span>
+                      <input v-model="passenger.passport_expires_at" type="date" />
+                    </label>
+                  </template>
+                  <small v-else class="field-note" style="grid-column: 1 / -1">ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนของคนนี้</small>
+                </div>
                 <label v-if="pickupPoints.length && !form.is_join_trip" class="form-field full">
                   <span>จุดรับ</span>
                   <select v-model.number="passenger.pickup_point_id">
@@ -1030,6 +1063,13 @@ const selectedVehicleOption = computed(
 );
 const vehicleAdjustment = computed(() => Number(selectedVehicleOption.value?.price_adjustment || 0));
 const selectedPickup = computed(() => pickupPoints.value.find((point) => point.id === Number(form.pickup_point_id)) || null);
+// เอกสารเดินทางของทริปนี้ — passport | passport_or_border_pass | on_site (null = ในประเทศ)
+const travelDocumentMode = computed(() => {
+  const trip = selectedTrip.value || selectedSchedule.value?.trip;
+  return trip?.travel_document_mode ?? (trip?.is_international ? 'passport' : null);
+});
+const collectsPassport = computed(() => ['passport', 'passport_or_border_pass'].includes(travelDocumentMode.value));
+const offersBorderPass = computed(() => travelDocumentMode.value === 'passport_or_border_pass');
 const requiresDiveInfo = computed(() => ['diving', 'snorkeling'].includes(selectedTrip.value?.type || selectedSchedule.value?.trip?.type));
 const installmentAllowed = computed(() => Boolean(selectedSchedule.value?.installment_enabled && !form.is_join_trip));
 // จอยทริปมัดจำได้เหมือนจองปกติ — ต่างจากผ่อนชำระที่ยังปิดอยู่
@@ -1436,6 +1476,11 @@ function newPassenger() {
     weight: null,
     halal_food: null,
     pickup_point_id: '',
+    nationality: 'TH',
+    name_en: '',
+    passport_no: '',
+    passport_expires_at: '',
+    travel_document: '',
   };
 }
 
@@ -1900,6 +1945,10 @@ function buildBookingPayload() {
   }
 
   passengers.value.forEach(({ key, ...passenger }, index) => {
+    // ทริปที่ไม่ได้เก็บพาสปอร์ต (ในประเทศ/ฉบับจริงหน้างาน) ไม่ส่งช่องเอกสารไปเลย
+    if (!collectsPassport.value) {
+      ['name_en', 'passport_no', 'passport_expires_at', 'travel_document'].forEach((field) => delete passenger[field]);
+    }
     Object.entries(passenger).forEach(([field, value]) => {
       appendFormValue(fd, `passengers[${index}][${field}]`, value);
     });

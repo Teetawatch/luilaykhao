@@ -194,11 +194,11 @@
             กรอกซ้ำด้วยเบอร์เดิมจะเป็นการแก้ไขของเดิม ไม่ใช่เพิ่มคนใหม่
         </p>
 
-        <form method="POST" action="{{ route('public.intake.group.submit', $intake->token) }}" data-guard>
+        <form method="POST" action="{{ route('public.intake.group.submit', $intake->token) }}" enctype="multipart/form-data" data-guard>
             @csrf
 
             @include('intake.person-fields', [
-                'isInternational' => (bool) $trip?->isInternational(),
+                'docMode' => $trip?->travelDocumentMode(),
                 'pickupPoints' => $pickupPoints ?? collect(),
                 'seatMap' => $seatMap ?? null,
             ])
@@ -214,6 +214,7 @@
                 </button>
             </div>
         </form>
+    @include('partials.travel-document-toggle')
     @elseif (! ($groupBooking ?? null))
         {{-- ทีมงานดึงไปเปิดใบจองเองแล้ว (การ์ดจองด้านบนพูดแทนเมื่อมีใบที่ยังรอ/จ่ายแล้ว) --}}
         <div class="callout callout--ok">

@@ -332,6 +332,10 @@
                       <span class="material-symbols-rounded">table_view</span>
                       Excel
                     </button>
+                    <button v-if="sch.border_pass_count" class="btn-export-mini" @click="openBorderPass(sch)">
+                      <span class="material-symbols-rounded">badge</span>
+                      Border Pass {{ sch.border_pass_count }}
+                    </button>
                   </div>
                 </div>
 
@@ -752,6 +756,10 @@
                   <span class="material-symbols-rounded">table_view</span>
                   Excel รายชื่อ
                 </button>
+                <button v-if="selectedSchedule.border_pass_count" class="btn-secondary compact" @click="openBorderPass(selectedSchedule)">
+                  <span class="material-symbols-rounded">badge</span>
+                  รายชื่อทำ Border Pass ({{ selectedSchedule.border_pass_count }})
+                </button>
               </div>
             </div>
 
@@ -787,6 +795,7 @@
                           {{ bookingStatusLabels[person.booking_status] || person.booking_status }}
                         </span>
                         <span v-if="person.checked_in" class="tiny-chip check">เช็คอินแล้ว</span>
+                        <span v-if="person.travel_document === 'border_pass'" class="tiny-chip border-pass">ทำ Border Pass</span>
                       </div>
                       <span v-if="person.customer_name" class="cell-owner">ผู้จอง: {{ person.customer_name }}</span>
                     </td>
@@ -1229,6 +1238,54 @@
 
             <div v-else class="seat-map-container">
               <SeatMap :seat-map="seatData" :show-names="true" readonly />
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- รายชื่อ + รูปบัตรประชาชนของคนทำ Border Pass — ทีมงานใช้ยื่นด่าน -->
+    <div class="modal-overlay" v-if="borderPass.open" @click.self="borderPass.open = false">
+      <div class="modal-card" style="max-width: 760px">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">
+              <span class="material-symbols-rounded" style="vertical-align:-4px;">badge</span>
+              รายชื่อทำ Border Pass
+            </h2>
+            <p class="modal-subtitle">
+              {{ borderPass.data?.trip_title || '' }} · {{ formatDate(borderPass.data?.departure_date) }}
+              · {{ borderPass.data?.passengers?.length || 0 }} คน
+              <template v-if="borderPass.data?.missing_count"> · ยังไม่ส่งรูปบัตร {{ borderPass.data.missing_count }} คน</template>
+            </p>
+          </div>
+          <button class="modal-close" @click="borderPass.open = false">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p v-if="borderPass.loading" class="export-note">กำลังโหลด…</p>
+          <template v-else-if="borderPass.data">
+            <p class="export-note" style="margin-top:0">
+              🔒 สำเนาบัตรประชาชนใช้ยื่นด่านเท่านั้น ห้ามส่งต่อในแชท — ระบบลบไฟล์ทิ้งอัตโนมัติ
+              {{ borderPass.data.retention_days }} วันหลังจบทริป · ลิงก์รูปหมดอายุในไม่กี่นาที เปิดหน้านี้ใหม่ถ้าเปิดไม่ขึ้น
+            </p>
+            <div v-for="(person, index) in borderPass.data.passengers" :key="person.passenger_id" class="border-pass-row">
+              <div class="border-pass-info">
+                <strong>{{ index + 1 }}. {{ [person.title, person.name].filter(Boolean).join(' ') }}</strong>
+                <span>บัตร {{ person.id_card || '—' }} · เกิด {{ person.birth_date ? formatBirthDate(person.birth_date) : '—' }}</span>
+                <span class="ref-chip">{{ person.booking_ref }}</span>
+              </div>
+              <div class="border-pass-files">
+                <template v-for="side in [['front', 'ด้านหน้า'], ['back', 'ด้านหลัง']]" :key="side[0]">
+                  <a v-if="person[side[0]]" :href="person[side[0]].url" target="_blank" rel="noopener" class="border-pass-file">
+                    <img v-if="person[side[0]].is_image" :src="person[side[0]].url" :alt="side[1]" />
+                    <span v-else class="material-symbols-rounded">picture_as_pdf</span>
+                    <small>{{ side[1] }}</small>
+                  </a>
+                  <span v-else class="border-pass-file missing"><small>ยังไม่ส่ง{{ side[1] }}</small></span>
+                </template>
+              </div>
             </div>
           </template>
         </div>
@@ -2164,6 +2221,10 @@ const exportColumns = [
   { key: 'name', label: 'ชื่อ-นามสกุล', value: (p) => p.name || '' },
   { key: 'nickname', label: 'ชื่อเล่น', value: (p) => p.nickname || '' },
   { key: 'id_card', label: 'เลขบัตรประชาชน', value: (p) => p.id_card || '' },
+  { key: 'travel_document', label: 'เอกสารเดินทาง', value: (p) => ({ border_pass: 'Border Pass', passport: 'พาสปอร์ต' }[p.travel_document] || (p.passport_no ? 'พาสปอร์ต' : '')) },
+  { key: 'name_en', label: 'ชื่อภาษาอังกฤษ', value: (p) => p.name_en || '' },
+  { key: 'passport_no', label: 'เลขพาสปอร์ต', value: (p) => p.passport_no || '' },
+  { key: 'passport_expires_at', label: 'พาสปอร์ตหมดอายุ', value: (p) => p.passport_expires_at || '' },
   { key: 'birth_date', label: 'วันเกิด', value: (p) => p.birth_date || '' },
   { key: 'age', label: 'อายุ', value: (p) => p.age ?? '' },
   { key: 'phone', label: 'เบอร์โทร', value: (p) => p.phone || '' },
@@ -2249,6 +2310,25 @@ function downloadCsv(headers, rows, filename) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+// รายชื่อทำ Border Pass ของรอบ — โหลดตอนกดเปิดเท่านั้น (ลิงก์รูปบัตรเป็น signed URL
+// อายุสั้น และไม่ควรติดไปกับข้อมูลปฏิทินที่โหลดทุกรอบ)
+const borderPass = reactive({ open: false, loading: false, data: null });
+
+async function openBorderPass(sch) {
+  borderPass.open = true;
+  borderPass.loading = true;
+  borderPass.data = null;
+  try {
+    const res = await api.get(`/admin/calendar/schedules/${sch.id}/border-pass`);
+    borderPass.data = res.data.data;
+  } catch (e) {
+    borderPass.open = false;
+    alert(e.response?.data?.message || 'โหลดรายชื่อ Border Pass ไม่สำเร็จ');
+  } finally {
+    borderPass.loading = false;
+  }
 }
 
 // Scope helpers — a round, a whole trip, or everything currently shown.
@@ -4121,6 +4201,51 @@ onUnmounted(() => {
 .tiny-chip.halal {
   background: #eef2ff;
   color: #4338ca;
+}
+
+.border-pass-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+.border-pass-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 13px; }
+.border-pass-files { display: flex; gap: 8px; flex-shrink: 0; }
+.border-pass-file {
+  width: 96px;
+  height: 64px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+}
+.border-pass-file img { width: 100%; height: 100%; object-fit: cover; }
+.border-pass-file small {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 10px;
+  text-align: center;
+}
+.border-pass-file.missing { border-style: dashed; background: #fef2f2; }
+.border-pass-file.missing small { position: static; background: none; color: #b91c1c; }
+@media (max-width: 640px) {
+  .border-pass-row { flex-direction: column; }
+}
+
+.tiny-chip.border-pass {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .join-text {

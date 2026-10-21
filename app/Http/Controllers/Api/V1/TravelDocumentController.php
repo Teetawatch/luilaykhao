@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Trip;
 use App\Services\TravelDocumentService;
 use App\Support\Countries;
 use App\Traits\ApiResponse;
@@ -47,7 +48,7 @@ class TravelDocumentController extends Controller
         }
 
         if (! $this->documents->isRequired($booking)) {
-            return $this->error('ทริปนี้ไม่ต้องใช้พาสปอร์ต', 422);
+            return $this->error('ทริปนี้ไม่ต้องกรอกพาสปอร์ตล่วงหน้า', 422);
         }
 
         $validated = $request->validate([
@@ -56,6 +57,7 @@ class TravelDocumentController extends Controller
             'passengers.*.name_en' => ['nullable', 'string', 'max:100'],
             'passengers.*.passport_no' => ['nullable', 'string', 'max:20'],
             'passengers.*.passport_expires_at' => ['nullable', 'date'],
+            'passengers.*.travel_document' => ['nullable', 'in:'.Trip::DOC_PASSPORT.','.Trip::DOC_BORDER_PASS],
         ]);
 
         $rows = [];
@@ -64,6 +66,7 @@ class TravelDocumentController extends Controller
                 'name_en' => $row['name_en'] ?? '',
                 'passport_no' => $row['passport_no'] ?? '',
                 'passport_expires_at' => $row['passport_expires_at'] ?? '',
+                'travel_document' => $row['travel_document'] ?? null,
             ];
         }
 
@@ -102,6 +105,10 @@ class TravelDocumentController extends Controller
                 'nationality' => $passenger->nationality,
                 'passport_no' => $passenger->passport_no,
                 'passport_expires_at' => $passenger->passport_expires_at?->toDateString(),
+                // null เมื่อทริปไม่ได้ให้เลือก Border Pass
+                'travel_document' => $trip?->resolveTravelDocument($passenger->travel_document, $passenger->nationality),
+                'can_border_pass' => (bool) $trip?->offersBorderPass()
+                    && $this->documents->borderPassError($passenger) === null,
                 'is_missing' => in_array($passenger->id, $missingIds, true),
                 'is_expiring' => in_array($passenger->id, $expiringIds, true),
             ])->values(),

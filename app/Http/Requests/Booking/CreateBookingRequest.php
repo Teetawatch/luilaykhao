@@ -147,11 +147,15 @@ class CreateBookingRequest extends FormRequest
         // เอกสารเดินทางบังคับเฉพาะทริปต่างประเทศ และเฉพาะการจองที่รู้ตัวผู้เดินทาง
         // แล้ว — ของขวัญยังไม่รู้ว่าใครไป จึงไปเก็บตอนผู้รับกดรับแทน
         // แอปเวอร์ชันเก่ายังไม่มีช่องให้กรอก จึงบังคับไม่ได้ (ดู clientKnowsPassportFields)
-        $passportRequired = $this->isInternational()
-            && ! $this->boolean('is_gift')
-            && $this->clientKnowsPassportFields()
-            ? 'required'
-            : 'nullable';
+        // ทริปที่ใช้เอกสารฉบับจริงหน้างานไม่ต้องกรอกเลย ส่วนทริปที่ให้เลือก
+        // Border Pass บังคับเฉพาะคนที่ไม่ได้เลือก Border Pass
+        $passportRequired = match (true) {
+            ! $this->trip()?->collectsPassport(),
+            $this->boolean('is_gift'),
+            ! $this->clientKnowsPassportFields() => 'nullable',
+            $this->trip()->offersBorderPass() => 'required_unless:passengers.*.travel_document,'.Trip::DOC_BORDER_PASS,
+            default => 'required',
+        };
 
         return [
             'schedule_id' => ['required', 'exists:trip_schedules,id'],
@@ -178,6 +182,8 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.name_en' => [$passportRequired, 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z\s.\'-]+$/'],
             'passengers.*.passport_no' => [$passportRequired, 'nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]{5,20}$/'],
             'passengers.*.passport_expires_at' => [$passportRequired, 'nullable', 'date', 'after:today'],
+            // คำตอบ "มีพาสปอร์ตไหม" ของทริปที่ให้เลือก Border Pass — ทริปอื่นไม่สนค่านี้
+            'passengers.*.travel_document' => ['nullable', 'in:'.Trip::DOC_PASSPORT.','.Trip::DOC_BORDER_PASS],
             // Temporarily optional: the production mobile app does not send
             // birth_date yet. Revert to 'required' once the app ships.
             'passengers.*.birth_date' => ['nullable', 'date', 'before:today'],
@@ -268,16 +274,16 @@ class CreateBookingRequest extends FormRequest
             }
 
             $this->validateThaiPhones($validator);
+            $this->validateBorderPass($validator, $schedule->trip);
             $this->validatePassportValidity($validator, $schedule);
 
             // บังคับระบุจุดรับสำหรับการจองปกติ เมื่อรอบมีจุดขึ้นรถตั้งไว้ — กันทุกช่องทาง
             // ที่ยิงเข้ามาไม่ให้เกิดการจองที่ไม่มีจุดรับ (join trip ยกเว้น; รอบที่ไม่มีจุด
             // ตั้งไว้ก็ยกเว้นฝั่ง backend เพราะบางช่องทาง เช่น LIFF ไม่มีปุ่มปักหมุดเอง)
-            // ทริปต่างประเทศยกเว้นด้วย — นัดเจอกันที่สนามบิน ไม่มีรถตู้วิ่งรับตามภาค
-            // รอบที่บินไปก็เช่นกัน แม้ทริปจะอยู่ในประเทศ (บินไปเชียงราย) — การบิน
-            // เป็นคุณสมบัติของรอบ ไม่ใช่ของทริป
+            // รอบที่บินไปยกเว้น (นัดเจอที่สนามบิน) — การบินเป็นคุณสมบัติของรอบ ไม่ใช่
+            // ของทริป: ทริปต่างประเทศบางประเทศ (ลาว/กัมพูชา) ขับรถตู้ไปรับเหมือน
+            // ทริปในประเทศ ส่วนทริปในประเทศก็บินได้ (บินไปเชียงราย)
             if (! $this->boolean('is_join_trip')
-                && ! $schedule->trip->isInternational()
                 && ! $schedule->isFlight()
                 && $schedule->pickupPoints()->exists()) {
                 $hasBookingPickup = filled($this->input('pickup_point_id'));
@@ -391,6 +397,29 @@ class CreateBookingRequest extends FormRequest
     }
 
     /**
+     * Border Pass ออกจากบัตรประชาชนไทย — ชาวต่างชาติต้องใช้พาสปอร์ต
+     *
+     * บอกตรง ๆ ที่หน้าจอง ดีกว่าปล่อยผ่านแล้วให้ระบบนับเงียบ ๆ ว่าเป็นพาสปอร์ต
+     * ที่ยังไม่ได้กรอก (resolveTravelDocument ทำแบบนั้นกับข้อมูลที่หลุดเข้ามา)
+     */
+    private function validateBorderPass(Validator $validator, Trip $trip): void
+    {
+        if (! $trip->offersBorderPass()) {
+            return;
+        }
+
+        foreach ($this->input('passengers', []) as $index => $passenger) {
+            if (($passenger['travel_document'] ?? null) === Trip::DOC_BORDER_PASS
+                && ($passenger['nationality'] ?? Countries::HOME) !== Countries::HOME) {
+                $validator->errors()->add(
+                    "passengers.{$index}.travel_document",
+                    'Border Pass ใช้ได้เฉพาะผู้ถือสัญชาติไทย กรุณากรอกข้อมูลพาสปอร์ต'
+                );
+            }
+        }
+    }
+
+    /**
      * พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง
      *
      * เป็นเกณฑ์ที่สายการบินและด่านตรวจคนเข้าเมืองส่วนใหญ่ใช้ ถ้าปล่อยผ่านตอนจอง
@@ -398,13 +427,17 @@ class CreateBookingRequest extends FormRequest
      */
     private function validatePassportValidity(Validator $validator, TripSchedule $schedule): void
     {
-        if (! $schedule->trip?->isInternational() || ! $schedule->departure_date) {
+        if (! $schedule->trip?->collectsPassport() || ! $schedule->departure_date) {
             return;
         }
 
         $minimumExpiry = $schedule->departure_date->copy()->addMonths(self::PASSPORT_VALIDITY_MONTHS);
 
         foreach ($this->input('passengers', []) as $index => $passenger) {
+            if (! $schedule->trip->needsPassportFor($passenger['travel_document'] ?? null, $passenger['nationality'] ?? null)) {
+                continue; // เลือกให้ทีมงานทำ Border Pass — เล่มเก่าที่ติดมาไม่ต้องตรวจ
+            }
+
             $expiresAt = $passenger['passport_expires_at'] ?? null;
             if (blank($expiresAt)) {
                 continue; // ความจำเป็นของช่องนี้ให้ rules() ตัดสิน

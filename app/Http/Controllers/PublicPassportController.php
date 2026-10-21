@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Services\BookingDocumentService;
 use App\Services\TravelDocumentService;
+use App\Support\TripDocumentRequirements;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -23,7 +25,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class PublicPassportController extends Controller
 {
-    public function __construct(private readonly TravelDocumentService $documents) {}
+    public function __construct(
+        private readonly TravelDocumentService $documents,
+        private readonly BookingDocumentService $files,
+    ) {}
 
     public function show(string $token): View
     {
@@ -32,6 +37,12 @@ class PublicPassportController extends Controller
         return view('passport.booking', [
             'booking' => $booking,
             'minExpiry' => $this->documents->minimumExpiry($booking)?->toDateString(),
+            // บัตรหน้า/หลังที่แนบไว้แล้วของแต่ละคน [passenger_id => [key => true]]
+            'idFiles' => $booking->documents
+                ->whereIn('requirement_key', TripDocumentRequirements::BORDER_PASS_KEYS)
+                ->groupBy('booking_passenger_id')
+                ->map(fn ($rows) => $rows->pluck('requirement_key')->flip()->map(fn () => true)->all())
+                ->all(),
         ]);
     }
 
@@ -39,12 +50,45 @@ class PublicPassportController extends Controller
     {
         $booking = $this->resolveBooking($token);
 
+        // ไฟล์บัตรประชาชน (Border Pass) — ตรวจชนิด/ขนาดก่อนแตะอะไรทั้งนั้น
+        $request->validate([
+            'border_pass_front' => ['nullable', 'array'],
+            'border_pass_back' => ['nullable', 'array'],
+            'border_pass_front.*' => ['nullable', 'file', 'mimes:'.implode(',', BookingDocumentService::ALLOWED_MIMES), 'max:'.BookingDocumentService::MAX_SIZE_KB],
+            'border_pass_back.*' => ['nullable', 'file', 'mimes:'.implode(',', BookingDocumentService::ALLOWED_MIMES), 'max:'.BookingDocumentService::MAX_SIZE_KB],
+        ], [
+            'border_pass_front.*.mimes' => 'บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น',
+            'border_pass_back.*.mimes' => 'บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น',
+            'border_pass_front.*.max' => 'ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB',
+            'border_pass_back.*.max' => 'ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB',
+        ]);
+
         $result = $this->documents->apply($booking, $this->rowsFrom($request));
 
         if ($result['errors']) {
             return back()->withInput()->withErrors([
                 'passengers' => reset($result['errors']),
             ]);
+        }
+
+        // แนบหลังบันทึกคำตอบแล้ว — ไฟล์บัตรรับเฉพาะคนที่ตอนนี้เป็น Border Pass
+        $booking->load(['passengers', 'documents']);
+        foreach ([
+            'border_pass_front' => TripDocumentRequirements::BORDER_PASS_FRONT,
+            'border_pass_back' => TripDocumentRequirements::BORDER_PASS_BACK,
+        ] as $field => $key) {
+            foreach ((array) $request->file($field, []) as $passengerId => $file) {
+                $passenger = $booking->passengers->firstWhere('id', (int) $passengerId);
+                if (! $passenger || ! $file) {
+                    continue;
+                }
+
+                try {
+                    $this->files->store($booking, $passenger, $key, $file, $booking->user_id);
+                } catch (\Exception $e) {
+                    return back()->withErrors(['passengers' => "{$passenger->name}: {$e->getMessage()}"]);
+                }
+            }
         }
 
         return redirect()
@@ -60,7 +104,7 @@ class PublicPassportController extends Controller
      */
     private function rowsFrom(Request $request): array
     {
-        $fields = ['name_en', 'passport_no', 'passport_expires_at'];
+        $fields = ['name_en', 'passport_no', 'passport_expires_at', 'travel_document'];
         $rows = [];
 
         foreach ($fields as $field) {
@@ -84,7 +128,7 @@ class PublicPassportController extends Controller
     private function resolveBooking(string $token): Booking
     {
         $booking = Booking::where('passport_token', trim($token))
-            ->with(['passengers', 'schedule.trip', 'user'])
+            ->with(['passengers', 'documents', 'schedule.trip', 'user'])
             ->first();
 
         if (! $booking || $booking->status === 'cancelled' || ! $this->documents->isRequired($booking)) {

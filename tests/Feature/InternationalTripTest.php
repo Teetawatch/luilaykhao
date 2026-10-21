@@ -205,12 +205,13 @@ class InternationalTripTest extends TestCase
             ]);
     }
 
-    public function test_pickup_point_is_not_required_on_an_international_trip(): void
+    public function test_pickup_point_is_not_required_on_a_flight_round(): void
     {
         $user = User::factory()->create();
         $schedule = $this->makeSchedule();
+        $schedule->update(['transport_type' => 'flight']);
 
-        // รอบมีจุดขึ้นรถตั้งไว้ แต่ทริปบินออกนอกประเทศ — นัดเจอกันที่สนามบิน
+        // รอบมีจุดตั้งไว้ แต่รอบนี้บินไป — นัดเจอกันที่สนามบิน ไม่มีรถไปรับ
         SchedulePickupPoint::create([
             'schedule_id' => $schedule->id,
             'region' => 'central',
@@ -222,6 +223,37 @@ class InternationalTripTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->postJson('/api/v1/bookings', [
                 'schedule_id' => $schedule->id,
+                'passengers' => [$this->passenger()],
+            ])
+            ->assertCreated();
+    }
+
+    public function test_an_international_van_round_still_requires_a_pickup_point(): void
+    {
+        $user = User::factory()->create();
+        // ลาวใต้ขับรถตู้ไปรับเหมือนทริปในประเทศ — จุดรับต้องบังคับเหมือนกัน
+        $schedule = $this->makeSchedule(['country_code' => 'LA']);
+
+        $point = SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id,
+            'region' => 'bangkok',
+            'region_label' => 'กรุงเทพฯ',
+            'pickup_location' => 'หมอชิต',
+            'price' => 55000,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'passengers' => [$this->passenger()],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['pickup_point_id']);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/bookings', [
+                'schedule_id' => $schedule->id,
+                'pickup_point_id' => $point->id,
                 'passengers' => [$this->passenger()],
             ])
             ->assertCreated();

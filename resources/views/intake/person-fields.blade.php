@@ -1,5 +1,5 @@
 {{-- ช่องข้อมูลของผู้เดินทางหนึ่งคน ใช้ร่วมกันทั้งหน้าลิงก์ทีมงานและหน้ากลุ่ม --}}
-@php($isInternational = $isInternational ?? false)
+@php($docMode = $docMode ?? null)
 @php($pickupPoints = $pickupPoints ?? collect())
 @php($seatMap = $seatMap ?? null)
 @php($rentalItems = $rentalItems ?? [])
@@ -48,13 +48,47 @@
            placeholder="สำหรับส่งใบเสร็จและกำหนดการ" value="{{ old('email') }}">
 </div>
 
-@if ($isInternational)
+@if ($docMode === \App\Models\Trip::DOCS_ON_SITE)
+    <div class="step">
+        <span class="n">@include('intake.icon', ['name' => 'globe'])</span>
+        <h2>เอกสารเดินทาง</h2>
+        <span class="rule"></span>
+    </div>
+    <p class="step-note">ไม่ต้องกรอกล่วงหน้า วันเดินทางนำเอกสารเดินทางฉบับจริงมาแสดงกับทีมงาน</p>
+@elseif ($docMode)
     {{-- ทริปต่างประเทศ: ข้อมูลชุดนี้เอาไปออกตั๋วเครื่องบินตรง ๆ --}}
     <div class="step">
         <span class="n">@include('intake.icon', ['name' => 'globe'])</span>
         <h2>เอกสารเดินทาง</h2>
         <span class="rule"></span>
     </div>
+
+    @if ($docMode === \App\Models\Trip::DOCS_PASSPORT_OR_BORDER_PASS)
+        <div class="f">
+            <span class="field" style="display:block">ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้ คุณมีพาสปอร์ตไหม <span class="req">*</span></span>
+            <div class="pills">
+                @foreach (['passport' => 'มีพาสปอร์ต', 'border_pass' => 'ไม่มี ให้ทีมงานทำ Border Pass'] as $value => $label)
+                    <label class="pill">
+                        <input type="radio" name="travel_document" data-doc-choice value="{{ $value }}" required
+                               @checked(old('travel_document') === $value)>
+                        <span>{{ $label }}</span>
+                    </label>
+                @endforeach
+            </div>
+            <div class="hint" data-border-pass-note hidden>
+                ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนของคุณ วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย
+                — ด่านขอรูปบัตรประชาชนด้านหน้าและด้านหลังเป็นหลักฐาน
+                @include('partials.border-pass-id-upload', [
+                    'frontName' => 'border_pass_front',
+                    'backName' => 'border_pass_back',
+                    'hasFront' => false,
+                    'hasBack' => false,
+                ])
+            </div>
+        </div>
+    @endif
+
+    <div data-passport-fields>
     <p class="step-note">กรอกให้ตรงกับหน้าพาสปอร์ตทุกตัวอักษร เพราะใช้ออกตั๋วเครื่องบิน แก้ทีหลังมีค่าธรรมเนียม</p>
 
     <div class="f">
@@ -78,6 +112,7 @@
         </div>
     </div>
     <p class="hint" style="margin-top:-9px;margin-bottom:15px">ต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง</p>
+    </div>
 @endif
 
 @if ($pickupPoints->isNotEmpty())

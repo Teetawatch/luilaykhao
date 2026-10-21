@@ -648,18 +648,22 @@ class Booking extends Model
     }
 
     /**
-     * ผู้เดินทางที่ยังขาดเอกสารเดินทาง — ว่างเสมอสำหรับทริปในประเทศ
+     * ผู้เดินทางที่ยังขาดเอกสารเดินทาง — ว่างเสมอสำหรับทริปในประเทศ และทริปที่
+     * ใช้เอกสารฉบับจริงหน้างาน คนที่เลือกให้ทีมงานทำ Border Pass ก็ไม่นับ
      *
      * ครบ = มีทั้งชื่อภาษาอังกฤษ เลขพาสปอร์ต และวันหมดอายุ ขาดอย่างใดอย่างหนึ่ง
      * ก็ออกตั๋วไม่ได้ จึงนับว่ายังไม่ครบทั้งคน
      */
     public function passengersMissingPassport(): Collection
     {
-        if (! $this->schedule?->trip?->isInternational()) {
+        $trip = $this->schedule?->trip;
+        if (! $trip?->collectsPassport()) {
             return collect();
         }
 
-        return $this->passengers->filter(fn ($passenger) => blank($passenger->name_en)
+        return $this->passengers
+            ->filter(fn ($passenger) => $trip->needsPassportFor($passenger->travel_document, $passenger->nationality))
+            ->filter(fn ($passenger) => blank($passenger->name_en)
             || blank($passenger->passport_no)
             || blank($passenger->passport_expires_at));
     }

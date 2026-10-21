@@ -68,8 +68,13 @@
                 <span class="progress-pill" :class="{ done: row.missing_count === 0 }">
                   {{ row.filled_count }}/{{ row.total_passengers }} คน
                 </span>
-                <span class="missing-tag">ขาด {{ row.missing_count }}</span>
-                <div class="cell-sub">{{ (row.missing_names || []).join(', ') }}</div>
+                <span v-if="row.missing_count" class="missing-tag">ขาดพาสปอร์ต {{ row.missing_count }}</span>
+                <div v-if="row.missing_count" class="cell-sub">{{ (row.missing_names || []).join(', ') }}</div>
+                <!-- คนทำ Border Pass ที่ยังไม่ส่งรูปบัตรประชาชนหน้า/หลัง — ด่านบังคับใช้ -->
+                <template v-if="row.missing_id_names?.length">
+                  <span class="missing-tag">ขาดรูปบัตร (Border Pass) {{ row.missing_id_names.length }}</span>
+                  <div class="cell-sub">{{ row.missing_id_names.join(', ') }}</div>
+                </template>
               </td>
               <td style="text-align:right;">
                 <button class="btn-primary btn-sm" @click="copyLink(row)">

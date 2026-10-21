@@ -598,7 +598,7 @@ class BookingService
                 BookingPassenger::create([
                     'booking_id' => $booking->id,
                     'pickup_point_id' => $resolvedPickupPoint?->id,
-                    ...array_diff_key($passengerData, ['pickup_point_id' => null]),
+                    ...$schedule->trip->applyTravelDocument(array_diff_key($passengerData, ['pickup_point_id' => null])),
                 ]);
             }
 

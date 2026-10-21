@@ -838,11 +838,12 @@ function renderBookingPeople(pane, booking) {
     </div></div>`));
   });
 
-  // เอกสารแนบ — ทริปที่ขอเอกสารไว้ ยังตามส่งทีหลังได้จากที่นี่
-  const requirements = booking.schedule?.trip?.document_requirements || [];
-  if (requirements.length) {
+  // เอกสารแนบ — ทริปที่ขอเอกสารไว้ (รวมบัตรประชาชนของคนทำ Border Pass) ยังตามส่ง
+  // ทีหลังได้จากที่นี่ รายการรายคนมาจากเซิร์ฟเวอร์ ไม่เดาเองว่าใครต้องแนบอะไร
+  const trip = booking.schedule?.trip || {};
+  if ((trip.document_requirements || []).length || (trip.border_pass_documents || []).length) {
     pane.appendChild(el(`<div class="section-heading">เอกสารแนบ</div>`));
-    pane.appendChild(bookingDocuments(booking, requirements, passengers));
+    pane.appendChild(bookingDocuments(booking, passengers));
   }
 
   if (booking.viewer_is_owner !== false && booking.status !== 'cancelled') {
@@ -923,32 +924,39 @@ async function sendBookingInvite(booking, btn) {
   await shareToLine(text, invite.invite_url, 'ส่งคำเชิญแล้ว', 'คัดลอกลิงก์คำเชิญแล้ว');
 }
 
-function bookingDocuments(booking, requirements, passengers) {
+function bookingDocuments(booking, passengers) {
   const wrap = el(`<div></div>`);
   wrap.appendChild(el(`<div class="loading-inline"><div class="spinner"></div></div>`));
 
   api('/bookings/' + encodeURIComponent(booking.booking_ref) + '/documents')
     .then((res) => {
       if (!wrap.isConnected) return;
-      const documents = Array.isArray(res.data) ? res.data : (res.data?.documents ?? []);
+      // BookingDocumentService::payload — รายการที่ขอจากแต่ละคนพร้อมไฟล์ที่แนบแล้ว
+      const rows = res.data?.passengers || [];
       wrap.innerHTML = '';
 
-      passengers.forEach((p, i) => {
+      rows.forEach((row) => {
+        const requirements = row.requirements || [];
+        if (!requirements.length) return;
+        const index = passengers.findIndex((p) => p.id === row.passenger_id);
+        const who = passengers[index] || {};
         const card = el(`<div class="card"><div class="body">
-          <div class="pax-head">คนที่ ${i + 1} · ${esc(p.nickname || p.name || '')}</div>
+          <div class="pax-head">คนที่ ${index + 1} · ${esc(who.nickname || row.name || '')}</div>
         </div></div>`);
         const body = card.querySelector('.body');
 
         requirements.forEach((doc) => {
-          const mine = documents.filter((d) => d.passenger_id === p.id && d.requirement_key === doc.key);
-          const block = el(`<div class="doc-block">
+          const files = doc.files || [];
+          const block = el(`<div class="doc-block${doc.is_missing ? ' has-error' : ''}">
             <div class="doc-head">${esc(doc.label)}${doc.required ? ' <span class="req">*</span>' : ''}</div>
+            ${doc.note ? `<p class="muted">${esc(doc.note)}</p>` : ''}
             <div class="doc-list"></div>
           </div>`);
           const list = block.querySelector('.doc-list');
-          mine.forEach((d) => list.appendChild(el(`<div class="doc-file"><span>${esc(d.original_name || d.file_name || 'ไฟล์')}</span></div>`)));
-          if (!mine.length) list.appendChild(el(`<p class="muted">ยังไม่ได้แนบ</p>`));
+          files.forEach((f) => list.appendChild(el(`<div class="doc-file"><span>${esc(f.original_name || 'ไฟล์')}</span></div>`)));
+          if (!files.length) list.appendChild(el(`<p class="muted">ยังไม่ได้แนบ</p>`));
 
+          const single = doc.for === 'border_pass';
           const input = el(`<input type="file" accept="image/*,.pdf,application/pdf">`);
           input.onchange = async () => {
             const file = input.files?.[0];
@@ -956,7 +964,7 @@ function bookingDocuments(booking, requirements, passengers) {
             if (!file) return;
             if (file.size > 10 * 1024 * 1024) return alert(`"${file.name}" ใหญ่เกิน 10 MB`);
             const form = new FormData();
-            form.append('passenger_id', p.id);
+            form.append('passenger_id', row.passenger_id);
             form.append('requirement_key', doc.key);
             form.append('file', file);
             try {
@@ -966,11 +974,14 @@ function bookingDocuments(booking, requirements, passengers) {
               alert(e.message);
             }
           };
+          if (single && files.length) block.appendChild(el(`<small class="field-hint">เลือกไฟล์ใหม่เพื่อแทนที่รูปเดิม</small>`));
           block.appendChild(input);
           body.appendChild(block);
         });
         wrap.appendChild(card);
       });
+
+      if (!wrap.children.length) wrap.appendChild(el(`<p class="muted">ใบจองนี้ไม่มีเอกสารที่ต้องแนบ</p>`));
     })
     .catch(() => { wrap.innerHTML = '<p class="muted">โหลดรายการเอกสารไม่สำเร็จ</p>'; });
 
@@ -1723,6 +1734,12 @@ async function showHandoverClaim(token, errors = {}, values = null) {
   const titles = trip.is_women_only ? ['นาง', 'นางสาว'] : ['นาย', 'นาง', 'นางสาว'];
   if (!titles.includes(v.title)) v.title = '';
   const isThai = (v.nationality || 'TH') === 'TH';
+  // passport | passport_or_border_pass | on_site — backend รุ่นก่อนที่ไม่ส่งมา = พาสปอร์ต
+  const docMode = trip.travel_document_mode ?? (trip.is_international ? 'passport' : null);
+  const collectsPassport = ['passport', 'passport_or_border_pass'].includes(docMode);
+  // Border Pass ออกจากบัตรประชาชนไทย — คนต่างชาติไม่มีตัวเลือกนี้
+  const canBorderPass = docMode === 'passport_or_border_pass' && isThai;
+  const showPassport = collectsPassport && (!canBorderPass || v.travel_document === 'passport');
 
   const node = el(`<div></div>`);
   node.appendChild(appbar('รับที่นั่งต่อ', () => showTrips()));
@@ -1764,9 +1781,15 @@ async function showHandoverClaim(token, errors = {}, values = null) {
     ${field(isThai ? 'ชื่อ-นามสกุล (ภาษาไทยตามบัตร)' : 'ชื่อ-นามสกุล', input('name'), err('name'))}
     ${field('ชื่อเล่น', input('nickname'), err('nickname'))}
     ${isThai ? field('เลขบัตรประชาชน', input('id_card', 'text', 'inputmode="numeric" maxlength="17"'), err('id_card')) : ''}
-    ${trip.is_international ? field('ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)', input('name_en'), err('name_en')) : ''}
-    ${trip.is_international ? field('เลขที่พาสปอร์ต', input('passport_no'), err('passport_no')) : ''}
-    ${trip.is_international ? field('วันหมดอายุพาสปอร์ต', input('passport_expires_at', 'date'), err('passport_expires_at')) : ''}
+    ${docMode === 'on_site' ? '<p class="muted">เอกสารเดินทางไม่ต้องกรอกล่วงหน้า วันเดินทางนำฉบับจริงมาแสดงกับทีมงาน</p>' : ''}
+    ${canBorderPass ? field('ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้ — มีพาสปอร์ตไหม', `<select name="travel_document">
+      <option value="">เลือก</option>
+      <option value="passport" ${v.travel_document === 'passport' ? 'selected' : ''}>มีพาสปอร์ต</option>
+      <option value="border_pass" ${v.travel_document === 'border_pass' ? 'selected' : ''}>ไม่มี · ให้ทีมงานทำ Border Pass</option>
+    </select>${v.travel_document === 'border_pass' ? '<small class="field-hint">ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนด้านบน วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย</small>' : ''}`, err('travel_document')) : ''}
+    ${showPassport ? field('ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)', input('name_en'), err('name_en')) : ''}
+    ${showPassport ? field('เลขที่พาสปอร์ต', input('passport_no'), err('passport_no')) : ''}
+    ${showPassport ? field('วันหมดอายุพาสปอร์ต', input('passport_expires_at', 'date'), err('passport_expires_at')) : ''}
     ${field('วันเกิด', input('birth_date', 'date'), err('birth_date'))}
     ${field('กรุ๊ปเลือด', `<select name="blood_group"><option value="">เลือก</option>${opt(['A', 'B', 'O', 'AB'], v.blood_group)}</select>`, err('blood_group'))}
     ${field('เบอร์โทร', input('phone', 'tel'), err('phone'))}
@@ -1788,15 +1811,26 @@ async function showHandoverClaim(token, errors = {}, values = null) {
     <button class="btn" type="submit">รับที่นั่งนี้</button>
   </div></form>`);
 
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-    const fd = new FormData(form);
-    const next = Object.fromEntries(fd.entries());
+  const readForm = () => {
+    const next = { ...v, ...Object.fromEntries(new FormData(form).entries()) };
     next.accept_terms = !!form.querySelector('input[name="accept_terms"]').checked;
     if (!trip.is_international) next.nationality = 'TH';
+    return next;
+  };
+
+  // คำตอบ "มีพาสปอร์ตไหม" กาง/ซ่อนช่องพาสปอร์ต — วาดฟอร์มใหม่โดยเก็บค่าที่กรอกไว้
+  const docSelect = form.querySelector('select[name="travel_document"]');
+  if (docSelect) docSelect.onchange = () => showHandoverClaim(token, {}, readForm());
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const next = readForm();
 
     if (next.halal_food === '') {
       return showHandoverClaim(token, { halal_food: 'กรุณาระบุว่าทานอาหารฮาลาลหรือไม่' }, next);
+    }
+    if (canBorderPass && !next.travel_document) {
+      return showHandoverClaim(token, { travel_document: 'กรุณาเลือกว่ามีพาสปอร์ต หรือให้ทีมงานทำ Border Pass' }, next);
     }
 
     const payload = {
@@ -1807,11 +1841,12 @@ async function showHandoverClaim(token, errors = {}, values = null) {
       terms_version: preview.terms?.version,
       channel: 'liff',
     };
-    if (!trip.is_international) {
+    if (!showPassport) {
       delete payload.name_en;
       delete payload.passport_no;
       delete payload.passport_expires_at;
     }
+    if (!canBorderPass) delete payload.travel_document;
     if (payload.nationality !== 'TH') delete payload.id_card;
 
     const btn = form.querySelector('button[type="submit"]');

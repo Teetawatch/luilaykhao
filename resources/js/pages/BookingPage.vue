@@ -895,17 +895,49 @@
                   </p>
                 </div>
 
+                <!-- ทริปที่ทีมงานตรวจเอกสารฉบับจริงหน้างาน — ไม่มีอะไรให้กรอก แค่บอกให้รู้ -->
+                <div v-if="travelDocumentMode === 'on_site'" class="rounded-2xl border-2 border-amber-200 bg-amber-50/50 p-4 flex items-start gap-2">
+                  <span class="material-symbols-rounded text-[20px] text-amber-600">badge</span>
+                  <div>
+                    <p class="text-sm font-bold text-gray-900">เอกสารเดินทาง</p>
+                    <p class="text-xs text-gray-600 mt-0.5">ไม่ต้องกรอกล่วงหน้า วันเดินทางนำเอกสารเดินทางฉบับจริงมาแสดงกับทีมงาน</p>
+                  </div>
+                </div>
+
                 <!-- เอกสารเดินทาง — ข้อมูลชุดนี้เอาไปออกตั๋วเครื่องบินตรง ๆ
                      สะกดผิดแม้ตัวเดียวคือขึ้นเครื่องไม่ได้ จึงแยกกล่องให้เห็นชัด -->
-                <div v-if="isInternational" class="rounded-2xl border-2 border-amber-200 bg-amber-50/50 p-4 space-y-4">
+                <div v-if="collectsPassport" class="rounded-2xl border-2 border-amber-200 bg-amber-50/50 p-4 space-y-4">
                   <div class="flex items-start gap-2">
                     <span class="material-symbols-rounded text-[20px] text-amber-600">flight_takeoff</span>
                     <div>
                       <p class="text-sm font-bold text-gray-900">เอกสารเดินทาง</p>
-                      <p class="text-xs text-gray-600 mt-0.5">กรอกให้ตรงกับหน้าพาสปอร์ตทุกตัวอักษร เพราะใช้ออกตั๋วเครื่องบิน</p>
+                      <p class="text-xs text-gray-600 mt-0.5">
+                        {{ canChooseBorderPass(p) ? 'ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้' : 'กรอกให้ตรงกับหน้าพาสปอร์ตทุกตัวอักษร เพราะใช้ออกตั๋วเครื่องบิน' }}
+                      </p>
                     </div>
                   </div>
 
+                  <!-- Border Pass ออกจากบัตรประชาชนไทย — คนต่างชาติไม่เห็นตัวเลือกนี้ -->
+                  <div v-if="canChooseBorderPass(p)">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">มีพาสปอร์ตไหม <span class="text-red-500">*</span></label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button v-for="opt in travelDocumentOptions" :key="opt.value" type="button"
+                        @click="p.travel_document = opt.value"
+                        class="text-left rounded-2xl border-2 px-4 py-3 transition-all"
+                        :class="p.travel_document === opt.value ? 'border-teal-600 bg-teal-50' : 'border-gray-200 bg-white hover:border-gray-300'">
+                        <span class="block text-sm font-bold text-gray-900">{{ opt.label }}</span>
+                        <span class="block text-xs text-gray-500 mt-0.5">{{ opt.hint }}</span>
+                      </button>
+                    </div>
+                    <p v-if="showErr(i, 'travel_document')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'travel_document') }}
+                    </p>
+                    <p v-else-if="p.travel_document === 'border_pass'" class="text-xs text-gray-600 mt-2">
+                      ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนด้านบน วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย
+                    </p>
+                  </div>
+
+                  <template v-if="needsPassport(p) && (!canChooseBorderPass(p) || p.travel_document === 'passport')">
                   <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต) <span class="text-red-500">*</span></label>
                     <input v-model="p.name_en" type="text" required placeholder="SOMCHAI JAIDEE"
@@ -939,6 +971,7 @@
                     </p>
                     <p v-else class="text-xs text-gray-500 mt-2">ต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง</p>
                   </div>
+                  </template>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">วัน/เดือน/ปีเกิด (พ.ศ.) <span class="text-red-500">*</span></label>
@@ -1086,7 +1119,7 @@
 
                 <!-- เอกสารแนบที่ทริปนี้ขอ — รายการและข้อความ "ใช้สำหรับ..."
                      มาจากที่แอดมินตั้งไว้บนทริป ไฟล์อัปโหลดจริงหลังสร้างการจอง -->
-                <div v-if="documentRequirements.length" class="md:col-span-2 rounded-2xl border-2 border-violet-200 bg-violet-50/50 p-4 space-y-4">
+                <div v-if="passengerDocRequirements(p).length" class="md:col-span-2 rounded-2xl border-2 border-violet-200 bg-violet-50/50 p-4 space-y-4">
                   <div class="flex items-start gap-2">
                     <span class="material-symbols-rounded text-[20px] text-violet-600">attach_file</span>
                     <div>
@@ -1095,7 +1128,7 @@
                     </div>
                   </div>
 
-                  <div v-for="doc in documentRequirements" :key="doc.key">
+                  <div v-for="doc in passengerDocRequirements(p)" :key="doc.key">
                     <label class="block text-sm font-bold text-gray-700">
                       {{ doc.label }}
                       <span v-if="doc.required" class="text-red-500">*</span>
@@ -1118,12 +1151,12 @@
                       </div>
                     </div>
 
-                    <label v-if="docFiles(i, doc.key).length < MAX_DOC_FILES"
+                    <label v-if="docFiles(i, doc.key).length < maxDocFiles(doc)"
                       class="mt-2 flex items-center justify-center gap-2 w-full py-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all font-bold text-sm"
                       :class="showErr(i, `doc:${doc.key}`) ? 'border-red-300 text-red-500 bg-red-50/40' : 'border-violet-200 text-violet-600 bg-white hover:border-violet-400'">
                       <span class="material-symbols-rounded text-[18px]">upload_file</span>
                       {{ docFiles(i, doc.key).length ? 'แนบไฟล์เพิ่ม' : 'เลือกไฟล์' }}
-                      <input type="file" class="hidden" :accept="ACCEPTED_DOC_TYPES" multiple
+                      <input type="file" class="hidden" :accept="ACCEPTED_DOC_TYPES" :multiple="maxDocFiles(doc) > 1"
                         @change="addDocFiles(i, doc.key, $event)" />
                     </label>
 
@@ -1899,15 +1932,24 @@ const seatSelectionDisabledReason = computed(() =>
   isJoinTrip.value ? '' : (seatsStore.seatMap?.seat_selection_disabled_reason || ''));
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
 const isInternational = computed(() => schedule.value?.trip?.is_international === true);
+// เอกสารเดินทางที่ทริปนี้ถาม — passport | passport_or_border_pass | on_site
+// (backend เก่าที่ยังไม่ส่งค่านี้ = พาสปอร์ตเหมือนเดิม)
+const travelDocumentMode = computed(() => schedule.value?.trip?.travel_document_mode
+  ?? (isInternational.value ? 'passport' : null));
+const collectsPassport = computed(() => ['passport', 'passport_or_border_pass'].includes(travelDocumentMode.value));
+const travelDocumentOptions = [
+  { value: 'passport', label: 'มีพาสปอร์ต', hint: 'อายุเหลือเกิน 6 เดือนนับจากวันเดินทาง' },
+  { value: 'border_pass', label: 'ไม่มี ให้ทีมงานทำ Border Pass', hint: 'ใช้เลขบัตรประชาชน ไม่ต้องกรอกเพิ่ม' },
+];
 // รอบที่บินไปไม่มีรถวิ่งรับเช่นกัน — การบินเป็นคุณสมบัติของ "รอบ" ไม่ใช่ของทริป
 // (ทริปในประเทศก็บินได้) จึงต้องเช็คแยกจาก is_international
 const isFlightSchedule = computed(() => schedule.value?.transport_type === 'flight');
-// ทริปต่างประเทศนัดเจอกันที่สนามบิน ไม่มีรถตู้วิ่งรับตามภาค — ขั้นตอนเลือกจุดรับ
-// จึงไม่มีอะไรให้เลือกและต้องข้ามไป (backend ยกเว้นให้ตรงกัน)
+// ขั้นตอนเลือกจุดรับมีเฉพาะรอบที่รถไปรับ — รอบที่บินไปนัดเจอที่สนามบิน (backend
+// ยกเว้นให้ตรงกัน) ส่วนทริปต่างประเทศที่ขับรถตู้ไป (ลาว/กัมพูชา) ต้องเลือกจุดรับ
+// เหมือนทริปในประเทศ — เช็คจากรอบ ไม่ใช่จากปลายทาง
 const isTrekking = computed(() =>
   schedule.value?.trip?.type === 'trekking'
   && !isJoinTrip.value
-  && !isInternational.value
   && !isFlightSchedule.value);
 
 // วันหมดอายุพาสปอร์ตที่เร็วที่สุดที่ยังใช้เดินทางรอบนี้ได้ = วันเดินทาง + 6 เดือน
@@ -2116,7 +2158,7 @@ const rentalOptions = computed(() => {
 });
 
 const passengers = ref([{
-  title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
+  title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_phone: '',
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null, pickup_point_id: null
 }]);
@@ -2282,7 +2324,7 @@ watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
   while (passengers.value.length < n) {
     passengers.value.push({
-      title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
+      title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
       health_notes: '', emergency_contact: '', emergency_phone: '',
       dive_cert_level: '', cert_number: '', weight: null, halal_food: null,
       pickup_point_id: selectedPickup.value?.id ?? null
@@ -2502,6 +2544,17 @@ function isThaiTraveller(p) {
   return !isInternational.value || p.nationality === 'TH';
 }
 
+// Border Pass ออกให้คนสัญชาติไทยเท่านั้น — ตรงกับ Trip::resolveTravelDocument
+function canChooseBorderPass(p) {
+  return travelDocumentMode.value === 'passport_or_border_pass' && p.nationality === 'TH';
+}
+
+// คนนี้ต้องกรอกพาสปอร์ตไหม — ยังไม่ได้เลือกก็นับว่าต้อง (ฝั่ง backend ทำแบบเดียวกัน)
+function needsPassport(p) {
+  if (!collectsPassport.value) return false;
+  return !(canChooseBorderPass(p) && p.travel_document === 'border_pass');
+}
+
 // ── เอกสารแนบที่ทริปขอ ───────────────────────────────────────────────────
 // รายการมาจากที่แอดมินตั้งไว้บนทริป (ชื่อเอกสาร + หมายเหตุ "ใช้สำหรับ...")
 // ไฟล์ถูกเก็บไว้ในหน้าจอก่อน แล้วอัปโหลดหลังการจองถูกสร้าง — ตอนกรอกฟอร์ม
@@ -2511,6 +2564,19 @@ const MAX_DOC_MB = 10;
 const ACCEPTED_DOC_TYPES = 'image/*,.pdf,application/pdf';
 
 const documentRequirements = computed(() => schedule.value?.trip?.document_requirements || []);
+// บัตรประชาชนหน้า/หลัง — ด่านบังคับใช้เป็นหลักฐาน ขอเฉพาะคนที่เลือก Border Pass
+const borderPassDocuments = computed(() => schedule.value?.trip?.border_pass_documents || []);
+
+/** เอกสารที่ต้องขอจากผู้เดินทางคนนี้ — ของทุกคน + บัตรประชาชนถ้าเลือก Border Pass */
+function passengerDocRequirements(p) {
+  const borderPass = canChooseBorderPass(p) && p.travel_document === 'border_pass';
+  return borderPass ? [...documentRequirements.value, ...borderPassDocuments.value] : documentRequirements.value;
+}
+
+// บัตรหน้า/หลังมีได้ด้านละไฟล์เดียว (เลือกใหม่ = แทนที่) ฝั่งเซิร์ฟเวอร์ทำแบบเดียวกัน
+function maxDocFiles(doc) {
+  return doc.for === 'border_pass' ? 1 : MAX_DOC_FILES;
+}
 
 // ไฟล์รอส่ง: index ของผู้เดินทาง → { requirement_key: File[] }
 // อยู่นอก passengers เพราะ File ลง sessionStorage (ร่างการจอง) ไม่ได้
@@ -2531,8 +2597,9 @@ function addDocFiles(i, key, event) {
   event.target.value = '';
   if (!picked.length) return;
 
-  const current = [...docFiles(i, key)];
-  for (const file of picked) {
+  const isIdCard = borderPassDocuments.value.some((doc) => doc.key === key);
+  const current = isIdCard ? [] : [...docFiles(i, key)];
+  for (const file of isIdCard ? picked.slice(-1) : picked) {
     if (current.length >= MAX_DOC_FILES) {
       toast.error(`แนบได้สูงสุด ${MAX_DOC_FILES} ไฟล์ต่อเอกสารหนึ่งรายการ`);
       break;
@@ -2569,14 +2636,12 @@ function removeDocFile(i, key, index) {
  * เพราะเน็ตหลุดตอนอัปโหลด ตามไปแนบใหม่ได้จากหน้ารายละเอียดการจอง
  */
 async function uploadBookingDocuments(bookingRef, createdPassengers) {
-  if (!documentRequirements.value.length) return;
-
   let failed = 0;
   for (let i = 0; i < passengers.value.length; i++) {
     const passengerId = createdPassengers?.[i]?.id;
     if (!passengerId) continue;
 
-    for (const doc of documentRequirements.value) {
+    for (const doc of passengerDocRequirements(passengers.value[i])) {
       for (const file of docFiles(i, doc.key)) {
         const form = new FormData();
         form.append('passenger_id', passengerId);
@@ -2616,7 +2681,9 @@ function computePassengerErrors(p, i) {
     if (!hasExactDigits(p.id_card, 13)) errors.id_card = 'กรุณากรอกเลขบัตรประชาชน 13 หลัก';
     else if (!isValidThaiId(p.id_card)) errors.id_card = 'เลขบัตรประชาชนไม่ถูกต้อง ลองตรวจสอบอีกครั้งครับ';
   }
-  if (isInternational.value) {
+  if (canChooseBorderPass(p) && !p.travel_document) {
+    errors.travel_document = 'กรุณาเลือกว่ามีพาสปอร์ต หรือให้ทีมงานทำ Border Pass';
+  } else if (needsPassport(p)) {
     if (!hasText(p.name_en)) errors.name_en = 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษตามพาสปอร์ต';
     else if (!/^[A-Za-z\s.'-]+$/.test(p.name_en)) errors.name_en = 'กรอกได้เฉพาะตัวอักษรภาษาอังกฤษ';
     if (!hasText(p.passport_no)) errors.passport_no = 'กรุณากรอกเลขที่พาสปอร์ต';
@@ -2647,7 +2714,7 @@ function computePassengerErrors(p, i) {
   // เมื่อผู้ใช้ปักหมุดจุดรับเอง (customPickup) ถือว่าเลือกจุดรับแล้ว ไม่ต้องบังคับจุดที่กำหนดไว้
   if (pickupPoints.value.length && !p.pickup_point_id && !customPickup.value) errors.pickup_point_id = 'กรุณาเลือกจุดขึ้นรถ';
   // เอกสารที่แอดมินตั้งเป็น "บังคับแนบ" — นับเป็นช่องที่ยังกรอกไม่ครบเหมือนช่องอื่น
-  for (const doc of documentRequirements.value) {
+  for (const doc of passengerDocRequirements(p)) {
     if (doc.required && !docFiles(i, doc.key).length) {
       errors[`doc:${doc.key}`] = `กรุณาแนบ${doc.label}`;
     }
@@ -2985,10 +3052,11 @@ async function createBooking() {
         nickname: String(p.nickname || '').trim(),
         // digitsOnly ใช้ได้เฉพาะกับเบอร์ไทย — เบอร์ต่างประเทศมี + นำหน้าที่ตัดทิ้งไม่ได้
         id_card: isThaiTraveller(p) ? digitsOnly(p.id_card) : null,
-        name_en: isInternational.value ? String(p.name_en || '').trim().toUpperCase() : null,
+        name_en: needsPassport(p) ? String(p.name_en || '').trim().toUpperCase() : null,
         nationality: isInternational.value ? (p.nationality || 'TH') : 'TH',
-        passport_no: isInternational.value ? String(p.passport_no || '').trim().toUpperCase() : null,
-        passport_expires_at: isInternational.value ? (p.passport_expires_at || null) : null,
+        passport_no: needsPassport(p) ? String(p.passport_no || '').trim().toUpperCase() : null,
+        passport_expires_at: needsPassport(p) ? (p.passport_expires_at || null) : null,
+        travel_document: canChooseBorderPass(p) ? (p.travel_document || null) : null,
         birth_date: p.birth_date || null,
         phone: isThaiTraveller(p) ? digitsOnly(p.phone) : String(p.phone || '').trim(),
         email: p.email ? String(p.email).trim() : null,

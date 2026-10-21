@@ -6,12 +6,15 @@ use App\Models\Booking;
 use App\Models\CustomerIntake;
 use App\Models\IntakeLink;
 use App\Models\SchedulePickupPoint;
+use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Rules\ThaiIdCard;
 use App\Rules\ThaiName;
+use App\Services\BookingDocumentService;
 use App\Services\CustomerIntakeService;
 use App\Services\IntakeBookingService;
 use App\Services\IntakeSeatService;
+use App\Support\Countries;
 use App\Support\LegalPolicy;
 use App\Support\TripRentalItems;
 use Carbon\Carbon;
@@ -222,8 +225,9 @@ class PublicIntakeController extends Controller
         $selectableSeats = $this->seats->selectableSeatIds($seatSchedule, $isJoin, $request->input('phone'));
         // ทริปต่างประเทศต้องได้เอกสารเดินทางตั้งแต่ตอนนี้ ไม่งั้นแอดมินก็ต้อง
         // กลับไปไล่ถามในแชทอยู่ดี ซึ่งคือปัญหาเดิมที่หน้านี้ตั้งใจแก้
-        $isInternational = (bool) $schedule?->trip?->isInternational();
-        $passportRule = $isInternational ? 'required' : 'nullable';
+        // (เว้นทริปที่ใช้ฉบับจริงหน้างาน และคนที่เลือกให้ทีมงานทำ Border Pass)
+        $passportRule = $schedule?->trip?->passportRule() ?? 'nullable';
+        $offersBorderPass = (bool) $schedule?->trip?->offersBorderPass();
 
         // ทุกช่องในฟอร์มนี้บังคับกรอก — ข้อมูลชุดนี้ไปทำประกันและใช้ดูแลลูกค้า
         // ระหว่างทริป ช่องที่ปล่อยว่างได้คือช่องที่ทีมงานต้องกลับไปไล่ถามในแชท
@@ -245,6 +249,19 @@ class PublicIntakeController extends Controller
             'name_en' => [$passportRule, 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z\s.\'-]+$/'],
             'passport_no' => [$passportRule, 'nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]{5,20}$/'],
             'passport_expires_at' => [$passportRule, 'nullable', 'date', 'after:today'],
+            // ผู้กรอกเป็นคนไทยเสมอ (บังคับบัตรประชาชนไทย) จึงเลือก Border Pass ได้ทุกคน
+            'travel_document' => $offersBorderPass
+                ? ['required', Rule::in([Trip::DOC_PASSPORT, Trip::DOC_BORDER_PASS])]
+                : ['nullable', Rule::in([Trip::DOC_PASSPORT, Trip::DOC_BORDER_PASS])],
+            // ด่านขอรูปบัตรประชาชนหน้า/หลังเป็นหลักฐานทำ Border Pass
+            'border_pass_front' => [
+                ...($offersBorderPass ? ['required_if:travel_document,'.Trip::DOC_BORDER_PASS] : []),
+                'nullable', 'file', 'mimes:'.implode(',', BookingDocumentService::ALLOWED_MIMES), 'max:'.BookingDocumentService::MAX_SIZE_KB,
+            ],
+            'border_pass_back' => [
+                ...($offersBorderPass ? ['required_if:travel_document,'.Trip::DOC_BORDER_PASS] : []),
+                'nullable', 'file', 'mimes:'.implode(',', BookingDocumentService::ALLOWED_MIMES), 'max:'.BookingDocumentService::MAX_SIZE_KB,
+            ],
             'emergency_contact' => ['required', 'string', 'max:120'],
             'emergency_phone' => ['required', 'string', 'max:20'],
             'allergies' => ['required', 'string', 'max:500'],
@@ -294,6 +311,13 @@ class PublicIntakeController extends Controller
             'passport_no.regex' => 'เลขที่พาสปอร์ตไม่ถูกต้อง',
             'passport_expires_at.required' => 'กรุณาระบุวันหมดอายุพาสปอร์ต',
             'passport_expires_at.after' => 'พาสปอร์ตหมดอายุแล้ว',
+            'travel_document.required' => 'กรุณาเลือกว่ามีพาสปอร์ตหรือให้ทีมงานทำ Border Pass',
+            'border_pass_front.required_if' => 'กรุณาแนบรูปบัตรประชาชนด้านหน้า ด่านใช้เป็นหลักฐานทำ Border Pass',
+            'border_pass_back.required_if' => 'กรุณาแนบรูปบัตรประชาชนด้านหลัง ด่านใช้เป็นหลักฐานทำ Border Pass',
+            'border_pass_front.mimes' => 'บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น',
+            'border_pass_back.mimes' => 'บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น',
+            'border_pass_front.max' => 'ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB',
+            'border_pass_back.max' => 'ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB',
         ]);
 
         // ที่นั่งเป็นของ "คัน" ไม่ใช่ของรอบ — คันมาจากฝั่งเรา ไม่ใช่จากเบราว์เซอร์
@@ -319,7 +343,8 @@ class PublicIntakeController extends Controller
     /** เกณฑ์ 6 เดือนเดียวกับตอนจอง — ตกตั้งแต่ตอนนี้ดีกว่าไปตกตอนออกตั๋ว */
     private function passportWindowError(array $data, ?TripSchedule $schedule): ?string
     {
-        if (! $schedule?->trip?->isInternational() || blank($data['passport_expires_at'] ?? null)) {
+        if (! $schedule?->trip?->needsPassportFor($data['travel_document'] ?? null, Countries::HOME)
+            || blank($data['passport_expires_at'] ?? null)) {
             return null;
         }
 

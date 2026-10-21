@@ -1057,6 +1057,8 @@ Route::prefix('v1')->group(function () {
         // Calendar
         Route::get('calendar/schedules', [AdminExtendedController::class, 'calendarSchedules']);
         Route::get('calendar/schedules/{id}/payments', [AdminExtendedController::class, 'schedulePayments'])->whereNumber('id');
+        // รายชื่อ + รูปบัตรประชาชนหน้า/หลังของคนทำ Border Pass ทั้งรอบ — ใช้ยื่นด่าน
+        Route::get('calendar/schedules/{id}/border-pass', [AdminExtendedController::class, 'borderPassList'])->whereNumber('id');
 
         // Inline edit of a manifest passenger (e.g. backfill birth date)
         Route::patch('passengers/{id}', [AdminExtendedController::class, 'updatePassenger'])->whereNumber('id');

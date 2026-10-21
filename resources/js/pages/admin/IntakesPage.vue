@@ -557,6 +557,15 @@
                     <template v-if="person.seat_lost">· ถูกใช้ไปแล้ว ต้องเลือกใหม่</template>
                   </div>
                   <!-- ของใครบ้าง — ยอดรวมอยู่ด้านบนแล้ว บรรทัดนี้ไว้ตอบตอนแจกของหน้างาน -->
+                  <!-- ทริปที่ให้เลือก Border Pass — รายชื่อคนที่ทีมงานต้องยื่นทำให้ -->
+                  <div v-if="person.travel_document === 'border_pass'" class="cell-sub doc">
+                    <span class="material-symbols-rounded">badge</span>
+                    ทีมงานทำ Border Pass ให้
+                  </div>
+                  <div v-else-if="person.has_passport" class="cell-sub doc">
+                    <span class="material-symbols-rounded">menu_book</span>
+                    กรอกพาสปอร์ตแล้ว
+                  </div>
                   <div v-if="person.rentals?.length" class="cell-sub rental">
                     <span class="material-symbols-rounded">backpack</span>
                     {{ person.rentals.map((item) => `${item.name} ×${item.quantity}`).join(' · ') }}
@@ -1339,6 +1348,8 @@ tr.inactive { opacity: .5; }
 .seat.lost { color: #b91c1c; font-weight: 600; }
 .rental { display: flex; align-items: center; gap: 4px; color: #0369a1; }
 .rental .material-symbols-rounded { font-size: 14px; }
+.doc { display: flex; align-items: center; gap: 4px; color: #92400e; }
+.doc .material-symbols-rounded { font-size: 14px; }
 .rentals { list-style: none; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
 .rentals li {
   display: flex; align-items: center; gap: 8px;

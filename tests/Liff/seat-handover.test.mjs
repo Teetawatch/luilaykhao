@@ -154,6 +154,47 @@ console.log('\n▶ คนรับเปิดลิงก์ ?handover=');
     assert(world.$('input[name="id_card"]').value === '1101700230700', 'ค่าที่กรอกหาย');
   });
 }
+
+console.log('\n▶ รับที่นั่งทริปลาวใต้ (พาสปอร์ต หรือ Border Pass)');
+{
+  const world = makeWorld(base({
+    'GET /seat-handovers/tok123': { data: { ...PREVIEW, trip: { ...PREVIEW.trip, is_international: true, travel_document_mode: 'passport_or_border_pass' } } },
+    'POST /seat-handovers/tok123/claim': { data: { booking_ref: REF, schedule_id: 50, trip_title: 'ลาวใต้' } },
+    [`GET /bookings/${REF}`]: { data: booking(null) },
+  }), { quiet: true, search: '?handover=tok123' });
+  await wait(120);
+
+  step('ถามก่อนว่ามีพาสปอร์ตไหม ยังไม่มีช่องพาสปอร์ต', () => {
+    assert(world.$('select[name="travel_document"]'), 'ไม่มีตัวเลือกเอกสาร');
+    assert(!world.$('input[name="passport_no"]'), 'ยังไม่ควรมีช่องพาสปอร์ต');
+  });
+
+  world.$('input[name="nickname"]').value = 'นะ';
+  world.$('select[name="travel_document"]').value = 'border_pass';
+  world.$('select[name="travel_document"]').dispatchEvent(new world.w.Event('change'));
+  await wait(150);
+
+  step('เลือก Border Pass แล้วค่าที่กรอกไว้ไม่หาย และไม่มีช่องพาสปอร์ต', () => {
+    assert(world.$('input[name="nickname"]').value === 'นะ', 'ค่าที่กรอกหาย');
+    assert(world.text().includes('ทีมงานยื่นทำ Border Pass'), 'ไม่บอกว่าทีมงานทำให้');
+    assert(!world.$('input[name="passport_no"]'), 'ไม่ควรมีช่องพาสปอร์ต');
+  });
+
+  world.$('select[name="title"]').value = 'นาย';
+  world.$('input[name="id_card"]').value = '1101700230700';
+  world.$('select[name="halal_food"]').value = '0';
+  world.$('input[name="accept_terms"]').checked = true;
+  world.$('form.handover-form').dispatchEvent(new world.w.Event('submit', { cancelable: true }));
+  await wait(150);
+
+  step('ส่ง travel_document=border_pass โดยไม่มีเลขพาสปอร์ต', () => {
+    const sent = world.bodies.find((b) => b.key === 'POST /seat-handovers/tok123/claim');
+    assert(sent, 'ไม่ได้ยิง claim');
+    const body = JSON.parse(sent.body);
+    assert(body.travel_document === 'border_pass', sent.body);
+    assert(!('passport_no' in body), sent.body);
+  });
+}
 {
   const world = makeWorld(base({
     'GET /seat-handovers/tok123': { data: PREVIEW },

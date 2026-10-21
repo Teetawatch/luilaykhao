@@ -187,6 +187,94 @@ console.log('\n▶ ทริปต่างประเทศ (รอบบิ�
   });
 }
 
+/* ═══════════ ฉาก 3b: ลาวใต้ — รถตู้ + พาสปอร์ตหรือ Border Pass ═══════════ */
+console.log('\n▶ ทริปต่างประเทศ (รถตู้ + Border Pass)');
+{
+  const trip = TRIP({ is_international: true, destination_type: 'international', country_label: 'ลาว',
+    travel_document_mode: 'passport_or_border_pass',
+    border_pass_documents: [
+      { key: 'border-pass-id-front', label: 'บัตรประชาชน (ด้านหน้า)', note: 'ใช้ยื่นด่านเท่านั้น', required: true, for: 'border_pass' },
+      { key: 'border-pass-id-back', label: 'บัตรประชาชน (ด้านหลัง)', note: 'ใช้ยื่นด่านเท่านั้น', required: true, for: 'border_pass' },
+    ] });
+  const schedule = SCHEDULE({ join_trip_enabled: false });
+  const { w, text } = makeWorld({
+    'POST /auth/line/liff': { data: { token: 'x' } },
+    'GET /sale-campaign/active': { data: null },
+    'GET /referral': { data: { enabled: false } },
+    'GET /trips/t/related': { data: [] },
+    'GET /trips': { data: [trip], meta: { current_page: 1, last_page: 1, total: 1 } },
+    'GET /trips/t': { data: trip },
+    'GET /trips/t/schedules': { data: [schedule] },
+    'GET /schedules/9': { data: schedule },
+    'GET /schedules/9/seats': { data: { has_seat_map: false, available_seats: 8, total_seats: 10 } },
+    'GET /countries': { data: [{ code: 'TH', name: 'ไทย', flag: '🇹🇭' }, { code: 'JP', name: 'ญี่ปุ่น', flag: '🇯🇵' }] },
+  });
+  await wait(60);
+  w.document.querySelector('.card').dispatchEvent(new w.Event('click'));
+  await wait(60);
+  [...w.document.querySelectorAll('.schedule-actions .btn')][0].dispatchEvent(new w.Event('click'));
+  await wait(80);
+  w.document.getElementById('next').dispatchEvent(new w.Event('click'));
+  await wait(60);
+  const docBtn = (value) => w.document.querySelector(`#pax-0 [data-doc="${value}"]`);
+  step('ถามก่อนว่ามีพาสปอร์ตไหม ยังไม่กางช่องพาสปอร์ต', () => {
+    assert(docBtn('border_pass'), 'ไม่มีตัวเลือก Border Pass');
+    assert(!text().includes('เลขที่พาสปอร์ต'), 'ยังไม่ควรมีช่องพาสปอร์ต');
+    assert(!text().includes('บัตรประชาชน (ด้านหน้า)'), 'ยังไม่ควรขอรูปบัตร');
+  });
+  step('เลือก Border Pass แล้วขอรูปบัตรหน้า/หลังแทนพาสปอร์ต', () => {
+    docBtn('border_pass').dispatchEvent(new w.Event('click'));
+    assert(text().includes('ทีมงานยื่นทำ Border Pass'), 'ไม่บอกว่าทีมงานทำให้');
+    assert(!text().includes('เลขที่พาสปอร์ต'), 'ไม่ควรมีช่องพาสปอร์ต');
+    assert(text().includes('บัตรประชาชน (ด้านหน้า)') && text().includes('บัตรประชาชน (ด้านหลัง)'), 'ไม่ขอรูปบัตร');
+    const input = w.document.querySelector('#pax-0 .doc-block input[type="file"]');
+    assert(input && !input.multiple, 'รูปบัตรต้องเลือกได้ด้านละไฟล์เดียว');
+  });
+  step('เปลี่ยนเป็นมีพาสปอร์ต แล้วช่องพาสปอร์ตกางออก ไม่ขอรูปบัตรแล้ว', () => {
+    docBtn('passport').dispatchEvent(new w.Event('click'));
+    assert(text().includes('เลขที่พาสปอร์ต'), 'ไม่มีช่องพาสปอร์ต');
+    assert(!text().includes('บัตรประชาชน (ด้านหน้า)'), 'คนมีพาสปอร์ตไม่ต้องแนบบัตร');
+  });
+  step('ชาวต่างชาติไม่มีตัวเลือก Border Pass', () => {
+    const nat = w.document.querySelector('#pax-0 [data-f="nationality"]');
+    nat.innerHTML = '<option value="TH">ไทย</option><option value="JP">ญี่ปุ่น</option>';
+    nat.value = 'JP';
+    nat.dispatchEvent(new w.Event('change'));
+    assert(!docBtn('border_pass'), 'คนต่างชาติไม่ควรเลือก Border Pass ได้');
+    assert(text().includes('เลขที่พาสปอร์ต'), 'คนต่างชาติต้องกรอกพาสปอร์ต');
+  });
+}
+
+/* ═══════════ ฉาก 3c: ใช้เอกสารฉบับจริงหน้างาน ═══════════ */
+console.log('\n▶ ทริปต่างประเทศ (เอกสารฉบับจริงหน้างาน)');
+{
+  const trip = TRIP({ is_international: true, destination_type: 'international', travel_document_mode: 'on_site' });
+  const schedule = SCHEDULE({ join_trip_enabled: false });
+  const { w, text } = makeWorld({
+    'POST /auth/line/liff': { data: { token: 'x' } },
+    'GET /sale-campaign/active': { data: null },
+    'GET /referral': { data: { enabled: false } },
+    'GET /trips/t/related': { data: [] },
+    'GET /trips': { data: [trip], meta: { current_page: 1, last_page: 1, total: 1 } },
+    'GET /trips/t': { data: trip },
+    'GET /trips/t/schedules': { data: [schedule] },
+    'GET /schedules/9': { data: schedule },
+    'GET /schedules/9/seats': { data: { has_seat_map: false, available_seats: 8, total_seats: 10 } },
+    'GET /countries': { data: [{ code: 'TH', name: 'ไทย', flag: '🇹🇭' }] },
+  });
+  await wait(60);
+  w.document.querySelector('.card').dispatchEvent(new w.Event('click'));
+  await wait(60);
+  [...w.document.querySelectorAll('.schedule-actions .btn')][0].dispatchEvent(new w.Event('click'));
+  await wait(80);
+  w.document.getElementById('next').dispatchEvent(new w.Event('click'));
+  await wait(60);
+  step('ไม่มีช่องพาสปอร์ต มีแค่คำแนะนำให้พกฉบับจริง', () => {
+    assert(text().includes('นำเอกสารเดินทางฉบับจริง'), 'ไม่บอกให้พกฉบับจริง');
+    assert(!text().includes('เลขที่พาสปอร์ต'), 'ไม่ควรมีช่องพาสปอร์ต');
+  });
+}
+
 /* ═══════════ ฉาก 4: รอบเต็ม → คิวรอที่นั่ง ═══════════ */
 console.log('\n▶ รอบเต็ม / คิวรอ');
 {

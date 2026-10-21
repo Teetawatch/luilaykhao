@@ -4,11 +4,16 @@ namespace App\Services;
 
 use App\Jobs\NotifyStalledIntakesJob;
 use App\Models\Booking;
+use App\Models\BookingDocument;
 use App\Models\CustomerIntake;
 use App\Models\CustomerIntakePerson;
 use App\Models\IntakeLink;
+use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Support\MediaDisk;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * รับข้อมูลที่ลูกค้ากรอกเองผ่านลิงก์ แล้วเก็บไว้จนกว่าแอดมินจะดึงไปเปิดการจอง
@@ -225,6 +230,11 @@ class CustomerIntakeService
             'nationality' => $data['nationality'] ?? null,
             'passport_no' => filled($data['passport_no'] ?? null) ? mb_strtoupper($data['passport_no']) : null,
             'passport_expires_at' => $data['passport_expires_at'] ?? null,
+            // คำตอบ "มีพาสปอร์ตไหม" — ตอนเปิดใบจอง Trip::applyTravelDocument ตัดสินอีกที
+            // ตามโหมดของทริป (ทริปที่ไม่ได้ให้เลือก Border Pass จะไม่เก็บค่านี้)
+            'travel_document' => in_array($data['travel_document'] ?? null, [Trip::DOC_PASSPORT, Trip::DOC_BORDER_PASS], true)
+                ? $data['travel_document']
+                : null,
             'emergency_contact' => $data['emergency_contact'] ?? null,
             'emergency_phone' => $this->normalisePhone($data['emergency_phone'] ?? '') ?: null,
             'allergies' => $data['allergies'] ?? null,
@@ -236,6 +246,8 @@ class CustomerIntakeService
             'consent_ip' => $data['consent_ip'] ?? null,
             'consent_text' => CustomerIntakePerson::CONSENT_TEXT,
         ])->save();
+
+        $this->syncIdFiles($person, $data);
 
         return $person;
     }
@@ -287,5 +299,59 @@ class CustomerIntakeService
         }
 
         return $existing."\n".trim($incoming);
+    }
+
+    /**
+     * รูปบัตรประชาชนหน้า/หลังของคนทำ Border Pass — ด่านบังคับใช้เป็นหลักฐาน
+     *
+     * กรอกซ้ำโดยไม่แนบใหม่ = ใช้ไฟล์เดิม แนบใหม่ = แทนที่ เปลี่ยนไปใช้พาสปอร์ต = ลบทิ้ง
+     * (ไม่ถือสำเนาบัตรของคนที่ไม่ต้องใช้) ไฟล์อยู่ใต้ booking-documents/ บนดิสก์
+     * ส่วนตัว เปิดได้ผ่าน signed URL อายุสั้นเท่านั้น
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function syncIdFiles(CustomerIntakePerson $person, array $data): void
+    {
+        $borderPass = ($data['travel_document'] ?? null) === Trip::DOC_BORDER_PASS;
+        $fields = [
+            'border_pass_front' => 'border_pass_front_path',
+            'border_pass_back' => 'border_pass_back_path',
+        ];
+        $stale = [];
+
+        foreach ($fields as $field => $column) {
+            $old = $person->{$column};
+            $file = $data[$field] ?? null;
+
+            $new = match (true) {
+                ! $borderPass => null,
+                $file instanceof UploadedFile => $file->store('booking-documents/intake/'.date('Y/m'), MediaDisk::slipDisk()) ?: $old,
+                default => $old,
+            };
+
+            if ($new !== $old) {
+                $person->forceFill([$column => $new]);
+                if ($old) {
+                    $stale[] = $old;
+                }
+            }
+        }
+
+        if ($person->isDirty()) {
+            $person->save();
+        }
+
+        foreach ($stale as $path) {
+            // ไฟล์ที่ผูกเข้าใบจองไปแล้วให้ใบจองถือต่อ
+            if (BookingDocument::where('file_path', $path)->exists()) {
+                continue;
+            }
+
+            try {
+                Storage::disk(MediaDisk::slipDisk())->delete($path);
+            } catch (\Throwable) {
+                // ไฟล์ค้างไม่ควรทำให้ลูกค้ากรอกไม่ผ่าน
+            }
+        }
     }
 }

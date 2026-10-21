@@ -772,6 +772,10 @@
                   <InfoItem label="โทร" :value="passenger.phone || '-'" />
                   <InfoItem label="อีเมล" :value="passenger.email || '-'" />
                   <InfoItem label="บัตรประชาชน" :value="passenger.id_card || '-'" />
+                  <!-- ทริปต่างประเทศ: Border Pass (ทีมงานยื่นทำให้) หรือพาสปอร์ตที่กรอกมา -->
+                  <InfoItem v-if="passenger.travel_document === 'border_pass'" label="เอกสารเดินทาง" value="ทีมงานทำ Border Pass ให้" />
+                  <InfoItem v-else-if="passenger.passport_no" label="พาสปอร์ต"
+                    :value="`${passenger.passport_no}${passenger.name_en ? ` · ${passenger.name_en}` : ''}${passenger.passport_expires_at ? ` · หมดอายุ ${passenger.passport_expires_at}` : ''}`" wide />
                   <InfoItem label="กรุ๊ปเลือด" :value="passenger.blood_group || '-'" />
                   <InfoItem label="น้ำหนัก" :value="passenger.weight ? `${passenger.weight} กก.` : '-'" />
                   <InfoItem label="ผู้ติดต่อฉุกเฉิน" :value="passenger.emergency_contact || '-'" />

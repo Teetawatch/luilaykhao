@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\ExpirePendingBookingsJob;
 use App\Models\Booking;
+use App\Models\BookingDocument;
 use App\Models\BookingSeat;
 use App\Models\BookingTermAcceptance;
 use App\Models\CustomerIntake;
@@ -13,10 +14,12 @@ use App\Models\SmsLog;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\BookingDocumentService;
 use App\Services\BookingService;
 use App\Services\IntakeBookingService;
 use App\Services\SlipOcrService;
 use App\Support\MediaDisk;
+use App\Support\TripDocumentRequirements;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -152,6 +155,62 @@ class IntakeSelfBookingTest extends TestCase
             'seat_id' => $seatId,
             'passenger_name' => 'ลูกค้าที่จองเอง',
         ]);
+    }
+
+    public function test_a_laos_group_books_itself_with_border_pass_and_passport(): void
+    {
+        // ลาวใต้: รถตู้ไปรับ + ใช้พาสปอร์ตหรือ Border Pass ก็ได้
+        $schedule = $this->makeSchedule();
+        $schedule->trip->update([
+            'destination_type' => 'international',
+            'country_code' => 'LA',
+            'travel_document_mode' => Trip::DOCS_PASSPORT_OR_BORDER_PASS,
+        ]);
+        $link = $this->makeLink($schedule);
+
+        // ไม่ตอบว่ามีพาสปอร์ตไหม = กรอกไม่ผ่าน
+        $this->post("/r/{$link->token}", $this->person(['party_size' => 2]))
+            ->assertSessionHasErrors('travel_document');
+
+        // Border Pass ต้องแนบรูปบัตรประชาชนหน้า/หลัง — ด่านบังคับ
+        $this->post("/r/{$link->token}", $this->person(['party_size' => 2, 'travel_document' => 'border_pass']))
+            ->assertSessionHasErrors(['border_pass_front', 'border_pass_back']);
+
+        $this->post("/r/{$link->token}", $this->person([
+            'party_size' => 2,
+            'travel_document' => 'border_pass',
+            'border_pass_front' => UploadedFile::fake()->image('front.jpg'),
+            'border_pass_back' => UploadedFile::fake()->image('back.jpg'),
+        ]))->assertSessionHasNoErrors();
+        $intake = CustomerIntake::firstOrFail();
+        $frontPath = $intake->people()->first()->border_pass_front_path;
+        Storage::disk(MediaDisk::slipDisk())->assertExists($frontPath);
+
+        $this->post("/g/{$intake->token}", $this->person([
+            'name' => 'มานี รักเรียน',
+            'nickname' => 'มานี',
+            'phone' => '0899999999',
+            'email' => 'manee@example.com',
+            'seat_id' => 'A2',
+            'travel_document' => 'passport',
+            'name_en' => 'MANEE RAKRIAN',
+            'passport_no' => 'AA7654321',
+            'passport_expires_at' => now()->addYears(3)->toDateString(),
+        ]))->assertSessionHasNoErrors();
+
+        $this->book($intake->fresh())->assertRedirect("/g/{$intake->token}/pay");
+
+        $passengers = Booking::firstOrFail()->passengers->keyBy('name');
+        $this->assertSame('border_pass', $passengers['สมชาย ใจดี']->travel_document);
+        $this->assertSame('passport', $passengers['มานี รักเรียน']->travel_document);
+        $this->assertSame('AA7654321', $passengers['มานี รักเรียน']->passport_no);
+        $this->assertFalse(Booking::firstOrFail()->needsPassportInfo());
+
+        // รูปบัตรที่แนบกับลิงก์ผูกเข้าใบจองของคนนั้น — ใช้ไฟล์เดิม ไม่ต้องแนบซ้ำ
+        $docs = BookingDocument::where('booking_passenger_id', $passengers['สมชาย ใจดี']->id)->pluck('file_path', 'requirement_key');
+        $this->assertSame($frontPath, $docs[TripDocumentRequirements::BORDER_PASS_FRONT]);
+        $this->assertArrayHasKey(TripDocumentRequirements::BORDER_PASS_BACK, $docs->all());
+        $this->assertSame([], app(BookingDocumentService::class)->missingRequirements(Booking::firstOrFail()));
     }
 
     public function test_a_complete_group_is_offered_to_book_and_pay_right_away(): void

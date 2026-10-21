@@ -20,6 +20,8 @@ class BookingPassengerResource extends JsonResource
             'nationality' => $this->nationality,
             'passport_no' => $this->passport_no,
             'passport_expires_at' => $this->passport_expires_at?->toDateString(),
+            // passport | border_pass — มีค่าเฉพาะทริปที่ให้เลือก Border Pass
+            'travel_document' => $this->travel_document,
             'phone' => $this->phone,
             'email' => $this->email,
             'blood_group' => $this->blood_group,

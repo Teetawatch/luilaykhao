@@ -914,13 +914,25 @@ function renderTripOverview(pane, trip) {
     pane.appendChild(el(`<div class="section-heading">ข้อมูลปลายทาง</div>`));
     const rows = [];
     if (trip.visa) {
-      const visa = typeof trip.visa === 'string' ? trip.visa : (trip.visa.summary || trip.visa.note || '');
-      const days = trip.visa?.days_allowed || trip.visa?.stay_days;
-      if (visa || days) rows.push(`<div class="kv"><span class="k">วีซ่า</span><span class="v">${esc(visa || `พำนักได้ ${days} วัน`)}</span></div>`);
+      // Countries::visa() — {label, days, note}
+      const visa = typeof trip.visa === 'string' ? trip.visa : (trip.visa.label || trip.visa.note || '');
+      const days = trip.visa?.days;
+      const text = [visa, days ? `พำนักได้ ${days} วัน` : ''].filter(Boolean).join(' · ');
+      if (text) rows.push(`<div class="kv"><span class="k">วีซ่า</span><span class="v">${esc(text)}</span></div>`);
     }
-    (trip.emergency_numbers || []).forEach((n) => {
-      const label = n.label || n.name || 'เบอร์ฉุกเฉิน';
-      const number = n.number || n.value || n;
+    // เอกสารเดินทางที่ทริปนี้ใช้ — "ไม่มีพาสปอร์ตไปได้ไหม" ต้องตอบได้ก่อนกดจอง
+    const docText = {
+      passport_or_border_pass: 'พาสปอร์ต หรือ Border Pass ก็ได้ (ไม่มีพาสปอร์ต ทีมงานทำ Border Pass ให้จากเลขบัตรประชาชน)',
+      on_site: 'นำเอกสารเดินทางฉบับจริงมาในวันเดินทาง ไม่ต้องกรอกตอนจอง',
+    }[trip.travel_document_mode] || 'พาสปอร์ตเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง';
+    rows.push(`<div class="kv"><span class="k">เอกสาร</span><span class="v">${esc(docText)}</span></div>`);
+    // Countries::emergency() ส่งมาเป็น {ป้าย: เบอร์} ไม่ใช่อาเรย์ — เรียก forEach
+    // ตรง ๆ จะพังทั้งหน้า (รับอาเรย์ไว้ด้วยเผื่อรูปแบบเก่า)
+    const emergency = trip.emergency_numbers || {};
+    const emergencyRows = Array.isArray(emergency)
+      ? emergency.map((n) => [n.label || n.name || 'เบอร์ฉุกเฉิน', n.number || n.value || n])
+      : Object.entries(emergency);
+    emergencyRows.forEach(([label, number]) => {
       rows.push(`<div class="kv"><span class="k">${esc(label)}</span><span class="v">${esc(number)}</span></div>`);
     });
     if (rows.length) pane.appendChild(el(`<div class="card"><div class="body">${rows.join('')}</div></div>`));

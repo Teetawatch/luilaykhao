@@ -67,6 +67,17 @@ async function startBooking(trip, scheduleId, opts = {}) {
 
 const isFlightRound = () => bk.schedule.transport_type === 'flight';
 const isInternationalTrip = () => bk.trip?.is_international === true;
+
+// เอกสารเดินทางที่ทริปนี้ถาม — passport | passport_or_border_pass | on_site
+// (null = ในประเทศ) ตรงกับ Trip::travelDocumentMode() ฝั่ง backend
+const travelDocumentMode = () => bk.trip?.travel_document_mode
+  ?? (isInternationalTrip() ? 'passport' : null);
+const collectsPassport = () => ['passport', 'passport_or_border_pass'].includes(travelDocumentMode());
+// Border Pass ออกจากบัตรประชาชนไทย — ชาวต่างชาติไม่มีตัวเลือกนี้
+const canChooseBorderPass = (p) => travelDocumentMode() === 'passport_or_border_pass'
+  && (p.nationality || 'TH') === 'TH';
+// ยังไม่ได้เลือกก็นับว่าต้องมีพาสปอร์ต (backend ทำแบบเดียวกัน)
+const needsPassport = (p) => collectsPassport() && !(canChooseBorderPass(p) && p.travel_document === 'border_pass');
 const isDivingTrip = () => ['diving', 'snorkeling'].includes(bk.trip?.type);
 
 // ประเภทรถของรอบ — จอยทริปกับรอบที่บินไปไม่มีให้เลือก
@@ -902,7 +913,7 @@ function tickLock() {
 function blankPassenger() {
   return {
     title: '', name: '', nickname: '', id_card: '',
-    name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '',
+    name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', travel_document: '',
     birth_date: '', phone: '', email: '', blood_group: '',
     allergies: '', health_notes: '', halal_food: false,
     emergency_contact: '', emergency_phone: '',
@@ -972,6 +983,13 @@ function minPassportExpiry() {
 
 const documentRequirements = () => bk.trip?.document_requirements || [];
 
+// บัตรประชาชนหน้า/หลัง — ด่านบังคับใช้เป็นหลักฐาน ขอเฉพาะคนที่เลือก Border Pass
+// (ด้านละไฟล์เดียว เลือกใหม่ = แทนที่ ฝั่งเซิร์ฟเวอร์ทำแบบเดียวกัน)
+const passengerDocRequirements = (p) => (canChooseBorderPass(p) && p.travel_document === 'border_pass'
+  ? [...documentRequirements(), ...(bk.trip?.border_pass_documents || [])]
+  : documentRequirements());
+const maxDocFiles = (doc) => (doc.for === 'border_pass' ? 1 : MAX_DOC_FILES);
+
 function docFiles(i, key) {
   return bk.docs[i]?.[key] || [];
 }
@@ -980,7 +998,6 @@ function docFiles(i, key) {
 function passengerErrors(p, i) {
   const errors = {};
   const womenOnly = !!bk.trip?.is_women_only;
-  const international = isInternationalTrip();
   const isThai = isThaiTraveller(p);
 
   if (!p.title) errors.title = 'กรุณาเลือกคำนำหน้า';
@@ -997,7 +1014,9 @@ function passengerErrors(p, i) {
     if (!hasExactDigits(p.id_card, 13)) errors.id_card = 'กรุณากรอกเลขบัตรประชาชน 13 หลัก';
     else if (!isValidThaiId(p.id_card)) errors.id_card = 'เลขบัตรประชาชนไม่ถูกต้อง ลองตรวจสอบอีกครั้งครับ';
   }
-  if (international) {
+  if (canChooseBorderPass(p) && !p.travel_document) {
+    errors.travel_document = 'กรุณาเลือกว่ามีพาสปอร์ต หรือให้ทีมงานทำ Border Pass';
+  } else if (needsPassport(p)) {
     if (!hasText(p.name_en)) errors.name_en = 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษตามพาสปอร์ต';
     else if (!/^[A-Za-z\s.'-]+$/.test(p.name_en)) errors.name_en = 'กรอกได้เฉพาะตัวอักษรภาษาอังกฤษ';
     if (!hasText(p.passport_no)) errors.passport_no = 'กรุณากรอกเลขที่พาสปอร์ต';
@@ -1031,7 +1050,7 @@ function passengerErrors(p, i) {
   if (pickupPoints().length && !p.pickup_point_id && !bk.customPickup) {
     errors.pickup_point_id = 'กรุณาเลือกจุดขึ้นรถ';
   }
-  for (const doc of documentRequirements()) {
+  for (const doc of passengerDocRequirements(p)) {
     if (doc.required && !docFiles(i, doc.key).length) errors['doc:' + doc.key] = 'กรุณาแนบ' + doc.label;
   }
   return errors;
@@ -1141,8 +1160,19 @@ function passengerCard(p, i) {
     ${isThaiTraveller(p) ? field('เลขบัตรประชาชน (13 หลัก)',
       `<input data-f="id_card" inputmode="numeric" maxlength="13" value="${esc(p.id_card)}">`,
       errors.id_card && (bk.attempted || hasText(p.id_card)) ? errors.id_card : null) : ''}
-    ${international ? `
+    ${travelDocumentMode() === 'on_site' ? `
       <div class="pax-head">เอกสารเดินทาง</div>
+      <p class="muted">ไม่ต้องกรอกล่วงหน้า วันเดินทางนำเอกสารเดินทางฉบับจริงมาแสดงกับทีมงาน</p>
+    ` : ''}
+    ${collectsPassport() ? '<div class="pax-head">เอกสารเดินทาง</div>' : ''}
+    ${canChooseBorderPass(p) ? field('ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้ — มีพาสปอร์ตไหม', `
+      <div class="chip-row" data-role="travel-doc">
+        <button type="button" class="chip${p.travel_document === 'passport' ? ' on' : ''}" data-doc="passport">มีพาสปอร์ต</button>
+        <button type="button" class="chip${p.travel_document === 'border_pass' ? ' on' : ''}" data-doc="border_pass">ไม่มี · ทำ Border Pass</button>
+      </div>
+      ${p.travel_document === 'border_pass' ? '<small class="field-hint">ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนด้านบน วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย</small>' : ''}`,
+      show('travel_document')) : ''}
+    ${collectsPassport() && (!canChooseBorderPass(p) || p.travel_document === 'passport') ? `
       ${field('ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)', `<input data-f="name_en" maxlength="255" style="text-transform:uppercase" placeholder="SOMCHAI JAIDEE" value="${esc(p.name_en)}">`, show('name_en'))}
       ${field('เลขที่พาสปอร์ต', `<input data-f="passport_no" maxlength="20" style="text-transform:uppercase" placeholder="AA1234567" value="${esc(p.passport_no)}">`, show('passport_no'))}
       ${field('วันหมดอายุพาสปอร์ต', `<input data-f="passport_expires_at" type="date" min="${esc(minPassportExpiry())}" value="${esc(p.passport_expires_at)}">`, show('passport_expires_at'))}
@@ -1197,6 +1227,15 @@ function passengerCard(p, i) {
     fill.appendChild(copyBtn);
   }
 
+  // มีพาสปอร์ตไหม — คำตอบเปลี่ยนโครงฟอร์ม (กาง/ซ่อนช่องพาสปอร์ต) จึงวาดขั้นนี้ใหม่
+  body.querySelectorAll('[data-role="travel-doc"] [data-doc]').forEach((btn) => {
+    btn.onclick = () => {
+      p.travel_document = btn.dataset.doc;
+      saveDraft();
+      renderPassengerStep();
+    };
+  });
+
   // สัญชาติ (ทริปต่างประเทศ) — เติมรายการประเทศเมื่อโหลดเสร็จ
   const nationality = body.querySelector('[data-f="nationality"]');
   if (nationality) {
@@ -1211,7 +1250,7 @@ function passengerCard(p, i) {
 
   // เอกสารที่ทริปนี้ขอ
   const docsHost = body.querySelector('[data-role="docs"]');
-  documentRequirements().forEach((doc) => docsHost.appendChild(docBlock(i, doc, show('doc:' + doc.key))));
+  passengerDocRequirements(p).forEach((doc) => docsHost.appendChild(docBlock(i, doc, show('doc:' + doc.key))));
 
   // เก็บค่าทุกครั้งที่พิมพ์ แล้วอัปเดตข้อความผิดพลาด "ในที่" — ห้ามเรนเดอร์ทั้งขั้น
   // ตอนพิมพ์/ออกจากช่อง ไม่งั้นคีย์บอร์ดบนมือถือจะปิดและหน้าจอเด้งขึ้นบนสุดทุกครั้ง
@@ -1302,13 +1341,13 @@ function docBlock(i, doc, error) {
     list.appendChild(row);
   });
 
-  if (files.length < MAX_DOC_FILES) {
-    const input = el(`<input type="file" accept="image/*,.pdf,application/pdf" multiple>`);
+  if (files.length < maxDocFiles(doc)) {
+    const input = el(`<input type="file" accept="image/*,.pdf,application/pdf"${maxDocFiles(doc) > 1 ? ' multiple' : ''}>`);
     input.onchange = () => {
       const picked = Array.from(input.files || []);
       input.value = '';
-      const current = [...docFiles(i, doc.key)];
-      for (const file of picked) {
+      const current = maxDocFiles(doc) > 1 ? [...docFiles(i, doc.key)] : [];
+      for (const file of maxDocFiles(doc) > 1 ? picked : picked.slice(-1)) {
         if (current.length >= MAX_DOC_FILES) { alert(`แนบได้สูงสุด ${MAX_DOC_FILES} ไฟล์ต่อเอกสารหนึ่งรายการ`); break; }
         if (file.size > MAX_DOC_MB * 1024 * 1024) { alert(`"${file.name}" ใหญ่เกิน ${MAX_DOC_MB} MB`); continue; }
         if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
@@ -1765,10 +1804,11 @@ async function submitBooking(banner, btn, termsVersion) {
         nickname: String(p.nickname || '').trim(),
         // digitsOnly ใช้ได้เฉพาะเบอร์ไทย — เบอร์ต่างประเทศมี + นำหน้าที่ตัดทิ้งไม่ได้
         id_card: thai ? digitsOnly(p.id_card) : null,
-        name_en: international ? String(p.name_en || '').trim().toUpperCase() : null,
+        name_en: needsPassport(p) ? String(p.name_en || '').trim().toUpperCase() : null,
         nationality: international ? (p.nationality || 'TH') : 'TH',
-        passport_no: international ? String(p.passport_no || '').trim().toUpperCase() : null,
-        passport_expires_at: international ? (p.passport_expires_at || null) : null,
+        passport_no: needsPassport(p) ? String(p.passport_no || '').trim().toUpperCase() : null,
+        passport_expires_at: needsPassport(p) ? (p.passport_expires_at || null) : null,
+        travel_document: canChooseBorderPass(p) ? (p.travel_document || null) : null,
         birth_date: p.birth_date || null,
         phone: thai ? digitsOnly(p.phone) : String(p.phone || '').trim(),
         email: p.email ? String(p.email).trim() : null,
@@ -1839,14 +1879,11 @@ async function submitBooking(banner, btn, termsVersion) {
  * ตามไปแนบใหม่ได้จากหน้ารายละเอียดการจอง
  */
 async function uploadBookingDocuments(bookingRef, createdPassengers) {
-  const requirements = documentRequirements();
-  if (!requirements.length) return;
-
   let failed = 0;
   for (let i = 0; i < bk.passengers.length; i++) {
     const passengerId = createdPassengers?.[i]?.id;
     if (!passengerId) continue;
-    for (const doc of requirements) {
+    for (const doc of passengerDocRequirements(bk.passengers[i])) {
       for (const file of docFiles(i, doc.key)) {
         const form = new FormData();
         form.append('passenger_id', passengerId);

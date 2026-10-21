@@ -53,7 +53,7 @@
                 <option value="domestic">ในประเทศ</option>
                 <option value="international">ต่างประเทศ</option>
               </select>
-              <p class="field-hint">ทริปต่างประเทศจะบังคับเก็บพาสปอร์ตตอนจอง และข้ามขั้นตอนเลือกจุดขึ้นรถ</p>
+              <p class="field-hint">ทริปต่างประเทศเก็บเอกสารเดินทางตามที่ตั้งด้านล่าง — จุดขึ้นรถขึ้นกับรอบ (รอบที่บินไปไม่มีจุดรับ รอบรถตู้เลือกจุดรับเหมือนในประเทศ)</p>
             </div>
             <div class="form-group">
               <label>สถานที่ *</label>
@@ -79,6 +79,15 @@
                   <option value="" disabled>เลือกประเทศ</option>
                   <option v-for="c in countries" :key="c.code" :value="c.code">{{ c.flag }} {{ c.name }}</option>
                 </select>
+              </div>
+              <div class="form-group">
+                <label>เอกสารเดินทางตอนจอง</label>
+                <select v-model="form.travel_document_mode">
+                  <option value="passport">กรอกพาสปอร์ตตอนจอง</option>
+                  <option value="passport_or_border_pass">ให้เลือก: มีพาสปอร์ต หรือให้ทีมงานทำ Border Pass</option>
+                  <option value="on_site">ไม่ต้องกรอก ใช้ฉบับจริงหน้างาน</option>
+                </select>
+                <p class="field-hint">{{ travelDocumentHint }}</p>
               </div>
               <div class="form-group">
                 <label>เขตเวลาปลายทาง</label>
@@ -1119,7 +1128,7 @@ const handleMediaSelect = (data) => {
 
 const form = reactive({
   title: '', type: 'trekking', location: '', region: '', description: '',
-  destination_type: 'domestic', country_code: '', timezone: '',
+  destination_type: 'domestic', country_code: '', timezone: '', travel_document_mode: 'passport',
   difficulty: 'medium', duration_days: 1, distance_km: null, elevation_gain_m: null, max_participants: 10,
   medal_name: '', medal_icon: '', medal_color: '', medal_image: '',
   price_per_person: 0, departure_point: '', status: 'active', cover_image: '', thumbnail_image: '',
@@ -1164,6 +1173,12 @@ const normalizeArray = (value) => {
 };
 
 const isInternational = computed(() => form.destination_type === 'international');
+
+const travelDocumentHint = computed(() => ({
+  passport: 'ลูกค้าต้องกรอกชื่ออังกฤษ เลขพาสปอร์ต และวันหมดอายุ (เหลือ ≥ 6 เดือน) ก่อนจองได้',
+  passport_or_border_pass: 'เหมาะกับลาว/กัมพูชาทางบก — คนที่ไม่มีพาสปอร์ตเลือกให้ทีมงานทำ Border Pass จากเลขบัตรประชาชน รายชื่อขึ้นในหน้าภาพรวมรอบ',
+  on_site: 'ฟอร์มจองไม่ถามพาสปอร์ตเลย ระบบไม่ตามขอเอกสาร — ทีมงานตรวจฉบับจริงในวันเดินทาง',
+}[form.travel_document_mode] || ''));
 
 // ทะเบียนประเทศมาจาก backend เพื่อให้แอดมิน เว็บ และแอปเห็นรายการเดียวกัน
 const countries = ref([]);
@@ -1231,6 +1246,7 @@ const buildTripPayload = () => {
     region: isInternational.value ? '' : String(form.region || '').trim(),
     country_code: isInternational.value ? String(form.country_code || '').trim() : '',
     timezone: isInternational.value ? String(form.timezone || '').trim() : '',
+    travel_document_mode: isInternational.value ? (form.travel_document_mode || 'passport') : null,
     description: form.description ?? '',
     departure_point: String(form.departure_point || '').trim(),
     cover_image: form.cover_image || '',
@@ -2022,6 +2038,7 @@ const initData = async () => {
       form.destination_type = trip.destination_type || 'domestic';
       form.country_code = trip.country_code || '';
       form.timezone = trip.timezone || '';
+      form.travel_document_mode = trip.travel_document_mode || 'passport';
       form.latitude = trip.latitude || null;
       form.longitude = trip.longitude || null;
       form.gallery = normalizeArray(trip.gallery);

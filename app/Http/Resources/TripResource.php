@@ -6,6 +6,7 @@ use App\Models\SaleCampaign;
 use App\Models\TripSchedule;
 use App\Support\Countries;
 use App\Support\MedalDesign;
+use App\Support\TripDocumentRequirements;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -53,6 +54,9 @@ class TripResource extends JsonResource
             // ปลายทาง — ทริปเก่าทุกทริปเป็น 'domestic' โดยค่าเริ่มต้น
             'destination_type' => $this->destination_type,
             'is_international' => $this->isInternational(),
+            // เอกสารเดินทางที่ฟอร์มจองต้องถาม: passport | passport_or_border_pass |
+            // on_site (null = ทริปในประเทศ) — ทุกฟอร์มอ่านค่านี้ ไม่ต้องเดาจาก is_international
+            'travel_document_mode' => $this->travelDocumentMode(),
             'country_code' => $this->country_code,
             'country_label' => $this->countryLabel(),
             'destination_timezone' => $this->destinationTimezone(),
@@ -115,6 +119,11 @@ class TripResource extends JsonResource
             // เอกสารที่ทริปนี้ขอให้แนบตอนจอง — ส่งชุดที่จัดระเบียบแล้วเสมอ
             // หน้าจอจะได้ไม่ต้องเดาว่าแถวไหนใช้ได้
             'document_requirements' => $this->documentRequirements(),
+            // บัตรประชาชนหน้า/หลัง — ขอเฉพาะคนที่เลือก Border Pass จึงแยกจากรายการ
+            // ของทุกคน (แอปรุ่นเก่าที่ไม่รู้จักคีย์นี้จะได้ไม่บังคับทุกคนแนบบัตร)
+            'border_pass_documents' => $this->offersBorderPass()
+                ? TripDocumentRequirements::borderPass()
+                : [],
             'checkin_bring' => $this->checkinBringNote(),
             'rating' => $this->reviews()->where('is_approved', true)->avg('rating') ?: 0,
             'review_count' => $this->reviews()->where('is_approved', true)->count(),

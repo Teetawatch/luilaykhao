@@ -120,7 +120,24 @@
             <p v-if="errors.id_card" class="msg">{{ errors.id_card }}</p>
           </div>
 
-          <template v-if="isInternational">
+          <p v-if="docMode === 'on_site'" class="text-xs text-[#5f6b6b] bg-[#fff8e6] rounded-xl px-3 py-2.5">
+            เอกสารเดินทางไม่ต้องกรอกล่วงหน้า วันเดินทางนำฉบับจริงมาแสดงกับทีมงาน
+          </p>
+
+          <div v-if="canChooseBorderPass">
+            <label class="lbl">ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้ — มีพาสปอร์ตไหม</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button v-for="opt in docOptions" :key="opt.value" type="button"
+                class="inp text-left font-bold" :class="{ 'doc-picked': form.travel_document === opt.value, err: errors.travel_document }"
+                @click="form.travel_document = opt.value">{{ opt.label }}</button>
+            </div>
+            <p v-if="errors.travel_document" class="msg">{{ errors.travel_document }}</p>
+            <p v-else-if="form.travel_document === 'border_pass'" class="text-xs text-[#889696] mt-1.5">
+              ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนด้านบน วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย
+            </p>
+          </div>
+
+          <template v-if="showPassportFields">
             <div>
               <label class="lbl">ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)</label>
               <input v-model.trim="form.name_en" class="inp uppercase" :class="{ err: errors.name_en }" />
@@ -259,11 +276,21 @@ const form = reactive({
   title: '', name: '', nickname: '', nationality: 'TH', id_card: '', birth_date: '',
   phone: '', email: '', blood_group: '', halal_food: null, allergies: '', health_notes: '',
   emergency_contact: '', emergency_phone: '', name_en: '', passport_no: '', passport_expires_at: '',
-  accept_terms: false,
+  travel_document: '', accept_terms: false,
 });
 
 const isInternational = computed(() => !!preview.value?.trip?.is_international);
 const isThai = computed(() => form.nationality === 'TH');
+// passport | passport_or_border_pass | on_site — backend เก่าที่ไม่ส่งมา = พาสปอร์ต
+const docMode = computed(() => preview.value?.trip?.travel_document_mode
+  ?? (isInternational.value ? 'passport' : null));
+const canChooseBorderPass = computed(() => docMode.value === 'passport_or_border_pass' && isThai.value);
+const showPassportFields = computed(() => ['passport', 'passport_or_border_pass'].includes(docMode.value)
+  && (!canChooseBorderPass.value || form.travel_document === 'passport'));
+const docOptions = [
+  { value: 'passport', label: 'มีพาสปอร์ต' },
+  { value: 'border_pass', label: 'ไม่มี ให้ทำ Border Pass' },
+];
 const titles = computed(() => (preview.value?.trip?.is_women_only
   ? ['นาง', 'นางสาว']
   : ['นาย', 'นาง', 'นางสาว']));
@@ -289,6 +316,10 @@ async function submit() {
     errors.halal_food = 'กรุณาระบุว่าทานอาหารฮาลาลหรือไม่';
     return;
   }
+  if (canChooseBorderPass.value && !form.travel_document) {
+    errors.travel_document = 'กรุณาเลือกว่ามีพาสปอร์ต หรือให้ทีมงานทำ Border Pass';
+    return;
+  }
 
   submitting.value = true;
   try {
@@ -297,11 +328,12 @@ async function submit() {
       terms_version: preview.value?.terms?.version,
       channel: 'web',
     };
-    if (!isInternational.value) {
+    if (!showPassportFields.value) {
       delete payload.name_en;
       delete payload.passport_no;
       delete payload.passport_expires_at;
     }
+    if (!canChooseBorderPass.value) delete payload.travel_document;
     await api.post(`/seat-handovers/${route.params.token}/claim`, payload);
     toast.success('รับที่นั่งเรียบร้อย ยินดีต้อนรับสู่ทริปครับ');
     router.push('/my-bookings');
@@ -352,5 +384,6 @@ onMounted(async () => {
 .inp { width: 100%; border-radius: 12px; border: 1px solid #D5DEDE; padding: 0.625rem 0.75rem; font-size: 0.875rem; background: #fff; }
 .inp:focus { border-color: #006565; outline: none; }
 .inp.err { border-color: #F87171; }
+.inp.doc-picked { border-color: #006565; background: #E6F2F2; color: #006565; }
 .msg { font-size: 0.75rem; color: #DC2626; margin-top: -0.5rem; }
 </style>

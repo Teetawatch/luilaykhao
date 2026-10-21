@@ -29,7 +29,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('public.passenger-fill.submit', request()->route('token')) }}">
+        <form method="POST" action="{{ route('public.passenger-fill.submit', request()->route('token')) }}" enctype="multipart/form-data">
             @csrf
 
             <div class="section-label">ข้อมูลติดต่อ</div>
@@ -59,25 +59,55 @@
             <input type="email" id="email" name="email" autocomplete="email"
                    value="{{ old('email', $passenger->email) }}">
 
-            @if ($trip?->isInternational())
+            @php($offersBorderPass = $trip?->offersBorderPass() && ($passenger->nationality ?: 'TH') === 'TH')
+            @if ($trip?->collectsPassport())
                 {{-- ทริปต่างประเทศ: ข้อมูลชุดนี้เอาไปออกตั๋วเครื่องบินตรง ๆ --}}
                 <div class="section-label">เอกสารเดินทาง</div>
-                <p class="hint">กรอกให้ตรงกับหน้าพาสปอร์ตทุกตัวอักษร เพราะใช้ออกตั๋วเครื่องบิน</p>
 
-                <label class="field" for="name_en">ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)</label>
-                <input type="text" id="name_en" name="name_en" required maxlength="255"
-                       placeholder="SOMCHAI JAIDEE" style="text-transform: uppercase"
-                       value="{{ old('name_en', $passenger->name_en) }}">
+                @if ($offersBorderPass)
+                    @php($docChoice = old('travel_document', $passenger->travel_document))
+                    <p class="hint" style="margin-top:0">ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้ คุณมีพาสปอร์ตไหม</p>
+                    <label class="check">
+                        <input type="radio" name="travel_document" data-doc-choice value="passport" required @checked($docChoice === 'passport')>
+                        มีพาสปอร์ต (อายุเหลือเกิน 6 เดือน)
+                    </label>
+                    <label class="check">
+                        <input type="radio" name="travel_document" data-doc-choice value="border_pass" required @checked($docChoice === 'border_pass')>
+                        ไม่มี ให้ทีมงานทำ Border Pass ให้
+                    </label>
+                    <div class="hint" data-border-pass-note hidden style="margin-top:0">
+                        ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนด้านล่าง วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย
+                        — ด่านขอรูปบัตรประชาชนด้านหน้าและด้านหลังเป็นหลักฐาน
+                        @include('partials.border-pass-id-upload', [
+                            'frontName' => 'border_pass_front',
+                            'backName' => 'border_pass_back',
+                            'hasFront' => $idFiles[\App\Support\TripDocumentRequirements::BORDER_PASS_FRONT] ?? false,
+                            'hasBack' => $idFiles[\App\Support\TripDocumentRequirements::BORDER_PASS_BACK] ?? false,
+                        ])
+                    </div>
+                @endif
 
-                <label class="field" for="passport_no">เลขที่พาสปอร์ต</label>
-                <input type="text" id="passport_no" name="passport_no" required maxlength="20"
-                       placeholder="AA1234567" style="text-transform: uppercase"
-                       value="{{ old('passport_no', $passenger->passport_no) }}">
+                <div data-passport-fields>
+                    <p class="hint" style="margin-top:0">กรอกให้ตรงกับหน้าพาสปอร์ตทุกตัวอักษร</p>
 
-                <label class="field" for="passport_expires_at">วันหมดอายุพาสปอร์ต</label>
-                <input type="date" id="passport_expires_at" name="passport_expires_at" required
-                       value="{{ old('passport_expires_at', $passenger->passport_expires_at?->toDateString()) }}">
-                <p class="hint">ต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง</p>
+                    <label class="field" for="name_en">ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)</label>
+                    <input type="text" id="name_en" name="name_en" required maxlength="255"
+                           placeholder="SOMCHAI JAIDEE" style="text-transform: uppercase"
+                           value="{{ old('name_en', $passenger->name_en) }}">
+
+                    <label class="field" for="passport_no">เลขที่พาสปอร์ต</label>
+                    <input type="text" id="passport_no" name="passport_no" required maxlength="20"
+                           placeholder="AA1234567" style="text-transform: uppercase"
+                           value="{{ old('passport_no', $passenger->passport_no) }}">
+
+                    <label class="field" for="passport_expires_at">วันหมดอายุพาสปอร์ต</label>
+                    <input type="date" id="passport_expires_at" name="passport_expires_at" required
+                           value="{{ old('passport_expires_at', $passenger->passport_expires_at?->toDateString()) }}">
+                    <p class="hint">ต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง</p>
+                </div>
+            @elseif ($trip?->travelDocumentMode() === \App\Models\Trip::DOCS_ON_SITE)
+                <div class="section-label">เอกสารเดินทาง</div>
+                <p class="hint" style="margin-top:0">ไม่ต้องกรอกล่วงหน้า วันเดินทางนำเอกสารเดินทางฉบับจริงมาแสดงกับทีมงาน</p>
             @endif
 
             <div class="section-label">ข้อมูลสำหรับประกันการเดินทาง</div>
@@ -140,6 +170,7 @@
                 ลิงก์นี้ใช้ได้ครั้งเดียวและจะใช้ไม่ได้อีกหลังกดบันทึก
             </p>
         </form>
+        @include('partials.travel-document-toggle')
     </div>
 </div>
 @endsection

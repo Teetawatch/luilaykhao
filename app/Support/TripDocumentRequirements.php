@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Jobs\PurgeBorderPassDocumentsJob;
 use Illuminate\Support\Str;
 
 /**
@@ -14,6 +15,54 @@ use Illuminate\Support\Str;
  */
 class TripDocumentRequirements
 {
+    /** ใช้กับผู้เดินทางทุกคน — เอกสารที่แอดมินตั้งเองบนทริป */
+    public const FOR_ALL = 'all';
+
+    /** ใช้เฉพาะคนที่เลือกให้ทีมงานทำ Border Pass */
+    public const FOR_BORDER_PASS = 'border_pass';
+
+    public const BORDER_PASS_FRONT = 'border-pass-id-front';
+
+    public const BORDER_PASS_BACK = 'border-pass-id-back';
+
+    public const BORDER_PASS_KEYS = [self::BORDER_PASS_FRONT, self::BORDER_PASS_BACK];
+
+    /** ข้อความที่บอกลูกค้าว่าไฟล์นี้ไปที่ไหนและอยู่นานแค่ไหน — ต้องตรงกับ PurgeBorderPassDocumentsJob */
+    public const BORDER_PASS_NOTE = 'ด่านใช้เป็นหลักฐานทำ Border Pass — ใช้ยื่นด่านเท่านั้น เปิดดูได้เฉพาะทีมงาน '
+        .'และระบบลบทิ้งอัตโนมัติ '.PurgeBorderPassDocumentsJob::RETENTION_DAYS.' วันหลังจบทริป';
+
+    /**
+     * บัตรประชาชนด้านหน้า/ด้านหลังของคนทำ Border Pass — กฎของด่าน ไม่ใช่สิ่งที่
+     * แอดมินเลือก จึงไม่อยู่ใน `trips.document_requirements` แต่ระบบใส่ให้เอง
+     * กับทุกทริปที่ให้เลือก Border Pass (ดู BookingDocumentService::requirementsFor)
+     *
+     * @return array<int, array{key: string, label: string, note: string, required: bool, for: string}>
+     */
+    public static function borderPass(): array
+    {
+        return [
+            [
+                'key' => self::BORDER_PASS_FRONT,
+                'label' => 'บัตรประชาชน (ด้านหน้า)',
+                'note' => self::BORDER_PASS_NOTE,
+                'required' => true,
+                'for' => self::FOR_BORDER_PASS,
+            ],
+            [
+                'key' => self::BORDER_PASS_BACK,
+                'label' => 'บัตรประชาชน (ด้านหลัง)',
+                'note' => self::BORDER_PASS_NOTE,
+                'required' => true,
+                'for' => self::FOR_BORDER_PASS,
+            ],
+        ];
+    }
+
+    public static function isBorderPassKey(string $key): bool
+    {
+        return in_array($key, self::BORDER_PASS_KEYS, true);
+    }
+
     /**
      * จัดระเบียบรายการดิบให้เหลือเฉพาะแถวที่ใช้งานได้จริง
      *
@@ -21,7 +70,7 @@ class TripDocumentRequirements
      * ต้องส่งอะไร ส่วนแถวที่ไม่มี `key` (แอดมินเพิ่งเพิ่มในหน้าแก้ทริป) จะได้
      * key จากชื่อของมันเอง
      *
-     * @return array<int, array{key: string, label: string, note: string, required: bool}>
+     * @return array<int, array{key: string, label: string, note: string, required: bool, for: string}>
      */
     public static function normalize(mixed $raw): array
     {
@@ -44,7 +93,8 @@ class TripDocumentRequirements
 
             $key = self::slug($row['key'] ?? '') ?: self::slug($label) ?: 'doc';
             // กัน key ชนกันเมื่อสองแถวชื่อเหมือนกัน — ไฟล์จะได้ไม่ไปโผล่ผิดช่อง
-            if (isset($seen[$key])) {
+            // (รวมถึง key ที่ระบบจองไว้ให้บัตรประชาชนของ Border Pass)
+            if (isset($seen[$key]) || self::isBorderPassKey($key)) {
                 $key = $key.'-'.($index + 1);
             }
             $seen[$key] = true;
@@ -54,6 +104,7 @@ class TripDocumentRequirements
                 'label' => $label,
                 'note' => trim((string) ($row['note'] ?? '')),
                 'required' => (bool) ($row['required'] ?? false),
+                'for' => self::FOR_ALL,
             ];
         }
 

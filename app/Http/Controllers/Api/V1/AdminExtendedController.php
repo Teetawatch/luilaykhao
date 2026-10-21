@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BookingResource;
+use App\Jobs\PurgeBorderPassDocumentsJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\InstallmentPayment;
@@ -11,14 +12,17 @@ use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyReward;
 use App\Models\LoyaltyTransaction;
 use App\Models\Review;
+use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleMaintenance;
 use App\Rules\ThaiName;
+use App\Services\BookingDocumentService;
 use App\Services\PassengerCheckInService;
 use App\Support\Countries;
 use App\Support\MediaDisk;
+use App\Support\TripDocumentRequirements;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -131,7 +135,7 @@ class AdminExtendedController extends Controller
                 ->all();
 
             $passengerManifest = $activeBookings
-                ->flatMap(function ($booking) {
+                ->flatMap(function ($booking) use ($s) {
                     $seatLabels = $booking->seats->pluck('seat_id')->filter()->values()->all();
 
                     // จุดรับที่ลูกค้าปักหมุดเอง (ไม่มีจุดรับตายตัว) — โชว์ชื่อ+พิกัด+ลิงก์แผนที่
@@ -147,7 +151,7 @@ class AdminExtendedController extends Controller
                         )
                         : null;
 
-                    return $booking->passengers->map(function ($passenger) use ($booking, $seatLabels, $hasCustomPickup, $customPickupMapUrl) {
+                    return $booking->passengers->map(function ($passenger) use ($s, $booking, $seatLabels, $hasCustomPickup, $customPickupMapUrl) {
                         return [
                             'id' => $passenger->id,
                             'booking_id' => $booking->id,
@@ -164,6 +168,11 @@ class AdminExtendedController extends Controller
                                 : null,
                             'nickname' => $passenger->nickname,
                             'id_card' => $passenger->id_card,
+                            // ทริปที่ให้เลือก Border Pass — ทีมงานยื่นทำให้คนที่เป็น border_pass
+                            'travel_document' => $s->trip->resolveTravelDocument($passenger->travel_document, $passenger->nationality),
+                            'name_en' => $passenger->name_en,
+                            'passport_no' => $passenger->passport_no,
+                            'passport_expires_at' => $passenger->passport_expires_at?->format('Y-m-d'),
                             'birth_date' => $passenger->birth_date?->format('Y-m-d'),
                             'age' => $passenger->age,
                             'phone' => $passenger->phone ?: $booking->user?->phone,
@@ -212,6 +221,9 @@ class AdminExtendedController extends Controller
                 'trip_type' => $s->trip->type,
                 'trip_title' => $s->trip->title,
                 'trip_region' => $s->trip->region,
+                'travel_document_mode' => $s->trip->travelDocumentMode(),
+                // จำนวนคนที่ทีมงานต้องยื่นทำ Border Pass ให้ในรอบนี้
+                'border_pass_count' => collect($passengerManifest)->where('travel_document', 'border_pass')->count(),
                 'vehicle' => $s->vehicle?->name,
                 'transport_type' => $s->transport_type,
                 'total_seats' => $s->total_seats,
@@ -472,15 +484,76 @@ class AdminExtendedController extends Controller
      * การจองที่เข้ามาจากแอปรุ่นก่อนที่จะมีช่องกรอกพาสปอร์ตจะไม่มีข้อมูลชุดนี้เลย
      * หน้านี้คือรายการที่ทีมงานต้องไล่ตาม พร้อมลิงก์ที่ส่งให้ลูกค้ากรอกเองได้
      */
-    public function passportFollowup(Request $request): JsonResponse
+    /**
+     * คนทำ Border Pass ของรอบนี้ พร้อมเลขบัตรและรูปบัตรประชาชนหน้า/หลัง
+     *
+     * ทีมงานใช้ชุดนี้ยื่นด่าน — เดิมต้องเปิดใบจองทีละใบไล่หารูป ลิงก์รูปเป็น
+     * signed URL อายุสั้น และไม่ได้อยู่ใน payload ปฏิทินที่โหลดทุกรอบโดยตั้งใจ
+     * (สำเนาบัตรประชาชนไม่ควรถูกส่งออกไปกับข้อมูลที่ไม่ได้ขอดู)
+     */
+    public function borderPassList(int $id, BookingDocumentService $documents): JsonResponse
+    {
+        $schedule = TripSchedule::with([
+            'trip',
+            'bookings' => fn ($q) => $q->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES),
+            'bookings.passengers',
+            'bookings.documents',
+        ])->findOrFail($id);
+
+        $rows = $schedule->bookings->flatMap(function (Booking $booking) use ($schedule, $documents) {
+            return $booking->passengers
+                ->filter(fn ($passenger) => $schedule->trip->resolveTravelDocument($passenger->travel_document, $passenger->nationality) === Trip::DOC_BORDER_PASS)
+                ->map(function ($passenger) use ($booking, $documents) {
+                    $file = fn (string $key) => ($doc = $booking->documents
+                        ->where('booking_passenger_id', $passenger->id)
+                        ->where('requirement_key', $key)
+                        ->sortByDesc('id')
+                        ->first()) ? $documents->filePayload($doc) : null;
+
+                    return [
+                        'passenger_id' => $passenger->id,
+                        'booking_ref' => $booking->booking_ref,
+                        'title' => $passenger->title,
+                        'name' => $passenger->name,
+                        'nickname' => $passenger->nickname,
+                        'id_card' => $passenger->id_card,
+                        'birth_date' => $passenger->birth_date?->format('Y-m-d'),
+                        'phone' => $passenger->phone,
+                        'front' => $file(TripDocumentRequirements::BORDER_PASS_FRONT),
+                        'back' => $file(TripDocumentRequirements::BORDER_PASS_BACK),
+                    ];
+                });
+        })->values();
+
+        return $this->success([
+            'schedule_id' => $schedule->id,
+            'trip_title' => $schedule->trip->title,
+            'departure_date' => $schedule->departure_date?->format('Y-m-d'),
+            'retention_days' => PurgeBorderPassDocumentsJob::RETENTION_DAYS,
+            'passengers' => $rows,
+            'missing_count' => $rows->filter(fn ($row) => ! $row['front'] || ! $row['back'])->count(),
+        ]);
+    }
+
+    public function passportFollowup(Request $request, BookingDocumentService $documents): JsonResponse
     {
         $bookings = Booking::query()
             ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
             ->whereHas('schedule', fn ($s) => $s->whereDate('departure_date', '>=', now()->toDateString())
                 ->whereHas('trip', fn ($t) => $t->where('destination_type', 'international')))
-            ->with(['user', 'schedule.trip', 'passengers'])
+            ->with(['user', 'schedule.trip', 'passengers', 'documents'])
             ->get()
-            ->filter(fn ($b) => $b->needsPassportInfo())
+            ->map(function ($b) use ($documents) {
+                // รูปบัตรประชาชน (Border Pass) ที่ยังไม่ได้แนบ — ตามเก็บที่ลิงก์เดียวกัน
+                $b->setAttribute('missing_id_names', collect($documents->missingRequirements($b))
+                    ->filter(fn ($row) => TripDocumentRequirements::isBorderPassKey($row['key']))
+                    ->flatMap(fn ($row) => $row['passengers'])
+                    ->unique()
+                    ->values());
+
+                return $b;
+            })
+            ->filter(fn ($b) => $b->needsPassportInfo() || $b->missing_id_names->isNotEmpty())
             ->sortBy(fn ($b) => $b->schedule?->departure_date)
             ->map(function ($b) {
                 $total = $b->passengers->count();
@@ -498,6 +571,8 @@ class AdminExtendedController extends Controller
                     'filled_count' => $total - $missing,
                     'missing_count' => $missing,
                     'missing_names' => $b->passengersMissingPassport()->pluck('name')->values(),
+                    // คนทำ Border Pass ที่ยังไม่ส่งรูปบัตรประชาชนหน้า/หลัง
+                    'missing_id_names' => $b->missing_id_names,
                     'link' => $b->passportUrl(), // lazily mints the token
                 ];
             })

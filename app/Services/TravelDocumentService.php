@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Models\Trip;
+use App\Support\Countries;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -22,10 +24,13 @@ class TravelDocumentService
     /** เกณฑ์เดียวกับตอนจอง — สายการบินและ ตม. ส่วนใหญ่ใช้ 6 เดือน */
     public const VALIDITY_MONTHS = 6;
 
-    /** ทริปต่างประเทศเท่านั้นที่ต้องมีพาสปอร์ต */
+    /**
+     * ทริปนี้เก็บพาสปอร์ตล่วงหน้าไหม — ทริปต่างประเทศที่แอดมินไม่ได้ตั้งให้ใช้
+     * เอกสารฉบับจริงหน้างาน (ดู Trip::travelDocumentMode)
+     */
     public function isRequired(Booking $booking): bool
     {
-        return (bool) $booking->schedule?->trip?->isInternational();
+        return (bool) $booking->schedule?->trip?->collectsPassport();
     }
 
     /** วันหมดอายุที่เร็วที่สุดที่ยังรับได้; null เมื่อรอบยังไม่มีวันเดินทาง */
@@ -57,7 +62,10 @@ class TravelDocumentService
             return collect();
         }
 
+        $trip = $booking->schedule->trip;
+
         return $booking->passengers->filter(fn (BookingPassenger $passenger) => filled($passenger->passport_expires_at)
+            && $trip->needsPassportFor($passenger->travel_document, $passenger->nationality)
             && $passenger->passport_expires_at->lt($minimum));
     }
 
@@ -70,6 +78,8 @@ class TravelDocumentService
 
         return [
             'required' => $required,
+            'mode' => $booking->schedule?->trip?->travelDocumentMode(),
+            'offers_border_pass' => (bool) $booking->schedule?->trip?->offersBorderPass(),
             'minimum_expiry' => $this->minimumExpiry($booking)?->toDateString(),
             'validity_months' => self::VALIDITY_MONTHS,
             'missing_count' => $required ? $this->missing($booking)->count() : 0,
@@ -85,6 +95,8 @@ class TravelDocumentService
      * เชื่อว่าเป็น id ของการจองนี้จริง)
      *
      * แถวที่เว้นว่างทั้งแถว = ยังไม่พร้อมกรอกของคนนี้ ข้ามไป ไม่ใช่ error
+     * ทริปที่ให้เลือก Border Pass ส่ง `travel_document` มาด้วยได้ — เลือก Border Pass
+     * แล้วไม่ต้องมีช่องพาสปอร์ต (และล้างของเดิมทิ้ง ไม่ให้ทีมงานสับสนว่าใช้เล่มไหน)
      * เจอแถวผิดแม้แถวเดียวจะไม่บันทึกอะไรเลย — ลูกค้าจะได้แก้แล้วกดส่งใหม่ทั้งใบ
      * ไม่ต้องเดาว่าอันไหนเข้าไปแล้วอันไหนยัง
      *
@@ -94,12 +106,34 @@ class TravelDocumentService
     public function apply(Booking $booking, array $rows): array
     {
         $minimumExpiry = $this->minimumExpiry($booking);
+        $trip = $booking->schedule?->trip;
         $errors = [];
         $updates = [];
 
         foreach ($booking->passengers as $passenger) {
             $row = $rows[$passenger->id] ?? $rows[(string) $passenger->id] ?? null;
             if (! is_array($row)) {
+                continue;
+            }
+
+            $choice = $trip?->offersBorderPass() && filled($row['travel_document'] ?? null)
+                ? (string) $row['travel_document']
+                : null;
+
+            if ($choice === Trip::DOC_BORDER_PASS) {
+                if ($error = $this->borderPassError($passenger)) {
+                    $errors[$passenger->id] = "{$passenger->name}: {$error}";
+
+                    continue;
+                }
+
+                $updates[$passenger->id] = [
+                    'travel_document' => Trip::DOC_BORDER_PASS,
+                    'name_en' => null,
+                    'passport_no' => null,
+                    'passport_expires_at' => null,
+                ];
+
                 continue;
             }
 
@@ -122,6 +156,7 @@ class TravelDocumentService
                 'name_en' => strtoupper($nameEn),
                 'passport_no' => strtoupper($passportNo),
                 'passport_expires_at' => $expiresAt,
+                ...($trip?->offersBorderPass() ? ['travel_document' => Trip::DOC_PASSPORT] : []),
             ];
         }
 
@@ -138,6 +173,23 @@ class TravelDocumentService
         }
 
         return ['saved' => count($updates), 'errors' => []];
+    }
+
+    /**
+     * Border Pass ออกจากบัตรประชาชน — คนต่างชาติทำไม่ได้ และคนที่ไม่มีเลขบัตรใน
+     * ระบบทีมงานก็ยื่นทำให้ไม่ได้
+     */
+    public function borderPassError(BookingPassenger $passenger): ?string
+    {
+        if (($passenger->nationality ?: Countries::HOME) !== Countries::HOME) {
+            return 'Border Pass ใช้ได้เฉพาะผู้ถือสัญชาติไทย กรุณากรอกข้อมูลพาสปอร์ต';
+        }
+
+        if (! preg_match('/^\d{13}$/', (string) $passenger->id_card)) {
+            return 'ต้องมีเลขบัตรประชาชน 13 หลักเพื่อทำ Border Pass กรุณาติดต่อทีมงาน';
+        }
+
+        return null;
     }
 
     /** คืนข้อความผิดพลาดภาษาไทยของแถวนี้ หรือ null เมื่อกรอกถูกต้อง */

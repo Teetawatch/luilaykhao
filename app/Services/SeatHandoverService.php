@@ -58,6 +58,7 @@ class SeatHandoverService
         'title', 'name', 'nickname', 'nationality', 'id_card', 'birth_date',
         'phone', 'email', 'blood_group', 'allergies', 'health_notes', 'halal_food',
         'emergency_contact', 'emergency_phone', 'name_en', 'passport_no', 'passport_expires_at',
+        'travel_document',
     ];
 
     public function __construct(private SosParticipantService $participants) {}
@@ -549,6 +550,8 @@ class SeatHandoverService
                 'cover_image' => $trip->cover_image ? MediaDisk::url($trip->cover_image) : null,
                 'duration_days' => $trip->duration_days,
                 'is_international' => $trip->isInternational(),
+                // passport | passport_or_border_pass | on_site — null = ในประเทศ
+                'travel_document_mode' => $trip->travelDocumentMode(),
                 'is_women_only' => (bool) $trip->is_women_only,
             ] : null,
             'schedule' => $schedule ? [
@@ -626,6 +629,9 @@ class SeatHandoverService
             }
             $fields['nationality'] = $fields['nationality'] ?: 'TH';
             $fields['halal_food'] = (bool) ($data['halal_food'] ?? false);
+            if ($booking->schedule?->trip) {
+                $fields = $booking->schedule->trip->applyTravelDocument($fields);
+            }
 
             $passenger->forceFill([
                 ...$fields,
