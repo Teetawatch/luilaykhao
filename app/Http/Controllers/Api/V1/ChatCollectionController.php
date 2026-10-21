@@ -193,6 +193,8 @@ class ChatCollectionController extends Controller
             'paid' => ['required', 'boolean'],
             // ไม่ส่ง = โอน (แอปรุ่นก่อน) ซึ่งต้องมีสลิป
             'method' => ['nullable', 'in:'.ChatCollectionDue::METHOD_TRANSFER.','.ChatCollectionDue::METHOD_CASH],
+            // ตีกลับสลิป (paid=false) — บอกลูกทริปว่าทำไม
+            'reason' => ['nullable', 'string', 'max:120'],
         ]);
 
         [$schedule, $collection, $error] = $this->resolve($request, $scheduleId, $collectionId, staffOnly: true);
@@ -207,6 +209,7 @@ class ChatCollectionController extends Controller
                 $validated['passenger_ids'],
                 (bool) $validated['paid'],
                 $validated['method'] ?? ChatCollectionDue::METHOD_TRANSFER,
+                $validated['reason'] ?? null,
             );
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);

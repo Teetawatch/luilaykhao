@@ -13,6 +13,7 @@ use App\Support\MediaDisk;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -35,6 +36,7 @@ class ChatCollectionService
         private ChatService $chatService,
         private TripRosterService $roster,
         private PromptPayService $promptPay,
+        private FcmService $fcm,
     ) {}
 
     /**
@@ -336,6 +338,7 @@ class ChatCollectionService
         array $passengerIds,
         bool $paid,
         string $method = ChatCollectionDue::METHOD_TRANSFER,
+        ?string $reason = null,
     ): ChatCollection {
         $dues = ChatCollectionDue::where('collection_id', $collection->id)
             ->whereIn('passenger_id', collect($passengerIds)->map(fn ($id) => (int) $id));
@@ -346,6 +349,8 @@ class ChatCollectionService
 
         if (! $paid) {
             $oldSlips = (clone $dues)->whereNotNull('slip_path')->pluck('slip_path')->all();
+            // แจ้งโอนไว้แต่ยังไม่ได้ยืนยัน = ตีกลับสลิป (คนที่ยืนยันแล้วแล้วยกเลิก = แก้กดผิดของทีมงาน ไม่ต้องเด้ง)
+            $rejected = (clone $dues)->whereNull('paid_at')->whereNotNull('paid_claimed_at')->pluck('passenger_id');
             $dues->update([
                 'paid_at' => null,
                 'paid_method' => null,
@@ -355,7 +360,12 @@ class ChatCollectionService
             ]);
             $this->deleteUnusedSlips($oldSlips);
 
-            return $this->broadcastUpdate($collection);
+            $fresh = $this->broadcastUpdate($collection);
+            if ($rejected->isNotEmpty()) {
+                $this->notifyRejected($fresh, $rejected, $reason);
+            }
+
+            return $fresh;
         }
 
         if ($method === ChatCollectionDue::METHOD_TRANSFER) {
@@ -491,6 +501,42 @@ class ChatCollectionService
         return collect($passengerIds)->map(fn ($id) => (int) $id)->unique()
             ->filter(fn ($id) => $valid->contains($id))
             ->values();
+    }
+
+    /**
+     * บอกคนดูแลว่าสลิปยังไม่ผ่าน ต้องแนบใหม่ — ไม่งั้นเขาเห็นแค่การ์ดกลับเป็น "ยังไม่จ่าย"
+     * โดยไม่รู้ว่าเกิดอะไรขึ้น
+     *
+     * @param  Collection<int, int>  $passengerIds
+     */
+    private function notifyRejected(ChatCollection $collection, Collection $passengerIds, ?string $reason): void
+    {
+        $roster = $this->roster->passengers($collection->schedule)->whereIn('passenger_id', $passengerIds->map(fn ($id) => (int) $id)->all());
+        $reason = $reason !== null ? (trim($reason) ?: null) : null;
+
+        foreach ($roster->groupBy('user_id') as $userId => $people) {
+            if (! $userId) {
+                continue;
+            }
+
+            try {
+                $this->fcm->sendToUser(
+                    (int) $userId,
+                    "💰 สลิป{$collection->title}ยังไม่ผ่าน",
+                    ($reason ? "{$reason} — " : 'ทีมงานยังไม่เห็นยอดเข้า — ')
+                        .'แนบสลิปใหม่ในการ์ดเก็บเงินได้เลยครับ (ยอด ฿'.$this->baht((float) $collection->dues()->whereIn('passenger_id', $people->pluck('passenger_id'))->sum('amount')).')',
+                    [
+                        'type' => 'collection_slip_rejected',
+                        'route' => 'chat',
+                        'schedule_id' => (string) $collection->schedule_id,
+                        'message_id' => (string) $collection->message_id,
+                    ],
+                    ['android_channel' => 'important_updates'],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('ChatCollectionService: แจ้งสลิปไม่ผ่านไม่สำเร็จ', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            }
+        }
     }
 
     private function storeSlip(UploadedFile $slip): string

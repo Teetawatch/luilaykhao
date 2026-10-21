@@ -11,6 +11,7 @@ use App\Models\ChatMessage;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\FcmService;
 use App\Services\PromptPayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -336,5 +337,38 @@ class ChatCollectionTest extends TestCase
         // payload ที่กระจายทั้งห้องไม่มีที่อยู่ไฟล์
         $c = $this->actingAs($other, 'sanctum')->postJson($this->url($schedule, "/{$id}/claim"), ['claimed' => false]);
         $this->assertStringNotContainsString('slips/', $c->getContent());
+    }
+
+    public function test_a_rejected_slip_tells_the_payer_why_but_undoing_a_confirmation_does_not(): void
+    {
+        $pushes = [];
+        $this->mock(FcmService::class, function ($m) use (&$pushes) {
+            $m->shouldReceive('sendToUser')->andReturnUsing(function ($userId, $title, $body, $data = []) use (&$pushes) {
+                $pushes[] = ['user' => (int) $userId, 'title' => $title, 'body' => $body, 'type' => $data['type'] ?? null];
+            });
+        });
+
+        $schedule = $this->makeSchedule();
+        [$family, [$p1, $p2]] = $this->party($schedule, ['พ่อ ใจดี', 'แม่ ใจดี']);
+        [$solo, [$p3]] = $this->party($schedule, ['มานะ ขยัน']);
+        $staff = $this->staff($schedule);
+        $id = $this->open($staff, $schedule)->json('data.collection.id');
+        $this->claimWithSlip($family, $schedule, $id)->assertOk();
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson($this->url($schedule, "/{$id}/paid"), ['passenger_ids' => [$p1->id, $p2->id], 'paid' => false, 'reason' => 'ยอดในสลิปไม่ตรง'])
+            ->assertOk();
+
+        $this->assertCount(1, $pushes);
+        $this->assertSame($family->id, $pushes[0]['user']);
+        $this->assertSame('💰 สลิปค่าลูกหาบยังไม่ผ่าน', $pushes[0]['title']);
+        $this->assertSame('ยอดในสลิปไม่ตรง — แนบสลิปใหม่ในการ์ดเก็บเงินได้เลยครับ (ยอด ฿400)', $pushes[0]['body']);
+        $this->assertSame('collection_slip_rejected', $pushes[0]['type']);
+
+        // ทีมงานกดยืนยันเงินสดผิดคนแล้วยกเลิก — ไม่ใช่สลิปไม่ผ่าน ไม่ต้องเด้ง
+        $this->actingAs($staff, 'sanctum')->postJson($this->url($schedule, "/{$id}/paid"), ['passenger_ids' => [$p3->id], 'paid' => true, 'method' => 'cash'])->assertOk();
+        $this->actingAs($staff, 'sanctum')->postJson($this->url($schedule, "/{$id}/paid"), ['passenger_ids' => [$p3->id], 'paid' => false])->assertOk();
+        $this->assertCount(1, $pushes);
+        $this->assertNotSame($solo->id, $pushes[0]['user']);
     }
 }
