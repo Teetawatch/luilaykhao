@@ -202,7 +202,10 @@
                         <!-- ข้อความเสียงจากแอป -->
                         <audio v-if="m.audio_url" :src="m.audio_url" controls preload="none"
                           style="display:block;width:260px;max-width:100%;height:36px;margin:4px 0"></audio>
-                        <div v-if="m.body" class="msg-body">{{ m.body }}</div>
+                        <!-- สติกเกอร์ — โชว์รูปแทนข้อความสำรอง "[สติกเกอร์] …" -->
+                        <img v-if="m.sticker" :src="m.sticker.url" :alt="m.sticker.label" :title="m.sticker.label"
+                          style="display:block;width:110px;height:110px;object-fit:contain" loading="lazy" />
+                        <div v-else-if="m.body" class="msg-body">{{ m.body }}</div>
 
                         <!-- โพลในห้อง (แอดมินดูผลและปิดโหวตได้ แต่ไม่ลงคะแนนแทนใคร) -->
                         <div v-if="m.poll" class="poll-card">

@@ -18,17 +18,22 @@ use App\Models\ChatRead;
 use App\Models\ChatRoomPreference;
 use App\Models\ChatStopRequest;
 use App\Models\ChatSupplyRequest;
+use App\Models\Sticker;
 use App\Models\TripSchedule;
 use App\Services\ChatAutoAnswerService;
+use App\Services\ChatBirthdayService;
 use App\Services\ChatPollService;
 use App\Services\ChatPrivateService;
 use App\Services\ChatRestStopService;
 use App\Services\ChatService;
 use App\Services\ChatSupplyService;
+use App\Services\ChatTodoService;
 use App\Services\ContentFilterService;
 use App\Services\ModerationService;
 use App\Services\ScheduleItineraryService;
 use App\Services\ScheduleRoomService;
+use App\Services\TripActivityService;
+use App\Services\TripContactService;
 use App\Services\TripFactsService;
 use App\Services\WeatherService;
 use App\Support\MediaDisk;
@@ -55,6 +60,25 @@ class ChatController extends Controller
         private ChatRestStopService $restStops,
     ) {}
 
+    /** โหลดย้อนไปถึงข้อความเก่าได้ครั้งละไม่เกินเท่านี้ */
+    public const SINCE_LIMIT = 500;
+
+    /** ห้องที่เหลือเกินกี่วันถึงวันเดินทาง แอปถึงจะชวนให้ "เงียบไว้ก่อน" */
+    public const SUGGEST_QUIET_AFTER_DAYS = 14;
+
+    /** อีกกี่วันถึงวันเดินทาง ตามวันที่ไทย (ติดลบ = ออกไปแล้ว) */
+    private function daysUntil(TripSchedule $schedule): int
+    {
+        if (! $schedule->departure_date) {
+            return 0;
+        }
+
+        return (int) now('Asia/Bangkok')->startOfDay()->diffInDays(
+            Carbon::parse($schedule->departure_date->toDateString(), 'Asia/Bangkok')->startOfDay(),
+            false,
+        );
+    }
+
     public function index(Request $request, int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -67,6 +91,9 @@ class ChatController extends Controller
         $perPage = min(50, max(10, (int) $request->get('per_page', 30)));
         $beforeId = (int) $request->get('before_id', 0);
         $afterId = (int) $request->get('after_id', 0);
+        // ย้อนไปถึงข้อความเก่าที่ต้องการ (ผลค้นหา / แถบ "รอคุณอยู่") แบบต่อเนื่องไม่มีรู
+        // = ทุกข้อความตั้งแต่ since_id จนถึงก่อน before_id
+        $sinceId = (int) $request->get('since_id', 0);
 
         // First time anyone opens the room, seed a welcome system message so the
         // conversation never starts on an empty screen.
@@ -91,6 +118,29 @@ class ChatController extends Controller
             return $this->success([
                 'messages' => $messages->map(fn ($m) => $this->chatService->presentMessage($m, $user->id))->all(),
                 'has_more' => false,
+            ]);
+        }
+
+        if ($sinceId > 0 && $beforeId > $sinceId) {
+            $messages = ChatMessage::where('schedule_id', $scheduleId)
+                ->with($this->messageRelations())
+                ->tap($visible)
+                ->where('id', '>=', $sinceId)
+                ->where('id', '<', $beforeId)
+                ->orderBy('id')
+                ->limit(self::SINCE_LIMIT)
+                ->get();
+
+            $complete = $messages->count() < self::SINCE_LIMIT;
+
+            return $this->success([
+                'messages' => $messages->map(fn ($m) => $this->chatService->presentMessage($m, $user->id))->all(),
+                // ยาวเกินเพดาน = ไม่ครบช่วง แอปถอยไปโหลดทีละหน้าแทน
+                'complete' => $complete,
+                'has_more' => ChatMessage::where('schedule_id', $scheduleId)
+                    ->tap($visible)
+                    ->where('id', '<', $complete ? $sinceId : (int) $messages->first()?->id)
+                    ->exists(),
             ]);
         }
 
@@ -123,6 +173,10 @@ class ChatController extends Controller
             'restStop.boardings',
             'collection.dues',
             'lostItem',
+            'sticker',
+            'acks',
+            'ackRequestedBy:id,name,nickname',
+            'memberIntro',
             'trailCheck.positions',
             'dropoffRound',
             'wellnessCheck.answers',
@@ -133,8 +187,10 @@ class ChatController extends Controller
     public function store(Request $request, int $scheduleId): JsonResponse
     {
         $validated = $request->validate([
-            'body' => ['nullable', 'string', 'max:2000', 'required_without_all:image,audio'],
+            'body' => ['nullable', 'string', 'max:2000', 'required_without_all:image,audio,sticker_id'],
             'image' => ['nullable', 'image', 'max:5120', 'prohibits:audio'],
+            // สติกเกอร์ส่งเดี่ยว ๆ — body ถูกเติมเป็นข้อความสำรองฝั่งเซิร์ฟเวอร์
+            'sticker_id' => ['nullable', 'integer', 'prohibits:body,image,audio'],
             // ข้อความเสียง — ส่งมาเดี่ยว ๆ (ไม่มีข้อความ/รูปประกอบ) พร้อมความยาวที่แอปวัดได้
             'audio' => ['nullable', 'file', 'mimes:'.implode(',', ChatMessage::AUDIO_EXTENSIONS), 'max:'.ChatMessage::AUDIO_MAX_KB, 'prohibits:body'],
             'audio_duration_ms' => ['nullable', 'required_with:audio', 'integer', 'min:'.ChatMessage::AUDIO_MIN_MS, 'max:'.((ChatMessage::AUDIO_MAX_SECONDS + 5) * 1000)],
@@ -146,6 +202,8 @@ class ChatController extends Controller
             // user_ids tagged with @mention in the body.
             'mentions' => ['nullable', 'array'],
             'mentions.*' => ['integer'],
+            // ทีมงานส่งเป็นประกาศที่ทุกคนต้องกดรับทราบ
+            'request_ack' => ['nullable', 'boolean'],
         ]);
 
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -155,8 +213,22 @@ class ChatController extends Controller
             return $this->error('คุณไม่มีสิทธิ์ส่งข้อความในห้องนี้', 403);
         }
 
+        $requestAck = (bool) ($validated['request_ack'] ?? false);
+        if ($requestAck && ! $this->chatService->canModerate($user, $schedule)) {
+            return $this->error('เฉพาะทีมงานเท่านั้นที่ขอให้กดรับทราบได้', 403);
+        }
+
         if ($rejected = $this->filter->check($validated['body'] ?? null)) {
             return $this->error($rejected, 422);
+        }
+
+        $sticker = null;
+        if (isset($validated['sticker_id'])) {
+            $sticker = Sticker::with('pack')->find($validated['sticker_id']);
+
+            if (! $sticker || ! $sticker->isUsable()) {
+                return $this->error('สติกเกอร์นี้ใช้ไม่ได้แล้ว', 422);
+            }
         }
 
         $imagePath = $request->hasFile('image')
@@ -167,7 +239,9 @@ class ChatController extends Controller
             ? $request->file('audio')->store('chat/audio/'.date('Y/m'), MediaDisk::name())
             : null;
 
-        $body = isset($validated['body']) ? trim($validated['body']) : null;
+        $body = $sticker
+            ? $sticker->fallbackBody()
+            : (isset($validated['body']) ? trim($validated['body']) : null);
         $mentions = $this->chatService->sanitizeMentions($schedule, $validated['mentions'] ?? []);
 
         $message = ChatMessage::create([
@@ -179,7 +253,10 @@ class ChatController extends Controller
             'image_path' => $imagePath,
             'audio_path' => $audioPath,
             'audio_duration_ms' => $audioPath ? (int) $validated['audio_duration_ms'] : null,
+            'sticker_id' => $sticker?->id,
             'mentions' => $mentions ?: null,
+            'ack_requested_at' => $requestAck ? now() : null,
+            'ack_requested_by_id' => $requestAck ? $user->id : null,
         ]);
         $message->load($this->messageRelations());
 
@@ -188,7 +265,8 @@ class ChatController extends Controller
         // ผู้ส่งถือว่าอ่านถึงข้อความล่าสุดแล้ว
         $this->chatService->markRead($user, $schedule, $message->id);
 
-        SendChatPushJob::dispatch($message->id, $user->id, $mentions);
+        // ประกาศที่ต้องกดรับทราบเด้งแบบมีเสียงถึงทุกคนที่ไม่ได้ปิดห้อง (เหมือนโหวต)
+        SendChatPushJob::dispatch($message->id, $user->id, $mentions, $requestAck);
         $this->queueAutoAnswer($message);
 
         return $this->success($this->chatService->presentMessage($message, $user->id), 'ส่งข้อความสำเร็จ', 201);
@@ -203,7 +281,8 @@ class ChatController extends Controller
      */
     private function queueAutoAnswer(ChatMessage $message): void
     {
-        if (! ChatAutoAnswerService::enabled() || $message->sender_role !== 'customer') {
+        // ป้ายสติกเกอร์ไม่ใช่คำถาม — "[สติกเกอร์] รถถึงไหน" ไม่ควรถูกตอบ
+        if (! ChatAutoAnswerService::enabled() || $message->sender_role !== 'customer' || $message->sticker_id !== null) {
             return;
         }
 
@@ -234,7 +313,7 @@ class ChatController extends Controller
         if ($message->user_id !== $user->id) {
             return $this->error('แก้ไขได้เฉพาะข้อความของคุณเอง', 403);
         }
-        if ($message->is_deleted || $message->sender_role === 'system' || $message->image_path || $message->audio_path) {
+        if ($message->is_deleted || $message->sender_role === 'system' || $message->image_path || $message->audio_path || $message->sticker_id) {
             return $this->error('ข้อความนี้แก้ไขไม่ได้', 422);
         }
 
@@ -269,7 +348,14 @@ class ChatController extends Controller
             return $this->success($this->chatService->presentMessage($message, $user->id), 'ลบแล้ว');
         }
 
+        $wasPinned = $message->pinned_at !== null;
         $this->chatService->deleteMessage($message);
+
+        // ลบข้อความที่ปักไว้ = หมุดนั้นหายไปด้วย บอกทุกเครื่องให้แถบหมุดตรงกัน
+        if ($wasPinned) {
+            $pins = $this->chatService->pinnedPayloads($schedule);
+            broadcast(new ChatPinned($scheduleId, $pins[0] ?? null, $pins));
+        }
 
         return $this->success($this->chatService->presentMessage($message, $user->id), 'ลบข้อความแล้ว');
     }
@@ -307,14 +393,18 @@ class ChatController extends Controller
         }
 
         $message = ChatMessage::where('schedule_id', $scheduleId)->findOrFail($messageId);
+        if ($message->is_deleted) {
+            return $this->error('ข้อความนี้ถูกลบแล้ว', 422);
+        }
         $this->chatService->pinMessage($user, $message);
 
-        $payload = $this->chatService->pinnedPayload(
-            $this->chatService->pinnedMessage($schedule)
-        );
-        broadcast(new ChatPinned($scheduleId, $payload))->toOthers();
+        $pins = $this->chatService->pinnedPayloads($schedule);
+        broadcast(new ChatPinned($scheduleId, $pins[0] ?? null, $pins))->toOthers();
 
-        return $this->success(['pinned_message' => $payload], 'ปักหมุดข้อความแล้ว');
+        return $this->success([
+            'pinned_message' => $pins[0] ?? null,
+            'pinned_messages' => $pins,
+        ], 'ปักหมุดข้อความแล้ว');
     }
 
     public function unpin(Request $request, int $scheduleId, int $messageId): JsonResponse
@@ -329,9 +419,14 @@ class ChatController extends Controller
         $message = ChatMessage::where('schedule_id', $scheduleId)->findOrFail($messageId);
         $this->chatService->unpinMessage($message);
 
-        broadcast(new ChatPinned($scheduleId, null))->toOthers();
+        // หมุดอื่นยังอยู่ — ไคลเอนต์รุ่นเก่าที่รู้จักหมุดเดียวได้อันล่าสุดที่เหลือแทนแถบว่าง
+        $pins = $this->chatService->pinnedPayloads($schedule);
+        broadcast(new ChatPinned($scheduleId, $pins[0] ?? null, $pins))->toOthers();
 
-        return $this->success(['pinned_message' => null], 'ปลดหมุดข้อความแล้ว');
+        return $this->success([
+            'pinned_message' => $pins[0] ?? null,
+            'pinned_messages' => $pins,
+        ], 'ปลดหมุดข้อความแล้ว');
     }
 
     public function react(Request $request, int $scheduleId, int $messageId): JsonResponse
@@ -617,6 +712,22 @@ class ChatController extends Controller
         return $this->success(['ok' => true]);
     }
 
+    /**
+     * "รอคุณอยู่" — งานที่ผู้ใช้ยังต้องกดในห้องนี้ (ประกาศรอรับทราบ โหวต สั่งอาหาร
+     * จ่ายเงิน กลับขึ้นรถ ฯลฯ) แต่ละรายการชี้ไปที่ข้อความของการ์ดนั้น
+     */
+    public function todos(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        return $this->success(['items' => app(ChatTodoService::class)->forUser($user, $schedule)]);
+    }
+
     public function unreadCount(Request $request, int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -684,6 +795,8 @@ class ChatController extends Controller
             'weather' => $schedule->weather_forecast ?? null,
             // กำหนดการระดับทริปก็นับ — ปุ่มลัดจะได้ไม่หายไปทั้งที่มีแผนให้ดู
             'has_itinerary' => $this->itineraryService->hasItinerary($schedule),
+            // ช่วงวันเดินทาง (การ์ดหน้าจอล็อกเปิดอยู่) — แอปขึ้นชิป "รถถึงไหนแล้ว"
+            'trip_live' => ! $schedule->isFlight() && app(TripActivityService::class)->isWithinWindow($schedule),
             'pickup_points' => $schedule->pickupPoints->map(fn ($p) => [
                 'id' => $p->id,
                 'region_label' => $p->region_label,
@@ -694,11 +807,20 @@ class ChatController extends Controller
                 'latitude' => $p->latitude,
                 'longitude' => $p->longitude,
             ])->values()->all(),
-            'pinned_message' => $this->chatService->pinnedPayload(
-                $this->chatService->pinnedMessage($schedule)
-            ),
+            'pinned_message' => ($pins = $this->chatService->pinnedPayloads($schedule))[0] ?? null,
+            // หมุดทั้งหมด (สูงสุด ChatService::MAX_PINS) ปักล่าสุดก่อน
+            'pinned_messages' => $pins,
             'can_moderate' => $this->chatService->canModerate($user, $schedule),
-            'notify_level' => $this->chatService->notifyLevel($user, $schedule),
+            'notify_level' => $notifyLevel = $this->chatService->notifyLevel($user, $schedule),
+            // "เงียบจนใกล้วันเดินทาง" จะกลับมาแจ้งทุกข้อความวันไหน (null = ไม่ได้ตั้ง / ถึงแล้ว)
+            'notify_wakes_on' => $notifyLevel === ChatRoomPreference::LEVEL_UNTIL_TRIP
+                && $this->chatService->untilTripActive($schedule)
+                ? $this->chatService->untilTripWakesOn($schedule)
+                : null,
+            // ห้องที่ยังอีกนานกว่าจะเดินทาง — แอปชวนลูกทริปให้เงียบไว้ก่อน (ครั้งเดียว)
+            'suggest_quiet' => $notifyLevel === ChatRoomPreference::LEVEL_ALL
+                && ! $this->chatService->canModerate($user, $schedule)
+                && $this->daysUntil($schedule) > self::SUGGEST_QUIET_AFTER_DAYS,
             // คำขอแวะห้องน้ำ: ตัวเลขรวม (ทีมงานใช้ขึ้นแถบ) + ฉันขอค้างอยู่ไหม — ไม่มีชื่อใคร
             'stop_requests' => $this->restStops->requestSummary($schedule),
             'my_stop_request' => $this->restStops->hasPendingRequest($user, $schedule),
@@ -721,6 +843,15 @@ class ChatController extends Controller
             'private_chat' => app(ChatPrivateService::class)->roomSummary($user, $schedule),
             // มีห้องพักให้ดูไหม — ลูกทริปเห็นเมนู "ห้องพัก" เมื่อทีมงานจัดไว้แล้ว
             'has_rooms' => app(ScheduleRoomService::class)->hasRooms($schedule),
+            // ทีมงาน: วันเกิดในทริปที่ยังไม่ได้อวยพร (ไม่มีอายุ/ปีเกิด) — แอปขึ้นแถบให้กด
+            'birthdays_pending' => $this->chatService->canModerate($user, $schedule)
+                ? app(ChatBirthdayService::class)->forSchedule($schedule)->where('greeted', false)->count()
+                : 0,
+            // แลกคอนแทค: เปิดให้ขอไหม + คำขอที่รอฉันตอบ
+            'contacts' => [
+                'window_open' => app(TripContactService::class)->windowOpen($schedule),
+                'incoming' => app(TripContactService::class)->incomingCount($user, $schedule),
+            ],
             'reaction_emojis' => ChatService::REACTION_EMOJIS,
             'member_count' => $members->count(),
             'members' => $members->map(function ($m) use ($reads, $user, $blockedIds) {

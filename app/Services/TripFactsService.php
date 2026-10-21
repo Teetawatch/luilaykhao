@@ -76,6 +76,8 @@ class TripFactsService
             'driver' => $this->driver($schedule),
             'staff' => $this->staff($schedule),
             'itinerary' => $this->itinerary($schedule),
+            // "รถถึงไหนแล้ว" — สถานะสดชุดเดียวกับการ์ดบนหน้าจอล็อก (null นอกช่วงวันเดินทาง)
+            'live' => $this->live($booking),
 
             // ข้อความ "ยังไม่รู้" เดินทางมากับ payload เพื่อให้ทุก client พูดเหมือนกัน
             // โดยไม่ต้องก๊อปประโยคไทยไปแปะไว้เองทีละที่
@@ -433,6 +435,31 @@ class TripFactsService
     /**
      * การจอง active ของผู้ใช้ในรอบนี้ (เจ้าของก่อน แล้วค่อยดูว่าเป็นเพื่อนร่วมจองไหม)
      */
+    /**
+     * สถานะรถตอนนี้ของใบจองนี้ — คำจาก TripActivityService ตรงกับการ์ดบนหน้าจอล็อก
+     * คนดูแชทกับคนดูหน้าจอล็อกจะได้ไม่เห็นตัวเลขคนละชุด
+     *
+     * @return array<string, mixed>|null
+     */
+    public function live(?Booking $booking): ?array
+    {
+        if (! $booking) {
+            return null;
+        }
+
+        $state = app(TripActivityService::class)->stateFor($booking);
+
+        return $state === null ? null : [
+            'stage' => $state['stage'],
+            'headline' => $state['headline'],
+            'detail' => $state['detail'],
+            'eta_minutes' => $state['eta_minutes'],
+            'updated_at' => $state['updated_at'],
+            // ติดตามบนแผนที่ได้เฉพาะรอบที่มีรถพร้อม GPS (รอบบินไม่มี)
+            'can_track' => ! $booking->schedule->isFlight() && $booking->schedule->vehicle_id !== null,
+        ];
+    }
+
     private function bookingOf(User $user, TripSchedule $schedule): ?Booking
     {
         $booking = Booking::where('schedule_id', $schedule->id)

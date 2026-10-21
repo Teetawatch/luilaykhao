@@ -268,6 +268,7 @@ const menuGroups = ref([
       { to: '/admin/itinerary', icon: 'fas fa-list-check', label: 'กำหนดการเดินทาง' },
       { to: '/admin/rooms', icon: 'fas fa-bed', label: 'จัดห้องพัก' },
       { to: '/admin/lost-items', icon: 'fas fa-box-open', label: 'ของหาย / ลืมของ' },
+      { to: '/admin/stickers', icon: 'fas fa-face-smile-wink', label: 'สติกเกอร์ในห้องแชท' },
       { to: '/admin/schedule-photos', icon: 'fas fa-camera-retro', label: 'ภาพให้ลูกค้า' },
     ],
     isOpen: false

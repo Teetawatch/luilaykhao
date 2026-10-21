@@ -456,7 +456,7 @@ class ChatTest extends TestCase
             ->assertJsonPath('data.can_moderate', true);
     }
 
-    public function test_pinning_a_new_message_replaces_the_previous_pin(): void
+    public function test_pinning_a_new_message_keeps_earlier_pins_and_shows_it_first(): void
     {
         $schedule = $this->makeSchedule();
         $staff = $this->makeStaff($schedule);
@@ -465,9 +465,14 @@ class ChatTest extends TestCase
         $second = ChatMessage::create(['schedule_id' => $schedule->id, 'user_id' => $staff->id, 'sender_role' => 'staff', 'body' => 'ใหม่']);
 
         $this->actingAs($staff, 'sanctum')->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$first->id}/pin")->assertOk();
-        $this->actingAs($staff, 'sanctum')->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$second->id}/pin")->assertOk();
+        $this->travel(1)->minutes();
+        // ปักได้หลายอัน (ChatService::MAX_PINS) — อันล่าสุดคือ pinned_message ของไคลเอนต์รุ่นเก่า
+        $this->actingAs($staff, 'sanctum')->postJson("/api/v1/schedules/{$schedule->id}/chat/messages/{$second->id}/pin")
+            ->assertOk()
+            ->assertJsonPath('data.pinned_message.id', $second->id)
+            ->assertJsonPath('data.pinned_messages.1.id', $first->id);
 
-        $this->assertNull($first->fresh()->pinned_at);
+        $this->assertNotNull($first->fresh()->pinned_at);
         $this->assertNotNull($second->fresh()->pinned_at);
     }
 

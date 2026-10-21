@@ -24,6 +24,8 @@ use Carbon\CarbonImmutable;
  *
  * ⚠️ รายการคำต้องตรงกับ `luilaykhao-app/lib/services/quick_ask_matcher.dart`
  * แก้ที่นี่แล้วต้องไปแก้ที่นั่นด้วย ไม่งั้นแถบในแอปกับบอทในห้องจะจับคนละอย่าง
+ * ยกเว้นข้อ "รถถึงไหนแล้ว" (QuickAskTopic.van) ที่มีแต่ในแอปโดยตั้งใจ — ระยะรถ
+ * ต่างกันตามจุดรับของแต่ละคน บอทตอบทีเดียวทั้งห้องไม่ได้
  */
 class ChatAutoAnswerService
 {

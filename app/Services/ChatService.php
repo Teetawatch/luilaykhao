@@ -14,12 +14,19 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ChatService
 {
+    /** ข้อความระบบที่มีปุ่มชวนให้กด — แอปวาดปุ่มตาม cta */
+    public const CTA_BY_SYSTEM_KEY = [
+        'intro_3d' => 'intro',
+        'contacts_end' => 'contacts',
+    ];
+
     /** อีโมจิที่อนุญาตให้รีแอกชันได้ */
     public const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
@@ -209,6 +216,46 @@ class ChatService
             ->all();
     }
 
+    /**
+     * ระดับที่มีผลจริงตอนนี้ — "เงียบจนใกล้วันเดินทาง" กลายเป็น "ทุกข้อความ"
+     * ตั้งแต่ UNTIL_TRIP_DAYS วันก่อนเดินทาง (นับตามวันที่ไทย)
+     */
+    public function effectiveLevel(string $level, TripSchedule $schedule): string
+    {
+        if ($level !== ChatRoomPreference::LEVEL_UNTIL_TRIP) {
+            return $level;
+        }
+
+        return $this->untilTripActive($schedule)
+            ? ChatRoomPreference::LEVEL_IMPORTANT
+            : ChatRoomPreference::LEVEL_ALL;
+    }
+
+    /** ยังอยู่ในช่วง "เงียบไว้ก่อน" ไหม (ยังเหลือมากกว่า UNTIL_TRIP_DAYS วัน) */
+    public function untilTripActive(TripSchedule $schedule): bool
+    {
+        $departure = $schedule->departure_date?->toDateString();
+        if ($departure === null) {
+            return false;
+        }
+
+        $wakeOn = Carbon::parse($departure, 'Asia/Bangkok')
+            ->subDays(ChatRoomPreference::UNTIL_TRIP_DAYS)
+            ->toDateString();
+
+        return now('Asia/Bangkok')->toDateString() < $wakeOn;
+    }
+
+    /** วันที่ (Y-m-d) ที่ "เงียบไว้ก่อน" จะกลับมาแจ้งทุกข้อความ */
+    public function untilTripWakesOn(TripSchedule $schedule): ?string
+    {
+        $departure = $schedule->departure_date?->toDateString();
+
+        return $departure === null ? null : Carbon::parse($departure, 'Asia/Bangkok')
+            ->subDays(ChatRoomPreference::UNTIL_TRIP_DAYS)
+            ->toDateString();
+    }
+
     /** ตั้งระดับการแจ้งเตือน — กลับไป "ทุกข้อความ" = ลบแถวทิ้ง */
     public function setNotifyLevel(User $user, TripSchedule $schedule, string $level): void
     {
@@ -384,20 +431,31 @@ class ChatService
             ->all();
     }
 
+    /** ปักหมุดได้พร้อมกันกี่ข้อความต่อห้อง — เกินแล้วอันที่ปักนานสุดหลุดเอง */
+    public const MAX_PINS = 3;
+
     /**
-     * ปักหมุดข้อความ — หนึ่งห้องมีหมุดเดียว ปักใหม่จะปลดอันเดิมอัตโนมัติ
+     * ปักหมุดข้อความ — ห้องหนึ่งปักได้ MAX_PINS อัน ปักเพิ่มเกินแล้วอันเก่าสุดหลุด
+     * (แอป/เว็บรุ่นเก่าที่รู้จักหมุดเดียวยังเห็นอันล่าสุดผ่าน pinned_message)
      */
     public function pinMessage(User $user, ChatMessage $message): ChatMessage
     {
-        ChatMessage::where('schedule_id', $message->schedule_id)
-            ->whereNotNull('pinned_at')
-            ->where('id', '!=', $message->id)
-            ->update(['pinned_at' => null, 'pinned_by_id' => null]);
-
         $message->forceFill([
             'pinned_at' => now(),
             'pinned_by_id' => $user->id,
         ])->save();
+
+        $keep = ChatMessage::where('schedule_id', $message->schedule_id)
+            ->whereNotNull('pinned_at')
+            ->orderByDesc('pinned_at')
+            ->orderByDesc('id')
+            ->limit(self::MAX_PINS)
+            ->pluck('id');
+
+        ChatMessage::where('schedule_id', $message->schedule_id)
+            ->whereNotNull('pinned_at')
+            ->whereNotIn('id', $keep)
+            ->update(['pinned_at' => null, 'pinned_by_id' => null]);
 
         return $message;
     }
@@ -409,12 +467,36 @@ class ChatService
 
     public function pinnedMessage(TripSchedule $schedule): ?ChatMessage
     {
+        return $this->pinnedMessages($schedule)->first();
+    }
+
+    /**
+     * หมุดทั้งหมดของห้อง ปักล่าสุดก่อน
+     *
+     * @return Collection<int, ChatMessage>
+     */
+    public function pinnedMessages(TripSchedule $schedule): Collection
+    {
         return ChatMessage::where('schedule_id', $schedule->id)
             ->whereNull('hidden_at')
+            ->where('is_deleted', false)
             ->whereNotNull('pinned_at')
             ->with(['user:id,name,nickname,avatar', 'user.loyaltyAccount:id,user_id,tier', 'pinnedBy:id,name,nickname'])
-            ->latest('pinned_at')
-            ->first();
+            ->orderByDesc('pinned_at')
+            ->orderByDesc('id')
+            ->limit(self::MAX_PINS)
+            ->get();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function pinnedPayloads(TripSchedule $schedule): array
+    {
+        return $this->pinnedMessages($schedule)
+            ->map(fn (ChatMessage $m) => $this->pinnedPayload($m))
+            ->values()
+            ->all();
     }
 
     /**
@@ -482,6 +564,8 @@ class ChatService
             'image_url' => $deleted ? null : $message->image_url,
             'audio_url' => $deleted ? null : $message->audio_url,
             'audio_duration_ms' => $deleted ? null : $message->audio_duration_ms,
+            // สติกเกอร์ — body ยังเป็นข้อความสำรอง "[สติกเกอร์] …" สำหรับไคลเอนต์ที่ไม่รู้จัก
+            'sticker' => app(StickerService::class)->forMessage($message),
             'sender_role' => $message->sender_role,
             'is_mine' => $currentUserId !== null && $message->user_id === $currentUserId,
             'is_deleted' => $deleted,
@@ -506,6 +590,12 @@ class ChatService
             'wellness' => $this->presentCard($message, 'wellnessCheck', fn ($c) => app(ChatWellnessService::class)->present($c, viewerId: $currentUserId)),
             'porter' => $this->presentCard($message, 'porterRound', fn ($c) => app(ChatPorterService::class)->present($c, viewerId: $currentUserId)),
             'staff_intro' => app(StaffIntroService::class)->forMessage($message),
+            // การ์ดแนะนำตัวของลูกทริป
+            'intro' => app(ChatIntroService::class)->forMessage($message),
+            // ปุ่มชวนบนข้อความระบบบางตัว (แนะนำตัว D-3 / แลกคอนแทคตอนจบทริป)
+            'cta' => self::CTA_BY_SYSTEM_KEY[$message->system_key] ?? null,
+            // "รับทราบ" ใต้ประกาศ — null = ไม่ได้ขอ
+            'ack' => app(ChatAckService::class)->present($message, $currentUserId),
             'is_pinned' => $message->pinned_at !== null,
             'created_at' => $message->created_at?->toISOString(),
         ];
@@ -628,6 +718,7 @@ class ChatService
             'body' => $message->body ? Str::limit($message->body, 120) : null,
             'has_image' => $message->image_path !== null,
             'has_audio' => $message->audio_path !== null,
+            'has_sticker' => $message->sticker_id !== null,
         ];
     }
 

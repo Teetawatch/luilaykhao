@@ -342,6 +342,7 @@ const routes = [
       { path: 'postponed', name: 'admin-postponed', component: () => import('../pages/admin/PostponedBookingsPage.vue') },
       { path: 'flexi-price', name: 'admin-flexi-price', component: () => import('../pages/admin/FlexiPricePage.vue') },
       { path: 'hero-slides', name: 'admin-hero-slides', component: () => import('../pages/admin/HeroSlidesPage.vue') },
+      { path: 'stickers', name: 'admin-stickers', component: () => import('../pages/admin/StickersPage.vue') },
       { path: 'gallery', name: 'admin-gallery', component: () => import('../pages/admin/GalleryPage.vue') },
       { path: 'schedule-photos', name: 'admin-schedule-photos', component: () => import('../pages/admin/SchedulePhotosPage.vue') },
       { path: 'places', name: 'admin-places', component: () => import('../pages/admin/PlacesPage.vue') },

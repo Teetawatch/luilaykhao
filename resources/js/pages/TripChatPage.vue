@@ -65,6 +65,17 @@
             </div>
             <!-- v-html ปลอดภัย: escape ทั้งก้อนก่อน แล้วค่อยแปลงเฉพาะเบอร์โทรเป็นลิงก์ tel: -->
             <p class="text-sm text-[#1a1c1c] leading-relaxed whitespace-pre-line" style="font-family:'DB Heavent', 'Anuphan',sans-serif;" v-html="systemBodyHtml(m.body)"></p>
+            <!-- "รับทราบ" ใต้ประกาศของทีมงาน — แทนการพิมพ์ "รับทราบครับ" ตามกันทั้งห้อง -->
+            <div v-if="m.ack" class="mt-2 flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              <button v-if="m.ack.acked_by_me === false" @click="ackMessage(m)" :disabled="ackingId === m.id"
+                class="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#006565] text-white text-[12.5px] font-bold disabled:opacity-60">
+                <span class="material-symbols-rounded ack-icon">thumb_up</span> รับทราบ
+              </button>
+              <span v-else-if="m.ack.acked_by_me" class="flex items-center gap-1 text-[12px] font-bold text-[#006565]">
+                <span class="material-symbols-rounded ack-icon">check_circle</span> คุณรับทราบแล้ว
+              </span>
+              <span class="text-[11.5px] font-bold text-[#889696]">{{ m.ack.count }}/{{ m.ack.total }} คน</span>
+            </div>
           </div>
 
           <div
@@ -127,6 +138,10 @@
                 </button>
               </div>
 
+              <!-- สติกเกอร์ — รูปลอยไม่มีกรอบบับเบิล (body เป็นแค่ข้อความสำรองของไคลเอนต์เก่า) -->
+              <img v-else-if="m.sticker && !m.is_deleted" :src="m.sticker.url" :alt="m.sticker.label"
+                :title="m.sticker.label" class="w-[120px] h-[120px] object-contain" loading="lazy" />
+
               <!-- Bubble -->
               <div v-else class="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-line"
                 :class="m.is_mine
@@ -141,6 +156,20 @@
                 <audio v-if="m.audio_url" :src="m.audio_url" controls preload="none"
                   style="display:block;width:240px;max-width:100%;height:36px"></audio>
                 <span v-if="m.body">{{ m.body }}</span>
+              </div>
+
+              <div v-if="m.ack" class="px-1">
+            <!-- "รับทราบ" ใต้ประกาศของทีมงาน — แทนการพิมพ์ "รับทราบครับ" ตามกันทั้งห้อง -->
+            <div v-if="m.ack" class="flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+              <button v-if="m.ack.acked_by_me === false" @click="ackMessage(m)" :disabled="ackingId === m.id"
+                class="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#006565] text-white text-[12.5px] font-bold disabled:opacity-60">
+                <span class="material-symbols-rounded ack-icon">thumb_up</span> รับทราบ
+              </button>
+              <span v-else-if="m.ack.acked_by_me" class="flex items-center gap-1 text-[12px] font-bold text-[#006565]">
+                <span class="material-symbols-rounded ack-icon">check_circle</span> คุณรับทราบแล้ว
+              </span>
+              <span class="text-[11.5px] font-bold text-[#889696]">{{ m.ack.count }}/{{ m.ack.total }} คน</span>
+            </div>
               </div>
 
               <!-- Time -->
@@ -386,6 +415,28 @@ async function votePoll(message, option) {
   }
 }
 
+const ackingId = ref(null);
+
+// broadcast ไม่มี acked_by_me (เป็นของรวมทั้งห้อง) — คงค่าที่หน้านี้รู้อยู่แล้ว
+function applyAck(messageId, ack) {
+  const m = messages.value.find(x => x.id === messageId);
+  if (!m) return;
+  m.ack = ack ? { ...ack, acked_by_me: ack.acked_by_me ?? m.ack?.acked_by_me ?? false } : null;
+}
+
+async function ackMessage(message) {
+  if (ackingId.value) return;
+  ackingId.value = message.id;
+  try {
+    const res = await api.post(`/schedules/${scheduleId}/chat/messages/${message.id}/ack`);
+    applyAck(message.id, res.data.data.ack);
+  } catch (e) {
+    alert(e?.response?.data?.message || 'กดรับทราบไม่สำเร็จ');
+  } finally {
+    ackingId.value = null;
+  }
+}
+
 async function closePoll(message) {
   const poll = message.poll;
   if (!poll) return;
@@ -410,6 +461,7 @@ function subscribe() {
         markRead();
       }
     })
+    .listen('.chat.ack', (data) => applyAck(data.message_id, data.ack))
     .subscribed(() => { wsConnected.value = true; })
     .error(() => {
       wsConnected.value = false;
@@ -549,5 +601,8 @@ onBeforeUnmount(() => {
    utility อย่าง text-[16px] จึงแพ้เสมอ — ต้องชนะด้วย specificity สองคลาสแทน */
 .material-symbols-rounded.info-chip-icon {
   font-size: 16px;
+}
+.material-symbols-rounded.ack-icon {
+  font-size: 15px;
 }
 </style>

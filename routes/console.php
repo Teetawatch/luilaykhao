@@ -14,6 +14,7 @@ use App\Jobs\ExpirePendingBookingsJob;
 use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\IssueBirthdayCouponsJob;
 use App\Jobs\NotifyStalledIntakesJob;
+use App\Jobs\NotifyTripBirthdaysJob;
 use App\Jobs\PingHeartbeatJob;
 use App\Jobs\PostTripChatTimelineJob;
 use App\Jobs\ProcessTripAlertsJob;
@@ -150,6 +151,8 @@ Schedule::job(new ExpireFlexiOffersJob)->everyFiveMinutes()->withoutOverlapping(
 Schedule::job(new PostTripChatTimelineJob)->everyFifteenMinutes()->withoutOverlapping();
 // โหวตตัดสินในห้องแชทหมดเวลา → ประกาศผลเสียงข้างมาก / รอบรับออเดอร์อาหารหมดเวลา → ประกาศยอดรวม
 Schedule::job(new SettleChatPollsJob)->everyMinute()->withoutOverlapping();
+// วันเกิดลูกทริปที่ตรงวันเดินทาง — บอกทีมงานล่วงหน้า (ครั้งเดียวต่อคน) ทีมงานเลือกเองว่าจะอวยพรไหม
+Schedule::job(new NotifyTripBirthdaysJob)->hourlyAt(10)->withoutOverlapping();
 // Delete a trip's group chat (messages + images) 3 days after it ends, to reclaim storage.
 Schedule::job(new PurgeEndedTripChatsJob)->dailyAt('03:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // ลบรูปให้ลูกค้าโหลด 4 วันหลังอัปโหลด (ทั้งแถวและไฟล์บน R2) — รายชั่วโมงเพื่อให้

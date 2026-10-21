@@ -494,4 +494,69 @@ class ChatNotificationPreferenceTest extends TestCase
         $this->assertSame(0, ChatRoomPreference::where('schedule_id', $schedule->id)->count());
         $this->assertSame(1, ChatRoomPreference::where('schedule_id', $keep->id)->count());
     }
+
+    // ── เงียบไว้ก่อนจนใกล้วันเดินทาง ─────────────────────────────────────────
+
+    public function test_until_trip_behaves_like_important_while_far_away(): void
+    {
+        $schedule = $this->makeSchedule(now('Asia/Bangkok')->addDays(20)->toDateString());
+        $sender = $this->member($schedule);
+        $quiet = $this->member($schedule, ChatRoomPreference::LEVEL_UNTIL_TRIP);
+        $staff = $this->staff($schedule);
+        $this->caughtUp($schedule, $quiet);
+
+        $this->push($this->postMessage($schedule, $sender));
+        $this->assertNull($this->sentTo($quiet));
+
+        $this->sent = [];
+        $this->push($this->postMessage($schedule, $staff, 'staff'));
+        $this->assertNotNull($this->sentTo($quiet));
+    }
+
+    public function test_until_trip_wakes_up_three_days_before_departure(): void
+    {
+        $departure = now('Asia/Bangkok')->addDays(ChatRoomPreference::UNTIL_TRIP_DAYS)->toDateString();
+        $schedule = $this->makeSchedule($departure);
+        $sender = $this->member($schedule);
+        $quiet = $this->member($schedule, ChatRoomPreference::LEVEL_UNTIL_TRIP);
+        $this->caughtUp($schedule, $quiet);
+
+        $this->push($this->postMessage($schedule, $sender));
+        $this->assertNotNull($this->sentTo($quiet));
+
+        $this->actingAs($quiet, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.notify_level', 'until_trip')
+            ->assertJsonPath('data.notify_wakes_on', null);
+    }
+
+    public function test_room_tells_when_until_trip_wakes_and_suggests_quiet_for_far_rooms(): void
+    {
+        $departure = now('Asia/Bangkok')->addDays(30)->toDateString();
+        $schedule = $this->makeSchedule($departure);
+        $user = $this->member($schedule);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.suggest_quiet', true);
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/schedules/{$schedule->id}/chat/notifications", ['level' => 'until_trip'])
+            ->assertOk()
+            ->assertJsonPath('data.notify_level', 'until_trip');
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/chat/room")
+            ->assertJsonPath('data.suggest_quiet', false)
+            ->assertJsonPath(
+                'data.notify_wakes_on',
+                now('Asia/Bangkok')->addDays(30 - ChatRoomPreference::UNTIL_TRIP_DAYS)->toDateString(),
+            );
+
+        $near = $this->makeSchedule(now('Asia/Bangkok')->addDays(5)->toDateString());
+        $other = $this->member($near);
+        $this->actingAs($other, 'sanctum')
+            ->getJson("/api/v1/schedules/{$near->id}/chat/room")
+            ->assertJsonPath('data.suggest_quiet', false);
+    }
 }

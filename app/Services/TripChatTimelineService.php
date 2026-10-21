@@ -218,6 +218,8 @@ class TripChatTimelineService
         return [
             'countdown_7d' => [$departureDate?->subDays(7)->setTime(9, 0), self::DEFAULT_GRACE_HOURS],
             'prepare_3d' => [$departureDate?->subDays(3)->setTime(19, 0), self::DEFAULT_GRACE_HOURS],
+            // ชวนแนะนำตัว — มีปุ่ม "แนะนำตัว" ในแอป (ChatService::CTA_BY_SYSTEM_KEY)
+            'intro_3d' => [$departureDate?->subDays(3)->setTime(12, 0), self::DEFAULT_GRACE_HOURS],
             'itinerary_2d' => [$itineraryDueAt, $graceUntilDeparture($itineraryDueAt)],
             'crew_contacts' => [$crewDueAt, $graceUntilDeparture($crewDueAt)],
             'trip_faq' => [$faqDueAt, $graceUntilDeparture($faqDueAt)],
@@ -227,6 +229,8 @@ class TripChatTimelineService
             // 3 ชั่วโมงก่อนรถออก — ผ่อนผันสั้น ๆ จะได้ไม่โพสต์หลังรถออกไปแล้วนาน
             'departure_soon' => [$departsAt?->subHours(3), 3],
             'trip_end' => [$endDate?->setTime(20, 5), self::DEFAULT_GRACE_HOURS],
+            // ชวนแลกคอนแทคก่อนห้องถูกลบ — มีปุ่ม "แลกคอนแทค" ในแอป
+            'contacts_end' => [$endDate?->setTime(20, 30), self::DEFAULT_GRACE_HOURS],
             // ห้องแชทถูกลบ 3 วันหลังจบทริป (PurgeEndedTripChatsJob) — เตือนก่อน 1 วัน
             'photos_expiring' => [
                 $endDate?->addDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS - 1)->setTime(10, 0),
@@ -256,9 +260,36 @@ class TripChatTimelineService
             'pickup_eve' => $this->pickupBody($schedule),
             'departure_soon' => $this->departureBody($schedule),
             'trip_end' => $this->tripEndBody($schedule),
+            'intro_3d' => $this->introBody($schedule),
+            'contacts_end' => $this->contactsBody($schedule),
             'photos_expiring' => $this->photosExpiringBody($schedule),
             default => null,
         };
+    }
+
+    /** ห้องที่มีลูกทริปคนเดียว (หรือไม่มี) ไม่มีใครให้แนะนำตัวด้วย — ข้าม */
+    private function introBody(TripSchedule $schedule): ?string
+    {
+        if (app(ChatAckService::class)->audienceIds($schedule)->count() < 2) {
+            return null;
+        }
+
+        return "👋 อีก 3 วันได้เจอกันแล้ว มาแนะนำตัวกันหน่อยไหมครับ\n"
+            .'บอกเพื่อน ๆ ว่ามาจากไหน เคยไปทริปแบบนี้มาก่อนไหม จะได้ไม่เขินตอนเจอกัน '
+            .'กดปุ่ม "แนะนำตัว" ใต้ข้อความนี้ในแอปได้เลย (ไม่บังคับนะครับ) 😊';
+    }
+
+    private function contactsBody(TripSchedule $schedule): ?string
+    {
+        if (app(ChatAckService::class)->audienceIds($schedule)->count() < 2) {
+            return null;
+        }
+
+        $days = PurgeEndedTripChatsJob::DELETE_AFTER_DAYS;
+
+        return "🤝 อยากเก็บคอนแทคเพื่อนร่วมทริปไว้ไหมครับ\n"
+            ."ห้องแชทนี้จะถูกลบใน {$days} วัน — กดปุ่ม \"แลกคอนแทค\" ในแอปเพื่อขอ LINE/IG กับเพื่อน ๆ "
+            .'ต้องยินยอมทั้งสองฝ่ายถึงจะเห็นกัน และยังดูได้ในโปรไฟล์หลังห้องถูกลบครับ';
     }
 
     private function countdownBody(TripSchedule $schedule): string

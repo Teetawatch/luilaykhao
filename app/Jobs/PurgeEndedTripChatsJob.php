@@ -2,10 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Models\ChatBirthdayGreeting;
 use App\Models\ChatCollection;
 use App\Models\ChatDropoffRound;
 use App\Models\ChatFoodRound;
+use App\Models\ChatMemberIntro;
 use App\Models\ChatMessage;
+use App\Models\ChatMessageAck;
 use App\Models\ChatPoll;
 use App\Models\ChatPorterRound;
 use App\Models\ChatReaction;
@@ -89,6 +92,10 @@ class PurgeEndedTripChatsJob implements ShouldQueue
             // Reactions cascade at the DB level, but delete explicitly so this
             // works regardless of FK enforcement.
             ChatReaction::whereIn('message_id', $messageIds)->delete();
+            ChatMessageAck::whereIn('message_id', $messageIds)->delete();
+            // แนะนำตัว/วันเกิดเป็นของห้อง หายไปพร้อมห้อง (คอนแทคที่แลกกันแล้วอยู่ต่อ — เป็นของบัญชี)
+            ChatMemberIntro::where('schedule_id', $scheduleId)->delete();
+            ChatBirthdayGreeting::where('schedule_id', $scheduleId)->delete();
             // การ์ดในห้อง (โพล/โหวต, รับออเดอร์อาหาร, จุดพัก) และคำขอแวะห้องน้ำ
             // หมดหน้าที่พร้อมห้อง — ลูกของมัน (คะแนน/ออเดอร์/รายชื่อขึ้นรถ) ตามไปทาง FK
             ChatPoll::where('schedule_id', $scheduleId)->delete();

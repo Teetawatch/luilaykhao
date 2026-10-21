@@ -108,7 +108,7 @@ class SendChatPushJob implements ShouldQueue
 
         $recipientIds = $recipientIds
             ->filter(fn (int $id) => ChatRoomPreference::wantsPush(
-                $levels[$id] ?? ChatRoomPreference::LEVEL_ALL,
+                $chatService->effectiveLevel($levels[$id] ?? ChatRoomPreference::LEVEL_ALL, $message->schedule),
                 $mentioned->contains($id),
                 $fromTeam || $this->callToAction,
             ))

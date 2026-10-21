@@ -35,6 +35,8 @@ use App\Http\Controllers\Api\V1\BookingDocumentController;
 use App\Http\Controllers\Api\V1\BookingMemberController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CharterRequestController;
+use App\Http\Controllers\Api\V1\ChatAckController;
+use App\Http\Controllers\Api\V1\ChatBrowseController;
 use App\Http\Controllers\Api\V1\ChatCollectionController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\ChatDropoffController;
@@ -42,6 +44,7 @@ use App\Http\Controllers\Api\V1\ChatFoodOrderController;
 use App\Http\Controllers\Api\V1\ChatPorterController;
 use App\Http\Controllers\Api\V1\ChatPrivateController;
 use App\Http\Controllers\Api\V1\ChatRestStopController;
+use App\Http\Controllers\Api\V1\ChatSocialController;
 use App\Http\Controllers\Api\V1\ChatSupplyController;
 use App\Http\Controllers\Api\V1\ChatTrailController;
 use App\Http\Controllers\Api\V1\ChatWellnessController;
@@ -95,6 +98,7 @@ use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SplitPaymentController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\StaffPhotoController;
+use App\Http\Controllers\Api\V1\StickerController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TravelDocumentController;
 use App\Http\Controllers\Api\V1\TripAlertController;
@@ -397,17 +401,36 @@ Route::prefix('v1')->group(function () {
 
         // Group chat per trip schedule (customers + assigned staff + admins)
         Route::get('chat/my-conversations', [ChatController::class, 'myConversations']);
+        Route::get('chat/stickers', [StickerController::class, 'index']);
         Route::get('schedules/{id}/chat/messages', [ChatController::class, 'index']);
         Route::post('schedules/{id}/chat/messages', [ChatController::class, 'store'])->middleware('throttle:chat');
         Route::put('schedules/{id}/chat/messages/{messageId}', [ChatController::class, 'update']);
         Route::delete('schedules/{id}/chat/messages/{messageId}', [ChatController::class, 'destroy']);
         Route::post('schedules/{id}/chat/read', [ChatController::class, 'markRead']);
         Route::get('schedules/{id}/chat/unread-count', [ChatController::class, 'unreadCount']);
+        Route::get('schedules/{id}/chat/todos', [ChatController::class, 'todos'])->middleware('throttle:60,1');
+        Route::get('schedules/{id}/chat/search', [ChatBrowseController::class, 'search'])->middleware('throttle:60,1');
+        Route::get('schedules/{id}/chat/media', [ChatBrowseController::class, 'media'])->middleware('throttle:60,1');
+        Route::get('schedules/{id}/chat/intro', [ChatSocialController::class, 'myIntro']);
+        Route::put('schedules/{id}/chat/intro', [ChatSocialController::class, 'saveIntro'])->middleware('throttle:20,1');
+        Route::get('schedules/{id}/chat/birthdays', [ChatSocialController::class, 'birthdays']);
+        Route::post('schedules/{id}/chat/birthdays/{passengerId}/greet', [ChatSocialController::class, 'greet']);
+        Route::get('schedules/{id}/contacts', [ChatSocialController::class, 'board']);
+        Route::post('schedules/{id}/contacts/{userId}/request', [ChatSocialController::class, 'requestExchange'])->middleware('throttle:30,1');
+        Route::post('schedules/{id}/contacts/{userId}/respond', [ChatSocialController::class, 'respond'])->middleware('throttle:30,1');
+        Route::get('me/social-handles', [ChatSocialController::class, 'myHandles']);
+        Route::put('me/social-handles', [ChatSocialController::class, 'saveHandles'])->middleware('throttle:20,1');
+        Route::get('me/trip-contacts', [ChatSocialController::class, 'myContacts']);
         Route::get('schedules/{id}/chat/room', [ChatController::class, 'room']);
         Route::put('schedules/{id}/chat/notifications', [ChatController::class, 'updateNotifications'])->middleware('throttle:30,1');
         Route::post('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'pin']);
         Route::delete('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'unpin']);
         Route::post('schedules/{id}/chat/messages/{messageId}/react', [ChatController::class, 'react']);
+        Route::post('schedules/{id}/chat/messages/{messageId}/ack-request', [ChatAckController::class, 'request']);
+        Route::delete('schedules/{id}/chat/messages/{messageId}/ack-request', [ChatAckController::class, 'cancel']);
+        Route::post('schedules/{id}/chat/messages/{messageId}/ack', [ChatAckController::class, 'ack'])->middleware('throttle:60,1');
+        Route::get('schedules/{id}/chat/messages/{messageId}/acks', [ChatAckController::class, 'index']);
+        Route::post('schedules/{id}/chat/messages/{messageId}/acks/nudge', [ChatAckController::class, 'nudge'])->middleware('throttle:20,1');
         // คำถามด่วน "ขึ้นรถกี่โมง/รอที่ไหน/ทะเบียนรถ/เบอร์ติดต่อ" + ปุ่มสรุปของสตาฟ
         Route::get('schedules/{id}/chat/trip-info', [ChatController::class, 'tripInfo']);
         Route::post('schedules/{id}/chat/trip-summary', [ChatController::class, 'postTripSummary']);
@@ -1201,6 +1224,18 @@ Route::prefix('v1')->group(function () {
         Route::put('hero-slides/{id}', [AdminController::class, 'updateHeroSlide']);
         Route::delete('hero-slides/{id}', [AdminController::class, 'deleteHeroSlide']);
         Route::post('hero-slides/reorder', [AdminController::class, 'reorderHeroSlides']);
+
+        // สติกเกอร์ของแบรนด์ในห้องแชท
+        Route::get('sticker-packs', [StickerController::class, 'adminIndex']);
+        Route::post('sticker-packs', [StickerController::class, 'storePack']);
+        Route::post('sticker-packs/reorder', [StickerController::class, 'reorderPacks']);
+        Route::put('sticker-packs/{id}', [StickerController::class, 'updatePack']);
+        Route::delete('sticker-packs/{id}', [StickerController::class, 'destroyPack']);
+        Route::post('sticker-packs/{id}/stickers', [StickerController::class, 'upload']);
+        Route::post('sticker-packs/{id}/stickers/reorder', [StickerController::class, 'reorderStickers']);
+        Route::put('stickers/{id}', [StickerController::class, 'updateSticker']);
+        Route::post('stickers/{id}/image', [StickerController::class, 'replaceImage']);
+        Route::delete('stickers/{id}', [StickerController::class, 'destroySticker']);
 
         // Urgent-trips popup settings (ป๊อปอัพหน้าเว็บ)
         Route::get('settings/urgent-popup', [AdminController::class, 'urgentPopupSettings']);

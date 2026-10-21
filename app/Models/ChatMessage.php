@@ -27,14 +27,17 @@ class ChatMessage extends Model
 
     protected $fillable = [
         'schedule_id', 'user_id', 'reply_to_id', 'sender_role', 'system_key', 'body', 'image_path',
-        'audio_path', 'audio_duration_ms',
+        'audio_path', 'audio_duration_ms', 'sticker_id',
         'pinned_at', 'pinned_by_id', 'edited_at', 'is_deleted', 'mentions',
+        'ack_requested_at', 'ack_requested_by_id', 'ack_nudged_at',
     ];
 
     protected function casts(): array
     {
         return [
             'pinned_at' => 'datetime',
+            'ack_requested_at' => 'datetime',
+            'ack_nudged_at' => 'datetime',
             'edited_at' => 'datetime',
             'is_deleted' => 'boolean',
             'mentions' => 'array',
@@ -80,6 +83,29 @@ class ChatMessage extends Model
     public function pinnedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'pinned_by_id');
+    }
+
+    /** สติกเกอร์ที่ข้อความนี้ส่ง — null = ข้อความธรรมดา หรือสติกเกอร์ถูกลบไปแล้ว */
+    public function sticker(): BelongsTo
+    {
+        return $this->belongsTo(Sticker::class);
+    }
+
+    /** การ์ดแนะนำตัวที่ข้อความนี้แสดง */
+    public function memberIntro(): HasOne
+    {
+        return $this->hasOne(ChatMemberIntro::class, 'message_id');
+    }
+
+    /** คนที่กด "รับทราบ" แล้ว (มีความหมายเมื่อ ack_requested_at ไม่ว่าง) */
+    public function acks(): HasMany
+    {
+        return $this->hasMany(ChatMessageAck::class, 'message_id');
+    }
+
+    public function ackRequestedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'ack_requested_by_id');
     }
 
     public function reactions(): HasMany
