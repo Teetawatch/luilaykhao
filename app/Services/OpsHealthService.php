@@ -128,6 +128,7 @@ class OpsHealthService
         }
 
         $checks[] = $this->failedJobsCheck();
+        $checks[] = $this->retryAfterCheck();
         $checks[] = $this->diskCheck();
         $checks[] = $this->logSizeCheck();
         $checks[] = $this->smsCheck();
@@ -272,6 +273,47 @@ class OpsHealthService
 
         return $this->result('failed_jobs', $label, $count > 0 ? self::WARN : self::OK,
             $count > 0 ? "{$count} งาน — ดูที่ /horizon/failed" : 'ไม่มี');
+    }
+
+    /**
+     * งานที่วิ่งนานกว่า retry_after ถูก Redis ส่งให้ worker ตัวที่สองทั้งที่ตัวแรกยังทำอยู่
+     * แล้วตายเป็น "Attempts: tries+1" ทั้งที่ข้างในไม่ได้พังอะไร (DeleteMediaFilesJob
+     * เคยเป็นแบบนี้) JobTimeoutsTest ล็อกค่าใน config ไว้แล้ว ข้อนี้จับค่า
+     * REDIS_QUEUE_RETRY_AFTER ใน .env ของ prod ที่ทับค่านั้น
+     */
+    private function retryAfterCheck(): array
+    {
+        $label = 'เวลารองานคืนคิว (retry_after)';
+        $retryAfter = (int) config('queue.connections.redis.retry_after');
+        [$class, $timeout] = $this->longestJobTimeout();
+
+        if ($timeout < $retryAfter) {
+            return $this->result('retry_after', $label, self::OK,
+                "{$retryAfter} วิ · งานนานสุด ".class_basename($class)." {$timeout} วิ");
+        }
+
+        return $this->result('retry_after', $label, self::FAIL,
+            "{$retryAfter} วิ แต่ ".class_basename($class)." วิ่งได้ {$timeout} วิ — งานจะถูกส่งซ้ำระหว่างทำแล้วล้ม ลบ/เพิ่ม REDIS_QUEUE_RETRY_AFTER ใน .env แล้ว horizon:terminate");
+    }
+
+    /** @return array{0: string, 1: int} คลาสงาน + $timeout ที่ยาวที่สุดใน app/Jobs (รวม timeout ของ Horizon) */
+    private function longestJobTimeout(): array
+    {
+        $longest = ['Horizon supervisor', (int) config('horizon.defaults.supervisor-1.timeout')];
+
+        foreach (glob(app_path('Jobs/*.php')) ?: [] as $path) {
+            $class = 'App\\Jobs\\'.basename($path, '.php');
+            if (! class_exists($class) || ! property_exists($class, 'timeout')) {
+                continue;
+            }
+
+            $timeout = (new \ReflectionClass($class))->getProperty('timeout')->getDefaultValue();
+            if (is_int($timeout) && $timeout > $longest[1]) {
+                $longest = [$class, $timeout];
+            }
+        }
+
+        return $longest;
     }
 
     private function diskCheck(): array

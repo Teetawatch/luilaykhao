@@ -212,6 +212,25 @@ class OpsHealthTest extends TestCase
         $this->assertSame('ok', $this->check($health, 'job:SendPendingSmsJob')['status']);
     }
 
+    public function test_retry_after_is_healthy_with_the_shipped_config(): void
+    {
+        $check = $this->check($this->health(), 'retry_after');
+
+        $this->assertSame('ok', $check['status']);
+        $this->assertStringContainsString('660', $check['detail']);
+    }
+
+    /** REDIS_QUEUE_RETRY_AFTER=90 ใน .env ของ prod จะพา "Attempts: 4" ของ DeleteMediaFilesJob กลับมา */
+    public function test_a_retry_after_shorter_than_a_job_fails(): void
+    {
+        config(['queue.connections.redis.retry_after' => 90]);
+
+        $check = $this->check($this->health(), 'retry_after');
+
+        $this->assertSame('fail', $check['status']);
+        $this->assertStringContainsString('REDIS_QUEUE_RETRY_AFTER', $check['detail']);
+    }
+
     public function test_unmonitored_jobs_are_not_recorded(): void
     {
         app(OpsHealthService::class)->recordJobRun(SendWeatherAlertsJob::class);
