@@ -11,6 +11,7 @@ use App\Jobs\ExpireFlexiOffersJob;
 use App\Jobs\ExpireGroupPlansJob;
 use App\Jobs\ExpireLoyaltyPointsJob;
 use App\Jobs\ExpirePendingBookingsJob;
+use App\Jobs\ExpireRentalOrdersJob;
 use App\Jobs\ExpireWaitlistOffersJob;
 use App\Jobs\IssueBirthdayCouponsJob;
 use App\Jobs\NotifyStalledIntakesJob;
@@ -134,6 +135,8 @@ Schedule::job(new NotifyStalledIntakesJob)->dailyAt('09:00')->timezone('Asia/Ban
 // (ผลขึ้นการ์ดในหน้า "สิ่งที่รอคุณ" อยู่แล้ว ตัวนี้ทิ้งร่องรอยไว้ใน log ด้วย)
 Schedule::command('seats:audit')->dailyAt('07:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
+// อุปกรณ์ที่ลูกค้าสั่งเช่าเองแต่ไม่จ่ายก่อนปิดรับ (2 วันก่อนเดินทาง) — ถอดออกจากใบจอง
+Schedule::job(new ExpireRentalOrdersJob)->everyFifteenMinutes()->withoutOverlapping();
 Schedule::job(new ReleaseForceMajeureHoldsJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
 // ตาข่ายรับ webhook ของ Beam ที่หายไป — ถามเกตเวย์เองว่า charge ที่ค้างอยู่จบยังไง

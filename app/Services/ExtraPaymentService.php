@@ -56,6 +56,9 @@ class ExtraPaymentService
             VerifySlipJob::dispatch('extra', $payment->id, $slipPath, $amount);
         }
 
+        // อุปกรณ์ที่ลูกค้าสั่งเช่าเองจ่ายผ่านยอดเพิ่มเติม — ปิดก้อนที่รอจ่ายเมื่อไม่ค้างแล้ว
+        app(RentalOrderService::class)->settle($booking);
+
         if ($booking->user_id) {
             SmartNotification::send(
                 $booking->user_id,

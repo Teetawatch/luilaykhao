@@ -7,6 +7,7 @@ use App\Services\BookingDocumentService;
 use App\Services\CheckInPassService;
 use App\Services\ForceMajeureService;
 use App\Services\PickupStatusService;
+use App\Services\RentalOrderService;
 use App\Services\SeatHandoverService;
 use App\Services\TravelDocumentService;
 use App\Support\MediaDisk;
@@ -224,6 +225,11 @@ class BookingResource extends JsonResource
             'addons_total' => $this->addons_total,
             'selected_rentals' => $this->selected_rentals ?? [],
             'rentals_total' => $this->rentals_total,
+            // เช่าอุปกรณ์เพิ่มเองหลังจอง — แอปโชว์ปุ่มเมื่อ open (null = ทริปไม่มีของให้เช่า)
+            'rental_ordering' => $this->when(
+                $this->relationLoaded('schedule') && $this->schedule?->relationLoaded('trip'),
+                fn () => app(RentalOrderService::class)->summaryFor($this->resource),
+            ),
             'paid_amount' => $this->paid_amount,
             'waived_amount' => (float) $this->waived_amount,
             // ยอดเพิ่มเติมที่ยังต้องจ่ายบนใบที่ยืนยันแล้ว (แอดมินข้ามการชำระแล้วให้จ่ายทีหลัง

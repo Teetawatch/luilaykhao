@@ -287,6 +287,12 @@ class Booking extends Model
         return $this->hasMany(BookingRentalHandout::class);
     }
 
+    /** อุปกรณ์ที่ลูกค้าสั่งเช่าเพิ่มเองหลังจอง — ดู RentalOrderService */
+    public function rentalOrders(): HasMany
+    {
+        return $this->hasMany(BookingRentalOrder::class);
+    }
+
     public function passengers(): HasMany
     {
         return $this->hasMany(BookingPassenger::class);

@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\BeamWebhookController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\BookingDocumentController;
 use App\Http\Controllers\Api\V1\BookingMemberController;
+use App\Http\Controllers\Api\V1\BookingRentalController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CharterRequestController;
 use App\Http\Controllers\Api\V1\ChatAckController;
@@ -251,6 +252,10 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/attendance', [TripAttendanceController::class, 'show']);
         Route::post('bookings/{ref}/attendance', [TripAttendanceController::class, 'confirm']);
         Route::post('bookings/{ref}/attendance/{passengerId}', [TripAttendanceController::class, 'update']);
+        // เช่าอุปกรณ์เพิ่มเองหลังจอง — ถึง 2 วันก่อนเดินทาง จ่ายผ่านยอดเพิ่มเติม
+        Route::get('bookings/{ref}/rentals', [BookingRentalController::class, 'show']);
+        Route::post('bookings/{ref}/rentals', [BookingRentalController::class, 'store'])->middleware('throttle:20,1');
+        Route::delete('bookings/{ref}/rentals/orders/{orderId}', [BookingRentalController::class, 'cancel'])->whereNumber('orderId');
 
         // สมุดผู้ร่วมเดินทาง — เก็บคนที่พาไปบ่อยไว้กรอกซ้ำ ไม่ต้องพิมพ์ใหม่ทุกรอบ
         Route::get('saved-travellers', [SavedTravellerController::class, 'index']);
