@@ -3,15 +3,19 @@
 namespace App\Jobs;
 
 use App\Models\ChatCollection;
+use App\Models\ChatDropoffRound;
 use App\Models\ChatFoodRound;
 use App\Models\ChatMessage;
 use App\Models\ChatPoll;
+use App\Models\ChatPorterRound;
 use App\Models\ChatReaction;
 use App\Models\ChatRead;
 use App\Models\ChatRestStop;
 use App\Models\ChatRoomPreference;
 use App\Models\ChatStopRequest;
 use App\Models\ChatSupplyRequest;
+use App\Models\ChatTrailCheck;
+use App\Models\ChatWellnessCheck;
 use App\Models\LostItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
@@ -91,6 +95,11 @@ class PurgeEndedTripChatsJob implements ShouldQueue
             ChatRestStop::where('schedule_id', $scheduleId)->delete();
             // สลิปเก็บเงินอยู่บนดิสก์ส่วนตัว ไม่ตามไปกับแถวที่ถูกลบ — ลบไฟล์ก่อน
             app(ChatCollectionService::class)->purgeSlips($scheduleId);
+            // ลูกหาบผูกกับการ์ดเก็บเงิน — ลบก่อน (FK nullOnDelete อยู่แล้ว แต่ไม่พึ่ง)
+            ChatPorterRound::where('schedule_id', $scheduleId)->delete();
+            ChatTrailCheck::where('schedule_id', $scheduleId)->delete();
+            ChatDropoffRound::where('schedule_id', $scheduleId)->delete();
+            ChatWellnessCheck::where('schedule_id', $scheduleId)->delete();
             ChatCollection::where('schedule_id', $scheduleId)->delete();
             ChatStopRequest::where('schedule_id', $scheduleId)->delete();
             ChatSupplyRequest::where('schedule_id', $scheduleId)->delete();

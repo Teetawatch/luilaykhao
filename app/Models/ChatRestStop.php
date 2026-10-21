@@ -25,6 +25,18 @@ class ChatRestStop extends Model
      */
     public const KIND_HOME = 'home';
 
+    /**
+     * ปลุกรวม — ทริปขึ้นดูทะเลหมอกตีสี่ return_at คือเวลาปลุก ทุกคนกด "ตื่นแล้ว"
+     * ทีมงานเห็นว่าห้องไหนยังเงียบ แล้วไปเคาะเฉพาะห้องนั้น
+     */
+    public const KIND_WAKEUP = 'wakeup';
+
+    /** กด "ตื่นแล้ว" ได้ตั้งแต่กี่นาทีก่อนเวลาปลุก — ตื่นก่อนนาฬิกาได้ แต่ไม่ใช่กดตั้งแต่เมื่อคืน */
+    public const WAKEUP_EARLY_MINUTES = 60;
+
+    /** ปลุกไปแล้วกี่นาทียังไม่กด — ปลุกซ้ำ และบอกทีมงานว่าห้องไหนยังเงียบ */
+    public const WAKEUP_FOLLOWUP_MINUTES = 10;
+
     /** การ์ดเช็คถึงบ้านปิดเองหลังเปิดไปนานเท่านี้ — คนที่ยังไม่กดถึงตอนนั้นคงลืมไปแล้ว */
     public const HOME_CLOSE_AFTER_HOURS = 16;
 
@@ -88,6 +100,11 @@ class ChatRestStop extends Model
     public function isMeetup(): bool
     {
         return $this->kind === self::KIND_MEETUP;
+    }
+
+    public function isWakeup(): bool
+    {
+        return $this->kind === self::KIND_WAKEUP;
     }
 
     public function isHome(): bool

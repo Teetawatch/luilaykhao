@@ -36,10 +36,14 @@ use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\CharterRequestController;
 use App\Http\Controllers\Api\V1\ChatCollectionController;
 use App\Http\Controllers\Api\V1\ChatController;
+use App\Http\Controllers\Api\V1\ChatDropoffController;
 use App\Http\Controllers\Api\V1\ChatFoodOrderController;
+use App\Http\Controllers\Api\V1\ChatPorterController;
 use App\Http\Controllers\Api\V1\ChatPrivateController;
 use App\Http\Controllers\Api\V1\ChatRestStopController;
 use App\Http\Controllers\Api\V1\ChatSupplyController;
+use App\Http\Controllers\Api\V1\ChatTrailController;
+use App\Http\Controllers\Api\V1\ChatWellnessController;
 use App\Http\Controllers\Api\V1\ConciergeController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CountryController;
@@ -446,6 +450,35 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/supplies/{requestId}/decline', [ChatSupplyController::class, 'decline']);
         // เก็บเงินหน้างาน (ค่าใช้จ่ายนอกแพ็กเกจ) — สตาฟสร้าง/ติ๊กจ่าย ลูกทริปแจ้งโอน
         Route::get('schedules/{id}/chat/roster', [ChatCollectionController::class, 'roster']);
+        // เช็คพอยต์บนเส้นทางเดิน
+        Route::post('schedules/{id}/chat/trail-checks', [ChatTrailController::class, 'store'])->middleware('throttle:chat');
+        Route::get('schedules/{id}/chat/trail-checks/{checkId}', [ChatTrailController::class, 'show']);
+        Route::post('schedules/{id}/chat/trail-checks/{checkId}/reach', [ChatTrailController::class, 'reach'])->middleware('throttle:60,1');
+        Route::post('schedules/{id}/chat/trail-checks/{checkId}/help', [ChatTrailController::class, 'help'])->middleware('throttle:10,1');
+        Route::delete('schedules/{id}/chat/trail-checks/{checkId}/help', [ChatTrailController::class, 'cancelHelp']);
+        Route::post('schedules/{id}/chat/trail-checks/{checkId}/help/ack', [ChatTrailController::class, 'acknowledgeHelp']);
+        Route::post('schedules/{id}/chat/trail-checks/{checkId}/close', [ChatTrailController::class, 'close']);
+        // จุดลงขากลับ
+        Route::post('schedules/{id}/chat/dropoffs', [ChatDropoffController::class, 'store'])->middleware('throttle:chat');
+        Route::get('schedules/{id}/chat/dropoffs/{roundId}', [ChatDropoffController::class, 'show']);
+        Route::put('schedules/{id}/chat/dropoffs/{roundId}/choice', [ChatDropoffController::class, 'choose'])->middleware('throttle:30,1');
+        Route::post('schedules/{id}/chat/dropoffs/{roundId}/drop', [ChatDropoffController::class, 'drop']);
+        Route::post('schedules/{id}/chat/dropoffs/{roundId}/close', [ChatDropoffController::class, 'close']);
+        // เช็คอาการ "ยังไหวไหม"
+        Route::post('schedules/{id}/chat/wellness', [ChatWellnessController::class, 'store'])->middleware('throttle:chat');
+        Route::get('schedules/{id}/chat/wellness/{checkId}', [ChatWellnessController::class, 'show']);
+        Route::post('schedules/{id}/chat/wellness/{checkId}/answer', [ChatWellnessController::class, 'answer'])->middleware('throttle:30,1');
+        Route::post('schedules/{id}/chat/wellness/{checkId}/handled', [ChatWellnessController::class, 'handle']);
+        Route::post('schedules/{id}/chat/wellness/{checkId}/close', [ChatWellnessController::class, 'close']);
+        // ฝากของลูกหาบ
+        Route::post('schedules/{id}/chat/porters', [ChatPorterController::class, 'store'])->middleware('throttle:chat');
+        Route::get('schedules/{id}/chat/porters/{roundId}', [ChatPorterController::class, 'show']);
+        Route::post('schedules/{id}/chat/porters/{roundId}/bags', [ChatPorterController::class, 'addBags'])->middleware('throttle:30,1');
+        Route::put('schedules/{id}/chat/porters/{roundId}/bags/{bagId}', [ChatPorterController::class, 'weigh'])->middleware('throttle:120,1');
+        Route::delete('schedules/{id}/chat/porters/{roundId}/bags/{bagId}', [ChatPorterController::class, 'removeBag']);
+        Route::post('schedules/{id}/chat/porters/{roundId}/returned', [ChatPorterController::class, 'returned'])->middleware('throttle:60,1');
+        Route::post('schedules/{id}/chat/porters/{roundId}/bill', [ChatPorterController::class, 'bill']);
+        Route::post('schedules/{id}/chat/porters/{roundId}/close', [ChatPorterController::class, 'close']);
         Route::post('schedules/{id}/chat/collections', [ChatCollectionController::class, 'store'])->middleware('throttle:chat');
         Route::put('schedules/{id}/chat/collections/{collectionId}/payers', [ChatCollectionController::class, 'setPayers']);
         Route::post('schedules/{id}/chat/collections/{collectionId}/claim', [ChatCollectionController::class, 'claim']);

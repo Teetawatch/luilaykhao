@@ -34,13 +34,18 @@ class ChatRestStopController extends Controller
     public function store(Request $request, int $scheduleId): JsonResponse
     {
         // minutes = พักรถตอนนี้, meet_at = นัดรวมพลล่วงหน้า (ISO-8601 มีโซนเวลา),
-        // kind=home = เช็คถึงบ้านหลังส่งทุกคนลงรถ (ไม่มีเวลานัด)
+        // kind=home = เช็คถึงบ้านหลังส่งทุกคนลงรถ (ไม่มีเวลานัด), kind=wakeup = ปลุกรวม
+        // (meet_at คือเวลาปลุก, place คือสิ่งที่ตามมาหลังตื่น)
         $validated = $request->validate([
-            'kind' => ['nullable', Rule::in([ChatRestStop::KIND_REST, ChatRestStop::KIND_MEETUP, ChatRestStop::KIND_HOME])],
+            'kind' => ['nullable', Rule::in([ChatRestStop::KIND_REST, ChatRestStop::KIND_MEETUP, ChatRestStop::KIND_HOME, ChatRestStop::KIND_WAKEUP])],
             'minutes' => ['exclude_if:kind,'.ChatRestStop::KIND_HOME, 'required_without:meet_at', 'nullable', 'integer', 'min:'.ChatRestStop::MIN_MINUTES, 'max:'.ChatRestStop::MAX_MINUTES],
             'meet_at' => ['exclude_if:kind,'.ChatRestStop::KIND_HOME, 'required_without:minutes', 'nullable', 'date'],
             'place' => ['nullable', 'string', 'max:120'],
         ]);
+
+        if (($validated['kind'] ?? null) === ChatRestStop::KIND_WAKEUP && empty($validated['meet_at'])) {
+            return $this->error('ระบุเวลาปลุกด้วยครับ', 422);
+        }
 
         $schedule = TripSchedule::findOrFail($scheduleId);
         $user = $request->user();
@@ -54,6 +59,7 @@ class ChatRestStopController extends Controller
         try {
             $stop = match (true) {
                 ($validated['kind'] ?? null) === ChatRestStop::KIND_HOME => $this->restStops->openHome($user, $schedule),
+                ($validated['kind'] ?? null) === ChatRestStop::KIND_WAKEUP => $this->restStops->openWakeup($user, $schedule, Carbon::parse($validated['meet_at'])->utc(), $place),
                 ! empty($validated['meet_at']) => $this->restStops->openMeetup($user, $schedule, Carbon::parse($validated['meet_at'])->utc(), $place),
                 default => $this->restStops->open($user, $schedule, (int) $validated['minutes'], $place),
             };
@@ -77,6 +83,7 @@ class ChatRestStopController extends Controller
             $message ? $this->chatService->presentMessage($message, $user->id) : null,
             match (true) {
                 $stop->isHome() => 'เปิดเช็คถึงบ้านแล้ว',
+                $stop->isWakeup() => 'ตั้งปลุกแล้ว',
                 $stop->isMeetup() => 'ประกาศนัดรวมพลแล้ว',
                 default => 'ประกาศเวลาพักแล้ว',
             },

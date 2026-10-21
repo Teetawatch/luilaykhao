@@ -15,8 +15,11 @@ class ChatCollection extends Model
 
     protected $fillable = [
         'schedule_id', 'message_id', 'created_by_id', 'title', 'note', 'amount',
-        'promptpay_id', 'payee_name', 'closed_at',
+        'promptpay_id', 'payee_name', 'source', 'closed_at',
     ];
+
+    /** ยอดมาจากการชั่งกระเป๋าฝากลูกหาบ — แต่ละคนไม่เท่ากัน แก้รายชื่อที่การ์ดเก็บเงินไม่ได้ */
+    public const SOURCE_PORTER = 'porter';
 
     protected function casts(): array
     {
@@ -34,6 +37,11 @@ class ChatCollection extends Model
     public function message(): BelongsTo
     {
         return $this->belongsTo(ChatMessage::class, 'message_id');
+    }
+
+    public function amountsVary(): bool
+    {
+        return $this->source === self::SOURCE_PORTER;
     }
 
     public function dues(): HasMany

@@ -101,6 +101,123 @@ class ChatCollectionService
     }
 
     /**
+     * เก็บเงินที่ยอดแต่ละคนไม่เท่ากัน — มาจากระบบอื่นที่คิดยอดให้แล้ว (ค่าลูกหาบตาม
+     * น้ำหนักกระเป๋า) การ์ดเลิกพูดว่า "คนละ ฿x" และแก้รายชื่อจากการ์ดนี้ไม่ได้
+     *
+     * @param  array<int, float>  $amounts  passenger_id => ยอด (> 0)
+     */
+    public function openWithAmounts(
+        User $staff,
+        TripSchedule $schedule,
+        string $title,
+        ?string $note,
+        array $amounts,
+        ?string $promptPayId,
+        ?string $payeeName,
+        string $source,
+    ): ChatCollection {
+        $roster = $this->roster->passengers($schedule);
+        $amounts = collect($amounts)
+            ->mapWithKeys(fn ($amount, $id) => [(int) $id => round((float) $amount, 2)])
+            ->filter(fn ($amount, $id) => $amount > 0 && $roster->contains('passenger_id', $id));
+
+        if ($amounts->isEmpty()) {
+            throw new \Exception('ไม่มียอดที่ต้องเก็บ');
+        }
+
+        $collection = DB::transaction(function () use ($staff, $schedule, $title, $note, $amounts, $promptPayId, $payeeName, $source) {
+            $collection = ChatCollection::create([
+                'schedule_id' => $schedule->id,
+                'created_by_id' => $staff->id,
+                'title' => $title,
+                'note' => $note ?: null,
+                // ยอดต่อคนไม่เท่ากัน — ไม่มี "ยอดตั้งต้น" ให้ใช้
+                'amount' => 0,
+                'promptpay_id' => $promptPayId,
+                'payee_name' => $payeeName ?: null,
+                'source' => $source,
+            ]);
+
+            foreach ($amounts as $id => $amount) {
+                ChatCollectionDue::create([
+                    'collection_id' => $collection->id,
+                    'passenger_id' => $id,
+                    'amount' => $amount,
+                ]);
+            }
+
+            $message = ChatMessage::create([
+                'schedule_id' => $schedule->id,
+                'user_id' => $staff->id,
+                'sender_role' => $this->chatService->senderRole($staff, $schedule),
+                'body' => "💰 เก็บเงิน: {$title} — รวม ฿{$this->baht((float) $amounts->sum())} ({$amounts->count()} คน ยอดไม่เท่ากัน) ดูยอดของคุณและสแกนจ่ายในการ์ดนี้",
+            ]);
+
+            $collection->update(['message_id' => $message->id]);
+
+            return $collection;
+        });
+
+        $message = $collection->message()->with(['user', 'replyTo.user', 'reactions', 'collection.dues'])->first();
+        if ($message) {
+            broadcast(new ChatMessageSent($message))->toOthers();
+        }
+
+        return $collection->fresh('dues');
+    }
+
+    /**
+     * ปรับยอดตามระบบต้นทาง (ชั่งกระเป๋าใหม่) — เฉพาะคนที่ยังไม่จ่าย คนที่จ่ายแล้วไม่แตะ
+     * (ระบบต้นทางต้องกันไม่ให้แก้ยอดของคนที่จ่ายแล้วเอง) ยอด 0 = เอาออกจากรายการ
+     *
+     * @param  array<int, float>  $amounts  passenger_id => ยอด
+     */
+    public function syncAmounts(ChatCollection $collection, array $amounts): ChatCollection
+    {
+        $amounts = collect($amounts)->mapWithKeys(fn ($amount, $id) => [(int) $id => round((float) $amount, 2)]);
+
+        DB::transaction(function () use ($collection, $amounts) {
+            $dues = ChatCollectionDue::where('collection_id', $collection->id)->get()->keyBy('passenger_id');
+
+            foreach ($dues as $passengerId => $due) {
+                if ($due->paid_at !== null) {
+                    continue;
+                }
+                $amount = $amounts->get((int) $passengerId, 0.0);
+                if ($amount <= 0) {
+                    $due->delete();
+                } elseif ((float) $due->amount !== $amount) {
+                    // ยอดเปลี่ยน = สลิปเดิม (ถ้ามี) ไม่ตรงยอดใหม่แล้ว ให้แจ้งโอนใหม่
+                    $old = $due->slip_path;
+                    $due->update(['amount' => $amount, 'paid_claimed_at' => null, 'slip_path' => null]);
+                    $this->deleteUnusedSlips([$old]);
+                }
+            }
+
+            foreach ($amounts as $passengerId => $amount) {
+                if ($amount > 0 && ! $dues->has($passengerId)) {
+                    ChatCollectionDue::create([
+                        'collection_id' => $collection->id,
+                        'passenger_id' => $passengerId,
+                        'amount' => $amount,
+                    ]);
+                }
+            }
+        });
+
+        return $this->broadcastUpdate($collection);
+    }
+
+    /** ผู้โดยสารคนนี้จ่ายรายการนี้ไปแล้วหรือยัง */
+    public function isPaid(ChatCollection $collection, int $passengerId): bool
+    {
+        return ChatCollectionDue::where('collection_id', $collection->id)
+            ->where('passenger_id', $passengerId)
+            ->whereNotNull('paid_at')
+            ->exists();
+    }
+
+    /**
      * กำหนดว่าใครต้องจ่าย — คนที่เพิ่มเข้ามาได้ยอดตั้งต้น คนที่เอาออกหายจากรายการ
      * (คนที่จ่ายแล้วเอาออกไม่ได้ ต้องยกเลิกการจ่ายก่อน กันยอดที่เก็บไปแล้วหายเงียบ)
      *
@@ -108,6 +225,10 @@ class ChatCollectionService
      */
     public function setPayers(ChatCollection $collection, array $passengerIds): ChatCollection
     {
+        if ($collection->amountsVary()) {
+            throw new \Exception('ยอดของรายการนี้มาจากการชั่งกระเป๋า — แก้ที่การ์ดฝากลูกหาบแทนครับ');
+        }
+
         $roster = $this->roster->passengers($collection->schedule);
         $ids = $this->validIds($roster, $passengerIds);
 
@@ -336,6 +457,8 @@ class ChatCollectionService
             'title' => $collection->title,
             'note' => $collection->note,
             'amount' => (float) $collection->amount,
+            // ยอดต่อคนไม่เท่ากัน (ค่าลูกหาบตามน้ำหนัก) — การ์ดไม่พูดว่า "คนละ ฿x"
+            'amounts_vary' => $collection->amountsVary(),
             'promptpay_id' => $collection->promptpay_id,
             'payee_name' => $collection->payee_name,
             'is_closed' => $collection->isClosed(),

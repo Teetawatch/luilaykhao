@@ -501,6 +501,10 @@ class ChatService
             'rest_stop' => $this->presentRestStop($message),
             'collection' => $this->presentCollection($message),
             'lost_item' => $this->presentLostItem($message),
+            'trail_check' => $this->presentCard($message, 'trailCheck', fn ($c) => app(ChatTrailService::class)->present($c, viewerId: $currentUserId)),
+            'dropoff' => $this->presentCard($message, 'dropoffRound', fn ($c) => app(ChatDropoffService::class)->present($c, viewerId: $currentUserId)),
+            'wellness' => $this->presentCard($message, 'wellnessCheck', fn ($c) => app(ChatWellnessService::class)->present($c, viewerId: $currentUserId)),
+            'porter' => $this->presentCard($message, 'porterRound', fn ($c) => app(ChatPorterService::class)->present($c, viewerId: $currentUserId)),
             'staff_intro' => app(StaffIntroService::class)->forMessage($message),
             'is_pinned' => $message->pinned_at !== null,
             'created_at' => $message->created_at?->toISOString(),
@@ -585,6 +589,25 @@ class ChatService
         $collection = $message->relationLoaded('collection') ? $message->collection : $message->collection()->first();
 
         return $collection ? app(ChatCollectionService::class)->present($collection) : null;
+    }
+
+    /**
+     * การ์ดเครื่องมือหน้างานที่แนบกับข้อความ (ถ้ามี) — ข้อความที่ถูกลบไม่ส่งการ์ด
+     * [currentUserId] ของข้อความที่ broadcast เป็น null: การ์ดที่มีส่วน "ของฉัน"
+     * (เช็คอาการ จุดลง) จึงไม่มีส่วนนั้นใน broadcast แอปคงค่าเดิมไว้
+     *
+     * @param  callable(mixed): array<string, mixed>  $present
+     * @return array<string, mixed>|null
+     */
+    private function presentCard(ChatMessage $message, string $relation, callable $present): ?array
+    {
+        if ($message->is_deleted) {
+            return null;
+        }
+
+        $card = $message->relationLoaded($relation) ? $message->{$relation} : $message->{$relation}()->first();
+
+        return $card ? $present($card) : null;
     }
 
     /**

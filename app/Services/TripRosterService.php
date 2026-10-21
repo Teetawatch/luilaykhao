@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\BookingMember;
+use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
 use Illuminate\Support\Collection;
 
@@ -61,6 +62,28 @@ class TripRosterService
                 'is_join_trip' => (bool) $b->is_join_trip,
             ];
         }))->values();
+    }
+
+    /**
+     * คนที่ไปจริง ณ หน้างาน — ตัดคนที่แจ้งว่าไปไม่ได้แล้วไม่ได้ขึ้นรถออก
+     * (BookingPassenger::not_going_at) ไม่งั้นการ์ดที่รอ "ครบทุกคน" ไม่มีวันครบ
+     *
+     * @return Collection<int, array{passenger_id: int, booking_id: int, name: string, full_name: string, title: ?string, phone: ?string, user_id: ?int, is_join_trip: bool}>
+     */
+    public function travelling(TripSchedule $schedule, bool $includeJoinTrip = true): Collection
+    {
+        $roster = $this->passengers($schedule, $includeJoinTrip);
+        if ($roster->isEmpty()) {
+            return $roster;
+        }
+
+        $notGoing = BookingPassenger::whereIn('id', $roster->pluck('passenger_id'))
+            ->whereNotNull('not_going_at')
+            ->whereNull('checked_in_at')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        return $roster->reject(fn ($p) => $notGoing->contains($p['passenger_id']))->values();
     }
 
     /**

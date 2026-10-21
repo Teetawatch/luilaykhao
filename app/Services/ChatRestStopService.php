@@ -6,11 +6,11 @@ use App\Events\ChatMessageSent;
 use App\Events\ChatRestStopUpdated;
 use App\Events\ChatStopRequestsUpdated;
 use App\Jobs\SendChatPushJob;
-use App\Models\BookingPassenger;
 use App\Models\ChatMessage;
 use App\Models\ChatRestStop;
 use App\Models\ChatRestStopBoarding;
 use App\Models\ChatStopRequest;
+use App\Models\ScheduleRoomGuest;
 use App\Models\TripSchedule;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -119,6 +119,50 @@ class ChatRestStopService
                 'user_id' => $staff->id,
                 'sender_role' => $this->chatService->senderRole($staff, $schedule),
                 'body' => "📍 นัดรวมพล {$this->when($meetAt)} น.{$where} — ถึงจุดนัดแล้วกด \"มาถึงแล้ว\" ในการ์ดนี้",
+            ]);
+
+            $stop->update(['message_id' => $message->id]);
+
+            return $stop;
+        });
+
+        $message = $stop->message()->with(['user', 'replyTo.user', 'reactions', 'restStop.boardings'])->first();
+        if ($message) {
+            broadcast(new ChatMessageSent($message))->toOthers();
+        }
+
+        return $stop->fresh('boardings');
+    }
+
+    /**
+     * ปลุกรวม — "พรุ่งนี้ 03:30 ปลุก ขึ้นดูทะเลหมอก" [note] คือสิ่งที่ตามมาหลังตื่น
+     * (เช่น "ออกเดิน 04:00 หน้าลานเต็นท์") ไม่ใช่สถานที่
+     */
+    public function openWakeup(User $staff, TripSchedule $schedule, Carbon $wakeAt, ?string $note = null): ChatRestStop
+    {
+        if ($wakeAt->lte(now())) {
+            throw new \Exception('เวลาปลุกต้องเป็นเวลาข้างหน้า');
+        }
+        if ($wakeAt->gt(now()->addDays(ChatRestStop::MEETUP_MAX_DAYS))) {
+            throw new \Exception('ตั้งปลุกล่วงหน้าได้ไม่เกิน '.ChatRestStop::MEETUP_MAX_DAYS.' วัน');
+        }
+
+        $stop = DB::transaction(function () use ($staff, $schedule, $wakeAt, $note) {
+            $stop = ChatRestStop::create([
+                'schedule_id' => $schedule->id,
+                'created_by_id' => $staff->id,
+                'kind' => ChatRestStop::KIND_WAKEUP,
+                'place' => $note ?: null,
+                'return_at' => $wakeAt,
+            ]);
+
+            $then = $note ? " · {$note}" : '';
+            $message = ChatMessage::create([
+                'schedule_id' => $schedule->id,
+                'user_id' => $staff->id,
+                'sender_role' => $this->chatService->senderRole($staff, $schedule),
+                'body' => "⏰ ปลุก {$this->when($wakeAt)} น.{$then} — ตื่นแล้วกด \"ตื่นแล้ว\" ในการ์ดนี้ "
+                    .'(เปิดการ์ดนี้ไว้สักครั้ง เครื่องจะตั้งปลุกให้เองแม้ตรงนั้นไม่มีสัญญาณ)',
             ]);
 
             $stop->update(['message_id' => $message->id]);
@@ -353,6 +397,11 @@ class ChatRestStopService
             throw new \Exception('ยังไม่ถึงเวลานัด กดได้เมื่อถึงจุดนัดแล้วนะครับ');
         }
 
+        if ($boarded && ! $asStaff && $stop->isWakeup()
+            && $stop->return_at->gt(now()->addMinutes(ChatRestStop::WAKEUP_EARLY_MINUTES))) {
+            throw new \Exception('ยังไม่ถึงเวลาปลุก กดได้ตั้งแต่ '.$this->clock($stop->return_at->copy()->subMinutes(ChatRestStop::WAKEUP_EARLY_MINUTES)).' น. ครับ');
+        }
+
         $schedule = $stop->schedule;
         $roster = $this->rosterOf($stop);
         $allowed = $asStaff
@@ -382,9 +431,12 @@ class ChatRestStopService
             }
         });
 
-        // คนสุดท้ายกดถึงบ้าน — ปิดการ์ดและบอกทีมงานทันที ไม่ต้องรอใครกดปิด
+        // คนสุดท้ายกดถึงบ้าน/ตื่นแล้ว — ปิดการ์ดและบอกทีมงานทันที ไม่ต้องรอใครกดปิด
         if ($boarded && $stop->isHome()) {
             $this->finishHomeIfComplete($stop);
+        }
+        if ($boarded && $stop->isWakeup()) {
+            $this->finishWakeupIfComplete($stop);
         }
 
         return $this->broadcastUpdate($stop);
@@ -407,17 +459,17 @@ class ChatRestStopService
         $stop->update([
             'return_at' => $returnAt,
             // เหลือไม่ถึงช่วงเตือน = เพิ่งประกาศเวลาใหม่ ไม่ต้องเตือนซ้ำทันที
-            'reminded_at' => $this->minutesLeft($returnAt) <= $stop->remindBeforeMinutes() ? now() : null,
+            // (ปลุกรวมไม่มีเตือนล่วงหน้า — reminded_at คือ "ปลุกแล้ว" ต้องว่างให้ปลุกตามเวลาใหม่)
+            'reminded_at' => ! $stop->isWakeup() && $this->minutesLeft($returnAt) <= $stop->remindBeforeMinutes() ? now() : null,
             'due_notified_at' => null,
         ]);
 
         $fresh = $this->broadcastUpdate($stop);
-        $this->chatService->postSystem(
-            $stop->schedule,
-            $stop->isMeetup()
-                ? "⏰ เลื่อนเวลานัดรวมพลไป {$minutes} นาที — เจอกัน {$this->when($fresh->return_at)} น."
-                : "⏰ ขยายเวลาพักอีก {$minutes} นาที — กลับขึ้นรถ {$this->clock($fresh->return_at)} น.",
-        );
+        $this->chatService->postSystem($stop->schedule, match (true) {
+            $stop->isWakeup() => "⏰ เลื่อนเวลาปลุกไป {$minutes} นาที — ปลุก {$this->when($fresh->return_at)} น.",
+            $stop->isMeetup() => "⏰ เลื่อนเวลานัดรวมพลไป {$minutes} นาที — เจอกัน {$this->when($fresh->return_at)} น.",
+            default => "⏰ ขยายเวลาพักอีก {$minutes} นาที — กลับขึ้นรถ {$this->clock($fresh->return_at)} น.",
+        });
 
         return $fresh;
     }
@@ -439,6 +491,9 @@ class ChatRestStopService
             $stop->isHome() => $complete
                 ? "🏠 ทุกคนถึงบ้านปลอดภัยแล้ว ({$total}/{$total} คน) ขอบคุณที่เดินทางกับเราครับ 🙏"
                 : '🏠 ปิดเช็คถึงบ้านแล้ว'.($total > 0 ? " (บอกว่าถึงบ้าน {$boarded}/{$total} คน)" : ''),
+            $stop->isWakeup() => $complete
+                ? "⏰ ตื่นครบ {$total}/{$total} คนแล้ว ลุยกันเลย!"
+                : '⏰ ปิดการ์ดปลุกแล้ว'.($total > 0 ? " (ตื่นแล้ว {$boarded}/{$total} คน)" : ''),
             $stop->isMeetup() => $complete
                 ? "📍 มากันครบ {$total}/{$total} คน ไปกันเลย!"
                 : '📍 เริ่มแล้ว'.($total > 0 ? " (มาถึงจุดนัด {$boarded}/{$total} คน)" : ''),
@@ -455,6 +510,7 @@ class ChatRestStopService
     {
         return match (true) {
             $stop->isHome() => 'ปิดเช็คถึงบ้านไปแล้วครับ',
+            $stop->isWakeup() => 'ปิดการ์ดปลุกไปแล้วครับ',
             $stop->isMeetup() => 'นัดนี้จบไปแล้ว',
             default => 'รถออกไปแล้ว',
         };
@@ -503,6 +559,12 @@ class ChatRestStopService
         if ($stop->return_at->lte(now()->subMinutes(ChatRestStop::AUTO_DEPART_AFTER_MINUTES))) {
             $stop->update(['departed_at' => now()]);
             $this->broadcastUpdate($stop);
+
+            return;
+        }
+
+        if ($stop->isWakeup()) {
+            $this->settleWakeup($stop);
 
             return;
         }
@@ -606,10 +668,15 @@ class ChatRestStopService
         ];
 
         foreach ($this->rosterOf($stop)->pluck('user_id')->filter()->unique() as $userId) {
-            $this->send((int) $userId, [
-                "🌙 พรุ่งนี้ {$this->clock($stop->return_at)} น. นัดรวมพล",
-                "เจอกัน{$place} — ตั้งนาฬิกาปลุกไว้ด้วยนะครับ · {$tripTitle}",
-            ], $data);
+            $this->send((int) $userId, $stop->isWakeup()
+                ? [
+                    "🌙 พรุ่งนี้ปลุก {$this->clock($stop->return_at)} น.",
+                    ($stop->place ? "{$stop->place} — " : '').'นอนเร็วหน่อยนะครับ เปิดแชทสักครั้งให้เครื่องตั้งปลุกไว้ · '.$tripTitle,
+                ]
+                : [
+                    "🌙 พรุ่งนี้ {$this->clock($stop->return_at)} น. นัดรวมพล",
+                    "เจอกัน{$place} — ตั้งนาฬิกาปลุกไว้ด้วยนะครับ · {$tripTitle}",
+                ], $data);
         }
     }
 
@@ -624,6 +691,8 @@ class ChatRestStopService
         $stop->loadMissing('boardings');
         $boardedIds = $stop->boardings->pluck('passenger_id')->map(fn ($id) => (int) $id);
         $roster = $this->rosterOf($stop);
+        // ปลุกรวม: ทีมงานต้องรู้ว่าจะไปเคาะห้องไหน — ห้องพักประกาศในห้องรวมอยู่แล้ว
+        $rooms = $stop->isWakeup() ? $this->roomLabels($stop->schedule) : collect();
 
         return [
             'id' => $stop->id,
@@ -640,6 +709,7 @@ class ChatRestStopService
                 'user_id' => $p['user_id'],
                 'booking_id' => $p['booking_id'],
                 'boarded' => $boardedIds->contains($p['passenger_id']),
+                ...($stop->isWakeup() ? ['room' => $rooms[$p['passenger_id']] ?? null] : []),
                 ...($withPhones ? ['phone' => $p['phone']] : []),
             ])->values()->all(),
         ];
@@ -876,6 +946,120 @@ class ChatRestStopService
         }
     }
 
+    // ── ปลุกรวม ─────────────────────────────────────────────────────────────
+
+    /**
+     * งานตามเวลาของการ์ดปลุก: คืนก่อน 20:00 บอกเวลาปลุก, ถึงเวลาปลุกทุกคนที่ยังไม่กด,
+     * อีก WAKEUP_FOLLOWUP_MINUTES ปลุกซ้ำ และบอกทีมงานว่าห้องไหนยังเงียบ
+     *
+     * ส่งตรง ไม่ผ่านการตั้งค่าเงียบของห้องแชท — คนที่ปิดเสียงห้องไว้คือคนที่ต้องปลุกที่สุด
+     */
+    private function settleWakeup(ChatRestStop $stop): void
+    {
+        $this->remindEve($stop);
+
+        if ($stop->return_at->gt(now())) {
+            return;
+        }
+
+        $followUpAt = $stop->return_at->copy()->addMinutes(ChatRestStop::WAKEUP_FOLLOWUP_MINUTES);
+
+        // งานตามเวลาสะดุดไปนาน — เวลาปลุกผ่านไปเป็นชั่วโมงแล้ว ปลุกตอนนี้ไม่มีประโยชน์
+        if ($stop->return_at->lte(now()->subHour())) {
+            ChatRestStop::whereKey($stop->id)->update([
+                'reminded_at' => $stop->reminded_at ?? now(),
+                'due_notified_at' => $stop->due_notified_at ?? now(),
+            ]);
+
+            return;
+        }
+
+        if ($stop->reminded_at === null) {
+            // ยังไม่เคยปลุก แต่เลยเวลาปลุกซ้ำแล้ว (งานสะดุด) — ส่งใบเดียวแบบปลุกซ้ำ
+            // พร้อมบอกทีมงาน แทนที่จะเด้งสองใบห่างกันนาทีเดียว
+            $column = $followUpAt->lte(now()) ? 'due_notified_at' : 'reminded_at';
+            $claimed = ChatRestStop::whereKey($stop->id)->whereNull('reminded_at')
+                ->update($column === 'due_notified_at' ? ['reminded_at' => now(), 'due_notified_at' => now()] : ['reminded_at' => now()]);
+        } elseif ($stop->due_notified_at === null && $followUpAt->lte(now())) {
+            $column = 'due_notified_at';
+            $claimed = ChatRestStop::whereKey($stop->id)->whereNull('due_notified_at')->update(['due_notified_at' => now()]);
+        } else {
+            return;
+        }
+
+        if ($claimed === 0) {
+            return;
+        }
+
+        $missing = $this->missing($stop);
+        if ($missing->isEmpty()) {
+            return;
+        }
+
+        $schedule = $stop->schedule;
+        $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
+        $data = $this->pushData($stop);
+        $then = $stop->place ? "{$stop->place} · " : '';
+
+        foreach ($missing->pluck('user_id')->filter()->unique() as $userId) {
+            $names = $missing->where('user_id', $userId)->pluck('name');
+            $who = $names->count() > 1 ? ' ('.$names->join(', ').')' : '';
+
+            $this->send((int) $userId, $column === 'reminded_at'
+                ? ["⏰ ได้เวลาตื่นแล้ว!{$who}", "{$then}ตื่นแล้วกด \"ตื่นแล้ว\" ในแชทให้ทีมงานรู้ด้วยนะครับ · {$tripTitle}"]
+                : ["⏰ ยังไม่ตื่นเหรอครับ?{$who}", "{$then}ทุกคนกำลังเตรียมตัว กด \"ตื่นแล้ว\" ในแชทด้วยนะครับ · {$tripTitle}"],
+                $data,
+                tag: "wakeup-{$stop->id}",
+                channel: 'important_updates',
+            );
+        }
+
+        if ($column !== 'due_notified_at') {
+            return;
+        }
+
+        // ปลุกซ้ำแล้วยังเงียบ — บอกทีมงานเป็นรายห้อง จะได้เดินไปเคาะถูกห้อง
+        $byRoom = $missing->groupBy(fn ($p) => $this->roomLabels($schedule)[$p['passenger_id']] ?? 'ไม่ได้จัดห้อง');
+        $lines = $byRoom->map(fn ($people, $room) => "{$room}: ".$people->pluck('name')->join(', '))->values();
+        $body = $lines->take(6)->join(' · ').($lines->count() > 6 ? ' และอีก '.($lines->count() - 6).' ห้อง' : '');
+
+        foreach ($this->staffIds($schedule) as $staffId) {
+            $this->send($staffId, ["⏰ ยังไม่ตื่น {$missing->count()} คน", $body], $data, channel: 'important_updates');
+        }
+    }
+
+    /** ตื่นครบทุกคน — ปิดการ์ดและประกาศ (ครั้งเดียว) */
+    private function finishWakeupIfComplete(ChatRestStop $stop): void
+    {
+        [$total, $awake] = $this->counts($stop);
+        if ($total === 0 || $awake < $total) {
+            return;
+        }
+
+        $this->depart($stop);
+    }
+
+    /** @var array<int, Collection<int, string>> */
+    private array $roomLabelCache = [];
+
+    /**
+     * ห้องที่แต่ละคนพัก — "ห้อง 3" หรือ "บ้านพัก A · ห้อง 3" เมื่อทริปมีหลายที่พัก
+     * (คนเดียวอยู่หลายห้องได้ ถ้าคืนละที่ — โชว์ทุกห้อง)
+     *
+     * @return Collection<int, string> passenger_id => ป้ายห้อง
+     */
+    private function roomLabels(TripSchedule $schedule): Collection
+    {
+        return $this->roomLabelCache[$schedule->id] ??= ScheduleRoomGuest::query()
+            ->join('schedule_rooms', 'schedule_rooms.id', '=', 'schedule_room_guests.room_id')
+            ->where('schedule_rooms.schedule_id', $schedule->id)
+            ->orderBy('schedule_rooms.sort_order')
+            ->orderBy('schedule_rooms.id')
+            ->get(['schedule_room_guests.passenger_id', 'schedule_rooms.name', 'schedule_rooms.stay_label'])
+            ->groupBy('passenger_id')
+            ->map(fn ($rows) => $rows->map(fn ($r) => trim(($r->stay_label ? "{$r->stay_label} · " : '').$r->name))->join(' / '));
+    }
+
     // ── ภายใน ───────────────────────────────────────────────────────────────
 
     /** @return array{0: int, 1: int} [ทั้งหมด, ขึ้นแล้ว] */
@@ -906,12 +1090,12 @@ class ChatRestStopService
      * @param  array{0: string, 1: string}  $text
      * @param  array<string, string>  $data
      */
-    private function send(int $userId, array $text, array $data, ?string $tag = null): void
+    private function send(int $userId, array $text, array $data, ?string $tag = null, string $channel = SendChatPushJob::ANDROID_CHANNEL): void
     {
         try {
             $this->fcm->sendToUser($userId, $text[0], $text[1], $data, array_filter([
                 'tag' => $tag,
-                'android_channel' => SendChatPushJob::ANDROID_CHANNEL,
+                'android_channel' => $channel,
             ]));
         } catch (\Throwable $e) {
             Log::warning('ChatRestStopService: ส่ง push ไม่สำเร็จ', [
@@ -942,20 +1126,18 @@ class ChatRestStopService
      */
     private function rosterOf(ChatRestStop $stop): Collection
     {
+        // ปลุกรวม: ทุกคนที่ค้างกับกลุ่ม รวมคนจอยทริป ไม่นับคนที่แจ้งว่าไปไม่ได้
+        if ($stop->isWakeup()) {
+            return $this->roster->travelling($stop->schedule);
+        }
+
         if (! $stop->isHome()) {
             return $this->roster->passengers($stop->schedule, includeJoinTrip: $stop->isMeetup());
         }
 
         // ถึงบ้าน: คนที่นั่งรถกลับมากับเรา — ไม่นับคนจอยทริป (กลับเอง) และคนที่แจ้ง
-        // ว่าไปไม่ได้แล้วไม่ได้ขึ้นรถ (BookingPassenger::isNotGoing) ไม่งั้นการ์ดไม่มีวันครบ
-        $roster = $this->roster->passengers($stop->schedule, includeJoinTrip: false);
-        $notGoing = BookingPassenger::whereIn('id', $roster->pluck('passenger_id'))
-            ->whereNotNull('not_going_at')
-            ->whereNull('checked_in_at')
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id);
-
-        return $roster->reject(fn ($p) => $notGoing->contains($p['passenger_id']))->values();
+        // ว่าไปไม่ได้แล้วไม่ได้ขึ้นรถ ไม่งั้นการ์ดไม่มีวันครบ
+        return $this->roster->travelling($stop->schedule, includeJoinTrip: false);
     }
 
     /** "04:30" ถ้าเป็นวันนี้, "พรุ่งนี้ 04:30", หรือ "ศ. 9 ต.ค. 04:30" */

@@ -123,6 +123,10 @@ class ChatController extends Controller
             'restStop.boardings',
             'collection.dues',
             'lostItem',
+            'trailCheck.positions',
+            'dropoffRound',
+            'wellnessCheck.answers',
+            'porterRound.bags',
         ];
     }
 

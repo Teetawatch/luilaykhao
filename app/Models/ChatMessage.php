@@ -126,4 +126,28 @@ class ChatMessage extends Model
     {
         return $this->hasOne(ChatCollection::class, 'message_id');
     }
+
+    /** เช็คพอยต์บนเส้นทางเดินที่แนบกับข้อความนี้ */
+    public function trailCheck(): HasOne
+    {
+        return $this->hasOne(ChatTrailCheck::class, 'message_id');
+    }
+
+    /** จุดลงขากลับที่แนบกับข้อความนี้ */
+    public function dropoffRound(): HasOne
+    {
+        return $this->hasOne(ChatDropoffRound::class, 'message_id');
+    }
+
+    /** เช็คอาการ "ยังไหวไหม" ที่แนบกับข้อความนี้ */
+    public function wellnessCheck(): HasOne
+    {
+        return $this->hasOne(ChatWellnessCheck::class, 'message_id');
+    }
+
+    /** ฝากของลูกหาบที่แนบกับข้อความนี้ */
+    public function porterRound(): HasOne
+    {
+        return $this->hasOne(ChatPorterRound::class, 'message_id');
+    }
 }
