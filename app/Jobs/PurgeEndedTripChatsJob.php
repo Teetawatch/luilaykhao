@@ -21,6 +21,7 @@ use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Services\ChatCollectionService;
 use App\Services\ChatPrivateService;
+use App\Services\OnsiteMoneyService;
 use App\Support\MediaDisk;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -93,6 +94,10 @@ class PurgeEndedTripChatsJob implements ShouldQueue
             ChatPoll::where('schedule_id', $scheduleId)->delete();
             ChatFoodRound::where('schedule_id', $scheduleId)->delete();
             ChatRestStop::where('schedule_id', $scheduleId)->delete();
+            // ยอดเงินหน้างานต้องอยู่ต่อจนการเงินตรวจรับ — แช่สรุปไว้ก่อนการ์ดหายไปกับห้อง
+            if ($schedule = TripSchedule::find($scheduleId)) {
+                app(OnsiteMoneyService::class)->freeze($schedule);
+            }
             // สลิปเก็บเงินอยู่บนดิสก์ส่วนตัว ไม่ตามไปกับแถวที่ถูกลบ — ลบไฟล์ก่อน
             app(ChatCollectionService::class)->purgeSlips($scheduleId);
             // ลูกหาบผูกกับการ์ดเก็บเงิน — ลบก่อน (FK nullOnDelete อยู่แล้ว แต่ไม่พึ่ง)

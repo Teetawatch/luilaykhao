@@ -177,6 +177,7 @@ const menuGroups = ref([
       { to: '/admin/analytics', icon: 'fas fa-chart-area', label: 'Analytics' },
       { to: '/admin/reports', icon: 'fas fa-chart-line', label: 'รายงาน' },
       { to: '/admin/finance', icon: 'fas fa-money-bill-wave', label: 'บัญชีทริป', finance: true, badge: 'finance' },
+      { to: '/admin/onsite-money', icon: 'fas fa-wallet', label: 'เงินหน้างาน', finance: true },
     ],
     isOpen: true
   },

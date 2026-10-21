@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\AdminForceMajeureController;
 use App\Http\Controllers\Api\V1\AdminGiftVoucherController;
 use App\Http\Controllers\Api\V1\AdminInstallmentController;
 use App\Http\Controllers\Api\V1\AdminIntakeController;
+use App\Http\Controllers\Api\V1\AdminOnsiteMoneyController;
 use App\Http\Controllers\Api\V1\AdminPageContentController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
@@ -64,6 +65,7 @@ use App\Http\Controllers\Api\V1\MedalController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\MyTripAssistantController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\OnsiteMoneyController;
 use App\Http\Controllers\Api\V1\PackingController;
 use App\Http\Controllers\Api\V1\PageContentController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
@@ -450,6 +452,9 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/supplies/{requestId}/decline', [ChatSupplyController::class, 'decline']);
         // เก็บเงินหน้างาน (ค่าใช้จ่ายนอกแพ็กเกจ) — สตาฟสร้าง/ติ๊กจ่าย ลูกทริปแจ้งโอน
         Route::get('schedules/{id}/chat/roster', [ChatCollectionController::class, 'roster']);
+        // สรุปยอดหน้างานของรอบ + สตาฟยืนยันส่งเงิน
+        Route::get('schedules/{id}/onsite-money', [OnsiteMoneyController::class, 'show']);
+        Route::post('schedules/{id}/onsite-money/handover', [OnsiteMoneyController::class, 'submit'])->middleware('throttle:10,1');
         // เช็คพอยต์บนเส้นทางเดิน
         Route::post('schedules/{id}/chat/trail-checks', [ChatTrailController::class, 'store'])->middleware('throttle:chat');
         Route::get('schedules/{id}/chat/trail-checks/{checkId}', [ChatTrailController::class, 'show']);
@@ -1093,6 +1098,11 @@ Route::prefix('v1')->group(function () {
             // รอบที่เดินทางจบแล้วแต่ยังไม่ปิดงบ — งานค้างที่ต้องเคลียร์
             Route::get('overdue', [AdminFinanceController::class, 'overdue']);
             Route::get('overdue-count', [AdminFinanceController::class, 'overdueCount']);
+            // เงินหน้างาน (เก็บเงิน/ค่าลูกหาบในแชท) — เงินอยู่กับสตาฟคนไหน, รับเงินแล้ว
+            Route::get('onsite-money', [AdminOnsiteMoneyController::class, 'index']);
+            Route::get('onsite-money/{scheduleId}', [AdminOnsiteMoneyController::class, 'show']);
+            Route::post('onsite-money/{scheduleId}/handovers/{userId}/receive', [AdminOnsiteMoneyController::class, 'receive']);
+            Route::delete('onsite-money/{scheduleId}/handovers/{userId}/receive', [AdminOnsiteMoneyController::class, 'unreceive']);
             Route::get('trips/{tripId}/schedules', [AdminFinanceController::class, 'tripScheduleProfit']);
             Route::get('trips/{tripId}/templates', [AdminFinanceController::class, 'templates']);
             Route::post('trips/{tripId}/templates', [AdminFinanceController::class, 'storeTemplate']);

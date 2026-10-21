@@ -441,6 +441,23 @@ class ChatFoodOrderService
      * @param  Collection<int, array<string, mixed>>  $summary
      * @return array<string, mixed>
      */
+    /**
+     * ยอดค่าอาหารของรอบนี้ (เก็บได้/ค้าง) — null เมื่อทีมงานยังไม่ได้ใส่ราคา
+     * ใช้ในสรุปยอดหน้างาน (OnsiteMoneyService)
+     *
+     * @return array<string, mixed>|null
+     */
+    public function billingFor(ChatFoodRound $round): ?array
+    {
+        if (! $round->billed_at) {
+            return null;
+        }
+
+        $round->loadMissing('orders.user');
+
+        return $this->billingSummary($round, $this->summary($round));
+    }
+
     private function billingSummary(ChatFoodRound $round, Collection $summary): array
     {
         $total = 0.0;

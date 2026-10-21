@@ -306,6 +306,7 @@ const routes = [
       { path: 'maintenance', name: 'admin-maintenance', component: () => import('../pages/admin/MaintenancePage.vue') },
       { path: 'reports', name: 'admin-reports', component: () => import('../pages/admin/ReportsPage.vue') },
       { path: 'finance', name: 'admin-finance', component: () => import('../pages/admin/ProfitPage.vue') },
+      { path: 'onsite-money', name: 'admin-onsite-money', component: () => import('../pages/admin/OnsiteMoneyPage.vue') },
       { path: 'check-in', name: 'admin-checkin', component: () => import('../pages/admin/CheckInPage.vue') },
       { path: 'chat', name: 'admin-chat', component: () => import('../pages/admin/ChatPage.vue') },
       { path: 'support', name: 'admin-support', component: () => import('../pages/admin/SupportPage.vue') },
