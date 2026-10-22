@@ -179,6 +179,108 @@ class StaffShareLocationReminderTest extends TestCase
         $this->assertSame(0, SmartNotification::where('type', 'staff_share_location')->count());
     }
 
+    public function test_staff_are_nudged_again_and_the_office_is_told_once_the_van_has_left(): void
+    {
+        [$schedule, $staff] = $this->round(minutesFromNow: -20);
+        $staff->update(['name' => 'น้องเอ', 'phone' => '0812345678']);
+
+        $admin = $this->user('admin');
+        $operator = $this->user('operator');
+        $this->user('customer');
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $staffPush = SmartNotification::where('type', 'staff_share_location')->firstOrFail();
+        $this->assertSame($staff->id, $staffPush->user_id);
+        $this->assertSame('late', $staffPush->data['slot']);
+        $this->assertSame('staff_manifest', $staffPush->data['route']);
+
+        $ops = SmartNotification::where('type', RemindStaffToShareLocationJob::OPS_TYPE)->get();
+        $this->assertEqualsCanonicalizing([$admin->id, $operator->id], $ops->pluck('user_id')->all());
+        $this->assertStringContainsString('น้องเอ 0812345678', $ops->first()->body);
+        $this->assertStringContainsString('ฮก 8899', $ops->first()->body);
+        $this->assertSame('/admin/tracking', $ops->first()->data['url']);
+    }
+
+    public function test_the_late_alert_goes_out_once_however_often_the_job_runs(): void
+    {
+        $this->round(minutesFromNow: -20);
+        $this->user('admin');
+
+        (new RemindStaffToShareLocationJob)->handle();
+        $this->travel(10)->minutes();
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(1, SmartNotification::where('type', 'staff_share_location')->count());
+        $this->assertSame(1, SmartNotification::where('type', RemindStaffToShareLocationJob::OPS_TYPE)->count());
+    }
+
+    public function test_an_admin_who_is_staff_on_the_round_is_not_told_twice(): void
+    {
+        [, $staff] = $this->round(minutesFromNow: -20);
+        Role::firstOrCreate(['name' => 'admin']);
+        $staff->assignRole('admin');
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(1, SmartNotification::where('user_id', $staff->id)->count());
+        $this->assertSame(0, SmartNotification::where('type', RemindStaffToShareLocationJob::OPS_TYPE)->count());
+    }
+
+    public function test_a_van_that_is_sharing_after_leaving_raises_nothing(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: -20);
+        $this->user('admin');
+
+        VehicleLocation::create([
+            'vehicle_id' => $schedule->vehicle_id,
+            'latitude' => 13.75,
+            'longitude' => 100.5,
+            'recorded_at' => now()->subMinutes(2),
+        ]);
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(0, SmartNotification::count());
+    }
+
+    public function test_the_first_reminder_does_not_repeat_as_before_once_the_van_has_left(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: 30);
+
+        (new RemindStaffToShareLocationJob)->handle();
+        $this->assertSame('before', SmartNotification::firstOrFail()->data['slot']);
+
+        // รถออกไปแล้ว 20 นาที ยังไม่มีพิกัด = จังหวะ late ไม่ใช่ before ซ้ำ
+        $this->travel(50)->minutes();
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(
+            ['before', 'late'],
+            SmartNotification::where('type', 'staff_share_location')->orderBy('id')->get()
+                ->map(fn ($n) => $n->data['slot'])->all(),
+        );
+    }
+
+    public function test_the_late_alert_stops_two_hours_after_departure(): void
+    {
+        $this->round(minutesFromNow: -150);
+        $this->user('admin');
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(0, SmartNotification::count());
+    }
+
+    private function user(string $role): User
+    {
+        Role::firstOrCreate(['name' => $role]);
+        $user = User::factory()->create();
+        $user->assignRole($role);
+
+        return $user;
+    }
+
     /** ย้ายนาฬิกาไปที่เวลาไทยที่กำหนดของวันนี้ */
     private function travelToThai(string $hhmm): void
     {

@@ -191,6 +191,14 @@ class StaffController extends Controller
                         null,
                         $userId,
                     ),
+                    // เวลาที่แอปจะเริ่มแชร์เอง (นาฬิกาไทย) — null เมื่อรอบไม่ได้กรอกเวลา
+                    // รถออก แอปจะบอกว่า "เช้าวันเดินทาง" แทนการพิมพ์เวลาที่เดาเอา
+                    'share_auto_starts_at' => $this->vehicleLocations
+                        ->autoShareStartsAt($s)
+                        ?->format('Y-m-d H:i:s'),
+                    // เพื่อนสตาฟที่กำลังเป็น GPS ของรถคันนี้อยู่ — share_location_mode เป็น
+                    // null ในกรณีนี้ แอปจะได้บอกว่า "มีคนแชร์อยู่แล้ว" แทน "ยังไม่ได้แชร์"
+                    'vehicle_sharer' => $this->otherVehicleSharer($s, $userId),
                     'return_date' => $s->return_date?->toDateString(),
                     'status' => $s->status,
                     'transport_type' => $s->transport_type,
@@ -755,6 +763,29 @@ class StaffController extends Controller
         $this->intros->refreshUpcomingIntros($user);
 
         return $this->success($this->profilePayload($user->fresh()), 'บันทึกโปรไฟล์ทีมงานแล้ว');
+    }
+
+    /**
+     * เพื่อนสตาฟที่ถือสิทธิ์เป็น "รถคันนี้" อยู่ตอนนี้ — null ถ้าไม่มีใคร หรือคนนั้นคือเราเอง
+     *
+     * @return array{id: int, name: string}|null
+     */
+    private function otherVehicleSharer(TripSchedule $schedule, int $userId): ?array
+    {
+        if (! $schedule->vehicle_id
+            || ! $this->vehicleLocations->withinSharingWindow($schedule)) {
+            return null;
+        }
+
+        $sharerId = $this->vehicleLocations->currentSharerId((int) $schedule->vehicle_id);
+
+        if ($sharerId === null || $sharerId === $userId) {
+            return null;
+        }
+
+        $name = User::whereKey($sharerId)->value('name');
+
+        return $name === null ? null : ['id' => $sharerId, 'name' => (string) $name];
     }
 
     private function profilePayload(User $user): array

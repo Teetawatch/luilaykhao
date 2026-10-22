@@ -18,6 +18,7 @@ use App\Services\ScheduleFinanceService;
 use App\Services\SeatLayoutGuard;
 use App\Services\ShoppingListService;
 use App\Services\SlipOcrService;
+use App\Services\VehicleLocationService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -45,6 +46,7 @@ class AdminActionQueueController extends Controller
         $groups = [
             $this->sosGroup(),
             $this->incidentGroup(),
+            $this->vehicleShareGroup(),
             $this->atRiskScheduleGroup(),
             $this->seatLayoutGroup(),
             $this->financeCloseGroup(),
@@ -105,6 +107,36 @@ class AdminActionQueueController extends Controller
                 'title' => $i->schedule?->trip?->title ?? 'ทริป',
                 'detail' => Str::limit((string) $i->description, 60),
                 'at' => $i->created_at?->toISOString(),
+            ])->values(),
+        );
+    }
+
+    /**
+     * รถออกแล้วแต่ลูกค้ามองไม่เห็นรถ — สตาฟยังไม่ได้เปิดแชร์ตำแหน่ง หรือแชร์แล้วหลุด
+     *
+     * หน้างานวุ่นจนปัด push เตือนทิ้งเป็นเรื่องปกติ คนที่โทรตามได้คือคนที่ออฟฟิศ
+     * จึงใส่ชื่อและเบอร์สตาฟไว้ในรายการเลย
+     */
+    private function vehicleShareGroup(): array
+    {
+        $rows = app(VehicleLocationService::class)
+            ->sharingBoard()
+            ->where('needs_attention', true)
+            ->values();
+
+        return $this->group(
+            'vehicle_share', 'รถออกแล้วแต่ลูกค้ายังไม่เห็นตำแหน่งรถ', 'location_off', 'high',
+            $rows->count(),
+            '/admin/tracking',
+            $rows->take(5)->map(fn (array $row) => [
+                'title' => trim(($row['trip_title'] ?? 'ทริป').' · '.($row['license_plate'] ?: $row['vehicle_name'])),
+                'detail' => ($row['state'] === 'missing'
+                    ? 'ยังไม่ได้เปิดแชร์ตำแหน่ง'
+                    : "ตำแหน่งหยุดส่ง {$row['minutes_since']} นาทีแล้ว")
+                    .' · '.(collect($row['staff'])
+                        ->map(fn (array $u) => trim($u['name'].' '.($u['phone'] ?? '')))
+                        ->implode(', ') ?: 'ยังไม่มีสตาฟประจำรอบ'),
+                'at' => $row['last_recorded_at'],
             ])->values(),
         );
     }

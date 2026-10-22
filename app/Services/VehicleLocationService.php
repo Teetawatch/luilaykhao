@@ -8,6 +8,7 @@ use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Redis;
 
 /**
@@ -43,6 +44,28 @@ class VehicleLocationService
      * รับช่วงต่อได้เองโดยไม่ต้องมีใครสั่ง
      */
     public const CLAIM_MINUTES = 5;
+
+    /** พิกัดใหม่กว่านี้ (นาที) ถือว่ารถ "กำลังแชร์อยู่" — อุโมงค์/ทางเขาเงียบได้ราวนี้ */
+    public const LIVE_MINUTES = 20;
+
+    /**
+     * รถออกไปแล้วกี่นาทีโดยยังไม่มีพิกัดของรอบนี้เลย จึงนับว่า "ขาด" ไม่ใช่ "กำลังจะเปิด"
+     *
+     * สิบห้านาทีเผื่อรอบที่รถออกช้ากว่ากำหนดนิดหน่อย และสตาฟที่เพิ่งเปิดแอป
+     * ตอนขึ้นรถ ซึ่งเป็นเรื่องปกติ ไม่ใช่เรื่องที่ต้องโทรตาม
+     */
+    public const MISSING_AFTER_MINUTES = 15;
+
+    /** เคยแชร์แล้วเงียบนานเท่านี้ (นาที) ถือว่าการแชร์หลุด — เครื่องรีสตาร์ต/แอปถูกปิด */
+    public const STALLED_MINUTES = 45;
+
+    /**
+     * หลังรถออกกี่ชั่วโมงที่การไม่มีพิกัดยังเป็นเรื่องต้องตาม
+     *
+     * เลยจากนี้ส่วนใหญ่รถถึงที่พักและจอดค้างคืน มือถือสตาฟในโหมดประหยัดแบต
+     * กรองระยะ 300 เมตร รถที่จอดนิ่งจึงเงียบไปทั้งคืนเป็นเรื่องปกติ
+     */
+    public const ATTENTION_HOURS = 10;
 
     /**
      * บันทึกพิกัดหนึ่งจุด + แคช + กระจาย event
@@ -295,8 +318,7 @@ class VehicleLocationService
         $now ??= $this->nowThai();
         [, $end] = $this->sharingWindow($schedule);
 
-        $departsAt = $schedule->departs_at?->copy()
-            ?: $schedule->departure_date?->copy()->setTime(6, 0);
+        $departsAt = $this->departsAtThai($schedule);
 
         if (! $departsAt) {
             return null;
@@ -342,6 +364,151 @@ class VehicleLocationService
             ->first(['user_id']);
 
         return $latest ? (int) $latest->user_id : null;
+    }
+
+    /**
+     * เวลารถออก (นาฬิกาไทย) — รอบที่แอดมินไม่ได้กรอกเวลาใช้ 06:00 ของวันเดินทาง
+     *
+     * ค่าตัวแทน 06:00 มีไว้คิดว่า "ถึงเวลาเปิดแชร์หรือยัง" เท่านั้น ห้ามพิมพ์ออกไป
+     * ให้ใครเห็นเป็นเวลารถออก
+     */
+    public function departsAtThai(TripSchedule $schedule): ?Carbon
+    {
+        return $schedule->departs_at?->copy()
+            ?: $schedule->departure_date?->copy()->setTime(6, 0);
+    }
+
+    /**
+     * เวลาที่มือถือสตาฟจะเริ่มแชร์เอง (นาฬิกาไทย) — null เมื่อรอบไม่ได้กรอกเวลารถออก
+     * เพราะเวลาที่คิดจาก 06:00 ตัวแทนไม่ใช่เวลาที่ควรบอกใคร
+     */
+    public function autoShareStartsAt(TripSchedule $schedule): ?Carbon
+    {
+        return $schedule->departs_at?->copy()->subMinutes(self::AUTO_START_BEFORE_MINUTES);
+    }
+
+    /**
+     * สถานะการแชร์ตำแหน่งรถของรอบนี้ — คำตอบเดียวกันทั้งหน้าแอดมิน งานเตือน และ
+     * "สิ่งที่รอคุณ"
+     *
+     * - upcoming = ยังไม่ถึงเวลาที่แอปจะเปิดแชร์เอง
+     * - waiting  = ถึงเวลาแล้ว แต่รถยังไม่ออก (หรือเพิ่งออกไม่ถึง 15 นาที)
+     * - missing  = รถออกแล้วแต่รอบนี้ยังไม่มีพิกัดเลย — ลูกค้ามองไม่เห็นรถ
+     * - live     = มีพิกัดใหม่
+     * - stalled  = เคยมีพิกัด แต่เงียบไปนานแล้ว
+     *
+     * needs_attention = ต้องมีคนโทรตามสตาฟเดี๋ยวนี้ (เฉพาะช่วงวันเดินทางที่รถวิ่งจริง)
+     *
+     * @return array{state: string, needs_attention: bool, last_recorded_at: ?string, minutes_since: ?int, sharer: ?array{id: int, name: string}}
+     */
+    public function sharingStatus(TripSchedule $schedule, ?Carbon $now = null): array
+    {
+        $now ??= $this->nowThai();
+        $departsAt = $this->departsAtThai($schedule);
+
+        $latest = $schedule->vehicle_id
+            ? VehicleLocation::with('user:id,name')
+                ->where('vehicle_id', $schedule->vehicle_id)
+                ->where('recorded_at', '>=', $this->trackingSince($schedule))
+                ->orderByDesc('recorded_at')
+                ->first()
+            : null;
+
+        // อายุของพิกัดเทียบกับเวลาจริง (recorded_at เป็น UTC จริง) ไม่ใช่นาฬิกาไทย
+        $minutesSince = $latest
+            ? (int) floor(abs($latest->recorded_at->diffInMinutes(now())))
+            : null;
+
+        if ($latest) {
+            $state = $minutesSince <= self::LIVE_MINUTES ? 'live' : 'stalled';
+        } elseif (! $departsAt || $now->lt($departsAt->copy()->subMinutes(self::AUTO_START_BEFORE_MINUTES))) {
+            $state = 'upcoming';
+        } elseif ($now->lt($departsAt->copy()->addMinutes(self::MISSING_AFTER_MINUTES))) {
+            $state = 'waiting';
+        } else {
+            $state = 'missing';
+        }
+
+        $onTheRoad = $departsAt
+            && $now->gte($departsAt->copy()->addMinutes(self::MISSING_AFTER_MINUTES))
+            && $now->lte($departsAt->copy()->addHours(self::ATTENTION_HOURS));
+
+        $needsAttention = $onTheRoad && (
+            $state === 'missing'
+            || ($state === 'stalled' && $minutesSince >= self::STALLED_MINUTES)
+        );
+
+        return [
+            'state' => $state,
+            'needs_attention' => $needsAttention,
+            'last_recorded_at' => $latest?->recorded_at?->toIso8601String(),
+            'minutes_since' => $minutesSince,
+            'sharer' => $latest?->user
+                ? ['id' => (int) $latest->user->id, 'name' => (string) $latest->user->name]
+                : null,
+        ];
+    }
+
+    /**
+     * สถานะการแชร์ของทุกรอบที่มีรถและกำลังเดินทาง/ออกวันนี้ พร้อมสตาฟที่ต้องโทรตาม
+     * — ข้อมูลของหน้าติดตามรถฝั่งแอดมิน และกอง "สิ่งที่รอคุณ"
+     *
+     * มีชื่อและเบอร์โทรสตาฟ ห้ามส่งออกทาง endpoint สาธารณะ
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function sharingBoard(): Collection
+    {
+        $today = now(self::TIMEZONE);
+
+        // รอบที่ออกพรุ่งนี้มืด ๆ ก็เปิดแชร์เองตั้งแต่ก่อนเที่ยงคืนได้ — ตัดทิ้งทีหลัง
+        // ถ้ายังไม่ถึงเวลา (state = upcoming)
+        $schedules = TripSchedule::with(['trip:id,title', 'vehicle', 'activeStaff:id,name,phone'])
+            ->whereNotNull('vehicle_id')
+            ->where('status', '!=', 'cancelled')
+            ->where(fn ($q) => $q
+                ->inProgressOn($today)
+                ->orWhere(fn ($q2) => $q2->departingOn($today->copy()->addDay())))
+            ->orderBy('departure_date')
+            ->get()
+            ->filter(fn (TripSchedule $s) => $s->vehicle !== null);
+
+        $order = ['missing' => 0, 'stalled' => 1, 'waiting' => 2, 'live' => 3, 'upcoming' => 4];
+
+        return $schedules
+            ->map(function (TripSchedule $s) {
+                $status = $this->sharingStatus($s);
+
+                return [
+                    'schedule_id' => $s->id,
+                    'vehicle_id' => (int) $s->vehicle_id,
+                    'vehicle_name' => $s->vehicle->name,
+                    'license_plate' => $s->vehicle->license_plate,
+                    'trip_title' => $s->trip?->title,
+                    'departure_date' => $s->departure_date?->toDateString(),
+                    // เวลาจริงที่แอดมินกรอกเท่านั้น — 06:00 ตัวแทนห้ามพิมพ์
+                    'departs_time' => $s->departs_at?->format('H:i'),
+                    'departs_sort' => $this->departsAtThai($s)?->format('Y-m-d H:i:s'),
+                    'staff' => $s->activeStaff
+                        ->map(fn ($u) => ['id' => (int) $u->id, 'name' => $u->name, 'phone' => $u->phone])
+                        ->values()
+                        ->all(),
+                ] + $status;
+            })
+            // ยังไม่ถึงเวลาเปิดแชร์ — ยังไม่มีอะไรต้องดู
+            ->reject(fn (array $row) => $row['state'] === 'upcoming')
+            ->sortBy(fn (array $row) => sprintf(
+                '%d-%d-%s',
+                $row['needs_attention'] ? 0 : 1,
+                $order[$row['state']] ?? 9,
+                $row['departs_sort'] ?? '',
+            ))
+            ->map(function (array $row) {
+                unset($row['departs_sort']);
+
+                return $row;
+            })
+            ->values();
     }
 
     /** อยู่ในช่วงที่รถของรอบนี้ควรมีตำแหน่งให้ติดตามไหม */

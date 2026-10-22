@@ -1218,6 +1218,8 @@ Route::prefix('v1')->group(function () {
             Route::get('current', [VehicleTrackingController::class, 'currentLocations']);
             Route::get('current/{vehicleId}', [VehicleTrackingController::class, 'currentLocation']);
             Route::get('history/{vehicleId}', [VehicleTrackingController::class, 'locationHistory']);
+            // รอบไหนยังไม่แชร์ตำแหน่งรถ + เบอร์สตาฟ — มีเฉพาะใต้ /admin (มีเบอร์โทรทีมงาน)
+            Route::get('sharing', [VehicleTrackingController::class, 'sharingStatus']);
         });
 
         // Contacts Management

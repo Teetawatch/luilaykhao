@@ -44,6 +44,7 @@
               <span v-if="item.badge === 'sos' && sosCount" class="nav-badge">{{ sosCount }}</span>
               <span v-if="item.badge === 'intake' && intakeCount" class="nav-badge calm">{{ intakeCount }}</span>
               <span v-if="item.badge === 'finance' && financeOverdueCount" class="nav-badge calm">{{ financeOverdueCount }}</span>
+              <span v-if="item.badge === 'tracking' && trackingAttentionCount" class="nav-badge">{{ trackingAttentionCount }}</span>
             </router-link>
           </div>
 
@@ -61,6 +62,7 @@
               <span v-if="item.badge === 'sos' && sosCount" class="nav-badge collapsed-badge">{{ sosCount }}</span>
               <span v-if="item.badge === 'intake' && intakeCount" class="nav-badge calm collapsed-badge">{{ intakeCount }}</span>
               <span v-if="item.badge === 'finance' && financeOverdueCount" class="nav-badge calm collapsed-badge">{{ financeOverdueCount }}</span>
+              <span v-if="item.badge === 'tracking' && trackingAttentionCount" class="nav-badge collapsed-badge">{{ trackingAttentionCount }}</span>
             </router-link>
           </div>
         </div>
@@ -206,6 +208,21 @@ const loadFinanceOverdueCount = async () => {
   }
 };
 
+// รถที่ออกไปแล้วแต่ลูกค้ามองไม่เห็นตำแหน่ง (สตาฟยังไม่เปิดแชร์/แชร์หลุด) — คนที่
+// ออฟฟิศต้องโทรตามระหว่างที่รถยังวิ่งเก็บคนอยู่ ไม่ใช่มารู้ตอนลูกค้าโทรมาถาม
+const trackingAttentionCount = ref(0);
+let trackingTimer = null;
+
+const loadTrackingAttention = async () => {
+  try {
+    const res = await api.get('/admin/tracking/sharing');
+    const rows = res.data.data || [];
+    trackingAttentionCount.value = rows.filter(r => r.needs_attention).length;
+  } catch {
+    // เน็ตสะดุด/สิทธิ์ไม่พอ — เงียบไว้ รอบหน้าค่อยลองใหม่
+  }
+};
+
 const menuGroups = ref([
   {
     id: 'main',
@@ -268,7 +285,7 @@ const menuGroups = ref([
       { to: '/admin/vehicles', icon: 'fas fa-car', label: 'จัดการยานพาหนะ' },
       { to: '/admin/drivers', icon: 'fas fa-id-card', label: 'ทะเบียนคนขับ' },
       { to: '/admin/pickup-vehicles', icon: 'fas fa-car-side', label: 'รถรับ-ส่งจุดรับ' },
-      { to: '/admin/tracking', icon: 'fas fa-map-marker-alt', label: 'ติดตามรถ GPS' },
+      { to: '/admin/tracking', icon: 'fas fa-map-marker-alt', label: 'ติดตามรถ GPS', badge: 'tracking' },
       { to: '/admin/maintenance', icon: 'fas fa-tools', label: 'ประวัติบำรุงรักษา' },
     ],
     isOpen: false
@@ -380,6 +397,9 @@ onMounted(() => {
 
   loadFinanceOverdueCount();
   financeTimer = setInterval(loadFinanceOverdueCount, 600000);
+
+  loadTrackingAttention();
+  trackingTimer = setInterval(loadTrackingAttention, 120000);
 });
 
 onBeforeUnmount(() => {
@@ -389,6 +409,7 @@ onBeforeUnmount(() => {
   if (sosTimer) clearInterval(sosTimer);
   if (intakeTimer) clearInterval(intakeTimer);
   if (financeTimer) clearInterval(financeTimer);
+  if (trackingTimer) clearInterval(trackingTimer);
 });
 
 // ออกจากหน้าข้อมูลลูกค้าแล้วนับใหม่ทันที ไม่ต้องรอรอบถัดไปสองนาที — คนที่เพิ่ง

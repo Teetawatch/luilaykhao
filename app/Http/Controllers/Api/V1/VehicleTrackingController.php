@@ -160,6 +160,20 @@ class VehicleTrackingController extends Controller
     }
 
     /**
+     * แอดมิน: รอบไหนแชร์ตำแหน่งรถแล้ว รอบไหนยังไม่แชร์ พร้อมชื่อและเบอร์สตาฟให้โทรตาม
+     *
+     * แยกจาก [currentLocations] ตั้งใจ — ตัวนั้นมีเส้นทางสาธารณะด้วย ส่วนตัวนี้มีเบอร์
+     * โทรของทีมงาน จึงอยู่ใต้ /admin เท่านั้น
+     */
+    public function sharingStatus(): JsonResponse
+    {
+        return $this->success(
+            $this->locations->sharingBoard(),
+            'สถานะการแชร์ตำแหน่งรถของรอบที่กำลังเดินทาง',
+        );
+    }
+
+    /**
      * ดึงตำแหน่งล่าสุดของรถคันเดียว
      */
     public function currentLocation(Request $request, int $vehicleId): JsonResponse

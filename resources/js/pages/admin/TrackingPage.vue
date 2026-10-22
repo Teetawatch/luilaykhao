@@ -34,6 +34,38 @@
       <span class="material-symbols-rounded">cloud_off</span> {{ loadError }}
     </div>
 
+    <!-- รถที่ออกไปแล้วแต่ลูกค้ามองไม่เห็น — มือถือสตาฟคือ GPS ของรถ จึงต้องโทรตามสตาฟ -->
+    <div v-if="attentionRows.length" class="share-alert">
+      <div class="share-alert-head">
+        <span class="material-symbols-rounded">location_off</span>
+        ลูกค้ายังไม่เห็นตำแหน่งรถ {{ attentionRows.length }} คัน — โทรให้สตาฟเปิดแชร์ตำแหน่งในแอป
+      </div>
+      <div v-for="r in attentionRows" :key="r.schedule_id" class="share-alert-row">
+        <div class="share-alert-info">
+          <div class="share-alert-title">
+            {{ r.trip_title || 'ทริป' }} · {{ r.license_plate || r.vehicle_name }}<template v-if="r.departs_time"> · ออก {{ r.departs_time }} น.</template>
+          </div>
+          <div class="share-alert-reason">{{ attentionText(r) }}</div>
+        </div>
+        <div class="share-alert-staff">
+          <template v-if="r.staff.length">
+            <component
+              :is="u.phone ? 'a' : 'span'"
+              v-for="u in r.staff"
+              :key="u.id"
+              :href="u.phone ? telHref(u.phone) : undefined"
+              class="staff-call"
+              :class="{ 'no-phone': !u.phone }"
+            >
+              <span class="material-symbols-rounded">{{ u.phone ? 'call' : 'person' }}</span>
+              {{ u.name }}<span v-if="u.phone" class="staff-phone">{{ u.phone }}</span>
+            </component>
+          </template>
+          <span v-else class="share-alert-none">ยังไม่มีสตาฟประจำรอบ — มอบหมายที่หน้าสตาฟ</span>
+        </div>
+      </div>
+    </div>
+
     <div class="tracking-container">
       <!-- Sidebar -->
       <div class="tracking-sidebar">
@@ -138,7 +170,31 @@
 
           <div v-if="trackingState(selectedVehicle) === 'no_signal'" class="map-info-warn">
             <span class="material-symbols-rounded">gps_off</span>
-            รอบนี้ยังไม่ได้รับพิกัดจากรถเลย — คนขับอาจยังไม่ได้เปิดแอปส่ง GPS
+            รอบนี้ยังไม่ได้รับพิกัดจากรถเลย — สตาฟยังไม่ได้เปิดแชร์ตำแหน่งในแอป
+          </div>
+
+          <!-- คนขับไม่ได้ใช้แอป มือถือสตาฟที่นั่งไปกับรถคือ GPS ของรถ -->
+          <div v-if="sharingFor(selectedVehicle)" class="map-info-staff">
+            <div class="map-info-staff-label">
+              สตาฟรอบนี้
+              <span v-if="sharingFor(selectedVehicle).sharer" class="map-info-sharer">
+                · แชร์ตำแหน่งโดย {{ sharingFor(selectedVehicle).sharer.name }}
+              </span>
+            </div>
+            <div v-if="sharingFor(selectedVehicle).staff.length" class="map-info-staff-list">
+              <component
+                :is="u.phone ? 'a' : 'span'"
+                v-for="u in sharingFor(selectedVehicle).staff"
+                :key="u.id"
+                :href="u.phone ? telHref(u.phone) : undefined"
+                class="staff-call"
+                :class="{ 'no-phone': !u.phone }"
+              >
+                <span class="material-symbols-rounded">{{ u.phone ? 'call' : 'person' }}</span>
+                {{ u.name }}<span v-if="u.phone" class="staff-phone">{{ u.phone }}</span>
+              </component>
+            </div>
+            <div v-else class="share-alert-none">ยังไม่มีสตาฟประจำรอบ</div>
           </div>
 
           <div class="map-info-details">
@@ -236,6 +292,12 @@ const nowTs = ref(Date.now());
 let pollInterval = null;
 let clockInterval = null;
 
+// สถานะการแชร์ + สตาฟของแต่ละรอบ — มีเบอร์โทรทีมงาน จึงมาจาก /admin เท่านั้น
+// (ตำแหน่งรถมาจาก /tracking/current ซึ่งเปิดสาธารณะ) ถามห่างกว่าพิกัดมาก
+// เพราะสถานะนี้เปลี่ยนเป็นนาที ไม่ใช่เป็นวินาที
+const sharingRows = ref([]);
+let sharingInterval = null;
+
 // เก็บ trail points สำหรับแต่ละรถ
 const trailPoints = ref({});   // { vehicleId: [[lat, lng], ...] }
 const MAX_TRAIL_POINTS = 200;
@@ -246,6 +308,36 @@ let trailPolylines = {};   // { vehicleId: L.Polyline }
 let L = null;
 
 // ─── Computed ────────────────────────────────────────────
+const sharingBySchedule = computed(() => {
+  const map = {};
+  sharingRows.value.forEach(r => { map[r.schedule_id] = r; });
+  return map;
+});
+const attentionRows = computed(() => sharingRows.value.filter(r => r.needs_attention));
+
+function sharingFor(v) {
+  return v?.schedule_id ? sharingBySchedule.value[v.schedule_id] || null : null;
+}
+
+function telHref(phone) {
+  return 'tel:' + String(phone).replace(/[^\d+]/g, '');
+}
+
+function attentionText(r) {
+  return r.state === 'missing'
+    ? 'รถออกแล้ว แต่ยังไม่ได้เปิดแชร์ตำแหน่ง'
+    : `ตำแหน่งหยุดส่งมา ${r.minutes_since} นาทีแล้ว`;
+}
+
+async function loadSharing() {
+  try {
+    const res = await api.get('/admin/tracking/sharing');
+    sharingRows.value = res.data.data || [];
+  } catch {
+    // ไม่มีข้อมูลสตาฟก็ยังดูแผนที่ได้ — รอบหน้าค่อยลองใหม่
+  }
+}
+
 const filteredVehicles = computed(() => {
   let list = vehicles.value;
   
@@ -542,7 +634,11 @@ async function refreshETA(vehicle) {
 
 // ─── Data ─────────────────────────────────────────────────
 async function refreshLocations(isAutoRefresh) {
-  if (isAutoRefresh !== true) loading.value = true;
+  if (isAutoRefresh !== true) {
+    loading.value = true;
+    // กดรีเฟรชเอง = อยากเห็นสถานะสตาฟล่าสุดด้วย ไม่ใช่รอรอบหนึ่งนาที
+    loadSharing();
+  }
   try {
     const res = await api.get('/tracking/current');
     const data = res.data.data ?? [];
@@ -682,6 +778,8 @@ onMounted(async () => {
   await loadLeaflet();
   initMap();
   await refreshLocations();
+  loadSharing();
+  sharingInterval = setInterval(loadSharing, 60000);
   initEcho();
   
   pollInterval = setInterval(() => {
@@ -693,6 +791,7 @@ onMounted(async () => {
 onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval);
   if (clockInterval) clearInterval(clockInterval);
+  if (sharingInterval) clearInterval(sharingInterval);
   if (window.Echo) window.Echo.leave('vehicle-tracking');
   if (map) { map.remove(); map = null; }
 });
@@ -838,6 +937,62 @@ onUnmounted(() => {
   font-weight: 700;
 }
 .track-banner .material-symbols-rounded { font-size: 18px; }
+
+.share-alert {
+  margin-bottom: 12px;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  overflow: hidden;
+}
+.share-alert-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 800;
+}
+.share-alert-head .material-symbols-rounded { font-size: 18px; flex-shrink: 0; }
+.share-alert-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 14px;
+  border-top: 1px solid #fecaca;
+  background: var(--color-white);
+}
+.share-alert-info { min-width: 0; flex: 1 1 220px; }
+.share-alert-title { font-size: 13px; font-weight: 700; color: var(--color-text-dark); }
+.share-alert-reason { margin-top: 2px; font-size: 12px; font-weight: 600; color: #b91c1c; }
+.share-alert-staff { display: flex; flex-wrap: wrap; gap: 6px; }
+.share-alert-none { font-size: 12px; font-weight: 600; color: var(--color-text-muted); }
+.staff-call {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 999px;
+  background: var(--color-white);
+  color: var(--color-text-dark);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+a.staff-call:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.staff-call .material-symbols-rounded { font-size: 15px; color: var(--color-accent); }
+.staff-call.no-phone .material-symbols-rounded { color: var(--color-text-muted); }
+.staff-phone { font-weight: 600; color: var(--color-text-muted); }
+
+.map-info-staff { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--color-sand-dark); }
+.map-info-staff-label { margin-bottom: 6px; font-size: 11px; font-weight: 800; color: var(--color-text-muted); }
+.map-info-sharer { font-weight: 600; color: var(--color-accent); }
+.map-info-staff-list { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .vehicle-list-info { flex: 1; min-width: 0; }
 .vehicle-list-name  { font-size: 14px; font-weight: 700; color: var(--color-text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
