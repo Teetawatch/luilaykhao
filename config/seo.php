@@ -109,6 +109,11 @@ return [
             'description' => null,
             'robots' => 'noindex, nofollow',
         ],
+        '/partner' => [
+            'title' => 'พาร์ทเนอร์ช่วยขาย',
+            'description' => null,
+            'robots' => 'noindex, nofollow',
+        ],
         '/my-staff-trips' => [
             'title' => null,
             'description' => null,
