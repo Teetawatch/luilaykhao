@@ -1354,7 +1354,7 @@
           <div>
             <h2 class="modal-title">
               <span class="material-symbols-rounded" style="vertical-align:-4px;">picture_as_pdf</span>
-              PDF รายชื่อส่งประกัน
+              รายชื่อส่งประกัน (PDF / Excel)
             </h2>
             <p class="modal-subtitle">
               {{ insurancePicker.schedules.length }} รอบ · ผู้เดินทาง {{ insurancePickerPassengerCount }} คน
@@ -1424,6 +1424,14 @@
 
         <div class="modal-footer">
           <button class="btn-secondary" @click="closeInsurancePicker">ยกเลิก</button>
+          <button
+            class="btn-secondary"
+            :disabled="!insurancePickerPassengerCount || !selectedInsuranceColumns.length || buildingInsuranceXlsx"
+            @click="downloadInsuranceXlsx"
+          >
+            <span class="material-symbols-rounded">table_view</span>
+            {{ buildingInsuranceXlsx ? 'กำลังสร้าง…' : 'ดาวน์โหลด Excel' }}
+          </button>
           <button
             class="btn-primary"
             :disabled="!insurancePickerPassengerCount || !selectedInsuranceColumns.length"
@@ -2176,12 +2184,17 @@ function emergencySummary(person) {
    บริษัทประกันนับรวมทุกคนที่ไปในรอบ ค่าที่เลือกจำไว้ในเครื่อง (localStorage)
    รอบหน้ากดแล้วได้แบบเดิม ส่วนหัวข้อขึ้นตามรอบทุกครั้ง */
 
+function pickupText(person) {
+  return [person?.pickup_region, person?.pickup_location].filter(Boolean).join(' / ') || '-';
+}
+
 function travelDocumentNo(person) {
   return person?.id_card || person?.passport_no || '-';
 }
 
 // value(person, sch) สำหรับผู้เดินทาง, staff(st) สำหรับสตาฟ — ไม่มี staff = ช่องนั้นเป็น "-"
-// html: true คือคืน HTML ที่ escape แล้วเอง; width คือสัดส่วนความกว้างคอลัมน์
+// html: true คือคืน HTML ที่ escape แล้วเอง (ไฟล์ Excel ใช้ text/staffText แทน);
+// width คือสัดส่วนความกว้างคอลัมน์ ใช้ทั้ง PDF และ Excel
 const insuranceColumns = [
   {
     key: 'name',
@@ -2190,6 +2203,8 @@ const insuranceColumns = [
     html: true,
     value: (p) => `<strong>${escapeHtml(fullPassengerName(p))}</strong>${p.name_issue ? '<span class="name-issue">⚠ ต้องขอชื่อไทยตามบัตร</span>' : ''}`,
     staff: (st) => `<strong>${escapeHtml(fullPassengerName(st))}</strong>`,
+    text: fullPassengerName,
+    staffText: fullPassengerName,
   },
   { key: 'nickname', label: 'ชื่อเล่น', width: 1, value: (p) => p.nickname, staff: (st) => st.nickname },
   { key: 'name_en', label: 'ชื่อภาษาอังกฤษ', width: 1.8, value: (p) => p.name_en, staff: (st) => st.name_en },
@@ -2214,7 +2229,8 @@ const insuranceColumns = [
     label: 'จุดรับ',
     width: 1.8,
     html: true,
-    value: (p) => `${escapeHtml([p.pickup_region, p.pickup_location].filter(Boolean).join(' / ') || '-')}${p.is_custom_pickup && p.custom_pickup_lat != null ? `<span>${escapeHtml(`${p.custom_pickup_lat}, ${p.custom_pickup_lng}`)}</span>` : ''}`,
+    value: (p) => `${escapeHtml(pickupText(p))}${p.is_custom_pickup && p.custom_pickup_lat != null ? `<span>${escapeHtml(`${p.custom_pickup_lat}, ${p.custom_pickup_lng}`)}</span>` : ''}`,
+    text: (p) => [pickupText(p), p.is_custom_pickup && p.custom_pickup_lat != null ? `${p.custom_pickup_lat}, ${p.custom_pickup_lng}` : ''].filter(Boolean).join('\n'),
   },
 ];
 
@@ -2297,20 +2313,39 @@ function exportVisibleInsurancePdf() {
   openInsurancePicker(filteredSchedules.value, 'รายชื่อส่งประกันตามรอบที่แสดง');
 }
 
-function printInsurancePdf() {
-  const cols = selectedInsuranceColumns.value;
-  if (!cols.length) return;
-  saveInsurancePrefs();
-  const title = insurancePicker.title.trim() || 'รายชื่อส่งประกัน';
-  exportInsurancePdf(insurancePicker.schedules, {
-    title,
+function insuranceOptions() {
+  return {
+    title: insurancePicker.title.trim() || 'รายชื่อส่งประกัน',
     note: insurancePicker.note.trim(),
-    cols,
+    cols: selectedInsuranceColumns.value,
     includeStaff: insurancePicker.includeStaff,
     showSummary: insurancePicker.showSummary,
     showRoundInfo: insurancePicker.showRoundInfo,
-  });
+  };
+}
+
+function printInsurancePdf() {
+  if (!selectedInsuranceColumns.value.length) return;
+  saveInsurancePrefs();
+  exportInsurancePdf(insurancePicker.schedules, insuranceOptions());
   closeInsurancePicker();
+}
+
+const buildingInsuranceXlsx = ref(false);
+
+async function downloadInsuranceXlsx() {
+  if (!selectedInsuranceColumns.value.length || buildingInsuranceXlsx.value) return;
+  saveInsurancePrefs();
+  buildingInsuranceXlsx.value = true;
+  try {
+    await exportInsuranceXlsx(insurancePicker.schedules, insuranceOptions());
+    closeInsurancePicker();
+  } catch (e) {
+    console.error(e);
+    alert('สร้างไฟล์ Excel ไม่สำเร็จ ลองใหม่อีกครั้ง');
+  } finally {
+    buildingInsuranceXlsx.value = false;
+  }
 }
 
 function insuranceCell(col, raw) {
@@ -2448,6 +2483,153 @@ function exportInsurancePdf(scheduleItems, { title, note, cols, includeStaff, sh
     const fonts = printWindow.document.fonts;
     (fonts ? fonts.ready : Promise.resolve()).then(() => printWindow.print());
   };
+}
+
+/* ไฟล์ .xlsx หน้าตาเดียวกับ PDF — หัวข้อ/ข้อความ/สรุป แล้วตารางของแต่ละรอบเรียงลงมา
+   ในชีตเดียว สตาฟต่อท้ายแต่ละรอบ ExcelJS โหลดตอนกดเท่านั้น (ไลบรารีใหญ่ ไม่ควร
+   ติดไปกับหน้านี้ทุกครั้ง) ฟอนต์ฝังในไฟล์ไม่ได้ จึงใช้ Tahoma ที่ทุกเครื่องมีและ
+   แสดงภาษาไทยได้ — DB Heavent จะไปโผล่เฉพาะเครื่องที่ลงฟอนต์ไว้ */
+const XLSX_FONT = 'Tahoma';
+const XLSX_GREEN = 'FF166534';
+
+function insuranceText(col, kind, row, sch) {
+  const fn = kind === 'staff'
+    ? (col.staffText || (col.html ? null : col.staff))
+    : (col.text || col.value);
+  const raw = fn ? fn(row, sch) : null;
+  return raw === null || raw === undefined || raw === '' ? '-' : raw;
+}
+
+async function exportInsuranceXlsx(scheduleItems, { title, note, cols, includeStaff, showSummary, showRoundInfo }) {
+  const { default: ExcelJS } = await import('exceljs');
+  const staffOf = (sch) => (includeStaff ? scheduleStaff(sch) : []);
+  const totalPassengers = scheduleItems.reduce((total, sch) => total + schedulePassengerCount(sch), 0);
+  const totalStaff = scheduleItems.reduce((total, sch) => total + staffOf(sch).length, 0);
+  const nameIssues = cols.some((c) => c.key === 'name')
+    ? scheduleItems.reduce((total, sch) => total + schedulePassengers(sch).filter((p) => p.name_issue).length, 0)
+    : 0;
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Luilaykhao Admin';
+  workbook.created = new Date();
+  const sheet = workbook.addWorksheet('รายชื่อส่งประกัน', {
+    pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+  });
+
+  const lastCol = cols.length + 1;
+  sheet.columns = [{ width: 5 }, ...cols.map((c) => ({ width: Math.round(c.width * 10) }))];
+  const font = (extra = {}) => ({ name: XLSX_FONT, size: 10, ...extra });
+  const thin = { style: 'thin', color: { argb: 'FFD1D5DB' } };
+  const border = { top: thin, left: thin, bottom: thin, right: thin };
+  const fill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+
+  // แถวที่ข้อความยาวคลุมทั้งความกว้างตาราง
+  const addBanner = (text, style = {}) => {
+    const row = sheet.addRow([text]);
+    sheet.mergeCells(row.number, 1, row.number, lastCol);
+    const cell = row.getCell(1);
+    cell.font = font(style.font);
+    cell.alignment = { vertical: 'middle', wrapText: true };
+    if (style.fill) cell.fill = fill(style.fill);
+    if (style.height) row.height = style.height;
+    return row;
+  };
+
+  addBanner(title, { font: { size: 16, bold: true, color: { argb: XLSX_GREEN } }, height: 28 });
+  if (note) {
+    addBanner(note, { font: { color: { argb: 'FF374151' } }, height: Math.max(18, note.split('\n').length * 16) });
+  }
+  if (showSummary) {
+    const parts = [
+      `สร้างเมื่อ ${new Date().toLocaleString('th-TH')}`,
+      `จำนวนรอบ ${scheduleItems.length}`,
+      `ผู้เดินทางทั้งหมด ${totalPassengers} คน`,
+      includeStaff ? `สตาฟ ${totalStaff} คน · รวม ${totalPassengers + totalStaff} คน` : 'รวมทั้งจองปกติและจอยทริป',
+    ];
+    addBanner(parts.join('   ·   '), { font: { size: 9, bold: true, color: { argb: 'FF4B5563' } } });
+    if (nameIssues) {
+      addBanner(`⚠ ชื่อยังไม่ใช่ภาษาไทย ${nameIssues} คน`, { font: { size: 9, bold: true, color: { argb: 'FFB91C1C' } } });
+    }
+  }
+
+  scheduleItems.forEach((sch) => {
+    const passengers = schedulePassengers(sch);
+    const staff = staffOf(sch);
+    sheet.addRow([]);
+
+    const dates = `${formatDate(sch.start, 'long')}${sch.end && sch.end !== sch.start ? ` - ${formatDate(sch.end, 'long')}` : ''}`;
+    const roundInfo = showRoundInfo
+      ? [
+          sch.vehicle || transportLabels[sch.transport_type] || '-',
+          `ผู้เดินทาง ${passengers.length} คน`,
+          `ปกติ ${getRegularPassengers(sch)} / จอยทริป ${getJoinTripPassengers(sch)}`,
+          staff.length ? `สตาฟ ${staff.length} คน` : '',
+        ].filter(Boolean).join(' · ')
+      : '';
+    const head = addBanner(`${sch.trip_title || '-'}\n${dates}${roundInfo ? `   ·   ${roundInfo}` : ''}`, {
+      font: { bold: true, color: { argb: 'FF111827' } },
+      fill: 'FFF8FAFC',
+      height: 34,
+    });
+    head.getCell(1).border = border;
+
+    const headerRow = sheet.addRow(['#', ...cols.map((c) => c.label)]);
+    headerRow.eachCell((cell) => {
+      cell.font = font({ size: 9, bold: true, color: { argb: 'FFFFFFFF' } });
+      cell.fill = fill(XLSX_GREEN);
+      cell.border = border;
+      cell.alignment = { vertical: 'middle', wrapText: true };
+    });
+    headerRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    const addPerson = (index, values, rowFill, issue) => {
+      const row = sheet.addRow([index, ...values]);
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.font = font({ size: 9 });
+        cell.border = border;
+        cell.alignment = { vertical: 'top', wrapText: true };
+        if (rowFill) cell.fill = fill(rowFill);
+      });
+      row.getCell(1).alignment = { vertical: 'top', horizontal: 'center' };
+      // ⚠ ชื่อไม่ใช่ภาษาไทย — ให้ช่องชื่อเป็นตัวแดงแทนบรรทัดเตือนใน PDF
+      const nameIndex = cols.findIndex((c) => c.key === 'name');
+      if (issue && nameIndex >= 0) {
+        row.getCell(nameIndex + 2).font = font({ size: 9, bold: true, color: { argb: 'FFB91C1C' } });
+        row.getCell(nameIndex + 2).note = 'ต้องขอชื่อไทยตามบัตร';
+      }
+    };
+
+    passengers.forEach((person, index) => {
+      addPerson(
+        index + 1,
+        cols.map((c) => insuranceText(c, 'passenger', person, sch)),
+        index % 2 === 1 ? 'FFF9FAFB' : null,
+        person.name_issue,
+      );
+    });
+
+    if (staff.length) {
+      const group = addBanner(`สตาฟประจำรอบ ${staff.length} คน`, {
+        font: { size: 9, bold: true, color: { argb: 'FF92400E' } },
+        fill: 'FFFEF3C7',
+      });
+      group.getCell(1).border = border;
+      staff.forEach((st, index) => {
+        addPerson(passengers.length + index + 1, cols.map((c) => insuranceText(c, 'staff', st, sch)), 'FFFFFBEB', false);
+      });
+    }
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${title.replace(/[\\/:*?"<>|]+/g, '-')}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /* ───── Excel (CSV) export of the passenger name list ─────────────────────
