@@ -463,7 +463,20 @@ onMounted(() => {
 /* ─── Responsive ─────────────────────── */
 @media (max-width: 768px) {
   .van-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stat-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
   }
 }
 </style>

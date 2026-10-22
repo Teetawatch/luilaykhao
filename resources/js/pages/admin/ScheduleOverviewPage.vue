@@ -2947,7 +2947,7 @@ onUnmounted(() => {
 
 .schedule-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -3123,7 +3123,7 @@ onUnmounted(() => {
 /* ── สตาฟประจำรอบ (โมดัลรายละเอียด) ───────────────────── */
 .staff-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
   gap: 10px;
 }
 
@@ -4497,7 +4497,7 @@ onUnmounted(() => {
 /* ─── Pickup panel ────────────────────────────────────────────────────── */
 .pickup-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 12px;
 }
 
@@ -4860,6 +4860,12 @@ onUnmounted(() => {
   .toggle-filter,
   .filters-panel .btn-secondary {
     width: 100%;
+  }
+
+  /* แถบตัวกรองเรียงแนวตั้งแล้ว — flex-basis 280px จะกลายเป็นความสูง ช่องค้นหาเลยสูงโล่ง */
+  .search-field {
+    flex: none;
+    min-width: 0;
   }
 
   .card-header {

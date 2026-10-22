@@ -623,7 +623,7 @@ onMounted(loadRounds);
 .report-ledger { display: flex; align-items: center; gap: 5px; }
 .report-ledger .material-symbols-rounded { font-size: 17px !important; }
 
-.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 14px; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr)); gap: 10px; margin-top: 14px; }
 .photo-grid img {
   width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; border: 1px solid #e5e7eb; display: block;
 }

@@ -400,7 +400,7 @@ onMounted(load);
 .gv-head h2 i { color: #2D7A4F; margin-right: 6px; }
 .sub { margin: 4px 0 0; font-size: 13px; color: #6b7280; }
 
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 12px; }
 .tile { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 2px; }
 .tile-label { font-size: 12px; font-weight: 700; color: #6b7280; }
 .tile b { font-size: 20px; color: #111827; }

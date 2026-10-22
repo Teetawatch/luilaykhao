@@ -393,7 +393,7 @@ onMounted(() => {
 /* ─── Quick actions ───────────────────── */
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
   gap: 12px;
   margin-bottom: 24px;
 }
@@ -486,7 +486,7 @@ onMounted(() => {
 /* ─── Stats Grid ──────────────────────── */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: 20px;
   margin-bottom: 24px;
 }
@@ -975,7 +975,23 @@ td.date {
 
 @media (max-width: 480px) {
   .stats-grid {
-    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .stat-card {
+    padding: 14px;
+    gap: 10px;
+  }
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+  }
+  /* ครึ่งจอ ~170px — ยอดเงินหลักล้านต้องยังไม่ล้นการ์ด */
+  .stat-value {
+    font-size: 20px;
+    overflow-wrap: anywhere;
+  }
+  .stat-badge {
+    white-space: normal;
   }
 }
 </style>

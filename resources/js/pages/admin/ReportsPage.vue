@@ -1034,14 +1034,37 @@ function downloadFile(content, filename, contentType) {
 }
 
 @media (max-width: 768px) {
+  /* เดิม align-items: flex-end พอเรียงแนวตั้งแล้วทุกช่องไปกองชิดขวาและหดตามเนื้อหา */
   .report-filters {
     flex-direction: column;
+    align-items: stretch;
   }
   .filter-actions {
     margin-left: 0;
   }
+  .filter-actions .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
   .report-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .rs-item {
+    min-width: 0;
+    padding: 10px 6px;
+  }
+  .rs-val {
+    font-size: 17px;
+    overflow-wrap: anywhere;
+  }
+  .report-tabs button {
     flex-direction: column;
+    gap: 2px;
+    padding: 8px 4px;
+    font-size: 12px;
+    line-height: 1.2;
   }
 }
 </style>

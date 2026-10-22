@@ -612,7 +612,7 @@ fetchData();
 /* ─── การ์ดสรุป ─── */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -720,7 +720,7 @@ fetchData();
 
 .installment-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 12px;
 }
 
@@ -838,5 +838,21 @@ fetchData();
 @media (max-width: 768px) {
   .detail-facts { gap: 10px; font-size: 12px; }
   .installment-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .summary-card {
+    padding: 10px;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .summary-card strong { font-size: 18px; }
+  .summary-card .material-symbols-rounded { font-size: 22px; }
 }
 </style>

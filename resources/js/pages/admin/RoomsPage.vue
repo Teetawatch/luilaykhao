@@ -1,5 +1,5 @@
 <template>
-  <div class="rooms-page">
+  <div class="rooms-page" :class="{ 'has-active': activeId }">
     <!-- ─── Sidebar : schedule list ─────────────────── -->
     <div class="rooms-sidebar">
       <div class="rooms-sidebar-header">
@@ -59,6 +59,9 @@
       <template v-else>
         <div class="rooms-header">
           <div class="rooms-header-info">
+            <button class="refresh-btn mobile-back" @click="closeSchedule" title="กลับไปรายการรอบ">
+              <i class="fas fa-arrow-left"></i>
+            </button>
             <div class="header-thumb">
               <img v-if="activeSchedule?.trip?.cover_image" :src="activeSchedule.trip.cover_image" alt="" />
               <i v-else class="fas fa-mountain-sun"></i>
@@ -417,6 +420,15 @@ async function loadSchedules() {
   }
 }
 
+// มือถือเห็นทีละช่อง — ปุ่มย้อนกลับพาจากรายละเอียดกลับไปหน้ารายการ
+function closeSchedule() {
+  activeId.value = null;
+  activeSchedule.value = null;
+  data.value = null;
+  panel.value = null;
+  editingId.value = null;
+}
+
 async function openSchedule(sch) {
   if (activeId.value === sch.id) return;
   activeId.value = sch.id;
@@ -728,7 +740,7 @@ loadSchedules();
 .g.m { background: #eff6ff; color: #2563eb; }
 .g.f { background: #fdf2f8; color: #db2777; }
 
-.room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; }
 .room-card { background: #fff; border: 1px solid #e9edf0; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; transition: border-color 0.15s, background 0.15s; }
 .room-card.dropping { border-color: #2D7A4F; background: #f0fdf4; }
 .room-head { display: flex; align-items: center; gap: 6px; }
@@ -748,9 +760,32 @@ loadSchedules();
 .x-btn:hover { color: #dc2626; }
 .add-select { font-size: 13px; padding: 7px 10px; color: #4b5563; }
 
-@media (max-width: 900px) {
-  .rooms-page { flex-direction: column; height: auto; }
-  .rooms-sidebar { width: 100%; max-height: 320px; }
-  .rooms-main { min-height: 70vh; }
+
+.mobile-back { display: none; }
+
+/* มือถือ/แท็บเล็ตแนวตั้ง: สองช่องข้างกันบีบจนอ่านไม่ออก — แสดงรายการก่อน
+   แตะแล้วเปิดรายละเอียดเต็มจอ มีปุ่มย้อนกลับที่หัว */
+@media (max-width: 1023.98px) {
+  .rooms-page {
+    flex-direction: row;
+    height: calc(100vh - 96px - env(safe-area-inset-bottom));
+    height: calc(100dvh - 96px - env(safe-area-inset-bottom));
+    gap: 0;
+  }
+
+  .rooms-sidebar { width: 100%; max-height: none; }
+  .rooms-page.has-active .rooms-sidebar { display: none; }
+  .rooms-page:not(.has-active) .rooms-main { display: none; }
+  .rooms-main { min-height: 0; }
+
+  .mobile-back { display: inline-flex; flex-shrink: 0; }
+
+  .rooms-header { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .rooms-header-info { min-width: 0; flex: 1 1 auto; }
+}
+
+@media (max-width: 1023.98px) {
+  /* ปุ่มย้อนกลับมาแทนรูปปก — ที่ว่างเหลือให้ชื่อรอบ */
+  .header-thumb { display: none; }
 }
 </style>

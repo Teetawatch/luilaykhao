@@ -767,7 +767,7 @@ onMounted(load);
 /* ── สถิติ ────────────────────────────────────────── */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -1014,8 +1014,14 @@ onMounted(load);
 }
 
 @media (max-width: 640px) {
-  .range-bar { flex-direction: column; align-items: stretch; }
+  .range-bar { flex-direction: column; align-items: stretch; min-width: 0; }
   .range-right { justify-content: space-between; }
   .toggle-grid { grid-template-columns: 1fr; }
+  /* ช่องวันที่สองช่องต้องหดเข้าไปอยู่ในแถวเดียวกับลูกศร ไม่ดันแถบเลยจอ */
+  .range-nav { flex: 1 1 100%; min-width: 0; }
+  .date-input { flex: 1 1 0; min-width: 0; width: 0; }
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .stat-card { padding: 10px 12px; gap: 8px; align-items: flex-start; }
+  .stat-value { font-size: 17px; }
 }
 </style>

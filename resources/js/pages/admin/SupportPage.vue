@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-page">
+  <div class="chat-page" :class="{ 'has-active': activeId }">
     <!-- ─── Sidebar : conversation list ─────────────── -->
     <div class="chat-sidebar">
       <div class="chat-sidebar-header">
@@ -74,6 +74,9 @@
       <template v-else>
         <div class="chat-header">
           <div class="chat-header-info">
+            <button class="refresh-btn mobile-back" @click="closeConversation" title="กลับไปรายการสนทนา">
+              <i class="fas fa-arrow-left"></i>
+            </button>
             <div class="header-thumb">
               <img v-if="activeConv?.user?.avatar_url" :src="activeConv.user.avatar_url" alt="" />
               <i v-else class="fas fa-user"></i>
@@ -253,6 +256,15 @@ async function loadConversations(silent = false) {
 function scheduleListRefresh() {
   clearTimeout(listRefreshTimer);
   listRefreshTimer = setTimeout(() => loadConversations(true), 700);
+}
+
+// มือถือเห็นทีละช่อง — ปุ่มย้อนกลับพาจากรายละเอียดกลับไปหน้ารายการ
+function closeConversation() {
+  leaveChannel();
+  activeId.value = null;
+  activeConv.value = null;
+  messages.value = [];
+  clearPendingImage();
 }
 
 async function openConversation(conv) {
@@ -615,4 +627,33 @@ onBeforeUnmount(() => {
   width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 18px;
 }
 .lightbox-close:hover { background: rgba(255,255,255,0.28); }
+
+.mobile-back { display: none; }
+
+/* มือถือ/แท็บเล็ตแนวตั้ง: สองช่องข้างกันบีบจนอ่านไม่ออก — แสดงรายการก่อน
+   แตะแล้วเปิดรายละเอียดเต็มจอ มีปุ่มย้อนกลับที่หัว */
+@media (max-width: 1023.98px) {
+  .chat-page {
+    flex-direction: row;
+    height: calc(100vh - 96px - env(safe-area-inset-bottom));
+    height: calc(100dvh - 96px - env(safe-area-inset-bottom));
+    gap: 0;
+  }
+
+  .chat-sidebar { width: 100%; max-height: none; }
+  .chat-page.has-active .chat-sidebar { display: none; }
+  .chat-page:not(.has-active) .chat-main { display: none; }
+  .chat-main { min-height: 0; }
+
+  .mobile-back { display: inline-flex; flex-shrink: 0; }
+
+  .chat-header { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .chat-header-info { min-width: 0; flex: 1 1 auto; }
+}
+
+@media (max-width: 1023.98px) {
+  /* ปุ่มย้อนกลับมาแทนรูปปก — ที่ว่างเหลือให้ชื่อห้อง; สถานะเรียลไทม์เหลือแค่จุดสี */
+  .header-thumb { display: none; }
+  .ws-pill { font-size: 0; gap: 0; padding: 6px; }
+}
 </style>

@@ -167,7 +167,7 @@ onMounted(load);
 .empty-state .material-symbols-rounded { font-size: 46px !important; color: #d1d5db; }
 .empty-state p { margin: 10px 0 0; font-size: 14px; }
 
-.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); gap: 14px; margin-bottom: 22px; }
 .stat-card {
   background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
   padding: 18px 20px; display: flex; flex-direction: column; gap: 3px;

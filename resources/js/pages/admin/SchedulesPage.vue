@@ -4730,7 +4730,7 @@ onMounted(async () => {
 /* ── Trip cards grid ── */
 .trip-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
   gap: 16px;
 }
 
@@ -5411,7 +5411,7 @@ onMounted(async () => {
   }
 
   .move-seat-passengers {
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
   }
 }
 
@@ -5954,7 +5954,7 @@ onMounted(async () => {
 .pif-image-pick .material-symbols-rounded { font-size: 18px; }
 
 /* Existing image picker grid */
-.img-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.img-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr)); gap: 12px; }
 .img-picker-item { position: relative; display: flex; flex-direction: column; padding: 0; border: 2px solid var(--color-sand-dark, #e5e7eb); border-radius: 12px; overflow: hidden; cursor: pointer; background: #fff; transition: border-color 0.15s, transform 0.15s; }
 .img-picker-item:hover { transform: translateY(-2px); border-color: var(--color-accent, #2563eb); }
 .img-picker-item.active { border-color: var(--color-accent, #2563eb); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
@@ -7434,5 +7434,32 @@ onMounted(async () => {
   margin-top: 4px;
   font-size: 11px;
   white-space: nowrap;
+}
+
+/* มือถือ: ปุ่มเพิ่มรอบขึ้นก่อนเต็มแถว ปุ่มรองเรียงเป็นตารางสองช่อง
+   (เดิมเรียงแถวเดียวจนตัวหนังสือแตกเป็นคำ ๆ และปุ่มหลักหลุดขอบจอ) */
+@media (max-width: 640px) {
+  .page-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .page-actions > .btn-primary {
+    justify-content: center;
+  }
+
+  .page-actions-secondary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-right: 0;
+    border-right: none;
+  }
+
+  .page-actions-secondary .btn-secondary {
+    justify-content: center;
+    padding: 9px 10px;
+    font-size: 13px;
+  }
 }
 </style>

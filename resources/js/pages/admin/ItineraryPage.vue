@@ -1,5 +1,5 @@
 <template>
-  <div class="itin-page">
+  <div class="itin-page" :class="{ 'has-active': activeId }">
     <!-- ─── Sidebar : schedule list ─────────────────── -->
     <div class="itin-sidebar">
       <div class="itin-sidebar-header">
@@ -63,6 +63,9 @@
       <template v-else>
         <div class="itin-header">
           <div class="itin-header-info">
+            <button class="refresh-btn mobile-back" @click="closeSchedule" title="กลับไปรายการรอบ">
+              <i class="fas fa-arrow-left"></i>
+            </button>
             <div class="header-thumb">
               <img v-if="activeSchedule?.trip?.cover_image" :src="activeSchedule.trip.cover_image" alt="" />
               <i v-else class="fas fa-mountain-sun"></i>
@@ -321,6 +324,14 @@ async function loadSchedules() {
   }
 }
 
+// มือถือเห็นทีละช่อง — ปุ่มย้อนกลับพาจากรายละเอียดกลับไปหน้ารายการ
+function closeSchedule() {
+  activeId.value = null;
+  activeSchedule.value = null;
+  items.value = [];
+  resetForm();
+}
+
 async function openSchedule(sch) {
   if (activeId.value === sch.id) return;
   activeId.value = sch.id;
@@ -551,4 +562,32 @@ loadSchedules();
 .mini-btn { border: 1px solid #e5e7eb; background: #fff; color: #6b7280; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
 .mini-btn:hover { background: #f3f4f6; color: #374151; }
 .mini-btn.danger:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+.mobile-back { display: none; }
+
+/* มือถือ/แท็บเล็ตแนวตั้ง: สองช่องข้างกันบีบจนอ่านไม่ออก — แสดงรายการก่อน
+   แตะแล้วเปิดรายละเอียดเต็มจอ มีปุ่มย้อนกลับที่หัว */
+@media (max-width: 1023.98px) {
+  .itin-page {
+    flex-direction: row;
+    height: calc(100vh - 96px - env(safe-area-inset-bottom));
+    height: calc(100dvh - 96px - env(safe-area-inset-bottom));
+    gap: 0;
+  }
+
+  .itin-sidebar { width: 100%; max-height: none; }
+  .itin-page.has-active .itin-sidebar { display: none; }
+  .itin-page:not(.has-active) .itin-main { display: none; }
+  .itin-main { min-height: 0; }
+
+  .mobile-back { display: inline-flex; flex-shrink: 0; }
+
+  .itin-header { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .itin-header-info { min-width: 0; flex: 1 1 auto; }
+}
+
+@media (max-width: 1023.98px) {
+  /* ปุ่มย้อนกลับมาแทนรูปปก — ที่ว่างเหลือให้ชื่อรอบ */
+  .header-thumb { display: none; }
+}
 </style>

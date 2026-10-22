@@ -7515,4 +7515,53 @@ async function reverifySlip(bookingRef, slipType) {
   .bk-footer-actions { margin-left: 0; }
   .bk-footer-actions > * { flex: 1; justify-content: center; }
 }
+
+/* มือถือ: ตัวเลขสรุปสองคอลัมน์ — เรียงทีละใบต้องเลื่อนผ่านหกการ์ดก่อนถึงรายการจอง */
+@media (max-width: 640px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .summary-card {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .summary-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .summary-value,
+  .summary-value.money {
+    font-size: 16px;
+  }
+}
+
+/* มือถือ: หัว modal รายละเอียดการจองมีปุ่มจัดการหลายปุ่ม — วางไว้บรรทัดล่างแทน
+   ชื่อเรื่องอยู่บรรทัดบนเต็มความกว้าง ปุ่มปิดลอยมุมขวาบนให้กดเจอเสมอ */
+@media (max-width: 640px) {
+  .modal-header:has(.modal-header-actions) {
+    position: relative;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .modal-header:has(.modal-header-actions) > div:first-child {
+    flex: 1 1 100%;
+    padding-right: 44px;
+  }
+
+  .modal-header-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .modal-header-actions .modal-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+  }
+}
 </style>

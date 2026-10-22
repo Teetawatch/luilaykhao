@@ -1,5 +1,5 @@
 <template>
-  <div class="ann-page">
+  <div class="ann-page" :class="{ 'has-active': activeId }">
     <!-- ─── Sidebar : schedule list ─────────────────── -->
     <div class="ann-sidebar">
       <div class="ann-sidebar-header">
@@ -58,6 +58,9 @@
       <template v-else>
         <div class="ann-header">
           <div class="ann-header-info">
+            <button class="refresh-btn mobile-back" @click="closeSchedule" title="กลับไปรายการรอบ">
+              <i class="fas fa-arrow-left"></i>
+            </button>
             <div class="header-thumb">
               <img v-if="activeConv?.trip_image" :src="activeConv.trip_image" alt="" />
               <i v-else class="fas fa-mountain-sun"></i>
@@ -235,6 +238,15 @@ async function loadConversations() {
   } finally {
     loadingList.value = false;
   }
+}
+
+// มือถือเห็นทีละช่อง — ปุ่มย้อนกลับพาจากรายละเอียดกลับไปหน้ารายการ
+function closeSchedule() {
+  leaveChannel();
+  activeId.value = null;
+  activeConv.value = null;
+  items.value = [];
+  resetForm();
 }
 
 async function openSchedule(conv) {
@@ -482,4 +494,32 @@ onBeforeUnmount(leaveChannel);
 .mini-btn:hover { background: #f3f4f6; color: #374151; }
 .mini-btn .fa-thumbtack.off { opacity: 0.4; }
 .mini-btn.danger:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+.mobile-back { display: none; }
+
+/* มือถือ/แท็บเล็ตแนวตั้ง: สองช่องข้างกันบีบจนอ่านไม่ออก — แสดงรายการก่อน
+   แตะแล้วเปิดรายละเอียดเต็มจอ มีปุ่มย้อนกลับที่หัว */
+@media (max-width: 1023.98px) {
+  .ann-page {
+    flex-direction: row;
+    height: calc(100vh - 96px - env(safe-area-inset-bottom));
+    height: calc(100dvh - 96px - env(safe-area-inset-bottom));
+    gap: 0;
+  }
+
+  .ann-sidebar { width: 100%; max-height: none; }
+  .ann-page.has-active .ann-sidebar { display: none; }
+  .ann-page:not(.has-active) .ann-main { display: none; }
+  .ann-main { min-height: 0; }
+
+  .mobile-back { display: inline-flex; flex-shrink: 0; }
+
+  .ann-header { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .ann-header-info { min-width: 0; flex: 1 1 auto; }
+}
+
+@media (max-width: 1023.98px) {
+  /* ปุ่มย้อนกลับมาแทนรูปปก — ที่ว่างเหลือให้ชื่อรอบ */
+  .header-thumb { display: none; }
+}
 </style>

@@ -747,7 +747,7 @@ onMounted(load);
 .segment.active { background: #111827; color: #fff; }
 
 .stat-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
   gap: 14px; margin-bottom: 22px;
 }
 .stat-card {
@@ -878,7 +878,7 @@ onMounted(load);
 .sms-status.sent { background: #ecfdf5; color: #047857 !important; }
 .sms-status.failed { background: #fef2f2; color: #b91c1c !important; }
 
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 14px; }
 .form-group.full-width { grid-column: 1 / -1; }
 
 @media (max-width: 640px) {

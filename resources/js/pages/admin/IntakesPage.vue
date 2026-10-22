@@ -1200,7 +1200,7 @@ onMounted(() => {
 .block-label { font-size: 11px; font-weight: 700; color: #6b7280; }
 
 /* ── เลือกชนิดลิงก์ ─────────────────────────────────────────────── */
-.mode-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.mode-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 10px; }
 .mode-card {
   display: flex; align-items: flex-start; gap: 10px; text-align: left; cursor: pointer;
   background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 12px;
@@ -1236,7 +1236,7 @@ onMounted(() => {
 .month-chip.active .month-count { color: rgba(255, 255, 255, .75); }
 
 .schedule-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 8px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(268px, 100%), 1fr)); gap: 8px;
   max-height: 340px; overflow-y: auto; padding: 2px;
 }
 .sched-card {

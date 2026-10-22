@@ -162,7 +162,7 @@ onBeforeUnmount(() => {
 .summary-bar.urgent p { color: #b91c1c; }
 
 .queue-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr)); gap: 16px;
 }
 
 .queue-card {
@@ -210,7 +210,7 @@ onBeforeUnmount(() => {
   font-size: 12.5px; font-weight: 600; color: #9ca3af; text-decoration: underline;
 }
 .cleared-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
   gap: 10px; margin-top: 12px;
 }
 .cleared-card {

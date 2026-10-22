@@ -283,7 +283,7 @@ onMounted(() => {
 
 .empty-hint { padding: 32px 16px; color: #9ca3af; font-size: 13px; text-align: center; background: #fff; border-radius: 14px; border: 1px solid #e5e7eb; }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 12px; }
 .card { background: #fff; border: 1px solid #e9edf0; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .card-top { display: flex; gap: 12px; }
 .photo { width: 88px; height: 88px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 26px; }

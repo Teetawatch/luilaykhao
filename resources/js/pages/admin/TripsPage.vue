@@ -748,7 +748,9 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
-  .toolbar-row select,
-  .chip-toggle { flex: 1; min-width: 0; }
+  .toolbar-card { padding: 12px; }
+  .toolbar-row .search-box { flex: 1 1 100%; }
+  .toolbar-row select { flex: 1 1 calc(50% - 5px); min-width: 0; }
+  .chip-toggle { flex: 1 1 100%; justify-content: center; white-space: nowrap; }
 }
 </style>

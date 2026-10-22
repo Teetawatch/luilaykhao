@@ -1356,7 +1356,7 @@ onBeforeUnmount(() => {
 /* ─── สรุปยอด ─────────────────────────── */
 .stat-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -2005,7 +2005,7 @@ onBeforeUnmount(() => {
 
 .photo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr));
   gap: 10px;
   margin-top: 4px;
 }

@@ -1067,7 +1067,7 @@ onMounted(() => {
 <style scoped>
 @import url('./admin-shared.css');
 
-.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); gap: 12px; margin: 16px 0; }
 .sc-item { background: #fff; border: 1px solid #eef0f3; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
 .sc-label { font-size: 12px; color: #8b909a; font-weight: 700; }
 .sc-val { font-size: 20px; font-weight: 800; }
@@ -1190,4 +1190,12 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .overdue-date { color: #6b7280; }
 .overdue-days { color: #b91c1c; font-weight: 700; }
 .overdue-go { margin-left: auto; color: #b91c1c; }
+
+@media (max-width: 640px) {
+  /* ชื่อทริปบรรทัดบน วัน/จำนวนวันบรรทัดล่าง — เรียงแถวเดียวแล้วชื่อทริปถูกบีบเหลือคำละบรรทัด */
+  .overdue-row { flex-wrap: wrap; gap: 2px 10px; }
+  .overdue-trip { flex-basis: calc(100% - 34px); }
+  .overdue-go { order: -1; margin-left: 0; position: absolute; right: 6px; }
+  .overdue-row { position: relative; padding-right: 30px; }
+}
 </style>

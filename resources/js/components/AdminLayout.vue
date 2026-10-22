@@ -1,10 +1,16 @@
 <template>
-  <div class="admin-layout">
+  <div class="admin-layout" :class="{ 'is-mobile': isMobile }">
+    <!-- มือถือ/แท็บเล็ตแนวตั้ง: เมนูเป็นลิ้นชักทับเนื้อหา แตะพื้นหลังเพื่อปิด -->
+    <div v-if="isMobile && mobileNavOpen" class="sidebar-backdrop" @click="mobileNavOpen = false"></div>
+
     <!-- Sidebar -->
-    <aside class="admin-sidebar" :class="{ collapsed: sidebarCollapsed }">
+    <aside class="admin-sidebar" :class="{ collapsed: sidebarCollapsed, open: mobileNavOpen }">
       <div class="sidebar-header flex flex-col items-center">
         <img src="/images/logo.png?v=2" alt="TrailDive" class="w-18 h-18 object-contain" />
         <span v-if="!sidebarCollapsed" class="brand-subtitle mt-1">แผงควบคุมระบบ</span>
+        <button v-if="isMobile" class="drawer-close" @click="mobileNavOpen = false" aria-label="ปิดเมนู">
+          <i class="fas fa-times"></i>
+        </button>
       </div>
 
       <nav class="sidebar-nav">
@@ -72,16 +78,21 @@
     <div class="admin-main" :class="{ expanded: sidebarCollapsed }">
       <!-- Top Bar -->
       <header class="admin-topbar">
-        <button class="toggle-btn" @click="sidebarCollapsed = !sidebarCollapsed">
-          <i class="fas fa-bars"></i>
-        </button>
+        <div class="topbar-left">
+          <button class="toggle-btn" @click="toggleSidebar" aria-label="เมนู">
+            <i class="fas fa-bars"></i>
+            <!-- เมนูซ่อนอยู่บนมือถือ — ป้ายแดงบนเมนูจะไม่มีใครเห็น จึงยกจุดแดงมาไว้ที่ปุ่มแทน -->
+            <span v-if="isMobile && hasMenuAlert" class="toggle-dot" :class="{ pulse: sosCount > 0 }"></span>
+          </button>
+          <span v-if="isMobile && currentPageLabel" class="topbar-title">{{ currentPageLabel }}</span>
+        </div>
 
         <div class="topbar-right">
           <div class="admin-user">
             <div class="user-avatar">
               {{ auth.userName?.charAt(0)?.toUpperCase() || 'A' }}
             </div>
-            <div class="user-info" v-if="!sidebarCollapsed || true">
+            <div class="user-info" v-if="!isMobile">
               <span class="user-name">{{ auth.userName }}</span>
               <span class="user-role">Admin</span>
             </div>
@@ -109,6 +120,35 @@ import api from '../lib/axios';
 const router = useRouter();
 const auth = useAuthStore();
 const sidebarCollapsed = ref(false);
+
+// ต่ำกว่า 1024px (มือถือ, แท็บเล็ตแนวตั้ง) เมนูข้างกินจอเกินไป — เปลี่ยนเป็นลิ้นชัก
+// ที่ซ่อนไว้แล้วเปิดจากปุ่มแฮมเบอร์เกอร์แทน
+const MOBILE_QUERY = '(max-width: 1023.98px)';
+const mobileMql = typeof window !== 'undefined' ? window.matchMedia(MOBILE_QUERY) : null;
+const isMobile = ref(mobileMql?.matches ?? false);
+const mobileNavOpen = ref(false);
+
+const onMobileChange = (e) => {
+  isMobile.value = e.matches;
+  if (!e.matches) mobileNavOpen.value = false;
+};
+
+const toggleSidebar = () => {
+  if (isMobile.value) {
+    mobileNavOpen.value = !mobileNavOpen.value;
+  } else {
+    sidebarCollapsed.value = !sidebarCollapsed.value;
+  }
+};
+
+const onKeydown = (e) => {
+  if (e.key === 'Escape' && mobileNavOpen.value) mobileNavOpen.value = false;
+};
+
+// ลิ้นชักเปิดอยู่ = หน้าข้างหลังต้องไม่เลื่อนตามนิ้ว
+watch(mobileNavOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : '';
+});
 
 // จำนวนเคส SOS ที่ยังไม่ปิด — ติดไว้บนเมนูเพื่อให้เห็นได้จากทุกหน้าในหลังบ้าน
 // ไม่ใช่เฉพาะตอนเปิดหน้า SOS ค้างไว้
@@ -287,6 +327,24 @@ const menuGroups = ref([
   }
 ]);
 
+const isItemActive = (item) =>
+  item.to === '/admin' ? route.path === '/admin' : route.path.startsWith(item.to);
+
+// ชื่อหน้าปัจจุบันบนแถบบน — บนมือถือเมนูซ่อนอยู่ ไม่งั้นไม่รู้ว่าอยู่หน้าไหน
+// เลือกเมนูที่ path ยาวสุดที่ตรงกัน (/admin/trips ไม่ใช่ /admin)
+const currentPageLabel = computed(() => {
+  let best = null;
+  for (const group of menuGroups.value) {
+    for (const item of group.items) {
+      if (isItemActive(item) && (!best || item.to.length > best.to.length)) best = item;
+    }
+  }
+  return best?.label || '';
+});
+
+const hasMenuAlert = computed(() =>
+  sosCount.value > 0 || intakeCount.value > 0 || financeOverdueCount.value > 0);
+
 const toggleGroup = (groupId) => {
   if (sidebarCollapsed.value) {
     sidebarCollapsed.value = false;
@@ -301,6 +359,9 @@ const toggleGroup = (groupId) => {
 const route = useRoute();
 
 onMounted(() => {
+  mobileMql?.addEventListener('change', onMobileChange);
+  window.addEventListener('keydown', onKeydown);
+
   menuGroups.value.forEach(group => {
     const hasActiveItem = group.items.some(item => 
       item.to === '/admin' ? route.path === '/admin' : route.path.startsWith(item.to)
@@ -321,6 +382,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  mobileMql?.removeEventListener('change', onMobileChange);
+  window.removeEventListener('keydown', onKeydown);
+  document.body.style.overflow = '';
   if (sosTimer) clearInterval(sosTimer);
   if (intakeTimer) clearInterval(intakeTimer);
   if (financeTimer) clearInterval(financeTimer);
@@ -329,6 +393,8 @@ onBeforeUnmount(() => {
 // ออกจากหน้าข้อมูลลูกค้าแล้วนับใหม่ทันที ไม่ต้องรอรอบถัดไปสองนาที — คนที่เพิ่ง
 // กดดึงไปจองหรือเก็บเข้ากรุจะได้ไม่เห็นตัวเลขเดิมค้างอยู่บนเมนู
 watch(() => route.path, (to, from) => {
+  // แตะเมนูแล้วต้องเห็นหน้าใหม่ทันที ไม่ใช่ลิ้นชักค้างทับอยู่
+  mobileNavOpen.value = false;
   // เพิ่งออกจากหน้าบัญชีทริป — อาจเพิ่งปิดงบไป ตัวเลขบนเมนูต้องตามทันที
   if (from === '/admin/finance' && to !== from) loadFinanceOverdueCount();
   if (from === '/admin/intakes' && to !== from) {
@@ -696,21 +762,145 @@ const handleLogout = async () => {
 }
 
 /* ─── Responsive ──────────────────────── */
-@media (max-width: 768px) {
-  .admin-sidebar {
-    width: 72px;
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  z-index: 140;
+  animation: backdrop-in 0.2s ease;
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.drawer-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.toggle-btn {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.toggle-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #dc2626;
+  border: 2px solid #fff;
+}
+
+.toggle-dot.pulse {
+  animation: badge-pulse 1.6s ease-in-out infinite;
+}
+
+.topbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+@media (max-width: 1023.98px) {
+  .admin-sidebar,
+  .admin-sidebar.collapsed {
+    width: min(300px, 86vw);
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 150;
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  .admin-sidebar .brand-title,
-  .admin-sidebar .brand-subtitle,
-  .admin-sidebar .nav-item span,
-  .admin-sidebar .back-link span {
-    display: none;
+
+  .admin-sidebar.open {
+    transform: translateX(0);
   }
-  .admin-main {
-    margin-left: 72px;
+
+  .sidebar-header {
+    position: relative;
+    padding: 16px 20px;
   }
+
+  /* นิ้วแตะไม่แม่นเท่าเมาส์ — เมนูต้องสูงพอให้แตะโดนบรรทัดเดียว */
+  .nav-item,
+  .group-header {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .admin-main,
+  .admin-main.expanded {
+    margin-left: 0;
+    min-width: 0;
+  }
+
+  .admin-topbar {
+    height: 56px;
+    padding: 0 12px;
+    gap: 12px;
+  }
+
+  .toggle-btn,
+  .logout-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .topbar-right {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   .admin-content {
-    padding: 16px;
+    padding: 16px 12px calc(24px + env(safe-area-inset-bottom));
+    min-width: 0;
+  }
+}
+</style>
+
+<style>
+/* ไม่ scoped — คุมทุกหน้าในหลังบ้านจากจุดเดียว */
+@media (max-width: 1023.98px) and (pointer: coarse) {
+  /* iOS ซูมหน้าเข้าเองทุกครั้งที่แตะช่องกรอกที่ตัวอักษรเล็กกว่า 16px
+     แล้วไม่ซูมกลับ — แอดมินต้องถ่างนิ้วออกทุกครั้งที่พิมพ์ */
+  .admin-layout input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']),
+  .admin-layout select,
+  .admin-layout textarea {
+    font-size: 16px !important;
+  }
+}
+
+@media (max-width: 1023.98px) {
+  .admin-content img,
+  .admin-content video,
+  .admin-content iframe {
+    max-width: 100%;
   }
 }
 </style>

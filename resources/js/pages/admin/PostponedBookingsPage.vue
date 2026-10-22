@@ -286,7 +286,7 @@ onMounted(fetchData);
 
 .summary-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
   gap: 10px;
   margin-bottom: 20px;
 }
@@ -310,7 +310,7 @@ onMounted(fetchData);
 
 .round-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 12px;
 }
 .round-card.is-over { border-color: #fca5a5; }

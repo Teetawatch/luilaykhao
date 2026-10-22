@@ -1198,7 +1198,7 @@ onMounted(loadData);
 
 .today-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 12px;
 }
 
@@ -1761,7 +1761,7 @@ button.summary-card.active {
 
 .fact-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(215px, 100%), 1fr));
   gap: 10px;
   padding: 0 16px 14px;
 }
@@ -2355,6 +2355,8 @@ button.summary-card.active {
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .assign-layout { grid-template-columns: 1fr; }
+  /* เลื่อนลงมาหาแผงรายละเอียดแล้วหัวแผงต้องไม่หลบอยู่ใต้แถบบนที่ติดจอ */
+  .detail-panel { scroll-margin-top: 68px; }
 }
 
 @media (max-width: 900px) {
@@ -2363,7 +2365,7 @@ button.summary-card.active {
 }
 
 @media (max-width: 640px) {
-  .summary-grid { grid-template-columns: 1fr; }
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .tab-switcher { width: 100%; }
   .tab-btn { flex: 1; justify-content: center; }
   .pick-search { min-width: 100%; max-width: 100%; }

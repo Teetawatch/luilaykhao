@@ -660,7 +660,7 @@ onMounted(loadSchedules);
 
 /* ─── การ์ดของแต่ละรายการ ───────────────── */
 .item-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 12px; margin-bottom: 26px;
 }
 .item-card {

@@ -1652,7 +1652,14 @@ onMounted(() => fetchData());
 .td-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
 @media (max-width: 600px) {
-  .view-toggle { margin-left: 0; }
+  .filters-bar { align-items: stretch; gap: 10px; }
+  /* แท็บประเภทรถยาวเกินจอ — เลื่อนนิ้วในแถวเอา ไม่ดันทั้งหน้าให้กว้าง */
+  .type-tabs { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .type-tabs::-webkit-scrollbar { display: none; }
+  .type-tab { flex-shrink: 0; white-space: nowrap; }
+  .view-toggle { margin-left: 0; align-self: flex-start; }
+  .vehicle-stats { gap: 8px; }
+  .vehicle-stats .stat-card { padding: 12px; gap: 10px; }
   .trip-departure-row { gap: 10px; }
   .td-status { width: 100%; }
 }
@@ -1683,7 +1690,7 @@ onMounted(() => fetchData());
 /* ─── Vehicles Grid ───────────────────────────────── */
 .vehicles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr));
   gap: 16px;
 }
 
@@ -2069,7 +2076,7 @@ onMounted(() => fetchData());
 }
 .upload-placeholder:hover { border-color: var(--color-ocean); color: var(--color-ocean); background: #eff6ff; }
 .upload-placeholder .material-symbols-rounded { font-size: 28px; margin-bottom: 6px; }
-.gallery-grid-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; margin-top: 8px; }
+.gallery-grid-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(110px, 100%), 1fr)); gap: 12px; margin-top: 8px; }
 .gallery-item-preview { position: relative; height: 110px; border-radius: 10px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .gallery-item-preview img { width: 100%; height: 100%; object-fit: cover; }
 .gallery-add-btn {

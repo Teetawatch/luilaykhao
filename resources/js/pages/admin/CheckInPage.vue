@@ -415,4 +415,23 @@ function resetResult() {
   color: var(--color-text-muted);
   white-space: nowrap;
 }
+
+@media (max-width: 640px) {
+  .checkin-input-area {
+    padding: 16px;
+  }
+
+  /* placeholder ยาว ๆ ทำให้ช่องกรอกไม่ยอมหด ปุ่มเช็คอินเลยหลุดขอบการ์ด */
+  .input-group {
+    flex-direction: column;
+  }
+
+  .checkin-input {
+    min-width: 0;
+  }
+
+  .btn-checkin {
+    justify-content: center;
+  }
+}
 </style>

@@ -426,7 +426,7 @@ onBeforeUnmount(() => {
 .health-box p { margin: 0; font-size: 13px; color: #78350f; }
 
 .sos-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
   gap: 14px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f3f4f6;
 }
 .info-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }

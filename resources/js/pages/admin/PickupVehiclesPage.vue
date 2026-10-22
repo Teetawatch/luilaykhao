@@ -559,4 +559,31 @@ const move = async (index, direction) => {
 }
 input:checked + .slider { background: var(--color-accent); }
 input:checked + .slider:before { transform: translateX(18px); }
+
+/* มือถือ: แถวเดียวยัดไม่ลง ชื่อรถถูกบีบเหลือคำละบรรทัด — แบ่งเป็นสองบรรทัด
+   บน: ลำดับ รูป ชื่อ / ล่าง: สถานะ + ปุ่มจัดการ */
+@media (max-width: 640px) {
+  .row {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 12px;
+  }
+
+  .thumb {
+    width: 72px;
+    height: 48px;
+  }
+
+  .info {
+    flex: 1 1 calc(100% - 128px);
+  }
+
+  .status-pill {
+    margin-left: 32px;
+  }
+
+  .row .action-btns {
+    margin-left: auto;
+  }
+}
 </style>

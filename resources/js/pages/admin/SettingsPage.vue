@@ -520,7 +520,7 @@ onMounted(load);
 </script>
 
 <style scoped>
-.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; align-items: start; }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr)); gap: 18px; align-items: start; }
 
 .setting-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 22px 24px; }
 

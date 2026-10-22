@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-page">
+  <div class="chat-page" :class="{ 'has-active': activeId }">
     <!-- ─── Sidebar : room list ─────────────────────── -->
     <div class="chat-sidebar">
       <div class="chat-sidebar-header">
@@ -91,6 +91,9 @@
       <template v-else>
         <div class="chat-header">
           <div class="chat-header-info">
+            <button class="icon-btn mobile-back" @click="closeConversation" title="กลับไปรายการห้อง">
+              <i class="fas fa-arrow-left"></i>
+            </button>
             <div class="header-thumb">
               <img v-if="activeConv?.trip_image" :src="activeConv.trip_image" alt="" />
               <i v-else class="fas fa-mountain-sun"></i>
@@ -457,7 +460,8 @@ const tab = ref('reply');
 const activeId = ref(null);
 const activeConv = ref(null);
 const room = ref(null);
-const showInfo = ref(true);
+// มือถือ: แผงข้อมูลรอบเปิดเป็นแผ่นทับเต็มจอ — เปิดค้างไว้ตั้งแต่แรกจะบังแชท
+const showInfo = ref(!window.matchMedia('(max-width: 1023.98px)').matches);
 const messages = ref([]);
 const hasMore = ref(false);
 const loadingOlder = ref(false);
@@ -663,6 +667,19 @@ async function openConversation(conv) {
   subscribe(conv.schedule_id);
   markRead();
   conv.unread_count = 0;
+}
+
+// มือถือเห็นทีละช่อง — ปุ่มย้อนกลับพาออกจากห้องไปหน้ารายการห้อง
+function closeConversation() {
+  leaveChannel();
+  activeId.value = null;
+  activeConv.value = null;
+  room.value = null;
+  messages.value = [];
+  replyTo.value = null;
+  typingUsers.value = {};
+  clearPendingImage();
+  if (window.matchMedia('(max-width: 1023.98px)').matches) showInfo.value = false;
 }
 
 async function loadMessages() {
@@ -1415,5 +1432,46 @@ onBeforeUnmount(() => {
 @media (max-width: 1400px) {
   .chat-sidebar { width: 300px; }
   .chat-info { width: 270px; }
+}
+
+.mobile-back { display: none; }
+
+/* มือถือ/แท็บเล็ตแนวตั้ง: สามช่องข้างกันบีบจนอ่านไม่ออก — เห็นทีละช่อง
+   รายการห้อง → แตะเข้าห้อง (มีปุ่มย้อนกลับ) → ข้อมูลรอบเปิดเป็นแผ่นทับ */
+@media (max-width: 1023.98px) {
+  .chat-page {
+    height: calc(100vh - 96px - env(safe-area-inset-bottom));
+    height: calc(100dvh - 96px - env(safe-area-inset-bottom));
+    gap: 0;
+  }
+
+  .chat-sidebar { width: 100%; }
+  .chat-page.has-active .chat-sidebar { display: none; }
+  .chat-page:not(.has-active) .chat-main { display: none; }
+
+  .mobile-back { display: inline-flex; flex-shrink: 0; }
+
+  .chat-header { padding: 10px 12px; }
+  .chat-thread { padding: 12px; }
+
+  .chat-info {
+    position: fixed;
+    inset: 0;
+    z-index: 160;
+    width: auto;
+    border-radius: 0;
+    border: none;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .lightbox { padding: 12px; }
+  .lightbox img { max-width: 100%; }
+  .lightbox-close { top: 12px; right: 12px; }
+}
+
+@media (max-width: 1023.98px) {
+  /* ปุ่มย้อนกลับมาแทนรูปปก — ที่ว่างเหลือให้ชื่อห้อง; สถานะเรียลไทม์เหลือแค่จุดสี */
+  .header-thumb { display: none; }
+  .ws-pill { font-size: 0; gap: 0; padding: 6px; }
 }
 </style>

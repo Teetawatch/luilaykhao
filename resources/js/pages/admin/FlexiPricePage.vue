@@ -547,7 +547,7 @@ onMounted(fetchData);
 .last-updated { font-size: 12px; color: #9ca3af; }
 
 /* ── Stat cards ── */
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 14px; }
 .stat-card {
   display: flex; align-items: center; gap: 14px;
   background: #fff; border: 1px solid #eceef1; border-radius: 14px; padding: 16px 18px;
@@ -576,7 +576,7 @@ onMounted(fetchData);
 .empty-card p { margin: 0; font-size: 14px; color: #6b7280; max-width: 460px; }
 
 /* ── Candidates ── */
-.candidate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.candidate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 14px; }
 .candidate-card {
   display: flex; flex-direction: column; gap: 12px;
   background: #fff; border: 1px solid #eceef1; border-radius: 14px; padding: 16px;

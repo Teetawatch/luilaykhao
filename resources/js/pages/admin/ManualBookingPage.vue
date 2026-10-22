@@ -3386,14 +3386,27 @@ function formatCurrency(value) {
     text-align: left;
   }
 
+  /* แถบยืนยันติดขอบล่างตลอดการกรอก — บนมือถือต้องเตี้ยที่สุด ไม่งั้นบังฟอร์มครึ่งจอ:
+     ยอดอยู่ซ้าย ปุ่มอยู่ขวาในแถวเดียว คำเตือนลงไปบรรทัดล่างตัวเล็ก */
   .submit-actions {
-    align-items: stretch;
-    flex-direction: column-reverse;
-    width: 100%;
+    display: contents;
   }
 
   .submit-hint {
+    order: 3;
+    flex-basis: 100%;
     text-align: left;
+    font-size: 11px;
+  }
+
+  .submit-actions .btn-primary {
+    order: 2;
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+    padding: 10px 12px;
+    white-space: normal;
+    line-height: 1.2;
   }
 
   .payment-preview,
@@ -3407,8 +3420,16 @@ function formatCurrency(value) {
   }
 
   .submit-bar {
-    align-items: stretch;
-    flex-direction: column;
+    gap: 6px 12px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .submit-total {
+    order: 1;
+  }
+
+  .submit-total strong {
+    font-size: 19px;
   }
 }
 </style>
