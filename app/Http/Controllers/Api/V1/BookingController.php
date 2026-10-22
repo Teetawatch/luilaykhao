@@ -18,6 +18,7 @@ use App\Models\TripSchedule;
 use App\Services\BookingService;
 use App\Services\ForceMajeureService;
 use App\Services\ModerationService;
+use App\Services\PartnerService;
 use App\Services\PickupStatusService;
 use App\Services\WeatherService;
 use App\Support\TermsConsent;
@@ -36,6 +37,7 @@ class BookingController extends Controller
         private BookingService $bookingService,
         private WeatherService $weatherService,
         private ModerationService $moderation,
+        private PartnerService $partnerService,
     ) {}
 
     public function store(CreateBookingRequest $request): JsonResponse
@@ -79,6 +81,10 @@ class BookingController extends Controller
                 termsConsent: $termsConsent,
                 giftVoucherCode: $request->gift_voucher_code,
             );
+
+            if ($request->filled('partner_code')) {
+                $this->partnerService->attributeFromCode($booking, $request->partner_code, $request->input('partner_source', 'link'));
+            }
 
             return $this->success(
                 new BookingResource($booking),

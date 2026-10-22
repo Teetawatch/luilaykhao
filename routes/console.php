@@ -3,6 +3,7 @@
 use App\Jobs\AbandonedBookingWinbackJob;
 use App\Jobs\AnnounceDepartedTripsJob;
 use App\Jobs\AnnounceSaleCampaignJob;
+use App\Jobs\ApprovePartnerCommissionsJob;
 use App\Jobs\AskTripAttendanceJob;
 use App\Jobs\AwardTripMedalsJob;
 use App\Jobs\BroadcastLowSeatsJob;
@@ -137,6 +138,8 @@ Schedule::command('seats:audit')->dailyAt('07:30')->timezone('Asia/Bangkok')->wi
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
 // อุปกรณ์ที่ลูกค้าสั่งเช่าเองแต่ไม่จ่ายก่อนปิดรับ (2 วันก่อนเดินทาง) — ถอดออกจากใบจอง
 Schedule::job(new ExpireRentalOrdersJob)->everyFifteenMinutes()->withoutOverlapping();
+// คอมพาร์ทเนอร์ของรอบที่กลับมาแล้วและจ่ายครบ → รอโอน
+Schedule::job(new ApprovePartnerCommissionsJob)->dailyAt('06:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new ReleaseForceMajeureHoldsJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
 // ตาข่ายรับ webhook ของ Beam ที่หายไป — ถามเกตเวย์เองว่า charge ที่ค้างอยู่จบยังไง

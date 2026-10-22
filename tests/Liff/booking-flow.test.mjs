@@ -97,7 +97,8 @@ const routes = {
   'GET /payments/LLK-20261010-0001/promptpay': { data: { amount: 5200, qr_data_uri: 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=', promptpay_id: '004-9', merchant_name: 'LUILAYKHAO', bank_name: 'กสิกร', bank_account: '230-1', bank_holder: 'นาย ก' } },
 };
 
-const dom = new JSDOM(fs.readFileSync(ROOT + 'index.html', 'utf8'), { url: 'https://example.com/liff/', runScripts: 'outside-only', pretendToBeVisual: true });
+// เปิดจากลิงก์ของพาร์ทเนอร์ช่วยขาย — โค้ดต้องตามไปถึงการจอง
+const dom = new JSDOM(fs.readFileSync(ROOT + 'index.html', 'utf8'), { url: 'https://example.com/liff/?partner=page-99', runScripts: 'outside-only', pretendToBeVisual: true });
 const w = dom.window;
 
 const calls = [];
@@ -285,6 +286,12 @@ step('ส่ง accepted_terms ไปกับการจอง', () => {
   // ฉบับที่แผ่นเงื่อนไขแสดง — ไม่ส่งแล้วเซิร์ฟเวอร์แยกไม่ออกว่าลูกค้าอ่านฉบับไหน
   assert(body.terms_version === '2026-09-10', 'ไม่ได้ส่งเวอร์ชันเงื่อนไขที่แสดง: ' + body.terms_version);
   assert(body.consent_channel === 'liff', 'ไม่ได้บอกว่าจองผ่าน LINE');
+});
+
+step('ส่งโค้ดพาร์ทเนอร์จากลิงก์ไปกับการจอง', () => {
+  const body = JSON.parse(bodies.find((b) => b.key === 'POST /bookings').body);
+  assert(body.partner_code === 'PAGE99', 'ไม่ได้ส่ง partner_code: ' + body.partner_code);
+  assert(body.partner_source === 'link', 'partner_source ผิด: ' + body.partner_source);
 });
 
 step('หน้าชำระเงิน (Beam) — QR ขึ้นเองทันที', () => {

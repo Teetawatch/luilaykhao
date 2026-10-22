@@ -493,6 +493,22 @@
               <InfoItem v-if="detailBooking.cancelled_at" label="วันที่ยกเลิก" :value="formatDateTime(detailBooking.cancelled_at)" />
               <InfoItem v-if="detailBooking.cancellation_reason" label="เหตุผลยกเลิก" :value="detailBooking.cancellation_reason" wide />
             </div>
+            <div class="partner-line">
+              <span class="material-symbols-rounded">handshake</span>
+              <div>
+                <template v-if="detailBooking.partner">
+                  ขายโดยพาร์ทเนอร์ <strong>{{ detailBooking.partner.display_name }} ({{ detailBooking.partner.code }})</strong>
+                  · {{ partnerSourceLabel(detailBooking.partner.source) }}
+                  <template v-if="detailBooking.partner.commission">
+                    · คอม {{ formatMoney(detailBooking.partner.commission.amount) }} ({{ partnerCommissionLabel(detailBooking.partner.commission.status) }})
+                  </template>
+                </template>
+                <template v-else>ไม่ได้มาจากพาร์ทเนอร์</template>
+              </div>
+              <button type="button" class="partner-btn" :disabled="savingPartner" @click="changeBookingPartner">
+                {{ detailBooking.partner ? 'เปลี่ยน' : 'ผูกพาร์ทเนอร์' }}
+              </button>
+            </div>
           </section>
 
           <section class="detail-section">
@@ -2254,12 +2270,14 @@ import { computed, h, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAdminStore } from '../../stores/admin';
 import { useToast } from '../../lib/toast';
+import { useSwal } from '../../lib/swal';
 import api from '../../lib/axios';
 import CustomPickupModal from '../../components/CustomPickupModal.vue';
 import AdminSeatHandoverSection from '../../components/AdminSeatHandoverSection.vue';
 
 const admin = useAdminStore();
 const toast = useToast();
+const swal = useSwal();
 const route = useRoute();
 
 const filters = reactive({
@@ -2732,6 +2750,46 @@ async function openDetail(booking) {
 function closeDetail() {
   showDetail.value = false;
   detailBooking.value = null;
+}
+
+// พาร์ทเนอร์ช่วยขาย — ลูกค้าทักมาบอกว่ามาจากใคร ทีมงานผูกให้ (เว้นว่าง = ถอดออก)
+const savingPartner = ref(false);
+const partnerSourceLabel = (s) => ({ link: 'มาจากลิงก์', code: 'ลูกค้าพิมพ์โค้ด', admin: 'ทีมงานผูกให้' })[s] || '';
+const partnerCommissionLabel = (s) => ({ pending: 'รอเดินทาง', approved: 'รอโอน', paid: 'โอนแล้ว', void: 'ตัดทิ้ง' })[s] || s;
+
+async function changeBookingPartner() {
+  const booking = detailBooking.value;
+  if (!booking || savingPartner.value) return;
+  const res = await swal.confirm({
+    input: 'text',
+    title: 'ผูกใบจองกับพาร์ทเนอร์',
+    text: 'ใส่โค้ดพาร์ทเนอร์ — เว้นว่างเพื่อถอดพาร์ทเนอร์ออก',
+    inputPlaceholder: 'เช่น PAGEPA',
+    inputValue: booking.partner?.code || '',
+    confirmText: 'บันทึก',
+  });
+  if (!res.isConfirmed) return;
+  const code = String(res.value || '').trim().toUpperCase();
+  savingPartner.value = true;
+  try {
+    let partnerId = null;
+    if (code) {
+      const found = await api.get('/admin/partners', { params: { q: code } });
+      const match = (found.data.data?.partners || []).find((p) => p.code === code);
+      if (!match) {
+        toast.error(`ไม่พบพาร์ทเนอร์โค้ด ${code}`);
+        return;
+      }
+      partnerId = match.id;
+    }
+    const saved = await api.put(`/admin/bookings/${booking.booking_ref}/partner`, { partner_id: partnerId });
+    toast.success(saved.data?.message || 'บันทึกแล้ว');
+    await openDetail(booking);
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'บันทึกไม่สำเร็จ');
+  } finally {
+    savingPartner.value = false;
+  }
 }
 
 async function openEditModal(booking) {
@@ -7564,4 +7622,29 @@ async function reverifySlip(bookingRef, slipType) {
     right: 16px;
   }
 }
+.partner-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f5f3ff;
+  color: #4c1d95;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.partner-line > div { flex: 1; min-width: 180px; }
+.partner-btn {
+  border: 1px solid #ddd6fe;
+  background: #fff;
+  color: #6d28d9;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.partner-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

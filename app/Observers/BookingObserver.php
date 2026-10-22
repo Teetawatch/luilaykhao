@@ -10,6 +10,7 @@ use App\Models\BookingPassenger;
 use App\Services\CustomerIntakeService;
 use App\Services\GiftVoucherService;
 use App\Services\LoyaltyService;
+use App\Services\PartnerService;
 use Carbon\Carbon;
 
 /**
@@ -39,6 +40,7 @@ class BookingObserver
         private LoyaltyService $loyaltyService,
         private CustomerIntakeService $intakeService,
         private GiftVoucherService $giftVoucherService,
+        private PartnerService $partnerService,
     ) {}
 
     public function created(Booking $booking): void
@@ -47,6 +49,7 @@ class BookingObserver
         // การเปลี่ยนสถานะให้จับใน updated()
         if (in_array($booking->status, self::EARNING_STATUSES, true)) {
             $this->loyaltyService->awardForBooking($booking);
+            $this->partnerService->ensureCommission($booking);
             $this->announceInChat($booking);
             $this->maybeSendTripBrief($booking);
         }
@@ -98,10 +101,16 @@ class BookingObserver
         // ทริปที่ไม่มีอยู่แล้ว
         if (in_array($booking->status, self::REVERSING_STATUSES, true)) {
             SyncTripActivityJob::dispatch($booking->id);
+
+            // คอมพาร์ทเนอร์คิดจากทริปที่เดินทางจริงเท่านั้น
+            if ($booking->partner_id) {
+                $this->partnerService->handleBookingEnded($booking);
+            }
         }
 
         if (in_array($booking->status, self::EARNING_STATUSES, true)) {
             $this->loyaltyService->awardForBooking($booking);
+            $this->partnerService->ensureCommission($booking);
             $this->announceInChat($booking);
             $this->maybeSendTripBrief($booking);
 

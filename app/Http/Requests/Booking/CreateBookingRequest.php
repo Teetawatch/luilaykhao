@@ -221,6 +221,9 @@ class CreateBookingRequest extends FormRequest
             'group_notes' => ['nullable', 'string', 'max:1000'],
             'promotion_code' => ['nullable', 'string', 'max:50'],
             'gift_voucher_code' => ['nullable', 'string', 'max:30'],
+            // โค้ดพาร์ทเนอร์จากลิงก์ที่ลูกค้าเปิดเข้ามา/พิมพ์เอง — ผิดก็แค่ไม่ผูก ไม่ทำให้จองไม่ผ่าน
+            'partner_code' => ['nullable', 'string', 'max:30'],
+            'partner_source' => ['nullable', 'string', 'in:link,code'],
             'is_join_trip' => ['nullable', 'boolean'],
             // ประเภทรถที่เลือก (รอบที่วิ่งทั้งบัสและตู้) — ความเป็นเจ้าของของรอบ
             // ตรวจใน BookingService ที่เดียว เพราะต้องอ่านโควตาที่นั่งพร้อมกัน

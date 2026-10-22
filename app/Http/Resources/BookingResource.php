@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Booking;
+use App\Models\PartnerCommission;
 use App\Services\BookingDocumentService;
 use App\Services\CheckInPassService;
 use App\Services\ForceMajeureService;
@@ -133,6 +134,19 @@ class BookingResource extends JsonResource
             'hold_note' => $this->when(
                 (bool) $request->user()?->hasAnyRole(['admin', 'operator']),
                 $this->hold_note,
+            ),
+            // พาร์ทเนอร์ที่ขายใบนี้ + สถานะคอม — ทีมงานเท่านั้น ลูกค้าไม่ต้องรู้
+            'partner' => $this->when(
+                $this->partner_id && (bool) $request->user()?->hasAnyRole(['admin', 'operator']),
+                fn () => [
+                    'id' => $this->partner_id,
+                    'code' => $this->partner?->code,
+                    'display_name' => $this->partner?->display_name,
+                    'source' => $this->partner_source,
+                    'commission' => PartnerCommission::where('booking_id', $this->id)
+                        ->where('type', PartnerCommission::TYPE_COMMISSION)
+                        ->first(['status', 'amount'])?->only(['status', 'amount']),
+                ],
             ),
             'checked_in' => $this->checked_in,
             'checked_in_at' => $this->checked_in_at?->toISOString(),

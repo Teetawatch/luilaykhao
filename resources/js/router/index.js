@@ -2,6 +2,7 @@ import { nextTick } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { pageView } from '../lib/analytics';
+import { rememberPartnerCode } from '../lib/partnerRef';
 
 // Home stays eagerly bundled so the most common landing renders without a
 // second round-trip. Every other page is lazy-loaded (route-level code
@@ -99,6 +100,7 @@ const routes = [
   { path: '/my-staff-trips', name: 'my-staff-trips', component: () => import('../pages/MyStaffTripsPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/loyalty', name: 'loyalty', component: () => import('../pages/LoyaltyPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   { path: '/referral', name: 'referral', component: () => import('../pages/ReferralPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
+  { path: '/partner', name: 'partner', component: () => import('../pages/PartnerPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow', title: 'พาร์ทเนอร์ช่วยขาย' } },
   { path: '/notifications', name: 'notifications', component: () => import('../pages/NotificationsPage.vue'), meta: { requiresAuth: true, robots: 'noindex, nofollow' } },
   {
     path: '/about',
@@ -315,6 +317,7 @@ const routes = [
       { path: 'rooms', name: 'admin-rooms', component: () => import('../pages/admin/RoomsPage.vue') },
       { path: 'lost-items', name: 'admin-lost-items', component: () => import('../pages/admin/LostItemsPage.vue') },
       { path: 'gift-vouchers', name: 'admin-gift-vouchers', component: () => import('../pages/admin/GiftVouchersPage.vue') },
+      { path: 'partners', name: 'admin-partners', component: () => import('../pages/admin/PartnersPage.vue') },
       { path: 'charter-requests', name: 'admin-charter-requests', component: () => import('../pages/admin/CharterRequestsPage.vue') },
       { path: 'incidents', name: 'admin-incidents', component: () => import('../pages/admin/IncidentsPage.vue') },
       { path: 'sos', name: 'admin-sos', component: () => import('../pages/admin/SosPage.vue') },
@@ -366,6 +369,9 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore();
+
+  // ลิงก์ของพาร์ทเนอร์ช่วยขาย — จำไว้ก่อนเรื่องอื่น (เด้งไปล็อกอินแล้วก็ยังไม่หาย)
+  if (to.query.partner) rememberPartnerCode(String(to.query.partner));
 
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     next({ name: 'login', query: { redirect: to.fullPath } });

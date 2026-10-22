@@ -1834,6 +1834,11 @@ async function submitBooking(banner, btn, termsVersion) {
     payload.custom_pickup_note = bk.customPickup.note;
   }
   if (bk.promoCode) payload.promotion_code = bk.promoCode;
+  const partnerCode = storedPartnerCode();
+  if (partnerCode) {
+    payload.partner_code = partnerCode;
+    payload.partner_source = 'link';
+  }
   if (bk.joinTrip) payload.is_join_trip = true;
   if (hasSeatMap()) payload.seat_ids = bk.selected;
 

@@ -1288,6 +1288,8 @@
                       <span class="material-symbols-rounded text-xl">close</span>
                     </button>
                   </div>
+
+                  <PartnerCodeField class="mt-4" />
                 </div>
               </div>
 
@@ -1829,12 +1831,14 @@ import CountdownTimer from '../components/CountdownTimer.vue';
 import CustomPickupModal from '../components/CustomPickupModal.vue';
 import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
 import VehicleOptionPicker from '../components/VehicleOptionPicker.vue';
+import PartnerCodeField from '../components/PartnerCodeField.vue';
 import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
 import { bookableSeats, joinTripAvailableSeats, joinTripFull, joinTripSeatLabel } from '../lib/scheduleHelpers';
 import { toBangkokDate } from '../lib/bangkokDate';
 import { beginCheckout } from '../lib/analytics';
+import { storedPartnerRef } from '../lib/partnerRef';
 import { BOOKING_TERMS, termsVersion } from '../lib/policy';
 
 const route = useRoute();
@@ -3082,6 +3086,12 @@ async function createBooking() {
     }
     if (promotionCode.value) {
       data.promotion_code = promotionCode.value;
+    }
+    // พาร์ทเนอร์ช่วยขาย — ลิงก์ที่เปิดเข้ามา/รหัสที่พิมพ์ (ดู lib/partnerRef.js)
+    const partnerRef = storedPartnerRef();
+    if (partnerRef) {
+      data.partner_code = partnerRef.code;
+      data.partner_source = partnerRef.source;
     }
     if (isJoinTrip.value) {
       data.is_join_trip = true;

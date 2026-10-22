@@ -197,6 +197,12 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'referred_by');
     }
 
+    /** บัญชีพาร์ทเนอร์ช่วยขาย (ถ้าทีมงานเปิดให้) */
+    public function partner(): HasOne
+    {
+        return $this->hasOne(Partner::class);
+    }
+
     public function notifications(): HasMany
     {
         return $this->hasMany(SmartNotification::class);

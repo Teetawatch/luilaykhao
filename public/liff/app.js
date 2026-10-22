@@ -227,9 +227,33 @@ function entryParams() {
   return new URLSearchParams(query);
 }
 
+// พาร์ทเนอร์ช่วยขาย — ลิงก์ `?partner=CODE` จำไว้ 30 วันแล้วส่งไปกับการจอง
+// (กติกาเดียวกับเว็บ resources/js/lib/partnerRef.js — เซิร์ฟเวอร์ตัดสินว่าผูกได้ไหม)
+const PARTNER_KEY = 'llk_partner_ref';
+const PARTNER_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+function rememberPartner(code) {
+  const normalized = String(code || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 20);
+  if (!normalized) return;
+  try {
+    localStorage.setItem(PARTNER_KEY, JSON.stringify({ code: normalized, at: Date.now() }));
+  } catch (_) { /* ที่เก็บข้อมูลถูกปิด — ไม่จำก็ไม่เป็นไร */ }
+}
+
+function storedPartnerCode() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PARTNER_KEY) || 'null');
+    if (!raw || !raw.code || Date.now() - Number(raw.at || 0) > PARTNER_TTL_MS) return null;
+    return raw.code;
+  } catch (_) {
+    return null;
+  }
+}
+
 // เข้ามาจากลิงก์ที่เพื่อนแชร์ / Rich Menu ต้องลงหน้าที่ตั้งใจ ไม่ใช่หน้ารวมทริปเสมอ
 function routeFromEntry() {
   const params = entryParams();
+  rememberPartner(params.get('partner'));
   const bookingRef = params.get('booking');
   const tripSlug = params.get('trip');
   const page = params.get('page');

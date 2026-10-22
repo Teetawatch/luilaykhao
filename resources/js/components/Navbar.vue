@@ -477,6 +477,10 @@
                     <span class="material-symbols-rounded text-[20px]">group_add</span>
                     ชวนเพื่อน
                   </router-link>
+                  <router-link v-if="auth.user?.is_partner" to="/partner" class="menu-row" @click="userDropdownOpen = false">
+                    <span class="material-symbols-rounded text-[20px]">handshake</span>
+                    พาร์ทเนอร์ช่วยขาย
+                  </router-link>
 
                   <template v-if="isStaff || isAdmin">
                     <p class="menu-caption">การทำงาน</p>
@@ -742,6 +746,10 @@
               <router-link to="/referral" class="sheet-item sheet-row" :style="{ '--i': 6 }" @click="closeSheets">
                 <span class="material-symbols-rounded text-[22px]">group_add</span>
                 ชวนเพื่อน
+              </router-link>
+              <router-link v-if="auth.user?.is_partner" to="/partner" class="sheet-item sheet-row" :style="{ '--i': 6 }" @click="closeSheets">
+                <span class="material-symbols-rounded text-[22px]">handshake</span>
+                พาร์ทเนอร์ช่วยขาย
               </router-link>
 
               <template v-if="isStaff || isAdmin">

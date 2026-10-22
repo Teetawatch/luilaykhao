@@ -90,6 +90,7 @@ class Booking extends Model
         'promotion_id', 'promotion_code', 'discount_amount',
         'gift_voucher_id', 'voucher_amount', 'voucher_restored_amount',
         'sale_campaign_id', 'campaign_discount',
+        'partner_id', 'partner_source',
         'is_join_trip', 'flexi_surcharge',
         'is_gift', 'gift_code', 'gift_from_name', 'gift_message',
         'gifted_by_user_id', 'gift_claimed_at',
@@ -184,6 +185,12 @@ class Booking extends Model
     public function saleCampaign(): BelongsTo
     {
         return $this->belongsTo(SaleCampaign::class, 'sale_campaign_id');
+    }
+
+    /** พาร์ทเนอร์ที่ขายใบนี้ (ลิงก์/โค้ด/ทีมงานผูกให้) — ดู PartnerService */
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(Partner::class);
     }
 
     /**

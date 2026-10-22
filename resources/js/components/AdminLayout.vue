@@ -287,6 +287,7 @@ const menuGroups = ref([
       { to: '/admin/urgent-popup', icon: 'fas fa-fire', label: 'ป๊อปอัพทริปด่วน' },
       { to: '/admin/loyalty', icon: 'fas fa-coins', label: 'ระบบสะสมแต้ม' },
       { to: '/admin/gift-vouchers', icon: 'fas fa-gift', label: 'บัตรของขวัญ' },
+      { to: '/admin/partners', icon: 'fas fa-handshake', label: 'พาร์ทเนอร์ช่วยขาย' },
     ],
     isOpen: false
   },

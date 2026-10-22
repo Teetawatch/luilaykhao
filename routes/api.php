@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\AdminGiftVoucherController;
 use App\Http\Controllers\Api\V1\AdminInstallmentController;
 use App\Http\Controllers\Api\V1\AdminIntakeController;
 use App\Http\Controllers\Api\V1\AdminOnsiteMoneyController;
+use App\Http\Controllers\Api\V1\AdminPartnerController;
 use App\Http\Controllers\Api\V1\AdminPageContentController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
@@ -72,6 +73,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OnsiteMoneyController;
 use App\Http\Controllers\Api\V1\PackingController;
 use App\Http\Controllers\Api\V1\PageContentController;
+use App\Http\Controllers\Api\V1\PartnerController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
@@ -216,6 +218,8 @@ Route::prefix('v1')->group(function () {
 
     // Promotions (public active list)
     Route::get('promotions/active', [PromotionController::class, 'publicActive']);
+    // หน้าจองเช็คโค้ดพาร์ทเนอร์ (ลูกค้าอาจยังไม่ล็อกอินตอนเปิดลิงก์)
+    Route::get('partners/check', [PartnerController::class, 'check'])->middleware('throttle:promotion');
 
     // แคมเปญวันพิเศษที่กำลังลดราคาอยู่ (9.9 / 10.10) — คืน data: null เมื่อไม่มี
     Route::get('sale-campaign/active', [SaleCampaignController::class, 'publicActive']);
@@ -700,6 +704,12 @@ Route::prefix('v1')->group(function () {
         // Referral program (invite friends → both earn loyalty points)
         Route::get('referral', [ReferralController::class, 'show']);
 
+        // พาร์ทเนอร์ช่วยขาย — โค้ด/ลิงก์ ยอดคอม ประวัติโอน (บัญชีที่ทีมงานเปิดให้เท่านั้น)
+        Route::get('partner', [PartnerController::class, 'show']);
+        Route::get('partner/commissions', [PartnerController::class, 'commissions']);
+        Route::get('partner/payouts', [PartnerController::class, 'payouts']);
+        Route::put('partner/payout-account', [PartnerController::class, 'updatePayoutAccount']);
+
         // Smart notifications
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);
@@ -1015,6 +1025,18 @@ Route::prefix('v1')->group(function () {
         Route::post('gift-vouchers/{voucher}/reject', [AdminGiftVoucherController::class, 'reject'])->whereNumber('voucher');
         Route::post('gift-vouchers/{voucher}/adjust', [AdminGiftVoucherController::class, 'adjust'])->whereNumber('voucher');
         Route::post('gift-vouchers/{voucher}/cancel', [AdminGiftVoucherController::class, 'cancel'])->whereNumber('voucher');
+
+        // พาร์ทเนอร์ช่วยขาย — เปิดบัญชี ตั้งอัตรา ผูกใบจอง ตัดคอม
+        Route::get('partners', [AdminPartnerController::class, 'index']);
+        Route::get('partners/candidates', [AdminPartnerController::class, 'candidates']);
+        Route::post('partners', [AdminPartnerController::class, 'store']);
+        Route::get('partners/{partner}', [AdminPartnerController::class, 'show'])->whereNumber('partner');
+        Route::put('partners/{partner}', [AdminPartnerController::class, 'update'])->whereNumber('partner');
+        Route::post('partner-commissions/{commission}/void', [AdminPartnerController::class, 'voidCommission'])->whereNumber('commission');
+        Route::put('bookings/{ref}/partner', [AdminPartnerController::class, 'assignBooking']);
+        // การโอนเงินจริง — operator ต้องมีบทบาท finance ด้วย (กติกาเดียวกับหน้างบ)
+        Route::post('partners/{partner}/payouts', [AdminPartnerController::class, 'payout'])
+            ->whereNumber('partner')->middleware('role:admin|finance');
         Route::get('payments/{ref}/qr/{payment}', [AdminPaymentController::class, 'qrStatus']);
 
         // Drivers (ทะเบียนคนขับ)
