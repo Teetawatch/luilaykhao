@@ -76,6 +76,32 @@ class CalendarScheduleStaffTest extends TestCase
             ->assertJsonPath('data.0.staff.0.phone', '0812345678');
     }
 
+    public function test_staff_carry_the_details_the_insurance_pdf_needs(): void
+    {
+        $schedule = $this->makeSchedule();
+        $staff = $this->makeStaff('สมหญิง รักดี');
+        $staff->update([
+            'title' => 'นางสาว',
+            'id_card' => '1100100100101',
+            'birth_date' => '1995-04-12',
+            'blood_group' => 'O',
+            'allergies' => 'กุ้ง',
+            'emergency_contact' => 'แม่',
+            'emergency_phone' => '0899999999',
+        ]);
+        $schedule->staff()->attach($staff->id);
+
+        $this->actingAs($this->makeAdmin(), 'sanctum')
+            ->getJson('/api/v1/admin/calendar/schedules')
+            ->assertOk()
+            ->assertJsonPath('data.0.staff.0.title', 'นางสาว')
+            ->assertJsonPath('data.0.staff.0.id_card', '1100100100101')
+            ->assertJsonPath('data.0.staff.0.birth_date', '1995-04-12')
+            ->assertJsonPath('data.0.staff.0.blood_group', 'O')
+            ->assertJsonPath('data.0.staff.0.allergies', 'กุ้ง')
+            ->assertJsonPath('data.0.staff.0.emergency_phone', '0899999999');
+    }
+
     public function test_released_staff_are_not_listed(): void
     {
         $schedule = $this->makeSchedule();

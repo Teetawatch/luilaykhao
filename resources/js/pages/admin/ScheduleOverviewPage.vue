@@ -1347,6 +1347,94 @@
         </div>
       </div>
     </div>
+
+    <div class="modal-overlay" v-if="insurancePicker.open" @click.self="closeInsurancePicker">
+      <div class="modal-card" style="max-width: 560px">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">
+              <span class="material-symbols-rounded" style="vertical-align:-4px;">picture_as_pdf</span>
+              PDF รายชื่อส่งประกัน
+            </h2>
+            <p class="modal-subtitle">
+              {{ insurancePicker.schedules.length }} รอบ · ผู้เดินทาง {{ insurancePickerPassengerCount }} คน
+              <template v-if="insurancePicker.includeStaff"> · สตาฟ {{ insurancePickerStaffCount }} คน</template>
+            </p>
+          </div>
+          <button class="modal-close" @click="closeInsurancePicker">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <label class="pdf-field">
+            <span class="pdf-field-label">หัวข้อเอกสาร</span>
+            <input v-model="insurancePicker.title" class="pdf-field-input" placeholder="รายชื่อส่งประกัน" />
+          </label>
+          <label class="pdf-field">
+            <span class="pdf-field-label">ข้อความใต้หัวข้อ <em>(ไม่บังคับ)</em></span>
+            <textarea
+              v-model="insurancePicker.note"
+              class="pdf-field-input"
+              rows="2"
+              placeholder="เช่น เลขกรมธรรม์ ชื่อบริษัทประกัน หรือช่วงวันคุ้มครอง"
+            ></textarea>
+          </label>
+
+          <div class="pdf-section-label">ส่วนประกอบ</div>
+          <div class="export-col-grid pdf-option-grid">
+            <label class="export-col-option" :class="{ active: insurancePicker.includeStaff }">
+              <input type="checkbox" v-model="insurancePicker.includeStaff" />
+              <span>รวมรายชื่อสตาฟประจำรอบ ({{ insurancePickerStaffCount }} คน)</span>
+            </label>
+            <label class="export-col-option" :class="{ active: insurancePicker.showSummary }">
+              <input type="checkbox" v-model="insurancePicker.showSummary" />
+              <span>สรุปจำนวนใต้หัวข้อ</span>
+            </label>
+            <label class="export-col-option" :class="{ active: insurancePicker.showRoundInfo }">
+              <input type="checkbox" v-model="insurancePicker.showRoundInfo" />
+              <span>ป้ายรถ/จำนวนคนของแต่ละรอบ</span>
+            </label>
+          </div>
+
+          <div class="export-col-actions" style="margin-top: 16px">
+            <span class="export-col-count">คอลัมน์ในตาราง · เลือกแล้ว {{ selectedInsuranceColumns.length }}</span>
+            <div class="export-col-buttons">
+              <button type="button" class="export-chip-btn" @click="setAllInsuranceColumns(true)">เลือกทั้งหมด</button>
+              <button type="button" class="export-chip-btn" @click="setAllInsuranceColumns(false)">ล้างทั้งหมด</button>
+            </div>
+          </div>
+          <div class="export-col-grid">
+            <label
+              v-for="col in insuranceColumns"
+              :key="col.key"
+              class="export-col-option"
+              :class="{ active: insurancePicker.selected[col.key] }"
+            >
+              <input type="checkbox" v-model="insurancePicker.selected[col.key]" />
+              <span>{{ col.label }}</span>
+            </label>
+          </div>
+          <p class="export-note">
+            คอลัมน์ “#” ใส่ให้อัตโนมัติ · สตาฟต่อท้ายตารางของแต่ละรอบ เลขลำดับต่อกัน
+            ช่องที่ไม่มีข้อมูลของสตาฟ (เช่น เลขจอง ที่นั่ง จุดรับ) จะเป็น “-” ·
+            ระบบจำคอลัมน์ที่เลือกไว้ใช้ครั้งหน้า
+          </p>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="closeInsurancePicker">ยกเลิก</button>
+          <button
+            class="btn-primary"
+            :disabled="!insurancePickerPassengerCount || !selectedInsuranceColumns.length"
+            @click="printInsurancePdf"
+          >
+            <span class="material-symbols-rounded">print</span>
+            สร้าง PDF
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -2082,43 +2170,195 @@ function emergencySummary(person) {
   return [person?.emergency_contact, person?.emergency_phone].filter(Boolean).join(' / ') || '-';
 }
 
+/* ───── PDF รายชื่อส่งประกัน ──────────────────────────────────────────────
+   กดปุ่มแล้วเปิดหน้าต่างให้แอดมินพิมพ์หัวข้อเอง ติ๊กคอลัมน์ที่จะโชว์ และเลือก
+   รวมสตาฟประจำรอบเข้าไปได้ — สตาฟต่อท้ายตารางเดียวกัน เลขลำดับต่อกัน เพราะ
+   บริษัทประกันนับรวมทุกคนที่ไปในรอบ ค่าที่เลือกจำไว้ในเครื่อง (localStorage)
+   รอบหน้ากดแล้วได้แบบเดิม ส่วนหัวข้อขึ้นตามรอบทุกครั้ง */
+
+function travelDocumentNo(person) {
+  return person?.id_card || person?.passport_no || '-';
+}
+
+// value(person, sch) สำหรับผู้เดินทาง, staff(st) สำหรับสตาฟ — ไม่มี staff = ช่องนั้นเป็น "-"
+// html: true คือคืน HTML ที่ escape แล้วเอง; width คือสัดส่วนความกว้างคอลัมน์
+const insuranceColumns = [
+  {
+    key: 'name',
+    label: 'ชื่อผู้เดินทาง',
+    width: 2.2,
+    html: true,
+    value: (p) => `<strong>${escapeHtml(fullPassengerName(p))}</strong>${p.name_issue ? '<span class="name-issue">⚠ ต้องขอชื่อไทยตามบัตร</span>' : ''}`,
+    staff: (st) => `<strong>${escapeHtml(fullPassengerName(st))}</strong>`,
+  },
+  { key: 'nickname', label: 'ชื่อเล่น', width: 1, value: (p) => p.nickname, staff: (st) => st.nickname },
+  { key: 'name_en', label: 'ชื่อภาษาอังกฤษ', width: 1.8, value: (p) => p.name_en, staff: (st) => st.name_en },
+  { key: 'booking_type', label: 'ประเภท', width: 0.9, value: (p) => p.booking_type_label, staff: () => 'สตาฟ' },
+  { key: 'booking_ref', label: 'เลขจอง', width: 1.4, value: (p) => p.booking_ref },
+  { key: 'id_card', label: 'เลขบัตร/พาสปอร์ต', width: 1.5, value: travelDocumentNo, staff: travelDocumentNo },
+  { key: 'birth_date', label: 'วันเกิด', width: 1.1, value: (p) => p.birth_date && formatBirthDate(p.birth_date), staff: (st) => st.birth_date && formatBirthDate(st.birth_date) },
+  { key: 'age', label: 'อายุ', width: 0.6, value: (p) => p.age, staff: (st) => st.age },
+  { key: 'phone', label: 'โทรศัพท์', width: 1.2, value: (p) => p.phone, staff: (st) => st.phone },
+  { key: 'blood_group', label: 'เลือด', width: 0.6, value: (p) => p.blood_group, staff: (st) => st.blood_group },
+  { key: 'weight', label: 'น้ำหนัก', width: 0.7, value: (p) => p.weight },
+  { key: 'health', label: 'แพ้/สุขภาพ/อาหาร', width: 1.8, value: healthSummary, staff: healthSummary },
+  { key: 'emergency', label: 'ติดต่อฉุกเฉิน', width: 1.6, value: emergencySummary, staff: emergencySummary },
+  {
+    key: 'seat',
+    label: 'ที่นั่ง',
+    width: 0.9,
+    value: (p) => (p.seat_labels || []).join(', ') || (p.booking_type === 'join_trip' ? 'จอยทริป' : '-'),
+  },
+  {
+    key: 'pickup',
+    label: 'จุดรับ',
+    width: 1.8,
+    html: true,
+    value: (p) => `${escapeHtml([p.pickup_region, p.pickup_location].filter(Boolean).join(' / ') || '-')}${p.is_custom_pickup && p.custom_pickup_lat != null ? `<span>${escapeHtml(`${p.custom_pickup_lat}, ${p.custom_pickup_lng}`)}</span>` : ''}`,
+  },
+];
+
+// ชุดเริ่มต้น = คอลัมน์ที่ PDF เดิมเคยโชว์ทั้งหมด
+const DEFAULT_INSURANCE_KEYS = ['name', 'booking_type', 'booking_ref', 'id_card', 'phone', 'blood_group', 'weight', 'health', 'emergency', 'seat', 'pickup'];
+const INSURANCE_PREFS_KEY = 'admin.insurancePdf.v1';
+
+function loadInsurancePrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(INSURANCE_PREFS_KEY) || 'null') || {};
+  } catch {
+    return {};
+  }
+}
+
+const insurancePrefs = loadInsurancePrefs();
+const insurancePicker = reactive({
+  open: false,
+  schedules: [],
+  title: '',
+  note: '',
+  includeStaff: insurancePrefs.includeStaff ?? false,
+  showSummary: insurancePrefs.showSummary ?? true,
+  showRoundInfo: insurancePrefs.showRoundInfo ?? true,
+  selected: Object.fromEntries(insuranceColumns.map((c) => [
+    c.key,
+    Array.isArray(insurancePrefs.columns) ? insurancePrefs.columns.includes(c.key) : DEFAULT_INSURANCE_KEYS.includes(c.key),
+  ])),
+});
+
+const selectedInsuranceColumns = computed(() => insuranceColumns.filter((c) => insurancePicker.selected[c.key]));
+
+const insurancePickerStaffCount = computed(
+  () => insurancePicker.schedules.reduce((total, sch) => total + scheduleStaff(sch).length, 0),
+);
+
+const insurancePickerPassengerCount = computed(
+  () => insurancePicker.schedules.reduce((total, sch) => total + schedulePassengerCount(sch), 0),
+);
+
+function saveInsurancePrefs() {
+  try {
+    localStorage.setItem(INSURANCE_PREFS_KEY, JSON.stringify({
+      columns: selectedInsuranceColumns.value.map((c) => c.key),
+      includeStaff: insurancePicker.includeStaff,
+      showSummary: insurancePicker.showSummary,
+      showRoundInfo: insurancePicker.showRoundInfo,
+    }));
+  } catch {
+    // โหมดส่วนตัว/ปิด storage — แค่จำค่าไม่ได้ ไม่กระทบการพิมพ์
+  }
+}
+
+function openInsurancePicker(scheduleItems, title) {
+  const withPassengers = scheduleItems.filter((sch) => schedulePassengerCount(sch));
+  if (!withPassengers.length) return;
+  insurancePicker.schedules = withPassengers;
+  insurancePicker.title = title;
+  insurancePicker.note = '';
+  insurancePicker.open = true;
+}
+
+function closeInsurancePicker() {
+  insurancePicker.open = false;
+  insurancePicker.schedules = [];
+}
+
+function setAllInsuranceColumns(value) {
+  insuranceColumns.forEach((c) => {
+    insurancePicker.selected[c.key] = value;
+  });
+}
+
 function exportScheduleInsurancePdf(sch) {
   if (!sch || !schedulePassengerCount(sch)) return;
-  exportInsurancePdf([sch], `รายชื่อส่งประกัน - ${sch.trip_title || 'ทริป'} - ${formatDate(sch.start)}`);
+  openInsurancePicker([sch], `รายชื่อส่งประกัน - ${sch.trip_title || 'ทริป'} - ${formatDate(sch.start)}`);
 }
 
 function exportVisibleInsurancePdf() {
-  const schedulesWithPassengers = filteredSchedules.value.filter((sch) => schedulePassengerCount(sch));
-  if (!schedulesWithPassengers.length) return;
-  exportInsurancePdf(schedulesWithPassengers, 'รายชื่อส่งประกันตามรอบที่แสดง');
+  openInsurancePicker(filteredSchedules.value, 'รายชื่อส่งประกันตามรอบที่แสดง');
 }
 
-function exportInsurancePdf(scheduleItems, title) {
+function printInsurancePdf() {
+  const cols = selectedInsuranceColumns.value;
+  if (!cols.length) return;
+  saveInsurancePrefs();
+  const title = insurancePicker.title.trim() || 'รายชื่อส่งประกัน';
+  exportInsurancePdf(insurancePicker.schedules, {
+    title,
+    note: insurancePicker.note.trim(),
+    cols,
+    includeStaff: insurancePicker.includeStaff,
+    showSummary: insurancePicker.showSummary,
+    showRoundInfo: insurancePicker.showRoundInfo,
+  });
+  closeInsurancePicker();
+}
+
+function insuranceCell(col, raw) {
+  if (col.html) return raw || '-';
+  return escapeHtml(raw === null || raw === undefined || raw === '' ? '-' : raw);
+}
+
+function exportInsurancePdf(scheduleItems, { title, note, cols, includeStaff, showSummary, showRoundInfo }) {
   const generatedAt = new Date().toLocaleString('th-TH');
+  const staffOf = (sch) => (includeStaff ? scheduleStaff(sch) : []);
   const totalPassengers = scheduleItems.reduce((total, sch) => total + schedulePassengerCount(sch), 0);
-  const nameIssues = scheduleItems.reduce((total, sch) => total + schedulePassengers(sch).filter((p) => p.name_issue).length, 0);
+  const totalStaff = scheduleItems.reduce((total, sch) => total + staffOf(sch).length, 0);
+  const nameIssues = cols.some((c) => c.key === 'name')
+    ? scheduleItems.reduce((total, sch) => total + schedulePassengers(sch).filter((p) => p.name_issue).length, 0)
+    : 0;
+
+  // # กว้างคงที่ ที่เหลือแบ่งตามสัดส่วน width ของคอลัมน์ที่เลือก
+  const totalWidth = cols.reduce((sum, c) => sum + c.width, 0);
+  const colgroup = `<colgroup><col style="width:28px">${cols.map((c) => `<col style="width:${((c.width / totalWidth) * 100).toFixed(2)}%">`).join('')}</colgroup>`;
+  const headRow = `<tr><th>#</th>${cols.map((c) => `<th>${escapeHtml(c.label)}</th>`).join('')}</tr>`;
+
   const scheduleSections = scheduleItems.map((sch) => {
     const passengers = schedulePassengers(sch);
-    const rows = passengers.map((person, index) => `
+    const staff = staffOf(sch);
+    const passengerRows = passengers.map((person, index) => `
       <tr>
         <td>${index + 1}</td>
-        <td>
-          <strong>${escapeHtml(fullPassengerName(person))}</strong>
-          <span>${escapeHtml(person.nickname || '')}</span>
-          ${person.name_issue ? '<span class="name-issue">⚠ ต้องขอชื่อไทยตามบัตร</span>' : ''}
-        </td>
-        <td>${escapeHtml(person.booking_type_label || '-')}</td>
-        <td>${escapeHtml(person.booking_ref || '-')}</td>
-        <td>${escapeHtml(person.id_card || '-')}</td>
-        <td>${escapeHtml(person.phone || '-')}</td>
-        <td>${escapeHtml(person.blood_group || '-')}</td>
-        <td>${escapeHtml(person.weight || '-')}</td>
-        <td>${escapeHtml(healthSummary(person))}</td>
-        <td>${escapeHtml(emergencySummary(person))}</td>
-        <td>${escapeHtml((person.seat_labels || []).join(', ') || (person.booking_type === 'join_trip' ? 'จอยทริป' : '-'))}</td>
-        <td>${escapeHtml([person.pickup_region, person.pickup_location].filter(Boolean).join(' / ') || '-')}${person.is_custom_pickup && person.custom_pickup_lat != null ? `<br><span style="font-size:11px;color:#666">${escapeHtml(`${person.custom_pickup_lat}, ${person.custom_pickup_lng}`)}</span>` : ''}</td>
+        ${cols.map((c) => `<td>${insuranceCell(c, c.value(person, sch))}</td>`).join('')}
       </tr>
     `).join('');
+    const staffRows = staff.length
+      ? `<tr class="group-row"><td colspan="${cols.length + 1}">สตาฟประจำรอบ ${staff.length} คน</td></tr>`
+        + staff.map((st, index) => `
+          <tr class="staff-row">
+            <td>${passengers.length + index + 1}</td>
+            ${cols.map((c) => `<td>${insuranceCell(c, c.staff ? c.staff(st) : null)}</td>`).join('')}
+          </tr>
+        `).join('')
+      : '';
+
+    const roundMeta = showRoundInfo
+      ? `<div class="schedule-meta">
+          <span>${escapeHtml(sch.vehicle || transportLabels[sch.transport_type] || '-')}</span>
+          <span>ผู้เดินทาง ${passengers.length} คน</span>
+          <span>ปกติ ${getRegularPassengers(sch)} / จอยทริป ${getJoinTripPassengers(sch)}</span>
+          ${staff.length ? `<span>สตาฟ ${staff.length} คน</span>` : ''}
+        </div>`
+      : '';
 
     return `
       <section class="schedule-section">
@@ -2127,48 +2367,46 @@ function exportInsurancePdf(scheduleItems, title) {
             <h2>${escapeHtml(sch.trip_title || '-')}</h2>
             <p>${escapeHtml(formatDate(sch.start, 'long'))}${sch.end && sch.end !== sch.start ? ` - ${escapeHtml(formatDate(sch.end, 'long'))}` : ''}</p>
           </div>
-          <div class="schedule-meta">
-            <span>${escapeHtml(sch.vehicle || transportLabels[sch.transport_type] || '-')}</span>
-            <span>ทั้งหมด ${passengers.length} คน</span>
-            <span>ปกติ ${getRegularPassengers(sch)} / จอยทริป ${getJoinTripPassengers(sch)}</span>
-          </div>
+          ${roundMeta}
         </div>
         <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>ชื่อผู้เดินทาง</th>
-              <th>ประเภท</th>
-              <th>เลขจอง</th>
-              <th>เลขบัตร/พาสปอร์ต</th>
-              <th>โทรศัพท์</th>
-              <th>เลือด</th>
-              <th>น้ำหนัก</th>
-              <th>แพ้/สุขภาพ/อาหาร</th>
-              <th>ติดต่อฉุกเฉิน</th>
-              <th>ที่นั่ง</th>
-              <th>จุดรับ</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
+          ${colgroup}
+          <thead>${headRow}</thead>
+          <tbody>${passengerRows}${staffRows}</tbody>
         </table>
       </section>
     `;
   }).join('');
 
+  const summary = showSummary
+    ? `<div class="doc-meta">
+        <span>สร้างเมื่อ ${escapeHtml(generatedAt)}</span>
+        <span>จำนวนรอบ ${scheduleItems.length}</span>
+        <span>ผู้เดินทางทั้งหมด ${totalPassengers} คน</span>
+        ${includeStaff ? `<span>สตาฟ ${totalStaff} คน · รวม ${totalPassengers + totalStaff} คน</span>` : '<span>รวมทั้งจองปกติและจอยทริป</span>'}
+        ${nameIssues ? `<span class="name-issue-count">⚠ ชื่อยังไม่ใช่ภาษาไทย ${nameIssues} คน</span>` : ''}
+      </div>`
+    : '';
+
+  // ฟอนต์เดียวกับเว็บ — DB Heavent โฮสต์เองบนโดเมนนี้ (ต้องเป็น URL เต็ม เพราะหน้าต่างพิมพ์
+  // เป็น about:blank) และ Anuphan เป็นตัวสำรองเหมือน app.css
+  const origin = window.location.origin;
   const html = `<!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
         <title>${escapeHtml(title)}</title>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;700;800&display=swap">
+        <link rel="stylesheet" href="${origin}/fonts/db-heavent/db-heavent.css">
         <style>
           @page { size: A4 landscape; margin: 10mm; }
           * { box-sizing: border-box; }
-          body { font-family: Arial, "Tahoma", sans-serif; color: #111827; margin: 0; }
+          body { font-family: 'DB Heavent', 'Anuphan', sans-serif; color: #111827; margin: 0; }
           h1 { color: #166534; font-size: 22px; margin: 0 0 6px; }
           h2 { color: #111827; font-size: 15px; margin: 0 0 4px; }
           p { margin: 0; }
           .doc-head { border-bottom: 2px solid #166534; padding-bottom: 10px; margin-bottom: 14px; }
+          .doc-note { color: #374151; font-size: 12px; margin: 0 0 8px; white-space: pre-line; }
           .doc-meta { display: flex; gap: 8px; flex-wrap: wrap; color: #4b5563; font-size: 11px; font-weight: 700; }
           .doc-meta span { border: 1px solid #d1d5db; border-radius: 999px; padding: 4px 8px; }
           .schedule-section { break-inside: avoid; margin-top: 16px; }
@@ -2182,21 +2420,19 @@ function exportInsurancePdf(scheduleItems, title) {
           td strong, td span { display: block; }
           td span { color: #6b7280; margin-top: 2px; }
           tr:nth-child(even) td { background: #f9fafb; }
+          tr.group-row td { background: #fef3c7; color: #92400e; font-weight: 700; }
+          tr.staff-row td { background: #fffbeb; }
           td span.name-issue { color: #b91c1c; font-weight: 700; }
           .doc-meta span.name-issue-count { color: #b91c1c; border-color: #fca5a5; }
           .footer { color: #9ca3af; font-size: 9px; margin-top: 18px; text-align: center; }
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         </style>
       </head>
       <body>
         <div class="doc-head">
           <h1>${escapeHtml(title)}</h1>
-          <div class="doc-meta">
-            <span>สร้างเมื่อ ${escapeHtml(generatedAt)}</span>
-            <span>จำนวนรอบ ${scheduleItems.length}</span>
-            <span>ผู้เดินทางทั้งหมด ${totalPassengers} คน</span>
-            <span>รวมทั้งจองปกติและจอยทริป</span>
-            ${nameIssues ? `<span class="name-issue-count">⚠ ชื่อยังไม่ใช่ภาษาไทย ${nameIssues} คน</span>` : ''}
-          </div>
+          ${note ? `<p class="doc-note">${escapeHtml(note)}</p>` : ''}
+          ${summary}
         </div>
         ${scheduleSections}
         <div class="footer">Luilaykhao Admin - รายชื่อสำหรับส่งประกัน</div>
@@ -2207,7 +2443,11 @@ function exportInsurancePdf(scheduleItems, title) {
   if (!printWindow) return;
   printWindow.document.write(html);
   printWindow.document.close();
-  printWindow.onload = () => printWindow.print();
+  // รอฟอนต์โหลดเสร็จก่อนสั่งพิมพ์ ไม่งั้น PDF ออกมาเป็นฟอนต์สำรอง
+  printWindow.onload = () => {
+    const fonts = printWindow.document.fonts;
+    (fonts ? fonts.ready : Promise.resolve()).then(() => printWindow.print());
+  };
 }
 
 /* ───── Excel (CSV) export of the passenger name list ─────────────────────
@@ -5062,5 +5302,50 @@ onUnmounted(() => {
   color: #6b7280;
   line-height: 1.5;
   margin: 4px 0 0;
+}
+
+/* Insurance PDF options */
+.pdf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.pdf-field-label,
+.pdf-section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.pdf-field-label em {
+  font-style: normal;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.pdf-section-label {
+  margin: 4px 0 8px;
+}
+
+.pdf-field-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #111827;
+  resize: vertical;
+}
+
+.pdf-field-input:focus {
+  outline: none;
+  border-color: var(--color-accent, #2d7a4f);
+}
+
+.pdf-option-grid {
+  grid-template-columns: 1fr;
 }
 </style>
