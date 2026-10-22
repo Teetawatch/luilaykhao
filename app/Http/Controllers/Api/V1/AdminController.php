@@ -1320,27 +1320,41 @@ class AdminController extends Controller
         $counts = [];
         $unassigned = 0;
         $custom = [];
+        $addCustom = function (string $label, ?string $status, int $heads) use (&$custom) {
+            $key = $label.'|'.($status ?? '');
+            $custom[$key] ??= [
+                'label' => $label,
+                'status' => $status,
+                'passengers_count' => 0,
+            ];
+            $custom[$key]['passengers_count'] += $heads;
+        };
 
         foreach ($bookings as $booking) {
             if ($booking->is_join_trip) {
                 continue;
             }
 
-            $headcount = max(1, $booking->passengers->count());
-
-            if ($booking->custom_pickup_label) {
-                $key = $booking->custom_pickup_label.'|'.($booking->custom_pickup_status ?? '');
-                $custom[$key] ??= [
-                    'label' => $booking->custom_pickup_label,
-                    'status' => $booking->custom_pickup_status,
-                    'passengers_count' => 0,
-                ];
-                $custom[$key]['passengers_count'] += $headcount;
+            if ($booking->custom_pickup_label && $booking->passengers->isEmpty()) {
+                $addCustom($booking->custom_pickup_label, $booking->custom_pickup_status, 1);
 
                 continue;
             }
 
             foreach ($booking->passengers as $passenger) {
+                // หมุดรายคนชนะทุกอย่าง แล้วค่อยหมุดของใบจอง แล้วค่อยจุดตายตัว
+                if ($ownPin = $passenger->ownPickupPin()) {
+                    $addCustom($ownPin['label'] ?: 'จุดรับที่ปักหมุดเอง', Booking::CUSTOM_PICKUP_APPROVED, 1);
+
+                    continue;
+                }
+
+                if ($booking->custom_pickup_label) {
+                    $addCustom($booking->custom_pickup_label, $booking->custom_pickup_status, 1);
+
+                    continue;
+                }
+
                 $pointId = $passenger->pickup_point_id ?? $booking->pickup_point_id;
                 if ($pointId) {
                     $counts[(int) $pointId] = ($counts[(int) $pointId] ?? 0) + 1;
@@ -1935,10 +1949,13 @@ class AdminController extends Controller
             'passengers.*.cert_number' => ['nullable', 'string', 'max:255'],
             'passengers.*.weight' => ['nullable', 'numeric', 'min:0'],
             'passengers.*.halal_food' => ['nullable', 'boolean'],
-            // จุดรับรายคน — กลุ่มเดียวกันขึ้นคนละจุดเป็นเรื่องปกติ
-            'passengers.*.pickup_point_id' => ['nullable', 'integer'],
             // จุดรับรายคน — คนในกลุ่มเดียวกันขึ้นคนละจุดได้ (ว่าง = ตามจุดของการจอง)
             'passengers.*.pickup_point_id' => ['nullable', 'exists:schedule_pickup_points,id'],
+            // หมุดรายคน — ส่ง lat/lng ว่าง = ลบหมุดของคนนี้ ไม่ส่งคีย์มาเลย = ไม่แตะ
+            'passengers.*.custom_pickup_label' => ['nullable', 'string', 'max:255'],
+            'passengers.*.custom_pickup_lat' => ['nullable', 'numeric', 'between:-90,90', 'required_with:passengers.*.custom_pickup_lng'],
+            'passengers.*.custom_pickup_lng' => ['nullable', 'numeric', 'between:-180,180', 'required_with:passengers.*.custom_pickup_lat'],
+            'passengers.*.custom_pickup_note' => ['nullable', 'string', 'max:1000'],
             'installments' => ['nullable', 'array'],
             'installments.*.id' => ['nullable', 'integer', 'exists:installment_payments,id'],
             'installments.*.installment_no' => ['required_with:installments', 'integer', 'min:1', 'max:12'],
@@ -2230,6 +2247,19 @@ class AdminController extends Controller
                         // แอดมินระบุจุดรับให้คนนี้เอง — ค่าว่างแปลว่า "ตามจุดของการจอง"
                         if (array_key_exists('pickup_point_id', $passengerData)) {
                             $payload['pickup_point_id'] = $passengerData['pickup_point_id'] ?: null;
+                        }
+
+                        // หมุดรายคนกับจุดตายตัวรายคนใช้ร่วมกันไม่ได้ — ปักหมุดแล้วล้างจุดของคนนี้
+                        if (array_key_exists('custom_pickup_lat', $passengerData)) {
+                            $pinned = filled($passengerData['custom_pickup_lat'] ?? null)
+                                && filled($passengerData['custom_pickup_lng'] ?? null);
+                            $payload['custom_pickup_label'] = $pinned ? ($passengerData['custom_pickup_label'] ?? null) : null;
+                            $payload['custom_pickup_lat'] = $pinned ? $passengerData['custom_pickup_lat'] : null;
+                            $payload['custom_pickup_lng'] = $pinned ? $passengerData['custom_pickup_lng'] : null;
+                            $payload['custom_pickup_note'] = $pinned ? ($passengerData['custom_pickup_note'] ?? null) : null;
+                            if ($pinned) {
+                                $payload['pickup_point_id'] = null;
+                            }
                         }
 
                         $passenger = $passengerId

@@ -19,6 +19,7 @@ class BookingPassenger extends Model
         'emergency_contact', 'emergency_phone',
         'dive_cert_level', 'cert_number', 'weight',
         'blood_group', 'allergies', 'halal_food', 'pickup_point_id',
+        'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note',
         'self_fill_token', 'self_fill_expires_at', 'self_filled_at',
     ];
 
@@ -44,6 +45,8 @@ class BookingPassenger extends Model
             'self_filled_at' => 'datetime',
             'checked_in_at' => 'datetime',
             'not_going_at' => 'datetime',
+            'custom_pickup_lat' => 'float',
+            'custom_pickup_lng' => 'float',
         ];
     }
 
@@ -84,6 +87,25 @@ class BookingPassenger extends Model
                 app(BookingDocumentService::class)->purgeBorderPass($passenger);
             }
         });
+    }
+
+    /** หมุดจุดรับของคนนี้เอง (ไม่นับหมุดของใบจอง) */
+    public function ownPickupPin(): ?array
+    {
+        if ($this->custom_pickup_lat === null || $this->custom_pickup_lng === null) {
+            return null;
+        }
+
+        return Booking::pinPayload('passenger', $this->custom_pickup_label, $this->custom_pickup_lat, $this->custom_pickup_lng, $this->custom_pickup_note);
+    }
+
+    /**
+     * หมุดที่คนนี้ไปยืนรอจริง: หมุดของตัวเองก่อน แล้วค่อยหมุดของใบจอง — null = ขึ้นที่
+     * จุดรับตายตัว (หรือยังไม่ระบุ) ซึ่งตัดสินต่อที่ PickupArrivalService::passengerPointId
+     */
+    public function pickupPin(Booking $booking): ?array
+    {
+        return $this->ownPickupPin() ?? $booking->pickupPin();
     }
 
     /** ขึ้นรถแล้ว */

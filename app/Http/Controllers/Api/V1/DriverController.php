@@ -517,7 +517,7 @@ class DriverController extends Controller
      */
     private function checkInMeta(Booking $booking, ?BookingPassenger $scanned = null): array
     {
-        $pickupGroup = $this->pickupGroupSummary($booking);
+        $pickupGroup = $this->pickupGroupSummary($booking, $scanned);
         $passengers = $booking->passengers;
         $roster = app(PassengerCheckInService::class)->roster($passengers);
         $aboard = $passengers->filter(fn ($p) => $p->isCheckedIn())->count();
@@ -568,7 +568,7 @@ class DriverController extends Controller
      *
      * นับรายคน: คนที่แจ้งไว้ว่าไม่ไปไม่ต้องรอรับ จึงไม่อยู่ในยอดที่ต้องรับ
      */
-    private function pickupGroupSummary(Booking $booking): array
+    private function pickupGroupSummary(Booking $booking, ?BookingPassenger $scanned = null): array
     {
         $schedule = $booking->schedule;
         $pointId = $booking->pickup_point_id;
@@ -606,13 +606,32 @@ class DriverController extends Controller
             return [$total, $checkedIn];
         };
 
+        // สแกน QR รายคนของคนที่ปักหมุดของตัวเอง — จุดของเขาคือหมุดนั้น ไม่ใช่จุดของใบจอง
+        $ownPin = $scanned?->ownPickupPin();
+        if ($ownPin) {
+            return [
+                'point_id' => null,
+                'label' => $ownPin['label'] ?: 'จุดรับที่ปักหมุดเอง',
+                'is_custom' => true,
+                'map_url' => $ownPin['map_url'],
+                'total_passengers' => $scanned->isNotGoing() ? 0 : 1,
+                'checked_in_passengers' => $scanned->isCheckedIn() ? 1 : 0,
+                'this_booking_passengers' => $thisBookingHeads,
+            ];
+        }
+
         if ($arrivals->hasCustomPickup($booking)) {
-            [$total, $checkedIn] = $tally(collect([$booking]));
+            // คนที่มีหมุดของตัวเองยืนรออีกที่ — ไม่นับรวมกับหมุดของใบจอง
+            [$total, $checkedIn] = $tally(
+                collect([$booking]),
+                fn (Booking $b, ?BookingPassenger $p) => $p === null || $p->ownPickupPin() === null,
+            );
 
             return [
                 'point_id' => null,
                 'label' => $booking->custom_pickup_label ?: 'จุดรับที่ปักหมุดเอง',
                 'is_custom' => true,
+                'map_url' => $booking->pickupPin()['map_url'],
                 'total_passengers' => $total,
                 'checked_in_passengers' => $checkedIn,
                 'this_booking_passengers' => $thisBookingHeads,
@@ -624,16 +643,21 @@ class DriverController extends Controller
 
         // ทุกคนในรอบนี้ที่ขึ้นจุดเดียวกัน (จุดรายคนก่อน แล้วจุดของใบจอง) — ไม่ระบุจุด =
         // ไม่มีทั้งจุดรับและหมุด
-        $siblings = Booking::with('passengers:id,booking_id,pickup_point_id,checked_in_at,not_going_at')
+        $siblings = Booking::with('passengers:'.PickupArrivalService::PASSENGER_PICKUP_COLUMNS)
             ->where('schedule_id', $schedule?->id)
             ->where('status', 'confirmed')
-            ->get(['id', 'pickup_point_id', 'checked_in', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_status']);
+            ->get(['id', 'pickup_point_id', 'checked_in', 'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note', 'custom_pickup_status']);
 
         $targetPoint = in_array((int) $pointId, $validIds, true) ? (int) $pointId : null;
 
         [$total, $checkedIn] = $tally(
             $siblings->reject(fn (Booking $b) => $arrivals->hasCustomPickup($b)),
             function (Booking $b, ?BookingPassenger $p) use ($arrivals, $validIds, $targetPoint) {
+                // คนที่ปักหมุดของตัวเองไม่ได้ยืนที่จุดนี้ (และไม่ใช่ "ไม่ระบุจุดรับ")
+                if ($p?->ownPickupPin() !== null) {
+                    return false;
+                }
+
                 $resolved = $p
                     ? $arrivals->passengerPointId($b, $p, $validIds)
                     : (in_array((int) $b->pickup_point_id, $validIds, true) ? (int) $b->pickup_point_id : null);
@@ -1041,20 +1065,15 @@ class DriverController extends Controller
         $groups = [];
 
         foreach ($bookings as $booking) {
-            // จุดรับที่ลูกค้าปักหมุดเอง (อยู่บนการจอง ไม่ใช่ pickup point ที่กำหนดไว้) —
-            // แต่ละหมุดไม่ซ้ำกันจึงแยกเป็นกลุ่มต่อการจอง พร้อมลิงก์ Google Maps จากพิกัด
-            $hasCustomPickup = ! $booking->pickup_point_id
-                && $booking->custom_pickup_lat !== null
-                && $booking->custom_pickup_lng !== null
-                && $booking->custom_pickup_status !== 'rejected';
-
             // Seat each passenger occupies, matched by name (same as seat map).
             $seatByName = $booking->seats->keyBy(fn ($seat) => trim((string) $seat->passenger_name));
 
             foreach ($booking->passengers as $passenger) {
-                // จุดปักหมุดเองเป็นระดับการจอง — ถ้าการจองใช้หมุด ผู้โดยสารทุกคนอยู่กลุ่มหมุดนั้น
-                // (ไม่สนจุดรับรายคนที่อาจค้างจากตอนจองด้วยจุดตายตัวแล้วแอดมินเปลี่ยนเป็นหมุดภายหลัง)
-                $isCustom = $hasCustomPickup;
+                // หมุดที่ปักเอง (ไม่ใช่ pickup point ที่กำหนดไว้): หมุดของคนนี้เองก่อน แล้วค่อย
+                // หมุดของใบจอง — หมุดของใบจองชนะจุดรับรายคนที่อาจค้างจากตอนจองด้วยจุดตายตัว
+                // แต่ละหมุดไม่ซ้ำกันจึงแยกกลุ่มต่อใบจอง+พิกัด พร้อมลิงก์ Google Maps จากพิกัด
+                $pin = $passenger->pickupPin($booking);
+                $isCustom = $pin !== null;
                 // จุดรับต้องเป็นของรอบนี้เท่านั้น — การจองที่เคยถูกย้ายรอบ/ข้ามทริปอาจมี FK
                 // ค้างชี้จุดรับของรอบเดิม ซึ่งจะพาเวลารับของทริปเดิมมาแสดงตอนเช็คอิน
                 $point = $isCustom
@@ -1066,7 +1085,7 @@ class DriverController extends Controller
                 // ข้อมูลจุดรับหาย — สองอย่างนี้สตาฟต้องจัดการคนละแบบ
                 $isJoinTrip = (bool) $booking->is_join_trip && ! $isCustom && ! $point;
                 $key = match (true) {
-                    $isCustom => 'custom-'.$booking->id,
+                    $isCustom => 'custom-'.$booking->id.'-'.$pin['lat'].','.$pin['lng'],
                     $isJoinTrip => 'join-trip',
                     default => $point?->id ?? 0,
                 };
@@ -1075,16 +1094,12 @@ class DriverController extends Controller
                     $groups[$key] = match (true) {
                         $isCustom => [
                             'id' => null,
-                            'label' => $booking->custom_pickup_label ?: 'จุดรับที่ปักหมุดเอง',
-                            'region_label' => 'ลูกค้าปักหมุดเอง',
-                            'lat' => (float) $booking->custom_pickup_lat,
-                            'lng' => (float) $booking->custom_pickup_lng,
-                            'map_url' => sprintf(
-                                'https://www.google.com/maps/search/?api=1&query=%s,%s',
-                                $booking->custom_pickup_lat,
-                                $booking->custom_pickup_lng,
-                            ),
-                            'notes' => $booking->custom_pickup_note,
+                            'label' => $pin['label'] ?: 'จุดรับที่ปักหมุดเอง',
+                            'region_label' => $pin['scope'] === 'passenger' ? 'ปักหมุดรายคน' : 'ลูกค้าปักหมุดเอง',
+                            'lat' => $pin['lat'],
+                            'lng' => $pin['lng'],
+                            'map_url' => $pin['map_url'],
+                            'notes' => $pin['note'],
                             'is_custom' => true,
                             'is_join_trip' => false,
                             'sort_order' => 9000,

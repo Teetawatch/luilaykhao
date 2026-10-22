@@ -7,7 +7,7 @@
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
         <div class="flex items-center gap-2">
           <span class="material-symbols-rounded text-teal-600">add_location_alt</span>
-          <h3 class="text-lg font-bold text-gray-900">ปักหมุดจุดรับของคุณ</h3>
+          <h3 class="text-lg font-bold text-gray-900">{{ title }}</h3>
         </div>
         <button @click="$emit('close')" class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
           <span class="material-symbols-rounded">close</span>
@@ -121,6 +121,7 @@ const props = defineProps({
   centerLat: { type: Number, default: 13.7563 },
   centerLng: { type: Number, default: 100.5018 },
   initial: { type: Object, default: null }, // { label, lat, lng, note }
+  title: { type: String, default: 'ปักหมุดจุดรับของคุณ' },
 });
 
 const emit = defineEmits(['close', 'confirm']);

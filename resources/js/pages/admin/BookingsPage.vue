@@ -1504,19 +1504,22 @@
                 <div class="pax-pickup-head">
                   <strong>จุดรับและที่นั่งรายคน</strong>
                   <button
-                    v-if="editForm.passengers.length && editForm.pickup_point_id && !editCustomPickup"
+                    v-if="editForm.passengers.length && (editForm.pickup_point_id || editCustomPickup)"
                     type="button"
                     class="bk-link-btn"
                     @click="applyBookingPickupToAll"
                   >
                     <span class="material-symbols-rounded">done_all</span>
-                    ใช้จุดของการจองกับทุกคน
+                    {{ editCustomPickup ? 'ใช้หมุดของการจองกับทุกคน' : 'ใช้จุดของการจองกับทุกคน' }}
                   </button>
                 </div>
 
                 <p v-if="editCustomPickup" class="bk-callout bk-callout--warn">
                   <span class="material-symbols-rounded">info</span>
-                  <span>การจองนี้ใช้หมุดที่ปักเอง — จุดรับรายคนจะถูกล้างทั้งหมดเมื่อบันทึก</span>
+                  <span>
+                    การจองนี้ใช้หมุดที่ปักเอง — ทุกคนขึ้นที่หมุดนี้ ยกเว้นคนที่ปักหมุดของตัวเองไว้
+                    (เลือกจุดรับตายตัวรายคนไม่ได้ ถ้าใครขึ้นที่อื่นให้กด "ปักหมุด" ที่แถวของคนนั้น)
+                  </span>
                 </p>
 
                 <div v-if="!editForm.passengers.length" class="bk-empty">
@@ -1539,17 +1542,40 @@
                       </span>
                     </div>
 
-                    <div class="form-group">
+                    <div v-if="passenger.custom_pickup" class="pax-pin">
+                      <span class="material-symbols-rounded pax-pin-icon">push_pin</span>
+                      <span class="pax-pin-text">
+                        <strong>{{ passenger.custom_pickup.label || 'จุดรับที่ปักหมุดเอง' }}</strong>
+                        <small>{{ Number(passenger.custom_pickup.lat).toFixed(5) }}, {{ Number(passenger.custom_pickup.lng).toFixed(5) }}</small>
+                      </span>
+                      <button type="button" class="bk-icon-btn" @click="openPassengerPin(index)" title="แก้หมุด" aria-label="แก้หมุดของผู้โดยสารคนนี้">
+                        <span class="material-symbols-rounded">edit_location_alt</span>
+                      </button>
+                      <button type="button" class="bk-icon-btn danger" @click="clearPassengerPin(index)" title="ลบหมุด" aria-label="ลบหมุดของผู้โดยสารคนนี้">
+                        <span class="material-symbols-rounded">close</span>
+                      </button>
+                    </div>
+                    <div v-else class="form-group pax-pickup-where">
                       <select
                         v-model.number="passenger.pickup_point_id"
                         :disabled="!editPickupPoints.length || Boolean(editCustomPickup)"
                         :aria-label="`จุดรับของผู้โดยสาร ${index + 1}`"
                       >
-                        <option value="">— ตามจุดของการจอง —</option>
+                        <option value="">{{ editCustomPickup ? '— ตามหมุดของการจอง —' : '— ตามจุดของการจอง —' }}</option>
                         <option v-for="point in editPickupPoints" :key="point.id" :value="point.id">
                           {{ point.region_label || point.region }} · {{ point.pickup_location }}
                         </option>
                       </select>
+                      <button
+                        type="button"
+                        class="pax-pin-add"
+                        @click="openPassengerPin(index)"
+                        title="ปักหมุดจุดรับเฉพาะคนนี้"
+                        :aria-label="`ปักหมุดจุดรับของผู้โดยสาร ${index + 1}`"
+                      >
+                        <span class="material-symbols-rounded">add_location_alt</span>
+                        ปักหมุด
+                      </button>
                     </div>
 
                     <div class="form-group pax-pickup-seat">
@@ -2258,7 +2284,8 @@
       v-if="showEditCustomPickupModal"
       :center-lat="editPickupMapCenter.lat"
       :center-lng="editPickupMapCenter.lng"
-      :initial="editCustomPickup"
+      :initial="editPinInitial"
+      :title="editPinTitle"
       @confirm="onEditCustomPickupConfirm"
       @close="showEditCustomPickupModal = false"
     />
@@ -2398,6 +2425,16 @@ const splitSeatError = computed(() => {
 // จุดรับปักหมุดเองในฟอร์มแก้ไข ({ label, lat, lng, note } หรือ null)
 const editCustomPickup = ref(null);
 const showEditCustomPickupModal = ref(false);
+// หมุดที่กำลังปัก: null = หมุดของการจอง, ตัวเลข = index ของผู้โดยสาร
+const editPinTarget = ref(null);
+const editPinInitial = computed(() => (editPinTarget.value === null
+  ? editCustomPickup.value
+  : editForm.passengers[editPinTarget.value]?.custom_pickup || null));
+const editPinTitle = computed(() => {
+  if (editPinTarget.value === null) return 'ปักหมุดจุดรับของการจอง';
+  const passenger = editForm.passengers[editPinTarget.value];
+  return `ปักหมุดจุดรับของ ${passenger?.nickname || passenger?.name || `ผู้โดยสาร ${editPinTarget.value + 1}`}`;
+});
 const detailBooking = ref(null);
 const statusBooking = ref(null);
 const editBooking = ref(null);
@@ -2885,6 +2922,7 @@ function onEditPickupChange() {
   // เป็นพฤติกรรมเดิมที่ backend เคยทำให้เงียบ ๆ ตอนนี้เห็นผลก่อนกดบันทึก
   // ส่วนคนที่เลือกจุดของตัวเองไว้ต่างหากจะไม่ถูกแตะ
   editForm.passengers.forEach((passenger) => {
+    if (passenger.custom_pickup) return; // ปักหมุดของตัวเองไว้ — ไม่ตามจุดของการจอง
     if (!passenger.pickup_point_id || passenger.pickup_point_id === editPickupPrevious.value) {
       passenger.pickup_point_id = editForm.pickup_point_id;
     }
@@ -2895,10 +2933,32 @@ function onEditPickupChange() {
 
 // ── จุดรับปักหมุดเอง (ปักหมุดจากแผนที่) ──
 function openEditCustomPickup() {
+  editPinTarget.value = null;
   showEditCustomPickupModal.value = true;
 }
 
+function openPassengerPin(index) {
+  editPinTarget.value = index;
+  showEditCustomPickupModal.value = true;
+}
+
+function clearPassengerPin(index) {
+  editForm.passengers[index].custom_pickup = null;
+}
+
 function onEditCustomPickupConfirm(payload) {
+  if (editPinTarget.value !== null) {
+    const passenger = editForm.passengers[editPinTarget.value];
+    if (passenger) {
+      // หมุดรายคนกับจุดตายตัวรายคนใช้ร่วมกันไม่ได้
+      passenger.custom_pickup = payload;
+      passenger.pickup_point_id = '';
+    }
+    editPinTarget.value = null;
+    showEditCustomPickupModal.value = false;
+    return;
+  }
+
   editCustomPickup.value = payload;
   // ปักหมุดแล้วล้างจุดรับตายตัว เพื่อให้หมุดของลูกค้าแสดงในหน้าสตาฟ
   editForm.pickup_point_id = '';
@@ -2920,6 +2980,7 @@ function closeEditModal() {
 function resetEditForm() {
   editCustomPickup.value = null;
   editPickupPrevious.value = '';
+  editPinTarget.value = null;
   showEditCustomPickupModal.value = false;
   // fillEditForm() เติมค่าต่อทันทีแบบ synchronous — กันไม่ให้ยอดรวมถูกปรับ
   // ตามค่าอุปกรณ์ที่โหลดมาตั้งต้น (จะปรับเฉพาะตอนแอดมินแก้เองเท่านั้น)
@@ -3041,6 +3102,15 @@ function mapPassengerToForm(passenger = {}, seatId = '') {
     local_key: passenger.id || `new-${Date.now()}-${Math.random()}`,
     id: passenger.id || '',
     pickup_point_id: passenger.pickup_point_id || '',
+    // หมุดของคนนี้เอง — ชนะจุดรายคนและจุด/หมุดของการจอง
+    custom_pickup: passenger.custom_pickup
+      ? {
+          label: passenger.custom_pickup.label,
+          lat: Number(passenger.custom_pickup.lat),
+          lng: Number(passenger.custom_pickup.lng),
+          note: passenger.custom_pickup.note || null,
+        }
+      : null,
     seat_id: seatId,
     title: passenger.title || '',
     name: passenger.name || '',
@@ -3160,6 +3230,7 @@ function removePassenger(index) {
 function applyBookingPickupToAll() {
   editForm.passengers.forEach((passenger) => {
     passenger.pickup_point_id = editForm.pickup_point_id;
+    passenger.custom_pickup = null;
   });
 }
 
@@ -3280,9 +3351,15 @@ function buildEditFormData() {
 
   editForm.passengers.forEach((passenger, index) => {
     Object.entries(passenger).forEach(([key, value]) => {
-      if (['local_key', 'seat_id'].includes(key)) return;
+      if (['local_key', 'seat_id', 'custom_pickup'].includes(key)) return;
       appendForm(fd, `passengers[${index}][${key}]`, value);
     });
+    // ส่งคีย์หมุดรายคนเสมอ — ค่าว่าง = ลบหมุดของคนนี้
+    const pin = passenger.custom_pickup;
+    appendForm(fd, `passengers[${index}][custom_pickup_label]`, pin?.label);
+    appendForm(fd, `passengers[${index}][custom_pickup_lat]`, pin?.lat);
+    appendForm(fd, `passengers[${index}][custom_pickup_lng]`, pin?.lng);
+    appendForm(fd, `passengers[${index}][custom_pickup_note]`, pin?.note);
   });
 
   // ส่งชุดอุปกรณ์เช่าทั้งชุดเสมอ (ชุดว่าง = ลบทั้งหมด) — ฝั่ง server คิดยอดรวมใหม่เอง
@@ -3544,6 +3621,9 @@ function passengerCount(booking) {
 
 // จุดรับของผู้โดยสารคนนี้ — ไม่ได้ระบุไว้เอง = ใช้จุดของการจอง
 function passengerPickupLabel(passenger) {
+  const pin = passenger?.custom_pickup;
+  if (pin) return `ปักหมุด · ${pin.label || 'จุดรับที่ปักหมุดเอง'}`;
+
   const point = passenger?.pickup_point;
   if (!point) return 'ตามจุดของการจอง';
 
@@ -5641,6 +5721,81 @@ async function reverifySlip(bookingRef, slipType) {
   .pax-pickup-who {
     padding-bottom: 0;
   }
+}
+
+/* หมุดจุดรับรายคน */
+.pax-pickup-where {
+  flex-direction: row;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pax-pickup-where select {
+  flex: 1;
+  min-width: 0;
+}
+
+.pax-pin-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 0 12px;
+  border: 1.5px dashed var(--color-sand-dark);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pax-pin-add:hover {
+  border-color: var(--color-accent);
+  background: rgba(20, 184, 166, 0.06);
+}
+
+.pax-pin-add .material-symbols-rounded {
+  font-size: 17px !important;
+}
+
+.pax-pin {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.pax-pin-icon {
+  color: #d97706;
+  font-size: 18px !important;
+}
+
+.pax-pin-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pax-pin-text strong {
+  overflow: hidden;
+  color: var(--color-text-dark);
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pax-pin-text small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* อุปกรณ์เช่าในฟอร์มแก้ไขการจอง */

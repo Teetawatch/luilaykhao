@@ -80,8 +80,11 @@ class StaffController extends Controller
                 // needs the headcount, matching the admin manifest endpoint.
                 $bookings = Booking::where('schedule_id', $s->id)
                     ->whereIn('status', ['confirmed', 'completed'])
-                    ->with(['passengers:id,booking_id,pickup_point_id,name,nickname,phone,checked_in_at,not_going_at'])
-                    ->get(['id', 'pickup_point_id', 'checked_in', 'is_join_trip']);
+                    ->with(['passengers:'.PickupArrivalService::PASSENGER_PICKUP_COLUMNS.',name,nickname,phone'])
+                    ->get([
+                        'id', 'pickup_point_id', 'checked_in', 'is_join_trip',
+                        'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note', 'custom_pickup_status',
+                    ]);
 
                 // Flatten each booking into per-passenger rows so headcount,
                 // per-pickup tallies and the per-point roster are all accurate.
@@ -90,6 +93,10 @@ class StaffController extends Controller
                         // Passengers can override the booking-level pickup
                         // (added 2026-05); fall back to the booking when null.
                         'pickup_point_id' => $p->pickup_point_id ?? $b->pickup_point_id,
+                        // หมุดที่ปักเอง (ของคนนี้ก่อน แล้วค่อยของใบจอง) — ชนะจุดตายตัว
+                        // ไม่งั้นคนที่ขึ้นรถตรงหมุดจะไปกองอยู่ใน "ไม่ระบุจุดรับ"
+                        'pin' => $p->pickupPin($b),
+                        'booking_id' => $b->id,
                         // รายคน — ใบจองเดียวกันขึ้นรถไม่พร้อมกันได้
                         'checked_in' => $p->checked_in_at !== null,
                         'not_going' => $p->not_going_at !== null && $p->checked_in_at === null,
@@ -118,24 +125,44 @@ class StaffController extends Controller
                     ])
                     ->values();
 
+                $pinnedRows = $passengerRows->whereNotNull('pin');
+                $pointRows = $passengerRows->whereNull('pin');
+
                 $pickupBreakdown = $s->pickupPoints
-                    ->map(function ($point) use ($passengerRows, $roster) {
-                        $rows = $passengerRows->where('pickup_point_id', $point->id);
+                    ->map(function ($point) use ($pointRows, $roster) {
+                        $rows = $pointRows->where('pickup_point_id', $point->id);
 
                         return [
                             'id' => $point->id,
                             'label' => $point->pickup_location ?: $point->region_label,
                             'region_label' => $point->region_label,
+                            'is_custom' => false,
+                            'map_url' => $point->map_url,
                             'passenger_count' => $rows->count(),
                             'passengers' => $roster($rows),
                         ];
                     })
                     ->filter(fn ($p) => $p['passenger_count'] > 0)
+                    // หมุดที่ปักเองต่อท้ายเป็น "จุด" ของมันเอง — แอปรุ่นเก่าที่ไม่รู้จัก
+                    // is_custom ก็ยังแสดงเป็นแถวจุดรับปกติ แทนที่จะตกไป "ไม่ระบุจุดรับ"
+                    ->concat($pinnedRows->groupBy(fn ($r) => $r['booking_id'].'-'.$r['pin']['lat'].','.$r['pin']['lng'])->map(function ($rows) use ($roster) {
+                        $pin = $rows->first()['pin'];
+
+                        return [
+                            'id' => null,
+                            'label' => $pin['label'] ?: 'จุดรับที่ปักหมุดเอง',
+                            'region_label' => $pin['scope'] === 'passenger' ? 'ปักหมุดรายคน' : 'ลูกค้าปักหมุดเอง',
+                            'is_custom' => true,
+                            'map_url' => $pin['map_url'],
+                            'passenger_count' => $rows->count(),
+                            'passengers' => $roster($rows),
+                        ];
+                    })->values())
                     ->values();
 
                 // คนที่ไม่มีจุดรับมีสองแบบ แยกกันให้ชัด: จอยทริปคือไม่มีจุดรับโดยตั้งใจ
                 // ส่วน "ไม่ระบุจุดรับ" คือจองปกติแล้วข้อมูลจุดรับหาย ซึ่งต้องตามเก็บ
-                $pointlessRows = $passengerRows->whereNull('pickup_point_id');
+                $pointlessRows = $pointRows->whereNull('pickup_point_id');
                 $joinTripRows = $pointlessRows->where('is_join_trip', true);
                 $noPickupRows = $pointlessRows->where('is_join_trip', false);
                 $noPickupCount = $noPickupRows->count();

@@ -44,7 +44,7 @@ class AdminExtendedController extends Controller
         $query = TripSchedule::with([
             'trip',
             'vehicle',
-            'bookings.passengers',
+            'bookings.passengers.pickupPoint',
             'bookings.seats',
             'bookings.pickupPoint',
             'bookings.user',
@@ -138,20 +138,14 @@ class AdminExtendedController extends Controller
                 ->flatMap(function ($booking) use ($s) {
                     $seatLabels = $booking->seats->pluck('seat_id')->filter()->values()->all();
 
-                    // จุดรับที่ลูกค้าปักหมุดเอง (ไม่มีจุดรับตายตัว) — โชว์ชื่อ+พิกัด+ลิงก์แผนที่
-                    $hasCustomPickup = ! $booking->pickup_point_id
-                        && $booking->custom_pickup_lat !== null
-                        && $booking->custom_pickup_lng !== null
-                        && $booking->custom_pickup_status !== 'rejected';
-                    $customPickupMapUrl = $hasCustomPickup
-                        ? sprintf(
-                            'https://www.google.com/maps/search/?api=1&query=%s,%s',
-                            $booking->custom_pickup_lat,
-                            $booking->custom_pickup_lng,
-                        )
-                        : null;
+                    return $booking->passengers->map(function ($passenger) use ($s, $booking, $seatLabels) {
+                        // หมุดที่ปักเอง (ของคนนี้ก่อน แล้วค่อยของใบจอง) — โชว์ชื่อ+พิกัด+ลิงก์แผนที่
+                        $pin = $passenger->pickupPin($booking);
+                        $hasCustomPickup = $pin !== null;
+                        $point = $passenger->pickupPoint && (int) $passenger->pickupPoint->schedule_id === (int) $booking->schedule_id
+                            ? $passenger->pickupPoint
+                            : $booking->pickupPoint;
 
-                    return $booking->passengers->map(function ($passenger) use ($s, $booking, $seatLabels, $hasCustomPickup, $customPickupMapUrl) {
                         return [
                             'id' => $passenger->id,
                             'booking_id' => $booking->id,
@@ -187,16 +181,16 @@ class AdminExtendedController extends Controller
                             'halal_food' => (bool) $passenger->halal_food,
                             'seat_labels' => $booking->is_join_trip ? [] : $seatLabels,
                             'pickup_region' => $hasCustomPickup
-                                ? 'ลูกค้าปักหมุดเอง'
-                                : ($booking->pickupPoint?->region_label ?: $booking->pickup_region),
+                                ? ($pin['scope'] === 'passenger' ? 'ปักหมุดรายคน' : 'ลูกค้าปักหมุดเอง')
+                                : ($point?->region_label ?: $booking->pickup_region),
                             'pickup_location' => $hasCustomPickup
-                                ? ($booking->custom_pickup_label ?: 'จุดรับที่ปักหมุดเอง')
-                                : $booking->pickupPoint?->pickup_location,
+                                ? ($pin['label'] ?: 'จุดรับที่ปักหมุดเอง')
+                                : $point?->pickup_location,
                             'is_custom_pickup' => $hasCustomPickup,
-                            'custom_pickup_lat' => $hasCustomPickup ? (float) $booking->custom_pickup_lat : null,
-                            'custom_pickup_lng' => $hasCustomPickup ? (float) $booking->custom_pickup_lng : null,
-                            'custom_pickup_note' => $hasCustomPickup ? $booking->custom_pickup_note : null,
-                            'custom_pickup_map_url' => $customPickupMapUrl,
+                            'custom_pickup_lat' => $pin['lat'] ?? null,
+                            'custom_pickup_lng' => $pin['lng'] ?? null,
+                            'custom_pickup_note' => $pin['note'] ?? null,
+                            'custom_pickup_map_url' => $pin['map_url'] ?? null,
                             'customer_name' => $booking->user?->name,
                             'customer_phone' => $booking->user?->phone,
                             'payment_type' => $booking->payment_type,

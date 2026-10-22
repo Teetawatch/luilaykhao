@@ -638,6 +638,11 @@ class SeatHandoverService
                 'dive_cert_level' => null,
                 'cert_number' => null,
                 'weight' => null,
+                // หมุดรายคนมักเป็นหน้าบ้านคนเดิม — คนรับที่นั่งใช้จุดของใบจองไปก่อน
+                'custom_pickup_label' => null,
+                'custom_pickup_lat' => null,
+                'custom_pickup_lng' => null,
+                'custom_pickup_note' => null,
                 'self_fill_token' => null,
                 'self_fill_expires_at' => null,
                 'self_filled_at' => now(),

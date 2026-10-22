@@ -396,6 +396,37 @@ class Booking extends Model
             : null;
     }
 
+    /**
+     * หมุดจุดรับระดับใบจองที่ "ใช้อยู่จริง" — null เมื่อใบนี้ใช้จุดรับตายตัว ไม่ได้ปัก
+     * หรือหมุดถูกปฏิเสธ (กติกาเดียวกับที่หน้าสตาฟจัดกลุ่ม: จุดตายตัวชนะหมุดเสมอ)
+     *
+     * @return array{scope: string, label: ?string, lat: float, lng: float, note: ?string, map_url: string}|null
+     */
+    public function pickupPin(): ?array
+    {
+        if ($this->pickup_point_id
+            || $this->custom_pickup_lat === null
+            || $this->custom_pickup_lng === null
+            || $this->custom_pickup_status === self::CUSTOM_PICKUP_REJECTED) {
+            return null;
+        }
+
+        return self::pinPayload('booking', $this->custom_pickup_label, $this->custom_pickup_lat, $this->custom_pickup_lng, $this->custom_pickup_note);
+    }
+
+    /** รูปเดียวกันทั้งหมุดของใบจองและหมุดรายคน — หน้าสตาฟจะได้ไม่ต้องแยกสองแบบ */
+    public static function pinPayload(string $scope, ?string $label, mixed $lat, mixed $lng, ?string $note): array
+    {
+        return [
+            'scope' => $scope,
+            'label' => $label,
+            'lat' => (float) $lat,
+            'lng' => (float) $lng,
+            'note' => $note,
+            'map_url' => sprintf('https://www.google.com/maps/search/?api=1&query=%s,%s', $lat, $lng),
+        ];
+    }
+
     public function installmentPayments(): HasMany
     {
         return $this->hasMany(InstallmentPayment::class)->orderBy('installment_no');

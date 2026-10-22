@@ -29,6 +29,9 @@ use Illuminate\Support\Facades\Storage;
  */
 class PickupArrivalService
 {
+    /** คอลัมน์ผู้โดยสารขั้นต่ำที่ต้องโหลดเพื่อตัดสินจุดรับ (รวมหมุดรายคน) */
+    public const PASSENGER_PICKUP_COLUMNS = 'id,booking_id,pickup_point_id,custom_pickup_label,custom_pickup_lat,custom_pickup_lng,custom_pickup_note,checked_in_at,not_going_at';
+
     /** โฟลเดอร์ของรูปจุดจอดบน disk สื่อสาธารณะ */
     public const PHOTO_DIR = 'pickups';
 
@@ -275,10 +278,13 @@ class PickupArrivalService
         return array_keys($ids);
     }
 
-    /** จุดรับของผู้โดยสารคนหนึ่ง: จุดของตัวเองก่อน แล้วค่อยจุดของใบจอง */
+    /**
+     * จุดรับของผู้โดยสารคนหนึ่ง: จุดของตัวเองก่อน แล้วค่อยจุดของใบจอง — คนที่ยืนรอ
+     * ที่หมุด (ของตัวเองหรือของใบจอง) ไม่อยู่ในจุดตายตัวจุดใด
+     */
     public function passengerPointId(Booking $booking, BookingPassenger $passenger, array $validIds): ?int
     {
-        if ($this->hasCustomPickup($booking)) {
+        if ($passenger->pickupPin($booking) !== null) {
             return null;
         }
 
@@ -296,10 +302,7 @@ class PickupArrivalService
     /** ใบจองที่ปักหมุดจุดรับเอง — ไม่อยู่ในจุดรับตายตัวจุดใด */
     public function hasCustomPickup(Booking $booking): bool
     {
-        return ! $booking->pickup_point_id
-            && $booking->custom_pickup_lat !== null
-            && $booking->custom_pickup_lng !== null
-            && $booking->custom_pickup_status !== 'rejected';
+        return $booking->pickupPin() !== null;
     }
 
     /**
@@ -309,7 +312,7 @@ class PickupArrivalService
      */
     private function pendingBookings(TripSchedule $schedule): Collection
     {
-        return Booking::with('passengers:id,booking_id,pickup_point_id,checked_in_at,not_going_at')
+        return Booking::with('passengers:'.self::PASSENGER_PICKUP_COLUMNS)
             ->where('schedule_id', $schedule->id)
             ->where('status', 'confirmed')
             ->where(fn ($q) => $q
