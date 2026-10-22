@@ -458,6 +458,41 @@ class ChatNotificationPreferenceTest extends TestCase
         $this->assertSame('default', $loud['apns']['payload']['aps']['sound']);
     }
 
+    public function test_staff_alert_payload_vibrates_long_and_breaks_through_focus(): void
+    {
+        config(['services.fcm.project_id' => 'demo-project']);
+        Cache::put('fcm_access_token', 'test-token', 60);
+        Http::fake(['fcm.googleapis.com/*' => Http::response(['name' => 'ok'])]);
+
+        $user = User::factory()->create();
+        FcmToken::create(['user_id' => $user->id, 'token' => 'device-1', 'platform' => 'android', 'is_active' => true]);
+
+        // quiet และ channel ที่ส่งมาด้วยถูกทับ — คำขอถึงทีมงานต้องดังเสมอ
+        app(FcmService::class)->sendToUser($user->id, '🚻 มีคนขอแวะห้องน้ำ', 'b', ['type' => 'stop_request'], [
+            'tag' => 'stop-request-9',
+            'quiet' => true,
+            'android_channel' => 'chat_messages',
+            'staff_alert' => true,
+        ]);
+
+        $message = Http::recorded()->first()[0]->data()['message'];
+        $android = $message['android']['notification'];
+        $this->assertSame(FcmService::STAFF_ALERT_CHANNEL, $android['channel_id']);
+        $this->assertSame('PRIORITY_MAX', $android['notification_priority']);
+        $this->assertSame('default', $android['sound']);
+        $this->assertNotEmpty($android['vibrate_timings']);
+        $this->assertArrayNotHasKey('default_vibrate_timings', $android);
+        $this->assertSame('stop-request-9', $android['tag']);
+
+        $aps = $message['apns']['payload']['aps'];
+        $this->assertSame('time-sensitive', $aps['interruption-level']);
+        $this->assertSame('default', $aps['sound']);
+
+        // แอปที่เปิดอยู่ใช้ธงนี้สั่นเอง
+        $this->assertSame('1', $message['data']['staff_alert']);
+        $this->assertSame('stop_request', $message['data']['type']);
+    }
+
     public function test_fcm_payload_without_display_is_unchanged(): void
     {
         config(['services.fcm.project_id' => 'demo-project']);
@@ -476,6 +511,7 @@ class ChatNotificationPreferenceTest extends TestCase
         $this->assertSame(['apns-priority' => '10', 'apns-push-type' => 'alert'], $message['apns']['headers']);
         $this->assertSame('default', $message['apns']['payload']['aps']['sound']);
         $this->assertArrayNotHasKey('thread-id', $message['apns']['payload']['aps']);
+        $this->assertArrayNotHasKey('staff_alert', $message['data']);
     }
 
     // ── ล้างห้อง ─────────────────────────────────────────────────────────────

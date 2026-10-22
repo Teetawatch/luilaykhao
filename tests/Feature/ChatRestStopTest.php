@@ -28,7 +28,7 @@ class ChatRestStopTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @var array<int, array{user: int, title: string, body: string}> */
+    /** @var array<int, array{user: int, title: string, body: string, staff_alert: bool}> */
     private array $pushes = [];
 
     protected function setUp(): void
@@ -38,8 +38,13 @@ class ChatRestStopTest extends TestCase
 
         $this->pushes = [];
         $this->mock(FcmService::class, function (MockInterface $m) {
-            $m->shouldReceive('sendToUser')->andReturnUsing(function ($userId, $title, $body) {
-                $this->pushes[] = ['user' => (int) $userId, 'title' => $title, 'body' => $body];
+            $m->shouldReceive('sendToUser')->andReturnUsing(function ($userId, $title, $body, $data = [], $display = []) {
+                $this->pushes[] = [
+                    'user' => (int) $userId,
+                    'title' => $title,
+                    'body' => $body,
+                    'staff_alert' => (bool) ($display['staff_alert'] ?? false),
+                ];
             });
         });
     }
@@ -255,6 +260,9 @@ class ChatRestStopTest extends TestCase
         $this->assertCount(1, $toStaff);
         $this->assertSame('🚐 ถึงเวลาออกรถ ยังขาด 2 คน', $toStaff[0]['title']);
         $this->assertSame('มานะ, มานี', $toStaff[0]['body']);
+        // สตาฟอาจงีบอยู่บนรถ — ใบนี้สั่นยาวปลุก ส่วนใบที่ลูกทริปได้เป็นแจ้งเตือนปกติ
+        $this->assertTrue($toStaff[0]['staff_alert']);
+        $this->assertFalse($this->pushesTo($late)[1]['staff_alert']);
     }
 
     public function test_extending_moves_the_deadline_and_reminds_again(): void
@@ -356,6 +364,7 @@ class ChatRestStopTest extends TestCase
         $this->assertCount(2, $toStaff);
         $this->assertSame('🚻 มีคนขอแวะห้องน้ำ (ด่วน)', $toStaff[1]['title']);
         foreach ($toStaff as $push) {
+            $this->assertTrue($push['staff_alert'], 'คำขอแวะห้องน้ำต้องสั่นปลุกสตาฟ');
             $this->assertStringNotContainsString($a->name, $push['title'].$push['body']);
             $this->assertStringNotContainsString($b->name, $push['title'].$push['body']);
         }
@@ -380,6 +389,7 @@ class ChatRestStopTest extends TestCase
             ->where('body', '🚻 ทีมงานรับทราบคำขอแวะห้องน้ำแล้ว — จะแวะในอีกประมาณ 10 นาทีครับ')->exists());
         $this->assertSame('🚻 ทีมงานรับทราบแล้ว', last($this->pushesTo($a))['title']);
         $this->assertSame('🚻 ทีมงานรับทราบแล้ว', last($this->pushesTo($b))['title']);
+        $this->assertFalse(last($this->pushesTo($a))['staff_alert']);
     }
 
     public function test_announcing_a_stop_answers_pending_toilet_requests(): void

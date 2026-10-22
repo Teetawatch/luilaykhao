@@ -81,7 +81,7 @@ class ChatSupplyService
         $who = $this->whoLabel($request->fresh(['user']), $passenger['name'] ?? null);
         foreach ($this->staffIds($schedule) as $staffId) {
             // ไม่ใส่ tag — แต่ละคำขอคือคนละคน ห้ามทับกันในถาดจนสตาฟมองข้าม
-            $this->send($staffId, "{$meta['emoji']} {$who} ขอ{$meta['label']}", $request->note ?: 'เปิดแชทเพื่อดูคิวคำขอ', $schedule);
+            $this->send($staffId, "{$meta['emoji']} {$who} ขอ{$meta['label']}", $request->note ?: 'เปิดแชทเพื่อดูคิวคำขอ', $schedule, staffAlert: true);
         }
 
         return $request;
@@ -253,7 +253,8 @@ class ChatSupplyService
         return $schedule->activeStaff()->pluck('users.id')->map(fn ($id) => (int) $id)->values();
     }
 
-    private function send(int $userId, string $title, string $body, TripSchedule $schedule, ?string $tag = null): void
+    /** @param  bool  $staffAlert  ทีมงานต้องลุกมาจัดการ — สั่นยาว ทะลุโหมดนอน (ดู FcmService::sendToUser) */
+    private function send(int $userId, string $title, string $body, TripSchedule $schedule, ?string $tag = null, bool $staffAlert = false): void
     {
         try {
             $this->fcm->sendToUser($userId, $title, $body, [
@@ -263,6 +264,7 @@ class ChatSupplyService
             ], array_filter([
                 'tag' => $tag,
                 'android_channel' => SendChatPushJob::ANDROID_CHANNEL,
+                'staff_alert' => $staffAlert,
             ]));
         } catch (\Throwable $e) {
             Log::warning('ChatSupplyService: ส่ง push ไม่สำเร็จ', ['user_id' => $userId, 'error' => $e->getMessage()]);

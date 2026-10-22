@@ -630,7 +630,7 @@ class ChatRestStopService
                 : "🚐 ถึงเวลาออกรถ ยังขาด {$names->count()} คน";
 
             foreach ($this->staffIds($schedule) as $staffId) {
-                $this->send($staffId, [$title, $list], $data);
+                $this->send($staffId, [$title, $list], $data, staffAlert: true);
             }
         }
     }
@@ -781,7 +781,7 @@ class ChatRestStopService
                     'type' => 'stop_request',
                     'route' => 'chat',
                     'schedule_id' => (string) $schedule->id,
-                ], tag: $isToilet ? "stop-request-{$schedule->id}" : "comfort-{$kind}-{$schedule->id}");
+                ], tag: $isToilet ? "stop-request-{$schedule->id}" : "comfort-{$kind}-{$schedule->id}", staffAlert: true);
             }
         }
 
@@ -1024,7 +1024,7 @@ class ChatRestStopService
         $body = $lines->take(6)->join(' · ').($lines->count() > 6 ? ' และอีก '.($lines->count() - 6).' ห้อง' : '');
 
         foreach ($this->staffIds($schedule) as $staffId) {
-            $this->send($staffId, ["⏰ ยังไม่ตื่น {$missing->count()} คน", $body], $data, channel: 'important_updates');
+            $this->send($staffId, ["⏰ ยังไม่ตื่น {$missing->count()} คน", $body], $data, channel: 'important_updates', staffAlert: true);
         }
     }
 
@@ -1090,12 +1090,14 @@ class ChatRestStopService
      * @param  array{0: string, 1: string}  $text
      * @param  array<string, string>  $data
      */
-    private function send(int $userId, array $text, array $data, ?string $tag = null, string $channel = SendChatPushJob::ANDROID_CHANNEL): void
+    /** @param  bool  $staffAlert  ทีมงานต้องลุกมาจัดการ — สั่นยาว ทะลุโหมดนอน (ดู FcmService::sendToUser) */
+    private function send(int $userId, array $text, array $data, ?string $tag = null, string $channel = SendChatPushJob::ANDROID_CHANNEL, bool $staffAlert = false): void
     {
         try {
             $this->fcm->sendToUser($userId, $text[0], $text[1], $data, array_filter([
                 'tag' => $tag,
                 'android_channel' => $channel,
+                'staff_alert' => $staffAlert,
             ]));
         } catch (\Throwable $e) {
             Log::warning('ChatRestStopService: ส่ง push ไม่สำเร็จ', [

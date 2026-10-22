@@ -379,7 +379,7 @@ class ChatTrailService
         $body = $where.($note ? " · \"{$note}\"" : '').' — เปิดแชทเพื่อกดรับทราบ';
 
         foreach ($this->staffIds($check->schedule) as $staffId) {
-            $this->send($staffId, [$title, $body], $this->pushData($check, 'trail_help'), tag: "trail-help-{$check->id}", channel: 'important_updates');
+            $this->send($staffId, [$title, $body], $this->pushData($check, 'trail_help'), tag: "trail-help-{$check->id}", channel: 'important_updates', staffAlert: true);
         }
     }
 
@@ -439,12 +439,14 @@ class ChatTrailService
      * @param  array{0: string, 1: string}  $text
      * @param  array<string, string>  $data
      */
-    private function send(int $userId, array $text, array $data, ?string $tag = null, string $channel = SendChatPushJob::ANDROID_CHANNEL): void
+    /** @param  bool  $staffAlert  ทีมงานต้องลุกมาจัดการ — สั่นยาว ทะลุโหมดนอน (ดู FcmService::sendToUser) */
+    private function send(int $userId, array $text, array $data, ?string $tag = null, string $channel = SendChatPushJob::ANDROID_CHANNEL, bool $staffAlert = false): void
     {
         try {
             $this->fcm->sendToUser($userId, $text[0], $text[1], $data, array_filter([
                 'tag' => $tag,
                 'android_channel' => $channel,
+                'staff_alert' => $staffAlert,
             ]));
         } catch (\Throwable $e) {
             Log::warning('ChatTrailService: ส่ง push ไม่สำเร็จ', ['user_id' => $userId, 'error' => $e->getMessage()]);

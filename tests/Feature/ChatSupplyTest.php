@@ -26,15 +26,22 @@ class ChatSupplyTest extends TestCase
     /** @var array<int, array{0: int, 1: string, 2: string}> */
     private array $pushes = [];
 
+    /** @var array<int, int> ผู้รับที่ได้ใบแบบสั่นปลุกทีมงาน */
+    private array $alerted = [];
+
     protected function setUp(): void
     {
         parent::setUp();
         // สร้างบทบาทก่อนคำขอแรก — Spatie แคชรายชื่อบทบาทไว้ตั้งแต่ครั้งแรกที่เช็กสิทธิ์
         Role::findOrCreate('staff');
         $this->pushes = [];
+        $this->alerted = [];
         $this->mock(FcmService::class, function (MockInterface $m) {
-            $m->shouldReceive('sendToUser')->andReturnUsing(function ($userId, $title, $body) {
+            $m->shouldReceive('sendToUser')->andReturnUsing(function ($userId, $title, $body, $data = [], $display = []) {
                 $this->pushes[] = [(int) $userId, $title, $body];
+                if ($display['staff_alert'] ?? false) {
+                    $this->alerted[] = (int) $userId;
+                }
             });
         });
     }
@@ -122,6 +129,7 @@ class ChatSupplyTest extends TestCase
         $this->assertSame('มานี', $data['for_name']);
         $this->assertSame('pending', $data['status']);
         $this->assertSame([[$staff->id, '💊 C4 มานี ขอยาแก้เมารถ', 'เปิดแชทเพื่อดูคิวคำขอ']], $this->pushes);
+        $this->assertSame([$staff->id], $this->alerted, 'คำขอยาต้องสั่นปลุกสตาฟ');
 
         // ขอแทนคนนอกกลุ่มไม่ได้
         $this->actingAs($other, 'sanctum')
@@ -193,6 +201,7 @@ class ChatSupplyTest extends TestCase
 
         $toOwner = array_values(array_filter($this->pushes, fn ($p) => $p[0] === $owner->id));
         $this->assertSame([[$owner->id, '😔 ตอนนี้ทีมงานไม่มียาแก้ปวด / ลดไข้', 'หมดแล้ว แวะร้านยาจุดหน้า']], $toOwner);
+        $this->assertNotContains($owner->id, $this->alerted, 'ใบที่ตอบลูกทริปเป็นแจ้งเตือนปกติ');
 
         // ที่รอก่อน ตามด้วยที่จัดการแล้ว
         $queue = $this->actingAs($staff, 'sanctum')->getJson($this->url($schedule))->json('data');

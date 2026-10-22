@@ -25,6 +25,16 @@ class FcmService
     /** Requests in flight at once when pushing a batch — see [sendNotifications]. */
     public const POOL_SIZE = 20;
 
+    /**
+     * channel ของคำขอจากลูกทริปที่ต้องปลุกทีมงาน (ห้องน้ำ ขอยา ขาดคนตอนออกรถ …)
+     * สั่นยาวกว่าแจ้งเตือนปกติ — ต้องตรงกับ `PushNotificationService.staffAlertChannel`
+     * ฝั่งแอป ซึ่งเป็นคนกำหนดรูปแบบการสั่นจริง (Android 8+ เอาจาก channel)
+     */
+    public const STAFF_ALERT_CHANNEL = 'staff_alerts';
+
+    /** ใช้กับ Android รุ่นก่อน 8 ที่ยังไม่มี channel — รูปแบบเดียวกับฝั่งแอป */
+    private const STAFF_ALERT_VIBRATION = ['0s', '0.8s', '0.3s', '0.8s', '0.3s', '0.8s'];
+
     public function sendNotification(SmartNotification $notification): void
     {
         $tokens = FcmToken::where('user_id', $notification->user_id)
@@ -132,8 +142,10 @@ class FcmService
      * - quiet: ขึ้นในถาดเงียบ ๆ ไม่มีเสียง ไม่ปลุกหน้าจอ
      * - android_channel: channel ที่แอปสร้างไว้ (เครื่องที่ยังไม่มี channel นี้ Android
      *   จะใช้ channel เริ่มต้นใน manifest แทน)
+     * - staff_alert: ลูกทริปเรียกทีมงาน — สั่นยาวบน channel STAFF_ALERT_CHANNEL และ iOS
+     *   ส่งเป็น time-sensitive ให้ทะลุโหมดนอน/โฟกัส (ทับ quiet และ android_channel)
      *
-     * @param  array{tag?: string, thread?: string, quiet?: bool, android_channel?: string}  $display
+     * @param  array{tag?: string, thread?: string, quiet?: bool, android_channel?: string, staff_alert?: bool}  $display
      */
     public function sendToUser(int $userId, string $title, string $body, array $data = [], array $display = []): void
     {
@@ -277,14 +289,26 @@ class FcmService
         }
 
         $tag = isset($display['tag']) && $display['tag'] !== '' ? (string) $display['tag'] : null;
-        $quiet = (bool) ($display['quiet'] ?? false);
+        $staffAlert = (bool) ($display['staff_alert'] ?? false);
+        $quiet = ! $staffAlert && (bool) ($display['quiet'] ?? false);
+        if ($staffAlert) {
+            // แอปที่เปิดอยู่อ่านค่านี้เพื่อสั่นเอง — ตอนอยู่หน้าจอ ระบบไม่สั่นให้ทุกกรณี
+            $data['staff_alert'] = '1';
+        }
 
         $androidNotification = [
-            'channel_id' => $display['android_channel'] ?? 'important_updates',
-            'notification_priority' => $quiet ? 'PRIORITY_LOW' : 'PRIORITY_HIGH',
+            'channel_id' => $staffAlert ? self::STAFF_ALERT_CHANNEL : ($display['android_channel'] ?? 'important_updates'),
+            'notification_priority' => match (true) {
+                $staffAlert => 'PRIORITY_MAX',
+                $quiet => 'PRIORITY_LOW',
+                default => 'PRIORITY_HIGH',
+            },
             'visibility' => 'PUBLIC',
         ];
-        if (! $quiet) {
+        if ($staffAlert) {
+            $androidNotification['sound'] = 'default';
+            $androidNotification['vibrate_timings'] = self::STAFF_ALERT_VIBRATION;
+        } elseif (! $quiet) {
             // Android 8+ เอาเสียง/การสั่นจาก channel อยู่แล้ว สองค่านี้มีผลแค่
             // เครื่องรุ่นเก่า — ใบเงียบจึงไม่ใส่
             $androidNotification['sound'] = 'default';
@@ -303,7 +327,12 @@ class FcmService
             'badge' => 1,
             'content-available' => 1,
             // passive = เข้าศูนย์แจ้งเตือนเงียบ ๆ ไม่ปลุกหน้าจอ ไม่มีเสียง
-            'interruption-level' => $quiet ? 'passive' : 'active',
+            // time-sensitive = ทะลุโหมดนอน/โฟกัส (entitlement มีอยู่แล้วจาก SOS)
+            'interruption-level' => match (true) {
+                $staffAlert => 'time-sensitive',
+                $quiet => 'passive',
+                default => 'active',
+            },
         ];
         if (! $quiet) {
             $aps['sound'] = 'default';

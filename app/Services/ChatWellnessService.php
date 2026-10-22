@@ -131,7 +131,7 @@ class ChatWellnessService
             $body = ($note ? "\"{$note}\" — " : '').'เปิดแชทดูรายละเอียดแล้วกด "ไปดูแลแล้ว"';
 
             foreach ($this->staffIds($check->schedule) as $staffId) {
-                $this->send($staffId, [$title, $body], $this->pushData($check, 'wellness_unwell'), channel: 'important_updates');
+                $this->send($staffId, [$title, $body], $this->pushData($check, 'wellness_unwell'), channel: 'important_updates', staffAlert: true);
             }
         }
 
@@ -340,10 +340,14 @@ class ChatWellnessService
      * @param  array{0: string, 1: string}  $text
      * @param  array<string, string>  $data
      */
-    private function send(int $userId, array $text, array $data, string $channel = SendChatPushJob::ANDROID_CHANNEL): void
+    /** @param  bool  $staffAlert  ทีมงานต้องลุกมาจัดการ — สั่นยาว ทะลุโหมดนอน (ดู FcmService::sendToUser) */
+    private function send(int $userId, array $text, array $data, string $channel = SendChatPushJob::ANDROID_CHANNEL, bool $staffAlert = false): void
     {
         try {
-            $this->fcm->sendToUser($userId, $text[0], $text[1], $data, ['android_channel' => $channel]);
+            $this->fcm->sendToUser($userId, $text[0], $text[1], $data, array_filter([
+                'android_channel' => $channel,
+                'staff_alert' => $staffAlert,
+            ]));
         } catch (\Throwable $e) {
             Log::warning('ChatWellnessService: ส่ง push ไม่สำเร็จ', ['user_id' => $userId, 'error' => $e->getMessage()]);
         }
