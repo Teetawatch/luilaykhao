@@ -5,7 +5,9 @@ namespace App\Models;
 use App\Support\Countries;
 use App\Support\MedalDesign;
 use App\Support\TripDocumentRequirements;
+use App\Support\TripMealPlan;
 use App\Support\TripRentalItems;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -35,7 +37,7 @@ class Trip extends Model
         'price_per_person', 'departure_point', 'latitude', 'longitude',
         'status', 'cover_image', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
         'highlights', 'is_women_only', 'must_know', 'itinerary', 'preparations', 'faqs', 'rental_items',
-        'document_requirements', 'checkin_bring',
+        'document_requirements', 'checkin_bring', 'meal_plan',
         'route_track',
     ];
 
@@ -64,6 +66,7 @@ class Trip extends Model
             'faqs' => 'array',
             'rental_items' => 'array',
             'document_requirements' => 'array',
+            'meal_plan' => 'array',
         ];
     }
 
@@ -75,6 +78,23 @@ class Trip extends Model
     public function documentRequirements(): array
     {
         return TripDocumentRequirements::normalize($this->document_requirements);
+    }
+
+    /**
+     * มื้ออาหารที่ลูกค้าเห็น — null เมื่อแอดมินยังไม่ได้ระบุ ใส่วันออกเดินทางของ
+     * รอบมาด้วยเมื่อรู้แล้ว แต่ละวันจะได้วันที่จริงติดไป
+     *
+     * @return array<string, mixed>|null
+     */
+    public function meals(?CarbonInterface $startDate = null): ?array
+    {
+        return TripMealPlan::present($this->meal_plan, $this->duration_days, $startDate);
+    }
+
+    /** มื้ออาหารเป็นข้อความหลายบรรทัด (แชท/อีเมล/ผู้ช่วย) — null เมื่อยังไม่ได้ระบุ */
+    public function mealsText(?CarbonInterface $startDate = null): ?string
+    {
+        return TripMealPlan::text($this->meal_plan, $this->duration_days, $startDate);
     }
 
     /**

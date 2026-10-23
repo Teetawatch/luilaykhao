@@ -7,6 +7,7 @@ use App\Models\TripSchedule;
 use App\Support\Countries;
 use App\Support\MedalDesign;
 use App\Support\TripDocumentRequirements;
+use App\Support\TripMealPlan;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -125,6 +126,10 @@ class TripResource extends JsonResource
                 ? TripDocumentRequirements::borderPass()
                 : [],
             'checkin_bring' => $this->checkinBringNote(),
+            // มื้ออาหาร: `meal_plan` คือค่าที่แอดมินแก้ (ฟอร์มแก้ทริปอ่านกลับ) ส่วน `meals`
+            // คือฉบับที่นับและเรียงคำให้แล้ว ทุกหน้าจอลูกค้าวาดตัวนี้ — null ทั้งคู่ = ยังไม่ระบุ
+            'meal_plan' => TripMealPlan::normalize($this->meal_plan, $this->duration_days),
+            'meals' => $this->resource->meals(),
             'rating' => $this->reviews()->where('is_approved', true)->avg('rating') ?: 0,
             'review_count' => $this->reviews()->where('is_approved', true)->count(),
             'rating_breakdown' => $this->ratingBreakdown(),

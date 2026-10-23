@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Models\Trip;
 use App\Rules\KnownCountry;
 use App\Support\MedalDesign;
+use App\Support\TripMealPlan;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -104,6 +105,16 @@ class StoreTripRequest extends FormRequest
             'document_requirements.*.required' => ['nullable', 'boolean'],
             // สิ่งที่ต้องพกวันเดินทาง — เว้นว่างแปลว่าไม่ต้องพกอะไร ไม่ใช่ยังไม่ได้ตั้ง
             'checkin_bring' => ['nullable', 'string', 'max:255'],
+            // มื้ออาหารรายวัน — null = ยังไม่ระบุ (หน้าทริปไม่โชว์) ดู TripMealPlan
+            'meal_plan' => ['nullable', 'array'],
+            'meal_plan.days' => ['required_with:meal_plan', 'array', 'min:1', 'max:'.TripMealPlan::MAX_DAYS],
+            'meal_plan.days.*' => ['array'],
+            ...collect(array_keys(TripMealPlan::MEALS))->flatMap(fn (string $meal) => [
+                "meal_plan.days.*.{$meal}" => ['nullable', 'array'],
+                "meal_plan.days.*.{$meal}.status" => ['nullable', Rule::in(TripMealPlan::STATUSES)],
+                "meal_plan.days.*.{$meal}.note" => ['nullable', 'string', 'max:'.TripMealPlan::NOTE_MAX],
+            ])->all(),
+            'meal_plan.note' => ['nullable', 'string', 'max:'.TripMealPlan::GENERAL_NOTE_MAX],
         ];
     }
 }

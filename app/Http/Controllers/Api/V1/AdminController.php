@@ -63,6 +63,7 @@ use App\Support\PaymentQuote;
 use App\Support\Polyline;
 use App\Support\ThaiDate;
 use App\Support\TripDocumentRequirements;
+use App\Support\TripMealPlan;
 use App\Support\TripRentalItems;
 use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
@@ -281,7 +282,7 @@ class AdminController extends Controller
     public function updateTrip(StoreTripRequest $request, int $id): JsonResponse
     {
         $trip = Trip::findOrFail($id);
-        $trip->update($this->withNormalizedDocuments($request->validated()));
+        $trip->update($this->withNormalizedDocuments($request->validated(), $trip));
 
         return $this->success(new TripResource($trip->fresh()), 'อัปเดตทริปสำเร็จ');
     }
@@ -292,7 +293,7 @@ class AdminController extends Controller
      * key เป็นตัวผูกไฟล์ที่ลูกค้าส่งมาแล้วกับข้อกำหนด ถ้าปล่อยให้คำนวณจากชื่อ
      * ตอนอ่าน วันที่แอดมินแก้ชื่อเอกสารคือวันที่ไฟล์เก่าทั้งกองหลุดจากช่องของมัน
      */
-    private function withNormalizedDocuments(array $data): array
+    private function withNormalizedDocuments(array $data, ?Trip $trip = null): array
     {
         if (array_key_exists('document_requirements', $data)) {
             $data['document_requirements'] = TripDocumentRequirements::normalize($data['document_requirements']);
@@ -304,7 +305,30 @@ class AdminController extends Controller
             $data['rental_items'] = TripRentalItems::normalize($data['rental_items']);
         }
 
+        // ตารางมื้ออาหารต้องยาวไม่เกินจำนวนวันของทริป — วันที่เกินมาจะกลายเป็น
+        // "วันที่ 4" บนหน้าทริป 3 วัน
+        if (array_key_exists('meal_plan', $data)) {
+            $data['meal_plan'] = TripMealPlan::normalize(
+                $data['meal_plan'],
+                isset($data['duration_days']) ? (int) $data['duration_days'] : $trip?->duration_days,
+            );
+        }
+
         return $data;
+    }
+
+    /**
+     * เดาตารางมื้ออาหารจากกำหนดการที่อยู่ในฟอร์ม (ยังไม่ได้บันทึกก็เดาได้)
+     * ผลนี้แค่เติมฟอร์มให้แอดมินตรวจ — ไม่ได้บันทึกอะไร
+     */
+    public function guessTripMealPlan(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'itinerary' => ['nullable', 'array'],
+            'duration_days' => ['required', 'integer', 'min:1', 'max:'.TripMealPlan::MAX_DAYS],
+        ]);
+
+        return $this->success(TripMealPlan::guess($data['itinerary'] ?? [], (int) $data['duration_days']));
     }
 
     public function bulkUpdateTripField(Request $request): JsonResponse
@@ -312,14 +336,20 @@ class AdminController extends Controller
         $request->validate([
             'trip_ids' => ['required', 'array'],
             'trip_ids.*' => ['exists:trips,id'],
-            'field' => ['required', 'string', 'in:highlights,itinerary,preparations,inclusions,exclusions,must_know'],
-            'value' => ['required'],
+            'field' => ['required', 'string', 'in:highlights,itinerary,preparations,inclusions,exclusions,must_know,meal_plan'],
+            // ตารางมื้ออาหารที่ปิดไว้ (null) ก็คัดลอกไปปิดทริปอื่นได้
+            'value' => [$request->input('field') === 'meal_plan' ? 'present' : 'required'],
         ]);
 
         $trips = Trip::whereIn('id', $request->trip_ids)->get();
         foreach ($trips as $trip) {
+            // ทริปปลายทางมีจำนวนวันของตัวเอง — ตัดตารางให้พอดีทีละทริป
+            $value = $request->field === 'meal_plan'
+                ? TripMealPlan::normalize($request->value, $trip->duration_days)
+                : $request->value;
+
             $trip->update([
-                $request->field => $request->value,
+                $request->field => $value,
             ]);
         }
 

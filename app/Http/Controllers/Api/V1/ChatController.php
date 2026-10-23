@@ -749,7 +749,7 @@ class ChatController extends Controller
     public function room(Request $request, int $scheduleId): JsonResponse
     {
         $schedule = TripSchedule::with([
-            'trip:id,title,latitude,longitude',
+            'trip:id,title,latitude,longitude,duration_days,meal_plan',
             'vehicle.driver',
             'pickupPoints' => fn ($q) => $q->orderBy('sort_order'),
         ])->findOrFail($scheduleId);
@@ -795,6 +795,8 @@ class ChatController extends Controller
             'weather' => $schedule->weather_forecast ?? null,
             // กำหนดการระดับทริปก็นับ — ปุ่มลัดจะได้ไม่หายไปทั้งที่มีแผนให้ดู
             'has_itinerary' => $this->itineraryService->hasItinerary($schedule),
+            // ทริประบุมื้ออาหารแล้ว — แอปขึ้นชิป "อาหารกี่มื้อ" (ยังไม่ระบุ = ไม่มีอะไรให้ตอบ)
+            'has_meals' => $schedule->trip?->meals() !== null,
             // ช่วงวันเดินทาง (การ์ดหน้าจอล็อกเปิดอยู่) — แอปขึ้นชิป "รถถึงไหนแล้ว"
             'trip_live' => ! $schedule->isFlight() && app(TripActivityService::class)->isWithinWindow($schedule),
             'pickup_points' => $schedule->pickupPoints->map(fn ($p) => [

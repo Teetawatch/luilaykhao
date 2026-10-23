@@ -37,6 +37,9 @@ class ChatAutoAnswerService
 
     public const KIND_FACTS = 'facts';
 
+    /** มื้ออาหาร — ตอบจากตารางที่แอดมินระบุบนทริปเท่านั้น */
+    public const KIND_MEALS = 'meals';
+
     /** @var array<string, array<int, string>> */
     private const STRONG = [
         'itinerary' => [
@@ -59,6 +62,13 @@ class ChatAutoAnswerService
             'เบอร์โทร', 'เบอร์ติดต่อ', 'เบอร์คนขับ', 'เบอร์สตาฟ', 'ติดต่อใคร',
             'โทรหาใคร', 'โทรเบอร์ไหน',
         ],
+        // ทุกคำในกลุ่มนี้เป็นรูปคำถามอยู่แล้ว — "ค่าอาหาร" ลอย ๆ ไม่อยู่ที่นี่เพราะ
+        // "โอนค่าอาหารแล้วครับ" ไม่ใช่คำถาม
+        'meals' => [
+            'กี่มื้อ', 'มีอาหารไหม', 'มีอาหารมั้ย', 'มีอาหารด้วยไหม', 'มีอาหารด้วยมั้ย',
+            'รวมอาหารไหม', 'รวมอาหารมั้ย', 'รวมค่าอาหารไหม', 'รวมค่าอาหารมั้ย',
+            'อาหารรวมไหม', 'อาหารรวมมั้ย', 'เลี้ยงอาหารไหม', 'มีข้าวกินไหม', 'มีข้าวกินมั้ย',
+        ],
     ];
 
     /** @var array<string, array<int, string>> */
@@ -70,6 +80,21 @@ class ChatAutoAnswerService
         'time' => ['กี่โมง'],
         'vehicle' => ['ทะเบียน'],
         'contact' => ['เบอร์'],
+        'meals' => [
+            'มื้ออาหาร', 'มื้อเช้า', 'มื้อกลางวัน', 'มื้อเที่ยง', 'มื้อเย็น', 'มื้อค่ำ',
+            'อาหารเช้า', 'อาหารกลางวัน', 'อาหารเที่ยง', 'อาหารเย็น', 'อาหารค่ำ',
+            'ข้าวเช้า', 'ข้าวเที่ยง', 'ข้าวเย็น', 'รวมอาหาร', 'ค่าอาหาร',
+        ],
+    ];
+
+    /**
+     * ข้อความที่มีคำเหล่านี้ไม่ใช่คำถามเรื่องมื้ออาหารของทริป แม้จะมีคำข้างบน —
+     * "สั่งอาหารเย็นยังไง" คือรอบสั่งอาหารในห้อง "แพ้อาหารต้องแจ้งไหม" คือเรื่องแพ้อาหาร
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const AVOID = [
+        'meals' => ['สั่ง', 'แพ้'],
     ];
 
     /** @var array<int, string> */
@@ -80,7 +105,7 @@ class ChatAutoAnswerService
     ];
 
     /** @var array<int, string> */
-    private const ORDER = ['itinerary', 'place', 'time', 'vehicle', 'contact'];
+    private const ORDER = ['itinerary', 'meals', 'place', 'time', 'vehicle', 'contact'];
 
     public function __construct(
         private TripFactsService $facts,
@@ -104,7 +129,7 @@ class ChatAutoAnswerService
         }
 
         foreach (self::ORDER as $topic) {
-            if ($this->containsAny($text, self::STRONG[$topic] ?? [])) {
+            if ($this->containsAny($text, self::STRONG[$topic] ?? []) && ! $this->avoided($text, $topic)) {
                 return $topic;
             }
         }
@@ -114,7 +139,7 @@ class ChatAutoAnswerService
         }
 
         foreach (self::ORDER as $topic) {
-            if ($this->containsAny($text, self::WEAK[$topic] ?? [])) {
+            if ($this->containsAny($text, self::WEAK[$topic] ?? []) && ! $this->avoided($text, $topic)) {
                 return $topic;
             }
         }
@@ -139,6 +164,14 @@ class ChatAutoAnswerService
             return $body === null
                 ? null
                 : ['kind' => self::KIND_ITINERARY, 'body' => $body];
+        }
+
+        if ($topic === 'meals') {
+            $body = $this->facts->mealsSummaryText($schedule);
+
+            return $body === null
+                ? null
+                : ['kind' => self::KIND_MEALS, 'body' => $body];
         }
 
         if (! $this->hasRealAnswerFor($schedule, $topic)) {
@@ -235,6 +268,11 @@ class ChatAutoAnswerService
     private function normalize(string $text): string
     {
         return (string) preg_replace('/\s+/u', '', mb_strtolower(trim($text)));
+    }
+
+    private function avoided(string $text, string $topic): bool
+    {
+        return $this->containsAny($text, self::AVOID[$topic] ?? []);
     }
 
     private function looksLikeQuestion(string $text): bool

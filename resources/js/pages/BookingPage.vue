@@ -48,6 +48,13 @@
                 จอยทริป (ไปเจอกันที่จุดนัดพบ)
               </span>
             </template>
+            <template v-if="schedule.trip?.meals">
+              <span class="text-gray-200">·</span>
+              <span class="flex items-center gap-1.5">
+                <span class="material-symbols-rounded text-gray-400 text-[18px]">restaurant</span>
+                {{ schedule.trip.meals.summary }}
+              </span>
+            </template>
             <template v-if="schedule.trip?.is_women_only">
               <span class="text-gray-200">·</span>
               <span class="flex items-center gap-1.5 text-pink-700">
@@ -1240,6 +1247,11 @@
                     <div class="flex justify-between items-center py-3 border-b border-gray-50">
                       <span class="text-gray-500 text-sm font-medium">วันเดินทาง</span>
                       <span class="text-gray-900 text-sm font-bold">{{ formatDate(schedule.departure_date) }}</span>
+                    </div>
+                    <!-- กันลูกค้าเข้าใจผิดว่าค่าอาหารรวมหมด ทั้งที่บางมื้อต้องจ่ายเอง -->
+                    <div v-if="schedule.trip?.meals" class="flex justify-between items-start gap-4 py-3 border-b border-gray-50">
+                      <span class="text-gray-500 text-sm font-medium shrink-0">อาหาร</span>
+                      <span class="text-gray-900 text-sm font-bold text-right">{{ schedule.trip.meals.summary }}</span>
                     </div>
                     <div v-if="selectedPickup" class="flex justify-between items-start py-3 border-b border-gray-50">
                       <span class="text-gray-500 text-sm font-medium">จุดขึ้นรถ</span>

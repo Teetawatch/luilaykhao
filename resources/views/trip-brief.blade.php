@@ -623,6 +623,31 @@
         </div>
     @endif
 
+    {{-- ── มื้ออาหาร ───────────────────────────────────────────── --}}
+    @if(! empty($b['trip']['meals']))
+        @php $meals = $b['trip']['meals']; @endphp
+        <div class="card">
+            <div class="sec">
+                <div class="sec-label">มื้ออาหาร</div>
+                <div class="big">{{ $meals['summary'] }}</div>
+                @foreach($meals['days'] as $day)
+                    <div class="item">
+                        <div class="c">
+                            <b>{{ $day['label'] }}@if($day['date_label'] && count($meals['days']) > 1) · {{ $day['date_label'] }}@endif</b>
+                            <span>{{ $day['line'] }}</span>
+                        </div>
+                    </div>
+                @endforeach
+                @if($meals['self_count'] > 0)
+                    <div class="note">เตรียมเงินสำหรับมื้อที่จ่ายเองไว้ด้วยนะครับ ({{ $meals['self_count'] }} มื้อ)</div>
+                @endif
+                @if($meals['note'])
+                    <div class="note">{{ $meals['note'] }}</div>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- ── เตรียมตัว ───────────────────────────────────────────── --}}
     @if($b['trip']['bring'] || ! empty($b['trip']['preparations']) || ! empty($b['trip']['must_know']))
         <div class="card">

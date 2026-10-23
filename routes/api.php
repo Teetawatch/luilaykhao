@@ -839,6 +839,7 @@ Route::prefix('v1')->group(function () {
         Route::post('trips', [AdminController::class, 'storeTrip']);
         Route::put('trips/{id}', [AdminController::class, 'updateTrip']);
         Route::patch('trips/bulk-update-field', [AdminController::class, 'bulkUpdateTripField']);
+        Route::post('trips/meal-plan/guess', [AdminController::class, 'guessTripMealPlan']);
         Route::delete('trips/{id}', [AdminController::class, 'deleteTrip']);
         // เส้นทางเดิน (GPX) → โปรไฟล์ความชันบนหน้าทริป
         Route::post('trips/{id}/route-track', [AdminController::class, 'uploadTripRouteTrack']);

@@ -189,6 +189,8 @@ class TripBriefService
                 'bring' => $trip?->checkinBringNote(),
                 'preparations' => array_values(array_filter((array) ($trip?->preparations ?? []))),
                 'must_know' => array_values(array_filter((array) ($trip?->must_know ?? []))),
+                // มื้ออาหารพร้อมวันที่จริงของรอบ — null = ทริปยังไม่ได้ระบุ (ไม่วาดการ์ด)
+                'meals' => $trip?->meals($schedule?->departure_date),
             ],
             'when' => $this->whenBlock($schedule),
             'pickup' => $this->pickupBlock($booking, $schedule),
@@ -248,7 +250,7 @@ class TripBriefService
     {
         $payload = $this->payload($booking);
 
-        return sha1(json_encode([
+        $parts = [
             Arr::except($payload['when'], self::CLOCK_DRIVEN_FIELDS),
             $payload['pickup'],
             $payload['meetup'],
@@ -256,7 +258,15 @@ class TripBriefService
             $payload['crew'],
             $payload['itinerary'],
             $payload['announcements'],
-        ], JSON_UNESCAPED_UNICODE));
+        ];
+
+        // ต่อท้ายเฉพาะทริปที่ระบุมื้ออาหารแล้ว — ใส่ null ลงไปเฉย ๆ จะเปลี่ยนลายนิ้วมือ
+        // ของทุกใบที่ส่งไปแล้ว แล้วทุกคนจะได้ "อัปเดตใบเดินทาง" ทั้งที่ไม่มีอะไรเปลี่ยน
+        if ($payload['trip']['meals'] !== null) {
+            $parts[] = $payload['trip']['meals'];
+        }
+
+        return sha1(json_encode($parts, JSON_UNESCAPED_UNICODE));
     }
 
     /**

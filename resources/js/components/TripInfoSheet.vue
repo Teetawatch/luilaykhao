@@ -1,5 +1,5 @@
 <!--
-  ข้อมูลทริปในห้องแชทบนเว็บ — กำหนดการ / จุดรับ / รถและทีมงาน
+  ข้อมูลทริปในห้องแชทบนเว็บ — กำหนดการ / จุดรับ / อาหาร / รถและทีมงาน
 
   แอปมีชีตคำถามด่วนนี้มาตั้งแต่แรก เว็บไม่มี ทั้งที่ข้อความกำหนดการที่ระบบส่ง
   เข้าห้องบอกให้ "กดปุ่มกำหนดการเหนือช่องพิมพ์" — สำหรับคนที่เปิดจากเว็บมันคือ
@@ -18,7 +18,7 @@
             v-for="t in tabs"
             :key="t.key"
             @click="active = t.key"
-            class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[12px] text-[13px] font-bold transition-all"
+            class="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-1.5 py-2 rounded-[12px] text-[13px] font-bold whitespace-nowrap transition-all"
             :class="active === t.key ? 'bg-[#006565] text-white' : 'bg-[#F4F7F6] text-[#505E5E] hover:bg-[#E8EEEF]'"
             style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
           >
@@ -113,6 +113,40 @@
           </template>
         </template>
 
+        <!-- ── อาหาร (คำและตัวเลขมาจาก TripMealPlan ฝั่งเซิร์ฟเวอร์) ───────── -->
+        <template v-else-if="active === 'meals'">
+          <p v-if="!info.meals" class="text-sm text-[#505E5E] text-center py-10">{{ pendingCopy('meals') }}</p>
+
+          <template v-else>
+            <div class="p-4 rounded-[16px] border border-[#006565]/25 bg-[#006565]/[0.04] mb-4">
+              <p class="text-[15px] font-bold text-[#1a1c1c] leading-snug">{{ info.meals.summary }}</p>
+              <p v-if="info.meals.self_count > 0" class="text-[12.5px] text-[#505E5E] mt-1">
+                มื้อที่จ่ายเองมีแวะให้ แต่ค่าอาหารไม่รวมในราคาทริป
+              </p>
+            </div>
+
+            <div v-for="day in info.meals.days" :key="day.day" class="mb-4">
+              <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-1.5">
+                {{ day.label }}<span v-if="day.date_label && info.meals.days.length > 1" class="font-medium text-[#889696]"> · {{ day.date_label }}</span>
+              </h3>
+              <div class="rounded-[14px] bg-[#F4F7F6] divide-y divide-[#E8EEEF]">
+                <div v-for="meal in day.meals" :key="meal.key" class="flex items-start gap-3 px-3.5 py-2.5">
+                  <span class="shrink-0 w-[52px] text-[12.5px] font-bold text-[#505E5E]">{{ meal.label }}</span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[13.5px] font-bold" :class="mealTone(meal.status)">{{ meal.status_label }}</p>
+                    <p v-if="meal.note" class="text-[12.5px] text-[#505E5E] mt-0.5 break-words">{{ meal.note }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="info.meals.note" class="flex gap-2.5 p-3.5 rounded-[14px] bg-[#F4F7F6]">
+              <span class="material-symbols-rounded ti-icon ti-icon-note text-[#889696] shrink-0">info</span>
+              <p class="text-[13px] leading-relaxed text-[#505E5E]">{{ info.meals.note }}</p>
+            </div>
+          </template>
+        </template>
+
         <!-- ── รถและทีมงาน ─────────────────────────────────────────────── -->
         <template v-else>
           <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-2">รถ</h3>
@@ -164,6 +198,7 @@ defineEmits(['close']);
 const tabs = [
   { key: 'itinerary', label: 'กำหนดการ', icon: 'route' },
   { key: 'pickup', label: 'จุดรับ', icon: 'pin_drop' },
+  { key: 'meals', label: 'อาหาร', icon: 'restaurant' },
   { key: 'crew', label: 'รถและทีมงาน', icon: 'directions_bus' },
 ];
 
@@ -179,6 +214,13 @@ watch(() => props.initialTab, (v) => { active.value = v; });
 /** ข้อความ "ยังไม่รู้" มาจาก backend เพื่อให้เว็บกับแอปพูดเหมือนกันเสมอ */
 function pendingCopy(key) {
   return info.value?.pending?.[key] || 'ทีมงานจะยืนยันให้อีกครั้งก่อนเดินทางครับ';
+}
+
+/** สีของสถานะมื้อ — เขียว = รวมให้แล้ว, เหลือง = ต้องจ่ายเอง, เทา = ไม่มี */
+function mealTone(status) {
+  if (status === 'included') return 'text-[#006565]';
+  if (status === 'self') return 'text-[#B45309]';
+  return 'text-[#889696]';
 }
 
 /** จุดรับอื่นที่ไม่ใช่ของเรา — ช่วยให้เห็นภาพว่ารถวิ่งรับใครที่ไหนบ้าง */
@@ -247,4 +289,8 @@ onMounted(load);
 .material-symbols-rounded.ti-icon-close { font-size: 18px; }
 .material-symbols-rounded.ti-icon-note { font-size: 18px; }
 .material-symbols-rounded.ti-icon-map { font-size: 16px; }
+/* สี่แท็บบนจอแคบ — ตัดไอคอนออกให้ชื่อแท็บไม่ล้น */
+@media (max-width: 420px) {
+  .material-symbols-rounded.ti-icon-tab { display: none; }
+}
 </style>

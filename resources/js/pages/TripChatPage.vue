@@ -284,6 +284,7 @@ const lightboxUrl = ref(null);
 const infoShortcuts = [
   { key: 'itinerary', label: 'กำหนดการ', icon: 'route' },
   { key: 'pickup', label: 'จุดรับ', icon: 'pin_drop' },
+  { key: 'meals', label: 'อาหาร', icon: 'restaurant' },
   { key: 'crew', label: 'รถและทีมงาน', icon: 'directions_bus' },
 ];
 const infoTab = ref(null);

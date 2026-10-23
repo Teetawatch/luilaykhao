@@ -350,6 +350,95 @@
           </div>
         </div>
 
+        <!-- มื้ออาหาร — ตอบ "กี่มื้อ มื้อไหน จ่ายเองไหม" (ดู App\Support\TripMealPlan) -->
+        <div class="card section-card" data-section="meal-plan">
+          <div class="section-header-flex">
+            <h3 class="section-title text-[var(--color-primary)]">
+              <span class="material-symbols-rounded">restaurant</span> มื้ออาหาร
+            </h3>
+            <div class="section-actions-mini">
+              <button type="button" @click="openCopyModal('meal_plan')" title="คัดลอกไปยังทริปอื่น">
+                <span class="material-symbols-rounded">move_to_inbox</span>
+              </button>
+              <button type="button" @click="copySection('meal_plan')" title="คัดลอกส่วนนี้">
+                <span class="material-symbols-rounded">content_copy</span>
+              </button>
+              <button type="button" @click="pasteSection('meal_plan')" title="วางข้อมูล">
+                <span class="material-symbols-rounded">content_paste</span>
+              </button>
+            </div>
+          </div>
+          <p class="text-sm text-gray-400 mb-5 font-medium">
+            ลูกค้าเห็นบนหน้าทริป หน้าสรุปก่อนจ่ายเงิน ใบเดินทาง และบอทในห้องแชทตอบให้เมื่อมีคนถาม "อาหารกี่มื้อ"
+          </p>
+
+          <label class="meal-toggle">
+            <input type="checkbox" :checked="!!form.meal_plan" @change="toggleMealPlan($event.target.checked)" />
+            <span>ระบุมื้ออาหารของทริปนี้</span>
+          </label>
+          <p v-if="!form.meal_plan" class="text-sm text-gray-500 mt-2">
+            ปิดไว้ = หน้าทริปไม่แสดงเรื่องอาหาร (ต่างจาก "ไม่รวมอาหาร" ซึ่งต้องเปิดแล้วเลือก "ไม่มี" ทุกมื้อ)
+          </p>
+
+          <template v-if="form.meal_plan">
+            <div class="meal-toolbar">
+              <div class="meal-preview">
+                <span class="meal-preview-label">ลูกค้าจะเห็น</span>
+                <span class="meal-preview-value">{{ mealSummary }}</span>
+              </div>
+              <button type="button" class="meal-guess-btn" :disabled="mealGuessing" @click="guessMealPlan">
+                <span class="material-symbols-rounded">auto_fix_high</span>
+                {{ mealGuessing ? 'กำลังอ่านกำหนดการ…' : 'เติมจากกำหนดการ' }}
+              </button>
+            </div>
+
+            <p v-if="mealInclusionMismatch" class="meal-warning">
+              <span class="material-symbols-rounded">warning</span>
+              <span>{{ mealInclusionMismatch }}</span>
+            </p>
+
+            <div class="meal-days">
+              <div v-for="(day, dIdx) in visibleMealDays" :key="dIdx" class="meal-day">
+                <div class="meal-day-head">วันที่ {{ dIdx + 1 }}</div>
+                <div class="meal-day-cells">
+                  <div v-for="meal in mealKinds" :key="meal.key" class="meal-cell">
+                    <div class="meal-cell-label">{{ meal.label }}</div>
+                    <div class="meal-status" role="radiogroup" :aria-label="`วันที่ ${dIdx + 1} มื้อ${meal.label}`">
+                      <button
+                        v-for="opt in mealStatusOptions"
+                        :key="opt.value"
+                        type="button"
+                        role="radio"
+                        :aria-checked="day[meal.key].status === opt.value"
+                        class="meal-status-btn"
+                        :class="[`meal-status-btn--${opt.value}`, { 'is-active': day[meal.key].status === opt.value }]"
+                        :title="opt.label"
+                        @click="day[meal.key].status = opt.value"
+                      >{{ opt.short }}</button>
+                    </div>
+                    <input
+                      v-if="day[meal.key].status !== 'none'"
+                      v-model="day[meal.key].note"
+                      maxlength="80"
+                      :placeholder="day[meal.key].status === 'self' ? 'เช่น แวะร้านริมทาง ~150 บาท' : 'เมนู/ร้าน เช่น หมูกระทะ'"
+                      class="meal-note"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <label class="block font-bold text-gray-700 mt-5 mb-2">หมายเหตุเรื่องอาหาร (ไม่บังคับ)</label>
+            <textarea
+              v-model="form.meal_plan.note"
+              rows="2"
+              maxlength="300"
+              placeholder="เช่น มีเมนูมังสวิรัติ/ฮาลาล แจ้งทีมงานล่วงหน้า · น้ำดื่มบริการตลอดทริป"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-[var(--color-accent)]/20 text-sm"
+            ></textarea>
+          </template>
+        </div>
+
         <!-- Must Know -->
         <div class="card section-card">
           <div class="section-header-flex">
@@ -1064,7 +1153,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue';
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAdminStore } from '../../stores/admin';
 import { useCategoriesStore } from '../../stores/categories';
@@ -1139,6 +1228,8 @@ const form = reactive({
   rental_items: [],
   document_requirements: [],
   checkin_bring: 'บัตรประชาชน',
+  // null = ยังไม่ระบุมื้ออาหาร (หน้าทริปไม่โชว์)
+  meal_plan: null,
   itinerary: [],
   preparations: [],
   faqs: [],
@@ -1236,6 +1327,133 @@ const compactStringArray = (value) => normalizeArray(value)
   .map((item) => String(item || '').trim())
   .filter(Boolean);
 
+// ── มื้ออาหาร ───────────────────────────────────────────────────────────────
+// ลำดับ/ชื่อมื้อและสถานะต้องตรงกับ App\Support\TripMealPlan
+const mealKinds = [
+  { key: 'breakfast', label: 'เช้า' },
+  { key: 'lunch', label: 'กลางวัน' },
+  { key: 'dinner', label: 'เย็น' },
+];
+// `short` อยู่บนปุ่ม (ช่องแคบ) — ลูกค้าเห็น `label` เต็ม
+const mealStatusOptions = [
+  { value: 'included', label: 'รวมในราคา', short: 'รวม' },
+  { value: 'self', label: 'จ่ายเอง', short: 'จ่ายเอง' },
+  { value: 'none', label: 'ไม่มี', short: 'ไม่มี' },
+];
+const MEAL_MAX_DAYS = 30;
+const mealGuessing = ref(false);
+
+const emptyMealDay = () => Object.fromEntries(
+  mealKinds.map((m) => [m.key, { status: 'none', note: '' }]),
+);
+
+const tripDayCount = () => Math.min(MEAL_MAX_DAYS, Math.max(1, Number(form.duration_days) || 1));
+
+// แปลงค่าจากเซิร์ฟเวอร์/คลิปบอร์ดเป็นสำเนาที่แก้ได้ — ไม่ผูกกับออบเจกต์เดิม
+const cloneMealPlan = (raw) => {
+  if (!raw || !Array.isArray(raw.days)) return null;
+  const allowed = mealStatusOptions.map((o) => o.value);
+  return {
+    days: raw.days.slice(0, MEAL_MAX_DAYS).map((day) => Object.fromEntries(
+      mealKinds.map((m) => {
+        const cell = day?.[m.key] || {};
+        return [m.key, {
+          status: allowed.includes(cell.status) ? cell.status : 'none',
+          note: String(cell.note || ''),
+        }];
+      }),
+    )),
+    note: String(raw.note || ''),
+  };
+};
+
+// จำนวนแถวตามจำนวนวันของทริป — วันที่เกินไว้ในฟอร์มก่อน (ลดวันแล้วเพิ่มกลับ
+// ข้อมูลไม่หาย) แต่ไม่วาดและไม่ส่ง
+watch(
+  () => [form.meal_plan, form.duration_days],
+  () => {
+    if (!form.meal_plan) return;
+    const count = tripDayCount();
+    while (form.meal_plan.days.length < count) form.meal_plan.days.push(emptyMealDay());
+  },
+  { immediate: true },
+);
+const visibleMealDays = computed(() => (form.meal_plan ? form.meal_plan.days.slice(0, tripDayCount()) : []));
+
+const toggleMealPlan = (on) => {
+  form.meal_plan = on ? { days: Array.from({ length: tripDayCount() }, emptyMealDay), note: '' } : null;
+};
+
+const mealCounts = computed(() => {
+  let included = 0;
+  let selfPay = 0;
+  for (const day of visibleMealDays.value) {
+    for (const m of mealKinds) {
+      if (day[m.key].status === 'included') included += 1;
+      if (day[m.key].status === 'self') selfPay += 1;
+    }
+  }
+  return { included, selfPay };
+});
+
+// ต้องตรงกับ TripMealPlan::summary()
+const mealSummary = computed(() => {
+  const { included, selfPay } = mealCounts.value;
+  const head = included > 0 ? `รวมอาหาร ${included} มื้อ` : 'ไม่รวมอาหาร';
+  return selfPay > 0 ? `${head} · จ่ายเอง ${selfPay} มื้อ` : head;
+});
+
+// "รวมในราคา" เขียนว่า "อาหาร 5 มื้อ" แต่ตารางนับได้ 4 — ลูกค้าจะเห็นสองตัวเลขขัดกัน
+const mealInclusionMismatch = computed(() => {
+  if (!form.meal_plan) return '';
+  for (const line of compactStringArray(form.inclusions)) {
+    const match = line.match(/อาหาร\s*(?:ครบ\s*)?(\d+)\s*มื้อ/u);
+    if (match && Number(match[1]) !== mealCounts.value.included) {
+      return `ช่อง "รวมในราคา" เขียนว่า "${line}" แต่ตารางนี้รวมในราคา ${mealCounts.value.included} มื้อ — แก้ให้ตรงกันก่อนบันทึก`;
+    }
+  }
+  return '';
+});
+
+const buildMealPlanPayload = () => {
+  if (!form.meal_plan) return null;
+  return {
+    // เติมวันที่ยังไม่มีแถวเป็น "ไม่มี" — กดบันทึกทันทีหลังวาง/เพิ่มวันก็ได้ตารางครบ
+    days: Array.from({ length: tripDayCount() }, (_, i) => form.meal_plan.days[i] || emptyMealDay()).map((day) => Object.fromEntries(
+      mealKinds.map((m) => [m.key, {
+        status: day[m.key].status,
+        note: day[m.key].status === 'none' ? '' : String(day[m.key].note || '').trim(),
+      }]),
+    )),
+    note: String(form.meal_plan.note || '').trim(),
+  };
+};
+
+const guessMealPlan = async () => {
+  const hasAny = visibleMealDays.value.some((day) => mealKinds.some((m) => day[m.key].status !== 'none'));
+  if (hasAny && !confirm('ตารางมื้ออาหารที่กรอกไว้จะถูกแทนด้วยค่าที่อ่านจากกำหนดการ ทำต่อไหม?')) return;
+
+  mealGuessing.value = true;
+  try {
+    const res = await api.post('/admin/trips/meal-plan/guess', {
+      itinerary: buildTripPayload().itinerary,
+      duration_days: tripDayCount(),
+    });
+    const { meal_plan: guessed, found } = res.data.data || {};
+    if (!found) {
+      alert('ไม่พบคำว่า "อาหารเช้า / กลางวัน / เย็น" ในกำหนดการ — กรอกตารางเองได้เลย');
+      return;
+    }
+    const note = form.meal_plan?.note || '';
+    form.meal_plan = { ...cloneMealPlan(guessed), note };
+    alert(`เติมให้ ${found} มื้อจากกำหนดการแล้ว — ตรวจทุกช่องก่อนบันทึก โดยเฉพาะมื้อที่ "จ่ายเอง"`);
+  } catch (e) {
+    alert(e.response?.data?.message || 'อ่านกำหนดการไม่สำเร็จ');
+  } finally {
+    mealGuessing.value = false;
+  }
+};
+
 const buildTripPayload = () => {
   const payload = {
     ...form,
@@ -1307,6 +1525,7 @@ const buildTripPayload = () => {
       }))
       .filter((doc) => doc.label),
     checkin_bring: String(form.checkin_bring || '').trim(),
+    meal_plan: buildMealPlanPayload(),
     medal_name: String(form.medal_name || '').trim(),
     medal_icon: String(form.medal_icon || '').trim(),
     medal_color: String(form.medal_color || '').trim(),
@@ -1960,7 +2179,7 @@ const submitForm = async () => {
 };
 
 const copySection = (field) => {
-  const data = form[field];
+  const data = field === 'meal_plan' ? buildMealPlanPayload() : form[field];
   localStorage.setItem(`copied_trip_${field}`, JSON.stringify(data));
 };
 
@@ -1971,6 +2190,8 @@ const pasteSection = (field) => {
       const parsedData = JSON.parse(data);
       if (field === 'must_know') {
         form.must_know = { ...parsedData };
+      } else if (field === 'meal_plan') {
+        form.meal_plan = cloneMealPlan(parsedData);
       } else {
         form[field] = [...parsedData];
       }
@@ -2009,7 +2230,7 @@ const confirmBulkCopy = async () => {
     await api.patch('/admin/trips/bulk-update-field', {
       trip_ids: selectedTripsIds.value,
       field: targetField.value,
-      value: form[targetField.value]
+      value: targetField.value === 'meal_plan' ? buildMealPlanPayload() : form[targetField.value]
     });
     alert('อัปเดตข้อมูลทริปที่เลือกเรียบร้อยแล้ว');
     showCopyModal.value = false;
@@ -2084,6 +2305,7 @@ const initData = async () => {
         required: !!doc?.required,
       }));
       form.checkin_bring = trip.checkin_bring || '';
+      form.meal_plan = cloneMealPlan(trip.meal_plan);
       form.medal_name = trip.medal_name || '';
       form.medal_icon = trip.medal_icon || '';
       form.medal_color = trip.medal_color || '';
@@ -3204,4 +3426,35 @@ onMounted(() => {
 .medal-upload-btn .material-symbols-rounded,
 .medal-remove-btn .material-symbols-rounded { font-size: 16px; }
 .medal-upload-btn:disabled { opacity: .6; cursor: wait; }
+
+/* ── มื้ออาหาร ── */
+.meal-toggle { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; color: #1f2937; cursor: pointer; user-select: none; }
+.meal-toggle input { width: 18px; height: 18px; accent-color: var(--color-primary); }
+.meal-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0 12px; }
+.meal-preview { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.meal-preview-label { font-size: 11px; font-weight: 800; color: #9ca3af; letter-spacing: .04em; }
+.meal-preview-value { font-size: 16px; font-weight: 900; color: #065f46; }
+.meal-guess-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 12px; border: 1px solid #d1d5db; background: #fff; font-size: 13px; font-weight: 800; color: #374151; cursor: pointer; }
+.meal-guess-btn:hover { background: #f9fafb; }
+.meal-guess-btn:disabled { opacity: .6; cursor: wait; }
+.meal-guess-btn .material-symbols-rounded { font-size: 18px; }
+.meal-warning { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; padding: 10px 12px; border-radius: 12px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 13px; font-weight: 700; line-height: 1.5; }
+.meal-warning .material-symbols-rounded { font-size: 18px; flex-shrink: 0; }
+.meal-days { display: flex; flex-direction: column; gap: 10px; }
+.meal-day { border: 1px solid #e5e7eb; border-radius: 16px; padding: 12px; background: #f9fafb; }
+.meal-day-head { font-size: 13px; font-weight: 900; color: #111827; margin-bottom: 8px; }
+.meal-day-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.meal-cell { background: #fff; border: 1px solid #eef0f2; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.meal-cell-label { font-size: 12px; font-weight: 800; color: #6b7280; }
+.meal-status { display: flex; gap: 4px; }
+.meal-status-btn { flex: 1; min-width: 0; padding: 6px 4px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; font-size: 12px; font-weight: 800; color: #6b7280; cursor: pointer; white-space: nowrap; }
+.meal-status-btn:hover { background: #f9fafb; }
+.meal-status-btn--included.is-active { background: #ecfdf5; border-color: #059669; color: #047857; }
+.meal-status-btn--self.is-active { background: #fffbeb; border-color: #d97706; color: #b45309; }
+.meal-status-btn--none.is-active { background: #f3f4f6; border-color: #9ca3af; color: #374151; }
+.meal-note { width: 100%; padding: 7px 10px; border-radius: 8px; border: 1px solid #e5e7eb; font-size: 13px; }
+.meal-note:focus { outline: none; border-color: var(--color-accent); }
+@media (max-width: 767px) {
+  .meal-day-cells { grid-template-columns: minmax(0, 1fr); }
+}
 </style>

@@ -94,6 +94,8 @@ class TripConciergeService
                         'distance_km' => $trip->distance_km ? (float) $trip->distance_km : null,
                         'elevation_gain_m' => $trip->elevation_gain_m ? (int) $trip->elevation_gain_m : null,
                         'is_women_only' => (bool) $trip->is_women_only,
+                        // "รวมอาหาร 5 มื้อ · จ่ายเอง 1 มื้อ" (null = ทริปยังไม่ได้ระบุ)
+                        'meals' => $trip->meals()['summary'] ?? null,
                         'price_from' => (float) ($trip->schedules
                             ->map(fn ($schedule) => $schedule->effective_price)
                             ->min() ?? $trip->price_per_person),

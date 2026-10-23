@@ -89,6 +89,12 @@
               <span class="flex items-center gap-1.5">
                 <span class="material-symbols-rounded text-[19px]">schedule</span>{{ trip.duration_days }} วัน
               </span>
+              <template v-if="trip.meals">
+                <span class="hidden h-4 w-px bg-white/25 sm:block"></span>
+                <a href="#meals" class="flex items-center gap-1.5 hover:text-white" @click.prevent="scrollToPageSection('meals')">
+                  <span class="material-symbols-rounded text-[19px]">restaurant</span>{{ trip.meals.label }}
+                </a>
+              </template>
               <span class="hidden h-4 w-px bg-white/25 sm:block"></span>
               <span class="flex items-center gap-1.5">
                 <span class="material-symbols-rounded text-[19px]">terrain</span>{{ diffLabel }}
@@ -501,6 +507,50 @@
                     <p class="text-sm md:text-[15px] text-[var(--color-text-muted)] font-medium leading-relaxed">{{ hi.desc }}</p>
                   </div>
                 </article>
+              </div>
+            </section>
+
+            <!--
+              มื้ออาหาร — ลูกค้าถามสามข้อเสมอ: กี่มื้อ มื้อไหน ต้องจ่ายเองไหม
+              ทั้งคำและตัวเลขมาจากเซิร์ฟเวอร์ (TripMealPlan) หน้านี้แค่วาด
+            -->
+            <section v-if="trip.meals" id="meals" class="scroll-mt-32">
+              <header class="ed-head mb-8">
+                <span class="ed-kicker">อาหารระหว่างทริป</span>
+                <h2 class="ed-title">มื้ออาหาร</h2>
+              </header>
+
+              <div class="meal-card rounded-[2rem] border border-gray-100 bg-white overflow-hidden">
+                <div class="meal-summary">
+                  <span class="meal-summary-icon material-symbols-rounded">restaurant</span>
+                  <div class="min-w-0">
+                    <p class="meal-summary-text">{{ trip.meals.summary }}</p>
+                    <p v-if="trip.meals.self_count > 0" class="meal-summary-hint">มื้อที่ "จ่ายเอง" มีแวะให้ แต่ค่าอาหารไม่รวมในราคาทริป</p>
+                  </div>
+                </div>
+
+                <div class="meal-table" role="table" :aria-label="`มื้ออาหาร ${trip.meals.summary}`">
+                  <div class="meal-row meal-row--head" role="row">
+                    <span role="columnheader"></span>
+                    <span v-for="meal in mealColumns" :key="meal.key" role="columnheader">{{ meal.label }}</span>
+                  </div>
+                  <div v-for="day in trip.meals.days" :key="day.day" class="meal-row" role="row">
+                    <span class="meal-day" role="rowheader">{{ day.label }}</span>
+                    <div v-for="meal in day.meals" :key="meal.key" class="meal-cell" :class="`meal-cell--${meal.status}`" role="cell">
+                      <span class="meal-cell-meal">{{ meal.label }}</span>
+                      <span class="meal-cell-status">
+                        <span class="meal-cell-icon material-symbols-rounded">{{ mealIcon(meal.status) }}</span>
+                        {{ meal.status === 'none' ? 'ไม่มี' : meal.status_label }}
+                      </span>
+                      <span v-if="meal.note" class="meal-cell-note">{{ meal.note }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <p v-if="trip.meals.note" class="meal-note">
+                  <span class="meal-note-icon material-symbols-rounded">info</span>
+                  <span>{{ trip.meals.note }}</span>
+                </p>
               </div>
             </section>
 
@@ -1107,6 +1157,15 @@
                   <div>
                     <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">ระยะเวลา</p>
                     <p class="font-extrabold text-[var(--color-text-dark)]">{{ trip.duration_days }} วัน</p>
+                  </div>
+                </div>
+                <div v-if="trip.meals" class="flex items-center gap-4 text-base">
+                  <div class="w-10 h-10 rounded-xl bg-[var(--color-sand)] flex items-center justify-center shrink-0">
+                    <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">restaurant</span>
+                  </div>
+                  <div>
+                    <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">อาหาร</p>
+                    <p class="font-extrabold text-[var(--color-text-dark)]">{{ trip.meals.summary }}</p>
                   </div>
                 </div>
                 <div class="flex items-center gap-4 text-base">
@@ -2514,6 +2573,20 @@ async function shareTrip() {
   } catch {}
 }
 
+// ─── มื้ออาหาร ──
+// ลำดับคอลัมน์ต้องตรงกับ TripMealPlan::MEALS
+const mealColumns = [
+  { key: 'breakfast', label: 'เช้า' },
+  { key: 'lunch', label: 'กลางวัน' },
+  { key: 'dinner', label: 'เย็น' },
+];
+
+function mealIcon(status) {
+  if (status === 'included') return 'check_circle';
+  if (status === 'self') return 'payments';
+  return 'remove';
+}
+
 // ─── In-page section nav (editorial jump bar + scroll-spy) ──
 const activePageSection = ref('overview');
 let pageNavObserver = null;
@@ -2525,6 +2598,7 @@ const pageSections = computed(() => {
   if (itinerarySectors.value.length > 0) out.push({ id: 'itinerary', label: 'กำหนดการ' });
   if (trip.value?.preparations?.length) out.push({ id: 'prepare', label: 'เตรียมตัว' });
   if (highlights.value.length) out.push({ id: 'highlights', label: 'จุดเด่น' });
+  if (trip.value?.meals) out.push({ id: 'meals', label: 'อาหาร' });
   if (trip.value?.inclusions?.length || trip.value?.exclusions?.length) out.push({ id: 'included', label: 'ราคารวม' });
   out.push({ id: 'reviews', label: 'รีวิว' });
   return out;
@@ -3617,5 +3691,42 @@ async function fetchAlbumPhotos() {
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* ── มื้ออาหาร ── */
+.meal-summary { display: flex; align-items: flex-start; gap: 14px; padding: 24px 28px; border-bottom: 1px solid #f3f4f6; }
+.meal-summary .meal-summary-icon { font-size: 22px; width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: #E8F5EC; color: #2D7A4F; flex-shrink: 0; }
+.meal-summary-text { font-size: 1.2rem; font-weight: 900; color: var(--color-text-dark); line-height: 1.4; }
+.meal-summary-hint { margin-top: 2px; font-size: 14px; font-weight: 500; color: var(--color-text-muted); }
+.meal-table { padding: 8px 28px 20px; }
+.meal-row { display: grid; grid-template-columns: 96px repeat(3, minmax(0, 1fr)); gap: 10px; align-items: stretch; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+.meal-row:last-child { border-bottom: 0; }
+.meal-row--head { padding: 6px 0; font-size: 12px; font-weight: 800; letter-spacing: .04em; color: var(--color-text-muted); }
+.meal-day { font-size: 15px; font-weight: 800; color: var(--color-text-dark); align-self: center; }
+.meal-cell { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 14px; border: 1px solid transparent; min-width: 0; }
+.meal-cell--included { background: #F1F8F3; border-color: #D6EBDD; }
+.meal-cell--self { background: #FFF8EB; border-color: #F6E1B8; }
+.meal-cell--none { background: #F9FAFB; border-color: #F3F4F6; }
+.meal-cell-meal { display: none; font-size: 12px; font-weight: 800; color: var(--color-text-muted); }
+.meal-cell-status { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 800; }
+.meal-cell--included .meal-cell-status { color: #2D7A4F; }
+.meal-cell--self .meal-cell-status { color: #B45309; }
+.meal-cell--none .meal-cell-status { color: #9CA3AF; font-weight: 700; }
+.meal-cell-status .meal-cell-icon { font-size: 17px; }
+.meal-cell-note { font-size: 13px; font-weight: 500; color: var(--color-text-mid); line-height: 1.45; overflow-wrap: anywhere; }
+.meal-note { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 16px 28px 22px; border-top: 1px solid #f3f4f6; font-size: 14px; font-weight: 500; color: var(--color-text-mid); line-height: 1.6; }
+.meal-note .meal-note-icon { font-size: 18px; color: var(--color-text-muted); margin-top: 2px; flex-shrink: 0; }
+@media (max-width: 640px) {
+  .meal-summary { padding: 18px 16px; }
+  .meal-table { padding: 4px 16px 14px; }
+  .meal-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .meal-row--head { display: none; }
+  .meal-day { grid-column: 1 / -1; font-size: 14px; }
+  .meal-cell { padding: 8px 9px; }
+  .meal-cell-meal { display: block; }
+  /* ช่องแคบ ~85px — ตัดไอคอน (สีพื้นบอกสถานะอยู่แล้ว) ให้ "รวมในราคา" อยู่บรรทัดเดียว */
+  .meal-cell-status { font-size: 13px; white-space: nowrap; }
+  .meal-cell-status .meal-cell-icon { display: none; }
+  .meal-note { padding: 14px 16px 18px; }
 }
 </style>

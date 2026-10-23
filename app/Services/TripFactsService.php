@@ -31,6 +31,9 @@ class TripFactsService
 
     public const PENDING_PICKUP = 'ทีมงานจะยืนยันจุดรับและเวลาให้อีกครั้งก่อนเดินทาง';
 
+    /** ทริปที่แอดมินยังไม่ได้ลงตารางมื้ออาหาร — ชวนถามคน ไม่เดาจาก "รวมในราคา" */
+    public const PENDING_MEALS = 'ทริปนี้ยังไม่ได้ระบุมื้ออาหาร ถามทีมงานในห้องแชทได้เลยครับ';
+
     /** ยกกำหนดการมาให้ชีตคำถามด่วนกี่รายการ (ที่เหลือกดดูต่อในหน้ากำหนดการเต็ม) */
     public const ITINERARY_LIMIT = 12;
 
@@ -76,6 +79,8 @@ class TripFactsService
             'driver' => $this->driver($schedule),
             'staff' => $this->staff($schedule),
             'itinerary' => $this->itinerary($schedule),
+            // มื้ออาหารของทริป พร้อมวันที่จริงของรอบนี้ (null = แอดมินยังไม่ได้ระบุ)
+            'meals' => $schedule->trip?->meals($schedule->departure_date),
             // "รถถึงไหนแล้ว" — สถานะสดชุดเดียวกับการ์ดบนหน้าจอล็อก (null นอกช่วงวันเดินทาง)
             'live' => $this->live($booking),
 
@@ -86,6 +91,7 @@ class TripFactsService
                 'vehicle' => self::PENDING_VEHICLE,
                 'driver' => self::PENDING_DRIVER,
                 'staff' => self::PENDING_STAFF,
+                'meals' => self::PENDING_MEALS,
             ],
         ];
     }
@@ -337,6 +343,17 @@ class TripFactsService
         }
 
         return $dateLabel;
+    }
+
+    /**
+     * มื้ออาหารของรอบในรูปข้อความสำหรับโพสต์ลงห้องแชท — null เมื่อทริปยังไม่ได้
+     * ระบุ (บอทต้องเงียบ ปล่อยให้ทีมงานตอบ ไม่ใช่เดาจาก "รวมในราคา")
+     */
+    public function mealsSummaryText(TripSchedule $schedule): ?string
+    {
+        $schedule->loadMissing('trip');
+
+        return $schedule->trip?->mealsText($schedule->departure_date);
     }
 
     /**

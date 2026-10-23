@@ -235,6 +235,8 @@ class MyTripAssistantService
             'elevation_gain_m' => $trip->elevation_gain_m ? (int) $trip->elevation_gain_m : null,
             'inclusions' => $trip->inclusions,
             'exclusions' => $trip->exclusions,
+            // "อาหารกี่มื้อ / มื้อไหนจ่ายเอง" — ตอบจากตารางที่แอดมินระบุ ไม่ต้องเดาจาก inclusions
+            'meals' => $trip->mealsText(),
             'preparations' => $trip->preparations,
             'must_know' => $trip->must_know,
             'faqs' => $trip->faqs,
