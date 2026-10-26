@@ -231,7 +231,7 @@ class TripChatTimelineService
             'trip_end' => [$endDate?->setTime(20, 5), self::DEFAULT_GRACE_HOURS],
             // ชวนแลกคอนแทคก่อนห้องถูกลบ — มีปุ่ม "แลกคอนแทค" ในแอป
             'contacts_end' => [$endDate?->setTime(20, 30), self::DEFAULT_GRACE_HOURS],
-            // ห้องแชทถูกลบ 3 วันหลังจบทริป (PurgeEndedTripChatsJob) — เตือนก่อน 1 วัน
+            // ห้องแชทถูกลบ DELETE_AFTER_DAYS วันหลังจบทริป (PurgeEndedTripChatsJob) — เตือนก่อน 1 วัน
             'photos_expiring' => [
                 $endDate?->addDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS - 1)->setTime(10, 0),
                 self::DEFAULT_GRACE_HOURS,
@@ -808,7 +808,7 @@ class TripChatTimelineService
             $lines[] = "• รูปจากกล้องทีมงานจะทยอยลงที่ไอจี {$ig} กดติดตามไว้ไม่พลาดนะครับ 📸";
         }
 
-        // ชวนแชร์รูปพร้อมบอกอายุของห้องไปด้วย — เคยชวนลอย ๆ แล้วรูปหายไปใน 3 วัน
+        // ชวนแชร์รูปพร้อมบอกอายุของห้องไปด้วย — เคยชวนลอย ๆ แล้วรูปหายไปตอนห้องถูกลบ
         $lines[] = "• รูปสวย ๆ ของทุกคนแชร์ในห้องนี้ได้เลยครับ — ห้องแชทจะปิดใน {$days} วัน "
             .'อยากให้รูปอยู่ยาว ๆ ลงในฟีดทริปในแอปได้เหมือนกันครับ';
         $lines[] = '• รีวิวทริปในแอปเปิดให้เขียนแล้ววันนี้ ทุกความเห็นมีค่ากับทีมงานมากครับ';

@@ -366,7 +366,7 @@ class ChatPrivateTest extends TestCase
 
     public function test_threads_are_purged_with_the_room_after_the_trip(): void
     {
-        $schedule = $this->makeSchedule('-10 days');
+        $schedule = $this->makeSchedule('-'.(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 7).' days');
         $mani = $this->traveller($schedule);
         $this->staff($schedule);
 

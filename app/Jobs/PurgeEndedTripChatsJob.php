@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Reclaims storage by deleting a trip's group chat — messages, reactions, read
- * markers and any uploaded images — 3 days after the trip wraps up. The trip end
+ * markers and any uploaded images — {@see DELETE_AFTER_DAYS} days after the trip wraps up. The trip end
  * date is `return_date`, falling back to `departure_date`. Runs daily; once a
  * schedule is purged it has no messages left, so it's skipped on later runs.
  *
@@ -45,7 +45,7 @@ class PurgeEndedTripChatsJob implements ShouldQueue
 {
     use Queueable;
 
-    public const DELETE_AFTER_DAYS = 3;
+    public const DELETE_AFTER_DAYS = 14;
 
     public const TIMEZONE = 'Asia/Bangkok';
 

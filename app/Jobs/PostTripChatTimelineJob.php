@@ -24,10 +24,11 @@ class PostTripChatTimelineJob implements ShouldQueue
 
     public int $tries = 1;
 
-    /** ช่วงรอบเดินทางที่ยังต้องดูแล: ก่อนเดินทาง 8 วัน ถึงหลังจบทริป 5 วัน */
+    /** ช่วงรอบเดินทางที่ยังต้องดูแล: ก่อนเดินทาง 8 วัน ถึงวันที่ห้องแชทถูกลบ */
     private const DAYS_BEFORE = 8;
 
-    private const DAYS_AFTER = 5;
+    /** ต้องครอบข้อความเตือนก่อนห้องถูกลบ (photos_expiring) เสมอ */
+    private const DAYS_AFTER = PurgeEndedTripChatsJob::DELETE_AFTER_DAYS;
 
     public function handle(TripChatTimelineService $timeline): void
     {

@@ -238,7 +238,7 @@ class ChatVoiceMessageTest extends TestCase
     public function test_purge_removes_voice_files_with_the_room(): void
     {
         Bus::fake();
-        $schedule = $this->makeSchedule('-10 days');
+        $schedule = $this->makeSchedule('-'.(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 7).' days');
         $user = $this->member($schedule);
 
         $id = $this->sendVoice($user, $schedule)->json('data.id');

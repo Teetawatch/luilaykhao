@@ -262,7 +262,7 @@ class ChatSocialTest extends TestCase
 
     public function test_purging_the_room_drops_intros_and_acks_but_keeps_exchanged_contacts(): void
     {
-        $end = now('Asia/Bangkok')->subDays(5)->toDateString();
+        $end = now('Asia/Bangkok')->subDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 2)->toDateString();
         $schedule = $this->tripSchedule(['departure_date' => $end, 'return_date' => $end]);
         $staff = $this->staffOf($schedule);
         [$a] = $this->party($schedule, ['เอ']);

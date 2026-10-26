@@ -36,11 +36,11 @@ class PurgeEndedTripChatsJobTest extends TestCase
         ]);
     }
 
-    public function test_purges_chat_messages_images_reactions_and_reads_after_three_days(): void
+    public function test_purges_chat_messages_images_reactions_and_reads_after_the_retention_period(): void
     {
         Storage::fake(MediaDisk::name());
         $user = User::factory()->create();
-        $schedule = $this->schedule(now()->subDays(4)->toDateString());
+        $schedule = $this->schedule(now()->subDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 1)->toDateString());
 
         $text = ChatMessage::create([
             'schedule_id' => $schedule->id, 'user_id' => $user->id,
@@ -70,7 +70,7 @@ class PurgeEndedTripChatsJobTest extends TestCase
     public function test_the_parking_photo_and_the_row_pointing_at_it_go_together(): void
     {
         Storage::fake(MediaDisk::name());
-        $schedule = $this->schedule(now()->subDays(4)->toDateString());
+        $schedule = $this->schedule(now()->subDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 1)->toDateString());
 
         $point = SchedulePickupPoint::create([
             'schedule_id' => $schedule->id,
@@ -79,7 +79,7 @@ class PurgeEndedTripChatsJobTest extends TestCase
             'pickup_location' => 'จุดขึ้นรถหมอชิต',
             'price' => 0,
             'sort_order' => 1,
-            'arrived_at' => now()->subDays(4),
+            'arrived_at' => now()->subDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 1),
             'arrival_photo_path' => 'pickups/2026/09/parked.jpg',
         ]);
         Storage::disk(MediaDisk::name())->put('pickups/2026/09/parked.jpg', 'x');
@@ -101,10 +101,11 @@ class PurgeEndedTripChatsJobTest extends TestCase
         $this->assertNull($point->fresh()->arrival_photo_path);
     }
 
-    public function test_does_not_purge_before_three_days_have_passed(): void
+    public function test_does_not_purge_before_the_retention_period_has_passed(): void
     {
         $user = User::factory()->create();
-        $schedule = $this->schedule(now()->subDays(1)->toDateString());
+        // วันสุดท้ายที่ห้องยังอยู่ — เทียบวันตามเวลาไทยเหมือนตัวงาน
+        $schedule = $this->schedule(now(PurgeEndedTripChatsJob::TIMEZONE)->subDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS - 1)->toDateString());
 
         $msg = ChatMessage::create([
             'schedule_id' => $schedule->id, 'user_id' => $user->id,

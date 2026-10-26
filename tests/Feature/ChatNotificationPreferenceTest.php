@@ -518,7 +518,7 @@ class ChatNotificationPreferenceTest extends TestCase
 
     public function test_purging_an_ended_room_drops_its_preferences(): void
     {
-        $schedule = $this->makeSchedule(now()->subDays(10)->toDateString());
+        $schedule = $this->makeSchedule(now()->subDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 7)->toDateString());
         $user = $this->member($schedule, 'off');
         $this->postMessage($schedule, $user);
 

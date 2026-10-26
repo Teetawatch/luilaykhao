@@ -122,7 +122,7 @@ class LostItemTest extends TestCase
 
     public function test_after_the_chat_is_purged_everyone_who_went_is_pinged_directly(): void
     {
-        $schedule = $this->makeSchedule(endedDaysAgo: 5);
+        $schedule = $this->makeSchedule(endedDaysAgo: PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 2);
         $a = $this->traveller($schedule, 'completed');
         $b = $this->traveller($schedule, 'completed');
         $this->traveller($schedule, 'cancelled');
@@ -230,8 +230,8 @@ class LostItemTest extends TestCase
         $id = $this->postItem($staff, $schedule)->json('data.id');
 
         $schedule->update([
-            'departure_date' => now()->subDays(10)->toDateString(),
-            'return_date' => now()->subDays(9)->toDateString(),
+            'departure_date' => now()->subDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 7)->toDateString(),
+            'return_date' => now()->subDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS + 6)->toDateString(),
         ]);
         app()->call([new PurgeEndedTripChatsJob, 'handle']);
 

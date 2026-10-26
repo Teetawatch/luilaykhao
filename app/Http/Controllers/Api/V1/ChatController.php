@@ -10,6 +10,7 @@ use App\Events\ChatReadUpdated;
 use App\Events\ChatTyping;
 use App\Http\Controllers\Controller;
 use App\Jobs\PostChatAutoAnswerJob;
+use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatMessage;
 use App\Models\ChatPoll;
@@ -897,8 +898,8 @@ class ChatController extends Controller
         $schedules = TripSchedule::query()
             ->with(['trip:id,title,cover_image,thumbnail_image', 'vehicle:id,name'])
             ->whereIn('id', $scheduleIds)
-            // เก็บเฉพาะรอบที่ยังไม่ผ่านไปนาน (กันลิสต์ยาวด้วยทริปเก่า)
-            ->whereDate('departure_date', '>=', now()->subDays(14)->toDateString())
+            // เก็บเฉพาะรอบที่ห้องยังไม่ถูกล้าง (กันลิสต์ยาวด้วยทริปเก่า)
+            ->tap(fn ($q) => $this->whereChatNotPurged($q))
             ->get();
 
         $messagesBySchedule = ChatMessage::whereIn('schedule_id', $schedules->pluck('id'))
@@ -958,7 +959,7 @@ class ChatController extends Controller
             ->sortByDesc('last_activity')
             ->values();
 
-        // ห้องที่จบทริปแล้วและไม่มีข้อความ (ถูกล้างทิ้งหลังจบทริป 3 วัน) ไม่ต้องแสดง
+        // ห้องที่จบทริปแล้วและไม่มีข้อความ (ถูกล้างไปแล้ว หรือไม่มีใครคุย) ไม่ต้องแสดง
         // แต่ยังคงโชว์ห้องของทริปที่กำลังจะมาถึงที่ยังไม่เริ่มแชท
         $today = now()->toDateString();
         $empty = $conversations
@@ -1003,6 +1004,19 @@ class ChatController extends Controller
     }
 
     /**
+     * รอบที่ห้องแชทยังไม่ถูกล้าง — วันกลับ (หรือวันเดินทางถ้าไม่มีวันกลับ) ยังไม่พ้น
+     * {@see PurgeEndedTripChatsJob::DELETE_AFTER_DAYS} วัน ตรงกับเกณฑ์ของงานล้างห้อง
+     */
+    private function whereChatNotPurged($query): void
+    {
+        $cutoff = now(PurgeEndedTripChatsJob::TIMEZONE)->subDays(PurgeEndedTripChatsJob::DELETE_AFTER_DAYS)->toDateString();
+
+        $query->where(fn ($q) => $q
+            ->whereDate('return_date', '>', $cutoff)
+            ->orWhere(fn ($q2) => $q2->whereNull('return_date')->whereDate('departure_date', '>', $cutoff)));
+    }
+
+    /**
      * Admin/operator: รายการห้องแชททุกรอบที่กำลังจะเดินทาง (รวมห้องที่ยังไม่มีข้อความ
      * เพื่อให้แอดมินเข้าไปเริ่มแชทในรอบไหนก็ได้) พร้อมข้อความล่าสุดของแต่ละห้อง
      */
@@ -1016,7 +1030,7 @@ class ChatController extends Controller
                 'vehicle:id,name,type',
                 'activeStaff:users.id,users.name,users.nickname',
             ])
-            ->where('departure_date', '>=', now()->subDays(7)->startOfDay())
+            ->tap(fn ($q) => $this->whereChatNotPurged($q))
             ->whereIn('status', ['open', 'closed', 'full'])
             ->orderBy('departure_date')
             ->get();
