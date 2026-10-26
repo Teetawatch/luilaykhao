@@ -14,8 +14,8 @@ use App\Http\Controllers\Api\V1\AdminGiftVoucherController;
 use App\Http\Controllers\Api\V1\AdminInstallmentController;
 use App\Http\Controllers\Api\V1\AdminIntakeController;
 use App\Http\Controllers\Api\V1\AdminOnsiteMoneyController;
-use App\Http\Controllers\Api\V1\AdminPartnerController;
 use App\Http\Controllers\Api\V1\AdminPageContentController;
+use App\Http\Controllers\Api\V1\AdminPartnerController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
 use App\Http\Controllers\Api\V1\AdminPriceSheetController;
@@ -74,6 +74,7 @@ use App\Http\Controllers\Api\V1\OnsiteMoneyController;
 use App\Http\Controllers\Api\V1\PackingController;
 use App\Http\Controllers\Api\V1\PageContentController;
 use App\Http\Controllers\Api\V1\PartnerController;
+use App\Http\Controllers\Api\V1\PartyGameController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
@@ -411,6 +412,8 @@ Route::prefix('v1')->group(function () {
         // Group chat per trip schedule (customers + assigned staff + admins)
         Route::get('chat/my-conversations', [ChatController::class, 'myConversations']);
         Route::get('chat/stickers', [StickerController::class, 'index']);
+        // เกมรอบวงตอนเย็น — คลังเกม + รอบที่เปิดเล่นได้ แอปเก็บไว้เล่นตอนไม่มีสัญญาณ
+        Route::get('party-games', [PartyGameController::class, 'index'])->middleware('throttle:30,1');
         Route::get('schedules/{id}/chat/messages', [ChatController::class, 'index']);
         Route::post('schedules/{id}/chat/messages', [ChatController::class, 'store'])->middleware('throttle:chat');
         Route::put('schedules/{id}/chat/messages/{messageId}', [ChatController::class, 'update']);
@@ -1266,6 +1269,13 @@ Route::prefix('v1')->group(function () {
         Route::put('stickers/{id}', [StickerController::class, 'updateSticker']);
         Route::post('stickers/{id}/image', [StickerController::class, 'replaceImage']);
         Route::delete('stickers/{id}', [StickerController::class, 'destroySticker']);
+
+        // คลังเกมรอบวง (สายลับ / ความจริงหรือท้า / ฉันไม่เคย / ใบ้คำ / ควิซ)
+        Route::get('party-games', [PartyGameController::class, 'adminIndex']);
+        Route::post('party-games', [PartyGameController::class, 'store']);
+        Route::post('party-games/bulk', [PartyGameController::class, 'bulkStore']);
+        Route::put('party-games/{id}', [PartyGameController::class, 'update'])->whereNumber('id');
+        Route::delete('party-games/{id}', [PartyGameController::class, 'destroy'])->whereNumber('id');
 
         // Urgent-trips popup settings (ป๊อปอัพหน้าเว็บ)
         Route::get('settings/urgent-popup', [AdminController::class, 'urgentPopupSettings']);
