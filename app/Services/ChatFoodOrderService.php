@@ -37,13 +37,17 @@ class ChatFoodOrderService
         string $title,
         ?string $note = null,
         ?int $durationMinutes = null,
+        ?array $menu = null,
     ): ChatFoodRound {
-        $round = DB::transaction(function () use ($user, $schedule, $title, $note, $durationMinutes) {
+        $menu = $menu === null ? null : $this->cleanMenu($menu);
+
+        $round = DB::transaction(function () use ($user, $schedule, $title, $note, $durationMinutes, $menu) {
             $round = ChatFoodRound::create([
                 'schedule_id' => $schedule->id,
                 'created_by_id' => $user->id,
                 'title' => $title,
                 'note' => $note ?: null,
+                'menu' => $menu,
                 'closes_at' => $durationMinutes
                     ? now()->addMinutes(min($durationMinutes, ChatFoodRound::MAX_MINUTES))
                     : null,
@@ -224,6 +228,7 @@ class ChatFoodOrderService
             'id' => $round->id,
             'title' => $round->title,
             'note' => $round->note,
+            'menu' => $this->menuOf($round),
             'is_closed' => $round->isClosed(),
             'closes_at' => $round->closes_at?->toISOString(),
             'created_by_id' => $round->created_by_id ? (int) $round->created_by_id : null,
@@ -581,6 +586,43 @@ class ChatFoodOrderService
             ->take(ChatFoodRound::MAX_ITEMS)
             ->values()
             ->all();
+    }
+
+    /**
+     * หมวดที่ร้านขาย (เรียงตาม MENU_SETS) + เมนูเฉพาะร้าน ตัดซ้ำแบบเดียวกับรายการรวม
+     *
+     * @return array{sets: array<int, string>, items: array<int, string>}
+     */
+    private function cleanMenu(array $menu): array
+    {
+        $sets = array_map('strval', (array) ($menu['sets'] ?? []));
+        $seen = [];
+        $items = [];
+        foreach ((array) ($menu['items'] ?? []) as $item) {
+            $name = trim(preg_replace('/\s+/u', ' ', (string) $item));
+            $key = $this->normalize($name);
+            if ($name === '' || isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $items[] = $name;
+        }
+
+        return [
+            'sets' => array_values(array_intersect(ChatFoodRound::MENU_SETS, $sets)),
+            'items' => array_slice($items, 0, ChatFoodRound::MAX_MENU_ITEMS),
+        ];
+    }
+
+    /** @return array{sets: array<int, string>, items: array<int, string>}|null */
+    private function menuOf(ChatFoodRound $round): ?array
+    {
+        $menu = $round->menu;
+        if (is_string($menu)) {
+            $menu = json_decode($menu, true);
+        }
+
+        return is_array($menu) ? $this->cleanMenu($menu) : null;
     }
 
     /** @return array<int, array{name: string, qty: int}> */

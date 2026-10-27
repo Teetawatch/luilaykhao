@@ -34,6 +34,12 @@ class ChatFoodOrderController extends Controller
             'title' => ['required', 'string', 'max:120'],
             'note' => ['nullable', 'string', 'max:300'],
             'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:'.ChatFoodRound::MAX_MINUTES],
+            // ไม่ส่ง menu เลย = แอปรุ่นเก่า → แอปลูกทริปโชว์ทุกหมวด
+            'menu' => ['nullable', 'array'],
+            'menu.sets' => ['nullable', 'array'],
+            'menu.sets.*' => ['string', 'in:'.implode(',', ChatFoodRound::MENU_SETS)],
+            'menu.items' => ['nullable', 'array', 'max:'.ChatFoodRound::MAX_MENU_ITEMS],
+            'menu.items.*' => ['nullable', 'string', 'max:120'],
         ]);
 
         $schedule = TripSchedule::findOrFail($scheduleId);
@@ -49,6 +55,7 @@ class ChatFoodOrderController extends Controller
             trim($validated['title']),
             isset($validated['note']) ? trim($validated['note']) : null,
             $validated['duration_minutes'] ?? null,
+            $validated['menu'] ?? null,
         );
 
         $message = ChatMessage::with([

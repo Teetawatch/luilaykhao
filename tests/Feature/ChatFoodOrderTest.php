@@ -123,6 +123,36 @@ class ChatFoodOrderTest extends TestCase
         Bus::assertDispatched(SendChatPushJob::class, fn ($job) => $job->callToAction === true);
     }
 
+    public function test_staff_picks_the_shop_menu_for_one_tap_ordering(): void
+    {
+        Bus::fake();
+        $schedule = $this->makeSchedule();
+        $staff = $this->staff($schedule);
+
+        // หมวดเรียงตามแอปเสมอ เมนูร้านตัดช่องว่าง/ตัดซ้ำแบบเดียวกับรายการรวม
+        $data = $this->openRound($staff, $schedule, [
+            'menu' => [
+                'sets' => ['drinks', 'made_to_order', 'drinks'],
+                'items' => ['  ข้าวซอย  ไก่ ', 'ข้าวซอยไก่', '', 'ขนมจีนน้ำเงี้ยว'],
+            ],
+        ]);
+
+        $this->assertSame([
+            'sets' => ['made_to_order', 'drinks'],
+            'items' => ['ข้าวซอย ไก่', 'ขนมจีนน้ำเงี้ยว'],
+        ], $data['food_round']['menu']);
+
+        // ไม่ส่ง menu (แอปรุ่นเก่า) = null → แอปโชว์ทุกหมวด
+        $this->assertNull($this->openRound($staff, $schedule)['food_round']['menu']);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/food-rounds", [
+                'title' => 'ข้าว',
+                'menu' => ['sets' => ['pizza']],
+            ])
+            ->assertUnprocessable();
+    }
+
     public function test_customers_cannot_open_a_round(): void
     {
         Bus::fake();

@@ -19,8 +19,17 @@ class ChatFoodRound extends Model
 
     public const MAX_MINUTES = 180;
 
+    /**
+     * หมวดเมนูสำเร็จรูปที่แอปมีให้แตะเลือก (ตัวเมนูจริงอยู่ในแอป) — สตาฟเลือกว่าร้านนี้ขายหมวดไหน
+     * made_to_order = ตามสั่ง, noodles = ก๋วยเตี๋ยว, single = อาหารจานเดียวอื่น ๆ, drinks = เครื่องดื่ม
+     */
+    public const MENU_SETS = ['made_to_order', 'noodles', 'single', 'drinks'];
+
+    /** เมนูเฉพาะร้านที่สตาฟพิมพ์ไว้ให้ทุกคนแตะ */
+    public const MAX_MENU_ITEMS = 30;
+
     protected $fillable = [
-        'schedule_id', 'message_id', 'created_by_id', 'title', 'note',
+        'schedule_id', 'message_id', 'created_by_id', 'title', 'note', 'menu',
         'closes_at', 'closed_at', 'announced_at',
         'prices', 'promptpay_id', 'payee_name', 'billed_at',
     ];
@@ -34,6 +43,7 @@ class ChatFoodRound extends Model
             'closes_at' => 'datetime',
             'closed_at' => 'datetime',
             'announced_at' => 'datetime',
+            'menu' => 'array',
             'prices' => 'array',
             'billed_at' => 'datetime',
         ];
