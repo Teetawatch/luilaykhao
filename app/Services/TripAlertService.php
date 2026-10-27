@@ -8,6 +8,7 @@ use App\Models\TripAlert;
 use App\Models\TripAlertDispatch;
 use App\Models\TripSchedule;
 use App\Support\ThaiDate;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -51,6 +52,69 @@ class TripAlertService
                 $schedule->id,
             );
         }
+    }
+
+    /**
+     * แจ้งคนที่กด "แจ้งเตือนฉัน" ของทริปนี้ครั้งเดียวสำหรับหลายรอบที่เปิดพร้อมกัน —
+     * คู่กับ BroadcastNotificationService::broadcastNewRounds ลงบันทึกกันซ้ำรายรอบ
+     * เหมือน [notifyNewSchedule] รอบที่เคยแจ้งคนนี้ไปแล้วจึงไม่ถูกนับซ้ำ
+     *
+     * @param  Collection<int, TripSchedule>  $schedules
+     */
+    public function notifyNewSchedules(Trip $trip, Collection $schedules): int
+    {
+        $rounds = $schedules
+            ->filter(fn (TripSchedule $s) => (int) $s->trip_id === (int) $trip->id && $this->isBookable($s))
+            ->sortBy(fn (TripSchedule $s) => $s->departure_date->toDateString())
+            ->values();
+        if ($rounds->isEmpty()) {
+            return 0;
+        }
+
+        $alerts = TripAlert::where('trip_id', $trip->id)
+            ->where('alert_new_schedule', true)
+            ->get();
+
+        $sent = 0;
+        foreach ($alerts as $alert) {
+            $fresh = $rounds
+                ->reject(fn (TripSchedule $s) => $this->alreadyDispatched($alert, $s->id, 'new_schedule'))
+                ->values();
+            if ($fresh->isEmpty()) {
+                continue;
+            }
+
+            foreach ($fresh as $schedule) {
+                TripAlertDispatch::create([
+                    'trip_alert_id' => $alert->id,
+                    'schedule_id' => $schedule->id,
+                    'type' => 'new_schedule',
+                ]);
+            }
+
+            $first = $fresh->first();
+            $body = $fresh->count() === 1
+                ? 'เปิดให้จองรอบวันที่ '.ThaiDate::full($first->departure_date).' แล้ว รีบจองก่อนเต็ม!'
+                : "เปิดให้จองเพิ่ม {$fresh->count()} รอบ ตั้งแต่ ".ThaiDate::full($first->departure_date)
+                    .' ถึง '.ThaiDate::full($fresh->last()->departure_date).' แล้ว รีบจองก่อนเต็ม!';
+
+            SmartNotification::send(
+                $alert->user_id,
+                'trip_alert',
+                "เปิดรอบใหม่: {$trip->title}",
+                $body,
+                [
+                    'route' => 'trip',
+                    'alert_type' => 'new_schedule',
+                    'trip_slug' => $trip->slug,
+                    'trip_id' => $trip->id,
+                    'schedule_id' => $first->id,
+                ],
+            );
+            $sent++;
+        }
+
+        return $sent;
     }
 
     /**

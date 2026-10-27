@@ -682,6 +682,12 @@
                 <template v-if="form.total_seats"> · {{ form.total_seats }} ที่นั่ง</template>
               </span>
             </div>
+            <!-- เปิดรอบทีละเยอะ ๆ แล้วไม่อยากให้มือถือลูกค้าเด้งทุกรอบ — ติ๊กออกได้ -->
+            <label class="sf-notify" v-if="showsNewRoundNotice" :class="{ 'is-off': !form.notify_customers }">
+              <input type="checkbox" v-model="form.notify_customers" />
+              <span class="material-symbols-rounded">{{ form.notify_customers ? 'notifications_active' : 'notifications_off' }}</span>
+              <span>{{ form.notify_customers ? 'แจ้งลูกค้าว่าเปิดรอบใหม่' : 'ไม่แจ้งเตือนลูกค้า' }}</span>
+            </label>
             <div class="sf-footer-actions">
               <button type="button" class="btn-secondary" @click="showForm = false">ยกเลิก</button>
               <button type="submit" class="btn-primary" :disabled="submitting">
@@ -1447,6 +1453,27 @@
             </div>
           </div>
 
+          <!-- Section 4: แจ้งเตือนลูกค้า — ไม่มีตัวเลือก "แจ้งทีละรอบ" เพราะเปิด 20 รอบ = มือถือลูกค้าเด้ง 20 ครั้ง -->
+          <div class="batch-section">
+            <h3 class="section-label"><span class="material-symbols-rounded">notifications</span> แจ้งเตือนลูกค้า</h3>
+            <div class="notify-choices">
+              <label class="notify-choice" :class="{ 'is-active': batchForm.notify_mode === 'summary' }">
+                <input type="radio" value="summary" v-model="batchForm.notify_mode" />
+                <span class="notify-choice-text">
+                  <strong>แจ้งครั้งเดียวรวมทุกรอบ</strong>
+                  <small>ลูกค้าได้แจ้งเตือนเดียว "เปิดจองเพิ่ม {{ batchForm.dates.length }} รอบ" แทนการเด้งทีละรอบ</small>
+                </span>
+              </label>
+              <label class="notify-choice" :class="{ 'is-active': batchForm.notify_mode === 'none' }">
+                <input type="radio" value="none" v-model="batchForm.notify_mode" />
+                <span class="notify-choice-text">
+                  <strong>ไม่ต้องแจ้งเตือน</strong>
+                  <small>เปิดรอบเงียบ ๆ ลูกค้าเห็นเองเมื่อเข้าแอป/เว็บ — คนที่กดติดตามทริปก็จะไม่ได้แจ้งเตือน</small>
+                </span>
+              </label>
+            </div>
+          </div>
+
           <div class="modal-footer">
             <button type="button" class="btn-secondary" @click="showBatchForm = false">ยกเลิก</button>
             <button type="submit" class="btn-primary" :disabled="batchSubmitting">
@@ -1489,6 +1516,10 @@
           <label class="checkbox-filter" style="margin-top:4px;">
             <input type="checkbox" v-model="copyScheduleForm.include_pickups" />
             <span>คัดลอกจุดรับพร้อมกัน</span>
+          </label>
+          <label class="checkbox-filter" style="margin-top:8px;">
+            <input type="checkbox" v-model="copyScheduleForm.notify_customers" />
+            <span>แจ้งเตือนลูกค้าว่าเปิดรอบใหม่</span>
           </label>
         </div>
         <div class="modal-footer">
@@ -2407,7 +2438,7 @@ const form = reactive({
   trip_id: '', departure_date: '', return_date: '', is_day_trip: false,
   departs_time: '', departs_night_before: false,
   total_seats: 10, transport_type: 'van', vehicle_id: null,
-  price_override: null, status: 'open',
+  price_override: null, status: 'open', notify_customers: true,
   deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
   join_trip_enabled: false, join_trip_price: null, join_trip_seats: null,
   is_charter: false,
@@ -2562,6 +2593,10 @@ const formDurationLabel = computed(() => {
   return nights === 0 ? 'ไป-กลับวันเดียว' : `${nights + 1} วัน ${nights} คืน`;
 });
 
+// สร้างรอบใหม่ หรือเปลี่ยนรอบที่ปิดอยู่ให้กลับมาเปิดจอง = ลูกค้าได้แจ้งเตือน "เปิดรอบใหม่"
+const showsNewRoundNotice = computed(() =>
+  form.status === 'open' && (!editing.value || editing.value.status !== 'open'));
+
 const openForm = (item = null) => {
   // ดึงรายการทริป/รถใหม่ทุกครั้งที่เปิดฟอร์ม — เดิมโหลดครั้งเดียวตอนเปิดหน้า รถที่เพิ่ม
   // ระหว่างที่หน้านี้ค้างอยู่ (หรือเพิ่มจากอีกแท็บ) จึงไม่ขึ้นจนกว่าจะรีเฟรชหน้า
@@ -2581,6 +2616,7 @@ const openForm = (item = null) => {
       vehicle_id: item.vehicle?.id || null,
       price_override: item.price || null,
       status: item.status,
+      notify_customers: true,
       deposit_enabled: !!item.deposit_enabled,
       deposit_type: item.deposit_type || 'amount',
       deposit_amount: item.deposit_amount ? Number(item.deposit_amount) : null,
@@ -2605,7 +2641,7 @@ const openForm = (item = null) => {
       departure_date: '', return_date: '', is_day_trip: false,
       departs_time: '', departs_night_before: false,
       total_seats: 10, transport_type: 'van', vehicle_id: null,
-      price_override: null, status: 'open',
+      price_override: null, status: 'open', notify_customers: true,
       deposit_enabled: false, deposit_type: 'amount', deposit_amount: null, deposit_percent: null,
       join_trip_enabled: false, join_trip_price: null, join_trip_seats: null,
       is_charter: false,
@@ -2724,6 +2760,7 @@ const batchForm = reactive({
   deposit_type: 'amount',
   deposit_amount: null,
   deposit_percent: null,
+  notify_mode: 'summary',
 });
 
 // ─── Move Bookings ────────────────────────────────────────
@@ -3116,6 +3153,7 @@ const openBatchForm = (presetTripId = '') => {
     deposit_type: 'amount',
     deposit_amount: null,
     deposit_percent: null,
+    notify_mode: 'summary',
   });
   showBatchForm.value = true;
 };
@@ -3187,8 +3225,9 @@ const onBatchRegionChange = (pt) => {
 
 const submitBatchForm = async () => {
   batchSubmitting.value = true;
+  const results = [];
+  let failure = null;
   try {
-    const results = [];
     for (const d of batchForm.dates) {
       if (!d.departure_date) continue;
       const returnDate = batchForm.is_day_trip ? d.departure_date : d.return_date;
@@ -3202,6 +3241,8 @@ const submitBatchForm = async () => {
         departs_at: buildDepartsAt(d.departure_date, batchForm.departs_time, batchForm.departs_night_before),
         return_date: returnDate,
         status: 'open',
+        // ทุกรอบสร้างแบบเงียบ — ถ้าเลือก "แจ้งครั้งเดียว" จะประกาศรวมหลังสร้างครบ
+        notify_customers: false,
         join_trip_enabled: batchForm.join_trip_enabled || false,
         join_trip_price: batchForm.join_trip_enabled ? batchForm.join_trip_price : null,
         join_trip_seats: batchForm.join_trip_enabled ? (batchForm.join_trip_seats || null) : null,
@@ -3226,14 +3267,32 @@ const submitBatchForm = async () => {
       }
       results.push(scheduleId);
     }
-    showBatchForm.value = false;
-    fetchData();
-    alert(`สร้าง ${results.length} รอบสำเร็จ`);
   } catch (e) {
-    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
-  } finally {
-    batchSubmitting.value = false;
+    failure = e.response?.data?.message || 'เกิดข้อผิดพลาด';
   }
+
+  // รอบที่สร้างได้ก่อนเกิดข้อผิดพลาดก็เปิดขายอยู่แล้ว จึงประกาศด้วยเหมือนกัน
+  let notice = '';
+  if (results.length && batchForm.notify_mode === 'summary') {
+    try {
+      const res = await api.post('/admin/schedules/announce', { schedule_ids: results });
+      notice = res.data.message;
+    } catch (e) {
+      notice = `ส่งแจ้งเตือนไม่สำเร็จ: ${e.response?.data?.message || 'เกิดข้อผิดพลาด'}`;
+    }
+  }
+  batchSubmitting.value = false;
+
+  if (failure) {
+    if (results.length) fetchData();
+    alert(results.length
+      ? `สร้างได้ ${results.length} รอบ แล้วเกิดข้อผิดพลาด: ${failure}${notice ? `\n${notice}` : ''}`
+      : failure);
+    return;
+  }
+  showBatchForm.value = false;
+  fetchData();
+  alert(`สร้าง ${results.length} รอบสำเร็จ${notice ? `\n${notice}` : ''}`);
 };
 
 // ─── Waitlist (คิวรอที่นั่ง) ─────────────────────────────────
@@ -3452,6 +3511,7 @@ const copyScheduleForm = reactive({
   departure_date: '',
   return_date: '',
   include_pickups: true,
+  notify_customers: true,
 });
 
 const openCopyScheduleModal = (sch) => {
@@ -3461,6 +3521,7 @@ const openCopyScheduleModal = (sch) => {
     departure_date: '',
     return_date: '',
     include_pickups: true,
+    notify_customers: true,
   });
   showCopyScheduleModal.value = true;
 };
@@ -3490,6 +3551,7 @@ const doCopySchedule = async () => {
       join_trip_enabled: src.join_trip_enabled || false,
       join_trip_price: src.join_trip_price || null,
       join_trip_seats: src.join_trip_seats ?? null,
+      notify_customers: copyScheduleForm.notify_customers,
     });
     const newId = newScheduleRes.data.data.id;
     if (copyScheduleForm.include_pickups) {
@@ -6889,6 +6951,44 @@ onMounted(async () => {
   margin-left: auto;
 }
 
+.sf-notify {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.sf-notify input { accent-color: var(--color-accent); width: 15px; height: 15px; }
+.sf-notify .material-symbols-rounded { font-size: 18px; }
+.sf-notify.is-off { color: #9ca3af; }
+
+.notify-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+.notify-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.notify-choice.is-active {
+  border-color: var(--color-accent);
+  background: var(--color-sand);
+}
+.notify-choice input { accent-color: var(--color-accent); margin-top: 3px; }
+.notify-choice-text { display: flex; flex-direction: column; gap: 2px; }
+.notify-choice-text strong { font-size: 14px; }
+.notify-choice-text small { font-size: 12px; color: #6b7280; line-height: 1.5; }
+
 .sf-footer-actions .material-symbols-rounded { font-size: 18px; }
 
 /* ── ฟีเจอร์ที่ระบบคิดให้เอง — บอกว่ามันทำงานอยู่ ไม่ใช่ช่องให้กรอก ── */
@@ -7061,8 +7161,9 @@ onMounted(async () => {
   .sf-section { padding: 16px 14px; border-radius: 12px; }
   .sf-tiles { grid-template-columns: repeat(2, 1fr); }
   .sf-seg { flex-wrap: wrap; }
-  .sf-footer { padding: 12px 16px; }
+  .sf-footer { padding: 12px 16px; flex-wrap: wrap; }
   .sf-summary { display: none; }
+  .sf-notify { width: 100%; }
   .sf-footer-actions { width: 100%; }
   .sf-footer-actions > button { flex: 1; justify-content: center; }
   .flight-leg-head { flex-wrap: wrap; }

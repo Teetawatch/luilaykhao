@@ -866,6 +866,7 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules', [AdminController::class, 'storeSchedule']);
         Route::put('schedules/{id}', [AdminController::class, 'updateSchedule']);
         Route::patch('schedules/bulk-update', [AdminController::class, 'bulkUpdateSchedules']);
+        Route::post('schedules/announce', [AdminController::class, 'announceSchedules']);
         Route::delete('schedules/{id}', [AdminController::class, 'deleteSchedule']);
         Route::post('schedules/move-bookings', [AdminController::class, 'moveBookings']);
         Route::get('schedules/{id}/staff', [AdminController::class, 'scheduleStaff']);

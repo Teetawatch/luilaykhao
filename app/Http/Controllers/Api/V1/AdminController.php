@@ -40,9 +40,11 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehiclePickupPoint;
+use App\Observers\TripScheduleObserver;
 use App\Services\AccountClaimService;
 use App\Services\BookingDocumentService;
 use App\Services\BookingService;
+use App\Services\BroadcastNotificationService;
 use App\Services\CharterRequestService;
 use App\Services\ChatRoomEventService;
 use App\Services\CustomerAccountService;
@@ -56,6 +58,7 @@ use App\Services\SeatLayoutConflict;
 use App\Services\SeatLayoutGuard;
 use App\Services\SlipOcrService;
 use App\Services\SmsService;
+use App\Services\TripAlertService;
 use App\Services\TripBriefService;
 use App\Services\VehicleDriverService;
 use App\Support\MediaDisk;
@@ -491,7 +494,11 @@ class AdminController extends Controller
             return $this->error($e->getMessage(), 422);
         }
 
-        $schedule = TripSchedule::create($request->validated());
+        // ติ๊ก "ไม่ต้องแจ้งเตือน" = เปิดรอบเงียบ ๆ (ไม่ส่ง = แจ้งตามเดิม)
+        $create = fn () => TripSchedule::create($request->validated());
+        $schedule = $request->boolean('notify_customers', true)
+            ? $create()
+            : TripScheduleObserver::withoutNewRoundNotice($create);
 
         // คัดลอกจุดรับจากรอบล่าสุดของทริปเดียวกันให้อัตโนมัติ (ราคา/เวลานัดติดมาด้วย)
         $seeded = $this->autoSeedPickupPoints($schedule);
@@ -604,9 +611,15 @@ class AdminController extends Controller
             return $this->error('รอบนี้ถูกยกเลิกเพราะเหตุสุดวิสัยและลูกค้ากำลังเลือกรอบใหม่ เปิดกลับไม่ได้ — สร้างรอบใหม่แทน', 422);
         }
 
+        // เปิดรอบที่ปิดอยู่กลับมา = "เปิดรอบใหม่" ในสายตาลูกค้า — แอดมินเลือกไม่แจ้งได้
+        $update = fn () => $schedule->update($validated);
+        if (! $request->boolean('notify_customers', true)) {
+            $update = fn () => TripScheduleObserver::withoutNewRoundNotice(fn () => $schedule->update($validated));
+        }
+
         // เปลี่ยนรถ/ชนิดรถ/จำนวนที่นั่งเปลี่ยนผังของรอบ — ห้ามทำให้ที่นั่งที่ขายแล้วหลุดผัง
         try {
-            $this->seatLayoutGuard->guard(fn () => [$schedule], fn () => $schedule->update($validated));
+            $this->seatLayoutGuard->guard(fn () => [$schedule], $update);
         } catch (SeatLayoutConflict $e) {
             return $this->error($e->getMessage(), 422);
         }
@@ -641,6 +654,42 @@ class AdminController extends Controller
         }
 
         return $this->success(null, 'อัปเดตรอบเดินทางสำเร็จ');
+    }
+
+    /**
+     * ประกาศ "เปิดรอบใหม่" รวมครั้งเดียวให้หลายรอบของทริปเดียวกัน — ฟอร์มสร้างหลายรอบ
+     * สร้างทุกรอบแบบเงียบก่อน แล้วเรียกที่นี่ครั้งเดียว ลูกค้าเห็นแจ้งเตือนเดียว
+     * "เปิดจองเพิ่ม 12 รอบ" แทนที่จะเด้ง 12 ครั้ง
+     */
+    public function announceSchedules(
+        Request $request,
+        BroadcastNotificationService $broadcast,
+        TripAlertService $tripAlerts,
+    ): JsonResponse {
+        $request->validate([
+            'schedule_ids' => ['required', 'array', 'min:1', 'max:200'],
+            'schedule_ids.*' => ['integer', 'exists:trip_schedules,id'],
+        ]);
+
+        $schedules = TripSchedule::whereIn('id', $request->schedule_ids)->get();
+        if ($schedules->pluck('trip_id')->unique()->count() !== 1) {
+            return $this->error('ประกาศรวมได้ทีละทริป — รอบที่เลือกมาจากหลายทริป', 422);
+        }
+
+        $trip = Trip::findOrFail($schedules->first()->trip_id);
+        $broadcasted = $broadcast->broadcastNewRounds($trip, $schedules);
+        $subscribers = $tripAlerts->notifyNewSchedules($trip, $schedules);
+
+        $message = match (true) {
+            $broadcasted => 'ส่งแจ้งเตือนเปิดรอบใหม่ให้ลูกค้าแล้ว (ครั้งเดียว)',
+            $subscribers > 0 => "แจ้งเฉพาะคนที่กดติดตามทริปนี้ {$subscribers} คน — ไม่ประกาศถึงลูกค้าทั้งหมด เพราะทริปยังไม่เผยแพร่หรือยังไม่มีรอบอื่นเปิดจองอยู่",
+            default => 'ไม่มีแจ้งเตือนที่ต้องส่ง',
+        };
+
+        return $this->success([
+            'broadcasted' => $broadcasted,
+            'subscribers_notified' => $subscribers,
+        ], $message);
     }
 
     public function deleteSchedule(int $id): JsonResponse

@@ -11,6 +11,7 @@ use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 
 /**
  * Drives automatic, sales-driving push broadcasts to the whole customer base —
@@ -136,6 +137,67 @@ class BroadcastNotificationService
                 'trip_slug' => $trip->slug,
                 'trip_id' => $trip->id,
                 'schedule_id' => $schedule->id,
+            ],
+        );
+    }
+
+    /**
+     * ประกาศ "เปิดรอบใหม่" รวมครั้งเดียวสำหรับหลายรอบของทริปเดียวกัน — ใช้ตอนแอดมิน
+     * สร้างรอบทีละเยอะ ๆ แบบเงียบแล้วเลือกแจ้งรวม แทนที่ลูกค้าจะโดนเด้งทีละรอบ
+     * กฎเดียวกับ [broadcastNewSchedule]: ทริปต้องเผยแพร่อยู่ และต้องมีรอบอื่นเปิดจอง
+     * อยู่ก่อนแล้ว (ไม่งั้นนี่คือรอบแรกของทริปที่ new_trip ประกาศไปแล้ว)
+     *
+     * @param  Collection<int, TripSchedule>  $schedules
+     */
+    public function broadcastNewRounds(Trip $trip, Collection $schedules): bool
+    {
+        if ($trip->status !== 'active') {
+            return false;
+        }
+
+        $today = now(self::TIMEZONE)->startOfDay();
+        $rounds = $schedules
+            ->filter(fn (TripSchedule $s) => (int) $s->trip_id === (int) $trip->id
+                && $s->status === 'open'
+                && $s->departure_date !== null
+                && $s->departure_date->gte($today))
+            ->sortBy(fn (TripSchedule $s) => $s->departure_date->toDateString())
+            ->values();
+        if ($rounds->isEmpty()) {
+            return false;
+        }
+
+        $hasOtherBookableRound = $trip->schedules()
+            ->whereNotIn('id', $rounds->pluck('id'))
+            ->where('status', 'open')
+            ->whereDate('departure_date', '>=', $today)
+            ->exists();
+        if (! $hasOtherBookableRound) {
+            return false;
+        }
+
+        $first = $rounds->first();
+        $last = $rounds->last();
+        $body = $rounds->count() === 1
+            ? "{$trip->title} เปิดจองรอบวันที่ ".ThaiDate::full($first->departure_date).' แล้ว รีบจองก่อนเต็มนะ!'
+            : "{$trip->title} เปิดจองเพิ่ม {$rounds->count()} รอบ ตั้งแต่ "
+                .ThaiDate::full($first->departure_date).' ถึง '.ThaiDate::full($last->departure_date)
+                .' แล้ว รีบจองก่อนเต็มนะ!';
+
+        // คีย์กันซ้ำผูกกับชุดรอบนี้ — กดประกาศชุดเดิมซ้ำไม่ยิงซ้ำ (dedupe_key ยาวได้ 255
+        // ตัว รายการไอดีหลายสิบรอบจึงย่อเป็น hash)
+        $ids = $rounds->pluck('id')->sort()->implode(',');
+
+        return $this->broadcast(
+            'new_schedule',
+            "new_schedules:{$trip->id}:".sha1($ids),
+            'เปิดรอบใหม่แล้ว! 📅',
+            $body,
+            [
+                'route' => 'trip',
+                'trip_slug' => $trip->slug,
+                'trip_id' => $trip->id,
+                'schedule_id' => $first->id,
             ],
         );
     }

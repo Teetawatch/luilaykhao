@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Log;
 
 class TripScheduleObserver
 {
+    /** มากกว่า 0 = กำลังเปิดรอบแบบเงียบ — ดู [withoutNewRoundNotice] */
+    private static int $quietDepth = 0;
+
     public function __construct(
         private TripAlertService $tripAlertService,
         private BroadcastNotificationService $broadcast,
@@ -46,13 +49,32 @@ class TripScheduleObserver
     }
 
     /**
+     * เปิดรอบโดยไม่ประกาศ "เปิดรอบใหม่" ให้ลูกค้า — แอดมินเปิดรอบทีละเยอะ ๆ (ทั้งปี)
+     * แล้วไม่อยากให้มือถือลูกค้าเด้งทีละรอบ จะประกาศรวมครั้งเดียวทีหลังก็ได้
+     * (BroadcastNotificationService::broadcastNewRounds) คนที่รอเลือกรอบใหม่เพราะ
+     * เหตุสุดวิสัยยังได้รับแจ้งตามปกติ เพราะนั่นคืองานบริการ ไม่ใช่การตลาด
+     */
+    public static function withoutNewRoundNotice(callable $callback): mixed
+    {
+        self::$quietDepth++;
+
+        try {
+            return $callback();
+        } finally {
+            self::$quietDepth--;
+        }
+    }
+
+    /**
      * Alert subscribers of this trip and broadcast the new round to the whole
      * customer base. Both senders dedupe internally, so re-entry is safe.
      */
     private function notifyNewRound(TripSchedule $schedule): void
     {
-        $this->tripAlertService->notifyNewSchedule($schedule);
-        $this->broadcast->broadcastNewSchedule($schedule);
+        if (self::$quietDepth === 0) {
+            $this->tripAlertService->notifyNewSchedule($schedule);
+            $this->broadcast->broadcastNewSchedule($schedule);
+        }
 
         // คนที่รอบเดิมถูกเลื่อนเพราะเหตุสุดวิสัยและยังรอเลือกรอบ — บอกเขาก่อนใคร
         try {
