@@ -84,6 +84,28 @@ class TripCalendarTest extends TestCase
         $this->assertSame('/trips/phu-kradueng?schedule='.$schedule->id, $round['url']);
     }
 
+    public function test_a_round_leaving_the_night_before_says_when_the_van_leaves(): void
+    {
+        $trip = $this->trip();
+        $this->schedule($trip, [
+            'departure_date' => '2026-09-26',
+            'departs_at' => '2026-09-25 20:00:00',
+            'return_date' => '2026-09-27',
+        ]);
+        $this->schedule($trip, ['departure_date' => '2026-09-27', 'return_date' => '2026-09-28']);
+
+        $days = $this->calendar()['days'];
+
+        $early = $days[0]['rounds'][0];
+        $this->assertSame('2026-09-26', $early['departure_date']);
+        $this->assertSame('2026-09-25 20:00:00', $early['departs_at']);
+        $this->assertTrue($early['departs_before_trip_day']);
+
+        $sameDay = $days[1]['rounds'][0];
+        $this->assertNull($sameDay['departs_at']);
+        $this->assertFalse($sameDay['departs_before_trip_day']);
+    }
+
     public function test_the_current_month_starts_from_today_not_the_first(): void
     {
         $trip = $this->trip();

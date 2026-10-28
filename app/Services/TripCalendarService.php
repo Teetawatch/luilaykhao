@@ -199,6 +199,10 @@ class TripCalendarService
                 'is_international' => $trip->destination_type === 'international',
             ],
             'departure_date' => $schedule->departure_date->toDateString(),
+            // เวลาไทยตามที่เก็บ (ไม่แปลงโซน) — รอบที่รถออกคืนก่อนวันทริป การ์ดต้อง
+            // บอกวันขึ้นรถจริง ไม่งั้นคนอ่านวันทริปแล้วมาผิดวัน
+            'departs_at' => $schedule->departs_at?->format('Y-m-d H:i:s'),
+            'departs_before_trip_day' => $schedule->departsBeforeTripDay(),
             'return_date' => $schedule->return_date?->toDateString(),
             'date_label' => ThaiDate::range($schedule->departure_date, $schedule->return_date),
             'price' => $price,
