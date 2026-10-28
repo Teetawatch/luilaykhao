@@ -387,10 +387,7 @@
                 </div>
                 <div class="form-group">
                   <label>ยานพาหนะ</label>
-                  <select v-model="form.vehicle_id">
-                    <option :value="null">ยังไม่ระบุ</option>
-                    <option v-for="v in vehicleSelectOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
-                  </select>
+                  <VehicleSelect v-model="form.vehicle_id" :vehicles="vehicleSelectOptions" empty-label="ยังไม่ระบุ" />
                 </div>
 
                 <div class="form-group" :class="{ 'full-width': !editing }">
@@ -949,10 +946,7 @@
                 </label>
                 <label class="ride-field">
                   <span>รถ (ผังที่นั่ง)</span>
-                  <select v-model="opt.vehicle_id">
-                    <option :value="null">ใช้รถของรอบ</option>
-                    <option v-for="v in vehicleOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
-                  </select>
+                  <VehicleSelect v-model="opt.vehicle_id" :vehicles="vehicleOptions" empty-label="ใช้รถของรอบ" size="sm" />
                 </label>
                 <label class="ride-field ride-field-toggle">
                   <span>ให้เลือกที่นั่ง</span>
@@ -1009,10 +1003,7 @@
                 </label>
                 <label class="ride-field">
                   <span>รถ (ผังที่นั่ง)</span>
-                  <select v-model="rideForm.vehicle_id">
-                    <option :value="null">ใช้รถของรอบ</option>
-                    <option v-for="v in vehicleOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
-                  </select>
+                  <VehicleSelect v-model="rideForm.vehicle_id" :vehicles="vehicleOptions" empty-label="ใช้รถของรอบ" size="sm" />
                 </label>
                 <label class="ride-field ride-field-toggle">
                   <span>ให้เลือกที่นั่ง</span>
@@ -1281,10 +1272,7 @@
               </div>
               <div class="form-group">
                 <label>ยานพาหนะ</label>
-                <select v-model="batchForm.vehicle_id">
-                  <option :value="null">ไม่ระบุ</option>
-                  <option v-for="v in vehicleOptions" :key="v.id" :value="v.id">{{ v.name }}</option>
-                </select>
+                <VehicleSelect v-model="batchForm.vehicle_id" :vehicles="vehicleOptions" empty-label="ไม่ระบุ" />
               </div>
               <div class="form-group">
                 <label>จำนวนที่นั่ง / รอบ *</label>
@@ -2324,6 +2312,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from
 import { useRoute } from 'vue-router';
 import { useAdminStore } from '../../stores/admin';
 import api from '../../lib/axios';
+import VehicleSelect from '../../components/VehicleSelect.vue';
 import { useToast } from '../../lib/toast';
 const toast = useToast();
 const route = useRoute();
