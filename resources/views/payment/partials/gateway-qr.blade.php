@@ -35,23 +35,71 @@
 
     {{--
         ไม่สะดวกสแกน — ไปหน้าชำระเงินของ Beam สำหรับก้อนเดียวกัน (ลิงก์เซ็นไว้ ดู
-        PaymentCheckoutController) ชื่อแบรนด์เป็นตัวอักษร ไม่ใช่โลโก้ เหมือนในแอป
+        PaymentCheckoutController) ทุกแถวพาไปหน้าเดียวกัน แต่กดแถวไหนก็ไปต่อได้
+        โลโก้อยู่ที่ public/images/pay — ไฟล์ชุดเดียวกับเว็บและแอป
     --}}
     @php($gatewayConfig = \App\Support\PaymentGateway::publicConfig())
     @if (in_array(\App\Models\Payment::METHOD_CHECKOUT, $gatewayConfig['methods'], true))
+        @php($checkoutUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute('payment.checkout', now()->addDay(), ['payment' => $beamPayment->id]))
+        @php($installMin = (float) ($gatewayConfig['installment_min_amount'] ?? 0))
+        {{-- ผ่อนบัตรมีขั้นต่ำ — ยอดไม่ถึง หน้าของ Beam ไม่มีให้เลือก แถวนี้จางและบอกขั้นต่ำ --}}
+        @php($canInstall = $installMin > 0 && (float) $beamPayment->amount >= $installMin)
+        @php($methods = [
+            ['icon' => 'card', 'title' => 'บัตรเครดิต / เดบิต', 'caption' => 'กรอกเลขบัตรบนหน้าชำระเงิน', 'brands' => ['visa' => 'Visa', 'mastercard' => 'Mastercard'], 'on' => true],
+            ['icon' => 'tap', 'title' => 'Apple Pay · Google Pay', 'caption' => 'ไม่ต้องกรอกเลขบัตร ขึ้นตามเบราว์เซอร์ที่ใช้', 'brands' => ['applepay' => 'Apple Pay', 'googlepay' => 'Google Pay'], 'on' => true],
+            ['icon' => 'calendar', 'title' => 'ผ่อนชำระรายเดือน', 'caption' => $canInstall
+                ? 'กับบัตรเครดิตที่ร่วมรายการ เลือกจำนวนงวดบนหน้าชำระเงิน'
+                : ($installMin > 0 ? 'ผ่อนบัตรได้เมื่อยอดตั้งแต่ ฿'.number_format($installMin).' ขึ้นไป' : 'ยังไม่เปิดให้ผ่อนบัตร'), 'brands' => [], 'on' => $canInstall],
+            ['icon' => 'wallet', 'title' => 'e-Wallet', 'caption' => 'TrueMoney · LINE Pay · ShopeePay · Alipay', 'brands' => ['truemoney' => 'TrueMoney', 'linepay' => 'LINE Pay', 'shopeepay' => 'ShopeePay', 'alipay' => 'Alipay'], 'on' => true],
+        ])
+        @php($icons = [
+            'card' => 'M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z',
+            'tap' => 'M17 1.01 7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z',
+            'calendar' => 'M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM7 12h5v5H7z',
+            'wallet' => 'M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z',
+        ])
         <div class="checkout-alt">
             <div class="checkout-or">หรือ</div>
-            <a class="checkout-btn" id="beam-checkout"
-                href="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('payment.checkout', now()->addDay(), ['payment' => $beamPayment->id]) }}">
-                💳 จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet
+            <div class="checkout-head">จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet</div>
+            <div class="checkout-list">
+                @foreach ($methods as $m)
+                    @if ($m['on'])
+                        <a class="checkout-row" href="{{ $checkoutUrl }}">
+                    @else
+                        <div class="checkout-row off" aria-disabled="true">
+                    @endif
+                        <span class="checkout-tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ $icons[$m['icon']] }}"/></svg></span>
+                        <span class="checkout-text">
+                            <span class="checkout-title">{{ $m['title'] }}</span>
+                            <span class="checkout-caption">{{ $m['caption'] }}</span>
+                            @if ($m['brands'])
+                                <span class="checkout-brands">
+                                    @foreach ($m['brands'] as $file => $name)
+                                        <img src="{{ asset('images/pay/'.$file.'.svg') }}" alt="{{ $name }}" width="34" height="22">
+                                    @endforeach
+                                </span>
+                            @endif
+                            @unless ($m['on'])
+                                <span class="checkout-tag">ยังไม่ถึงขั้นต่ำ</span>
+                            @endunless
+                        </span>
+                        @if ($m['on'])
+                            <span class="checkout-chev" aria-hidden="true">›</span>
+                        @endif
+                    @if ($m['on'])
+                        </a>
+                    @else
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+            <a class="checkout-btn" id="beam-checkout" href="{{ $checkoutUrl }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
+                ไปหน้าชำระเงิน ฿{{ number_format((float) $beamPayment->amount, 2) }}
             </a>
-            <div class="checkout-chips">
-                <span>Visa / Mastercard</span><span>Apple Pay</span><span>Google Pay</span>
-                {{-- ผ่อนบัตรมีขั้นต่ำ — ยอดไม่ถึง หน้าของ Beam ไม่มีให้เลือก --}}
-                @if ($gatewayConfig['installment_min_amount'] && (float) $beamPayment->amount >= $gatewayConfig['installment_min_amount'])
-                    <span>ผ่อนบัตร</span>
-                @endif
-                <span>TrueMoney</span><span>LINE Pay</span><span>ShopeePay</span><span>Alipay</span>
+            <div class="checkout-trust">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                <span>กรอกข้อมูลบัตรบนหน้าของ Beam โดยตรง เราไม่เห็นและไม่เก็บเลขบัตรของคุณ</span>
             </div>
         </div>
     @endif

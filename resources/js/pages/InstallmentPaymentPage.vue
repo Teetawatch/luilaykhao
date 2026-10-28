@@ -187,14 +187,16 @@
             <div class="flex items-center gap-3 text-[11px] font-bold text-gray-400">
               <div class="flex-1 h-px bg-gray-200"></div>หรือ<div class="flex-1 h-px bg-gray-200"></div>
             </div>
-            <button @click="createBeamCharge('CHECKOUT')" :disabled="beamLoading"
-              class="w-full py-3.5 rounded-xl border-2 border-amber-500 bg-white text-amber-700 text-sm font-black flex items-center justify-center gap-2 hover:bg-amber-50 active:scale-95 transition-all disabled:opacity-60">
-              <span class="material-symbols-rounded text-lg">credit_card</span>
+            <p class="text-sm font-black text-gray-900 flex items-center gap-2">
+              <span class="material-symbols-rounded text-amber-600 text-[20px]">credit_card</span>
               จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet
-            </button>
-            <p class="text-[11px] text-gray-400 font-medium text-center">
-              Visa · Mastercard · Apple Pay · Google Pay{{ canInstall ? ' · ผ่อนบัตร' : '' }} · TrueMoney · LINE Pay · ShopeePay · Alipay
             </p>
+            <PaymentCheckoutMethods
+              accent="amber"
+              :amount="Number(nextInstallment.amount)"
+              :installment-min="Number(gateway.installment_min_amount || 0)"
+              :loading="beamLoading"
+              @open="createBeamCharge('CHECKOUT')" />
           </div>
         </div>
 
@@ -298,6 +300,7 @@ import { useRoute, useRouter } from 'vue-router';
 import QRCode from 'qrcode';
 import api from '../lib/axios';
 import PaymentSettlingPanel from '../components/PaymentSettlingPanel.vue';
+import PaymentCheckoutMethods from '../components/PaymentCheckoutMethods.vue';
 import { useBeamCharge } from '../composables/useBeamCharge';
 
 const route = useRoute();
@@ -323,11 +326,7 @@ const nextInstallment = computed(() => installments.value.find(i => i.status !==
 const gateway = computed(() => booking.value?.payment_gateway || { provider: 'manual' });
 const useBeam = computed(() => gateway.value.provider === 'beam');
 const checkoutAvailable = computed(() => useBeam.value && gateway.value.methods?.includes('CHECKOUT'));
-// ผ่อนบัตรมีขั้นต่ำ — ค่างวดส่วนใหญ่ต่ำกว่านั้น อย่าโชว์ให้เข้าใจว่าผ่อนต่อได้
-const canInstall = computed(() => {
-  const min = Number(gateway.value.installment_min_amount || 0);
-  return min > 0 && Number(nextInstallment.value?.amount || 0) >= min;
-});
+// ผ่อนบัตรมีขั้นต่ำ — ค่างวดส่วนใหญ่ต่ำกว่านั้น PaymentCheckoutMethods บอกขั้นต่ำแทนการสัญญาว่าผ่อนได้
 
 const {
   payment: beamPayment,
