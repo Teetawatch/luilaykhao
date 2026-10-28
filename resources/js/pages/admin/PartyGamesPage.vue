@@ -22,7 +22,9 @@
         <strong>วันที่รถออกจนถึงวันกลับ</strong> · แก้แล้วเครื่องที่ดึงไปก่อนจะได้ของใหม่ตอนมีสัญญาณครั้งถัดไป ·
         ใบที่ผูกกับทริปจะโผล่เฉพาะรอบของทริปนั้น (เช่น ควิซเรื่องภูกระดึง) ·
         เกม <strong>มนุษย์หมาป่า</strong> ไม่ใช้คลัง บทบาทอยู่ในแอปแล้ว ·
-        <strong>คำต้องห้าม</strong> แจกคนละคำ ระดับ "โหด" คือคำติดปากที่เผลอพูดง่ายที่สุด
+        <strong>คำต้องห้าม</strong> แจกคนละคำ ระดับ "โหด" คือคำติดปากที่เผลอพูดง่ายที่สุด ·
+        <strong>ใครน่าจะ</strong> ใส่แค่ท้ายประโยค แอปขึ้นต้น "ใครน่าจะ…" ให้เอง ·
+        <strong>อันไหนดี / คลื่นความคิด</strong> วางหลายบรรทัดแบบ <code>ซ้าย | ขวา</code> ได้
       </div>
     </div>
 
@@ -84,10 +86,16 @@
             <span v-if="card.trip_id" class="pg-chip pg-chip-trip"><i class="fas fa-mountain"></i> {{ card.trip_title || 'ทริป' }}</span>
             <span v-if="!card.is_active" class="pg-chip pg-chip-off">ซ่อนอยู่</span>
           </div>
-          <p class="pg-body">{{ card.body }}</p>
+          <p class="pg-body">{{ card.game === 'most_likely' ? `ใครน่าจะ${card.body}` : card.body }}</p>
 
           <p v-if="card.game === 'spyfall'" class="pg-detail">
             <span class="pg-detail-label">บทบาท:</span> {{ (card.data.roles || []).join(' · ') }}
+          </p>
+          <p v-if="card.game === 'would_rather'" class="pg-detail">
+            <span class="pg-detail-label">หรือ</span> {{ card.data.other }}
+          </p>
+          <p v-if="card.game === 'wavelength'" class="pg-detail">
+            <i class="fas fa-arrows-left-right"></i> {{ card.data.right }}
           </p>
           <p v-if="card.game === 'heads_up' && card.data.taboo?.length" class="pg-detail">
             <span class="pg-detail-label">ห้ามพูด:</span> {{ card.data.taboo.join(' · ') }}
@@ -154,7 +162,17 @@
 
             <div class="form-group">
               <label>{{ GAMES[form.game].bodyLabel }}</label>
-              <textarea v-model="form.body" rows="2" maxlength="500" required :placeholder="GAMES[form.game].placeholder"></textarea>
+              <div v-if="form.game === 'most_likely'" class="pg-prefixed">
+                <span>ใครน่าจะ…</span>
+                <input v-model="form.body" maxlength="80" required :placeholder="GAMES[form.game].placeholder" />
+              </div>
+              <input v-else-if="pairKey(form.game) || form.game === 'bomb'" v-model="form.body" maxlength="80" required :placeholder="GAMES[form.game].placeholder" />
+              <textarea v-else v-model="form.body" rows="2" maxlength="500" required :placeholder="GAMES[form.game].placeholder"></textarea>
+            </div>
+
+            <div v-if="pairKey(form.game)" class="form-group">
+              <label>{{ GAMES[form.game].pairLabel }}</label>
+              <input v-model="form.pair" maxlength="80" required :placeholder="GAMES[form.game].pairPlaceholder" />
             </div>
 
             <div v-if="form.game === 'spyfall'" class="form-group">
@@ -243,6 +261,8 @@
               <label>หนึ่งบรรทัด = หนึ่งใบ <span class="pg-optional">({{ bulkLineCount }} บรรทัด · สูงสุด 200)</span></label>
               <textarea v-model="bulk.lines" rows="10" :placeholder="GAMES[bulk.game].placeholder"></textarea>
             </div>
+            <p v-if="pairKey(bulk.game)" class="pg-hint">บรรทัดละคู่ คั่นสองฝั่งด้วย <code>|</code> เช่น <code>{{ GAMES[bulk.game].bulkExample }}</code></p>
+            <p v-if="bulk.game === 'most_likely'" class="pg-hint">ใส่แค่ท้ายประโยค แอปขึ้นต้น "ใครน่าจะ…" ให้เอง (พิมพ์มาด้วยก็ถูกตัดออกให้)</p>
             <p v-if="bulk.game === 'heads_up'" class="pg-hint">คำที่วางแบบนี้ยังไม่มีคำต้องห้าม — เล่นโหมดแปะหน้าผากได้เลย ถ้าจะใช้โหมด "ห้ามพูด" ค่อยกดแก้ใส่ทีหลัง</p>
           </div>
           <div class="modal-footer">
@@ -276,15 +296,38 @@ const GAMES = {
   heads_up: { label: 'ใบ้คำ', icon: 'fa-face-grin-squint', bodyLabel: 'คำที่ต้องทาย', placeholder: 'เช่น ถุงนอน' },
   trivia: { label: 'ควิซ', icon: 'fa-lightbulb', bodyLabel: 'คำถาม', placeholder: 'เช่น ยอดเขาที่สูงที่สุดในไทยคือ' },
   forbidden: { label: 'คำต้องห้าม', icon: 'fa-comment-slash', bodyLabel: 'คำ (สั้น ๆ ไม่เกิน 30 ตัวอักษร)', placeholder: 'เช่น หนาว' },
+  most_likely: { label: 'ใครน่าจะ', icon: 'fa-hand-point-right', bodyLabel: 'ท้ายประโยค', placeholder: 'เช่น หลงทางคนแรกในทริปนี้' },
+  would_rather: {
+    label: 'อันไหนดี',
+    icon: 'fa-code-compare',
+    bodyLabel: 'ตัวเลือกแรก',
+    placeholder: 'เช่น ตื่นตีห้าไปดูทะเลหมอก',
+    pairLabel: 'หรือ… (ตัวเลือกที่สอง)',
+    pairPlaceholder: 'เช่น นอนต่อในถุงนอนอุ่น ๆ',
+    bulkExample: 'ไปทะเลทุกทริป | ไปภูเขาทุกทริป',
+  },
+  bomb: { label: 'ระเบิดเวลา', icon: 'fa-bomb', bodyLabel: 'หัวข้อ (ตอบได้ทีละคำ)', placeholder: 'เช่น ยี่ห้อรถยนต์' },
+  wavelength: {
+    label: 'คลื่นความคิด',
+    icon: 'fa-wave-square',
+    bodyLabel: 'ปลายซ้ายของเส้น',
+    placeholder: 'เช่น ไม่น่ากลัวเลย',
+    pairLabel: 'ปลายขวาของเส้น',
+    pairPlaceholder: 'เช่น น่ากลัวสุด ๆ',
+    bulkExample: 'ของถูก | ของแพง',
+  },
 };
+// เกมคู่ — ฝั่งที่สองเก็บใน data ตาม PartyGameCard::PAIR_GAMES
+const PAIR_KEYS = { would_rather: 'other', wavelength: 'right' };
+const pairKey = (g) => PAIR_KEYS[g] || null;
 const KINDS = { truth: 'ความจริง', dare: 'ท้า' };
 const LEVELS = { light: 'เบา ๆ', medium: 'กลาง ๆ', spicy: 'สนิทกันแล้ว' };
 // คำต้องห้ามใช้ระดับชุดเดียวกัน แต่ความหมายคือ "เผลอพูดยากแค่ไหน"
 const FORBIDDEN_LEVELS = { light: 'ง่าย · ต้องหลอกถึงจะพูด', medium: 'กลาง · คำในวงคุย', spicy: 'โหด · คำติดปาก' };
 const levelsFor = (g) => (g === 'forbidden' ? FORBIDDEN_LEVELS : LEVELS);
-const bulkGames = ['truth_dare', 'never', 'heads_up', 'forbidden'];
+const bulkGames = ['truth_dare', 'never', 'heads_up', 'forbidden', 'most_likely', 'would_rather', 'bomb', 'wavelength'];
 
-const usesLevel = (g) => g === 'truth_dare' || g === 'never' || g === 'forbidden';
+const usesLevel = (g) => ['truth_dare', 'never', 'forbidden', 'most_likely', 'would_rather'].includes(g);
 const usesCategory = (g) => g === 'heads_up' || g === 'trivia';
 
 const cards = ref([]);
@@ -310,6 +353,7 @@ function blankForm(g) {
     level: 'light',
     category: '',
     body: '',
+    pair: '',
     roles: '',
     taboo: '',
     choices: ['', '', '', ''],
@@ -351,7 +395,7 @@ const visible = computed(() => {
     if (filterTrip.value === 'global' && c.trip_id) return false;
     if (filterTrip.value && filterTrip.value !== 'global' && String(c.trip_id) !== filterTrip.value) return false;
     if (!q) return true;
-    const haystack = [c.body, c.category, ...(c.data?.roles || []), ...(c.data?.taboo || []), ...(c.data?.choices || [])]
+    const haystack = [c.body, c.category, c.data?.other, c.data?.right, ...(c.data?.roles || []), ...(c.data?.taboo || []), ...(c.data?.choices || [])]
       .join(' ')
       .toLowerCase();
     return haystack.includes(q);
@@ -402,6 +446,7 @@ function openEdit(card) {
     level: card.level || 'light',
     category: card.category || '',
     body: card.body,
+    pair: card.data?.[pairKey(card.game)] || '',
     roles: (card.data?.roles || []).join('\n'),
     taboo: (card.data?.taboo || []).join(', '),
     choices,
@@ -424,6 +469,7 @@ function payload() {
     is_active: form.is_active,
   };
   if (form.game === 'spyfall') base.data = { roles: form.roles.split(/\r?\n/) };
+  if (pairKey(form.game)) base.data = { [pairKey(form.game)]: form.pair.trim() };
   if (form.game === 'heads_up') base.data = { taboo: form.taboo };
   if (form.game === 'trivia') {
     // ช่องว่างตรงกลางถูกตัดทิ้ง เลขข้อที่ถูกต้องเลื่อนตาม
@@ -603,6 +649,10 @@ onMounted(load);
 .pg-choice-input input[type='radio'] { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--color-accent); }
 .pg-choice-input input:not([type='radio']) { flex: 1; }
 .pg-optional { font-weight: 400; color: #9ca3af; }
+.pg-prefixed { display: flex; align-items: center; gap: 8px; }
+.pg-prefixed > span { flex-shrink: 0; font-weight: 700; color: #4b5563; }
+.pg-prefixed > input { flex: 1; min-width: 0; }
+.pg-hint code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; }
 .pg-hint { font-size: 12px; color: #6b7280; margin: 0; }
 .pg-check { display: flex; gap: 8px; align-items: center; font-size: 13px; color: #374151; cursor: pointer; }
 .modal-footer { display: flex; gap: 8px; justify-content: flex-end; }

@@ -26,6 +26,12 @@ use Illuminate\Validation\ValidationException;
  *   heads_up   category, body = คำ, data.taboo = คำต้องห้าม (โหมดห้ามพูด)
  *   trivia     category, body = คำถาม, data.choices / data.answer (index) / data.note
  *   forbidden  level (ง่าย = ต้องหลอกถึงจะพูด, โหด = คำติดปาก), body = คำสั้น ๆ
+ *   most_likely  level, body = ท้ายประโยค "ใครน่าจะ…" (แอปเติมหัวเอง ตัดออกถ้าแอดมินพิมพ์มา)
+ *   would_rather level, body = ตัวเลือก A, data.other = ตัวเลือก B
+ *   bomb         body = หัวข้อสั้น ๆ ที่ตอบได้ทีละคำ
+ *   wavelength   body = ปลายซ้าย, data.right = ปลายขวา
+ *
+ * เกมคู่ (would_rather, wavelength) รับ body แบบ "ซ้าย | ขวา" ได้ด้วย — วางทีละบรรทัดได้
  */
 class PartyGameService
 {
@@ -200,7 +206,15 @@ class PartyGameService
             'data' => null,
         ];
 
-        $needsLevel = in_array($game, ['truth_dare', 'never', 'forbidden'], true);
+        // วางมาเป็น "ซ้าย | ขวา" ในช่องเดียว (วางหลายบรรทัด) — แยกให้ก่อนตรวจ
+        $pairKey = PartyGameCard::PAIR_GAMES[$game] ?? null;
+        $pair = $pairKey ? trim((string) ($data[$pairKey] ?? '')) : '';
+        if ($pairKey && $pair === '' && str_contains($body, '|')) {
+            [$body, $pair] = array_map('trim', explode('|', $body, 2));
+            $out['body'] = $body;
+        }
+
+        $needsLevel = in_array($game, ['truth_dare', 'never', 'forbidden', 'most_likely', 'would_rather'], true);
         if ($needsLevel) {
             $level = $input['level'] ?? null;
             if (! in_array($level, PartyGameCard::LEVELS, true)) {
@@ -212,6 +226,37 @@ class PartyGameService
         // คำต้องห้ามต้องสั้นพอที่จะเผลอพูดในบทสนทนา ไม่ใช่ประโยค
         if ($game === 'forbidden' && mb_strlen($body) > 30) {
             $errors['body'] = 'คำต้องห้ามควรเป็นคำสั้น ๆ ไม่เกิน 30 ตัวอักษร';
+        }
+
+        if ($game === 'most_likely') {
+            // แอปขึ้นต้น "ใครน่าจะ…" ให้เอง และใช้ท้ายประโยคเป็นฉายาตอนสรุป
+            // rtrim() ตัดทีละไบต์ — "？" จะกินไบต์ท้ายของอักษรไทยบางตัวไปด้วย ต้องใช้ /u
+            $body = trim((string) preg_replace(['/^ใคร(ใน(วง|ทริป)นี้)?น่าจะ\s*/u', '/[\s?？]+$/u'], '', $body));
+            $out['body'] = $body;
+            if ($body === '') {
+                $errors['body'] = 'กรอกท้ายประโยคหลัง "ใครน่าจะ…"';
+            } elseif (mb_strlen($body) > 80) {
+                $errors['body'] = 'ยาวเกิน 80 ตัวอักษร — สั้น ๆ จะอ่านออกเสียงง่ายกว่า';
+            }
+        }
+
+        if ($game === 'bomb' && mb_strlen($body) > 60) {
+            $errors['body'] = 'หัวข้อควรสั้น ไม่เกิน 60 ตัวอักษร — ต้องอ่านทันตอนเครื่องส่งมาถึงมือ';
+        }
+
+        if ($pairKey) {
+            foreach (['body' => $body, "data.{$pairKey}" => $pair] as $field => $text) {
+                if ($text === '') {
+                    $errors[$field] = match (true) {
+                        $field === 'body' => 'กรอกข้อความก่อน',
+                        $game === 'wavelength' => 'ใส่ปลายขวาของเส้น',
+                        default => 'ใส่ตัวเลือกที่สอง',
+                    };
+                } elseif (mb_strlen($text) > 80) {
+                    $errors[$field] = 'แต่ละฝั่งไม่เกิน 80 ตัวอักษร';
+                }
+            }
+            $out['data'] = [$pairKey => $pair];
         }
 
         if ($game === 'truth_dare') {

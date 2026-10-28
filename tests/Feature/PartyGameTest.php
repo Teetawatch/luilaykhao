@@ -275,4 +275,95 @@ class PartyGameTest extends TestCase
         $this->assertContains('ฉันไม่เคยซ่อน', collect($res->json('data.cards'))->pluck('body'));
         $this->assertContains($schedule->trip_id, collect($res->json('data.trips'))->pluck('id'));
     }
+
+    public function test_icebreaker_games_ship_with_pairs_and_levels(): void
+    {
+        $this->assertTrue(PartyGameCard::where('game', 'would_rather')->get()->every(fn ($c) => filled($c->data['other'] ?? null)));
+        $this->assertTrue(PartyGameCard::where('game', 'wavelength')->get()->every(fn ($c) => filled($c->data['right'] ?? null)));
+        foreach (['most_likely', 'would_rather'] as $game) {
+            foreach (PartyGameCard::LEVELS as $level) {
+                $this->assertGreaterThanOrEqual(5, PartyGameCard::where('game', $game)->where('level', $level)->count(), "{$game} {$level}");
+            }
+        }
+
+        // แอปเติม "ใครน่าจะ" เอง — คลังต้องไม่มีหัวซ้ำ
+        $this->assertSame(0, PartyGameCard::where('game', 'most_likely')->where('body', 'like', 'ใคร%')->count());
+
+        // ส่งถึงแอปพร้อมข้อมูลคู่
+        $schedule = $this->tripSchedule();
+        [$owner] = $this->party($schedule, ['บี', 'แอน']);
+        $cards = collect($this->fetch($owner)->json('data.cards'));
+        $wave = $cards->firstWhere('game', 'wavelength');
+        $this->assertNotEmpty($wave['data']['right']);
+        $this->assertNotEmpty($cards->firstWhere('game', 'bomb'));
+    }
+
+    public function test_icebreaker_cards_are_validated_and_cleaned(): void
+    {
+        $admin = $this->admin();
+        $url = '/api/v1/admin/party-games';
+
+        // หัว "ใครน่าจะ" กับเครื่องหมายคำถามท้ายถูกตัด — ตัวสุดท้ายเป็นอักษรไทยต้องไม่ถูกกินไบต์
+        $res = $this->actingAs($admin, 'sanctum')->postJson($url, [
+            'game' => 'most_likely', 'level' => 'light', 'body' => 'ใครในวงนี้น่าจะกลัวผีที่สุด？',
+        ])->assertCreated();
+        $this->assertSame('กลัวผีที่สุด', $res->json('data.body'));
+
+        $res = $this->actingAs($admin, 'sanctum')->postJson($url, [
+            'game' => 'most_likely', 'level' => 'light', 'body' => 'ทำไฟฟ?',
+        ])->assertCreated();
+        $this->assertSame('ทำไฟฟ', $res->json('data.body'));
+
+        $this->actingAs($admin, 'sanctum')->postJson($url, [
+            'game' => 'most_likely', 'body' => 'หลงทาง',
+        ])->assertStatus(422)->assertJsonValidationErrors('level');
+
+        // เกมคู่ — พิมพ์ "A | B" ช่องเดียวได้ ขาดฝั่งไหนไม่ผ่าน
+        $res = $this->actingAs($admin, 'sanctum')->postJson($url, [
+            'game' => 'would_rather', 'level' => 'medium', 'body' => ' ภูเขา | ทะเล ',
+        ])->assertCreated();
+        $this->assertSame('ภูเขา', $res->json('data.body'));
+        $this->assertSame(['other' => 'ทะเล'], PartyGameCard::find($res->json('data.id'))->data);
+
+        $this->actingAs($admin, 'sanctum')->postJson($url, [
+            'game' => 'would_rather', 'level' => 'medium', 'body' => 'ภูเขา',
+        ])->assertStatus(422)->assertJsonValidationErrors('data.other');
+
+        $this->actingAs($admin, 'sanctum')->postJson($url, [
+            'game' => 'wavelength', 'body' => '| ร้อน',
+        ])->assertStatus(422)->assertJsonValidationErrors('body');
+
+        $res = $this->actingAs($admin, 'sanctum')->postJson($url, [
+            'game' => 'wavelength', 'body' => 'หนาว', 'level' => 'spicy', 'data' => ['right' => 'ร้อน'],
+        ])->assertCreated();
+        $this->assertNull($res->json('data.level'));
+        $this->assertSame('ร้อน', $res->json('data.data.right'));
+
+        $this->actingAs($admin, 'sanctum')->postJson($url, [
+            'game' => 'bomb', 'body' => str_repeat('ยาว', 31),
+        ])->assertStatus(422)->assertJsonValidationErrors('body');
+    }
+
+    public function test_admin_pastes_pairs_one_per_line(): void
+    {
+        $admin = $this->admin();
+        $before = PartyGameCard::where('game', 'wavelength')->count();
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/admin/party-games/bulk', [
+            'game' => 'wavelength',
+            'lines' => "เงียบ | เสียงดัง\nช้า|เร็ว",
+        ])->assertCreated()->assertJsonPath('data.count', 2);
+
+        $this->assertSame(['right' => 'เร็ว'], PartyGameCard::where('game', 'wavelength')->where('body', 'ช้า')->first()->data);
+
+        // บรรทัดเดียวไม่มีคู่ = ไม่บันทึกสักบรรทัด
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/admin/party-games/bulk', [
+            'game' => 'wavelength', 'lines' => "มืด | สว่าง\nไม่มีคู่",
+        ])->assertStatus(422);
+        $this->assertSame($before + 2, PartyGameCard::where('game', 'wavelength')->count());
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/v1/admin/party-games/bulk', [
+            'game' => 'bomb', 'lines' => "ยี่ห้อกาแฟ\nชื่อน้ำตก",
+        ])->assertCreated()->assertJsonPath('data.count', 2);
+    }
 }

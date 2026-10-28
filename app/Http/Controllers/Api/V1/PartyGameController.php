@@ -19,6 +19,11 @@ class PartyGameController extends Controller
 {
     use ApiResponse;
 
+    private const BULK_GAMES = [
+        'truth_dare', 'never', 'heads_up', 'forbidden',
+        'most_likely', 'would_rather', 'bomb', 'wavelength',
+    ];
+
     public function __construct(private PartyGameService $games) {}
 
     /**
@@ -68,12 +73,13 @@ class PartyGameController extends Controller
 
     /**
      * POST admin/party-games/bulk — วางทีละบรรทัด หนึ่งบรรทัดต่อหนึ่งใบ
-     * ใช้กับเกมที่เป็นข้อความล้วน (ความจริง/ท้า, ฉันไม่เคย, คำต้องห้าม, คำใบ้ที่ยังไม่มีคำต้องห้าม)
+     * ใช้กับเกมที่เป็นข้อความล้วน (ความจริง/ท้า, ฉันไม่เคย, คำต้องห้าม, คำใบ้ที่ยังไม่มีคำต้องห้าม,
+     * ใครน่าจะ, หัวข้อระเบิดเวลา) และเกมคู่ที่วางเป็น "ซ้าย | ขวา" (อันไหนดี, คลื่นความคิด)
      */
     public function bulkStore(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'game' => ['required', Rule::in(['truth_dare', 'never', 'heads_up', 'forbidden'])],
+            'game' => ['required', Rule::in(self::BULK_GAMES)],
             'lines' => ['required', 'string', 'max:20000'],
         ]);
 
