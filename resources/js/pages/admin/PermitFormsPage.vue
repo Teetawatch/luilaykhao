@@ -596,12 +596,17 @@ function closeUpload() {
   showUpload.value = false;
 }
 
+/**
+ * pdf.js รุ่น legacy (มี polyfill — รุ่นปกติต้องใช้ Safari 17.4+/Chrome 119+) และให้ Vite
+ * รวม worker เป็นไฟล์ .js เอง: ถ้าชี้ workerSrc ไปที่ไฟล์ .mjs nginx ค่าเริ่มต้นส่ง
+ * MIME เป็น octet-stream เบราว์เซอร์ไม่ยอมรัน แล้วเปิด PDF ไม่ได้สักไฟล์
+ */
 async function loadPdfjs() {
-  const [pdfjs, worker] = await Promise.all([
-    import('pdfjs-dist'),
-    import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+  const [pdfjs, { default: PdfWorker }] = await Promise.all([
+    import('pdfjs-dist/legacy/build/pdf.min.mjs'),
+    import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker'),
   ]);
-  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  pdfjs.GlobalWorkerOptions.workerPort ??= new PdfWorker();
   return pdfjs;
 }
 
@@ -626,7 +631,8 @@ async function onPickFiles(event) {
       upload.source = pdf;
       if (!upload.name) upload.name = pdf.name.replace(/\.pdf$/i, '');
       const pdfjs = await loadPdfjs();
-      const doc = await pdfjs.getDocument({ data: await pdf.arrayBuffer() }).promise;
+      const doc = await pdfjs.getDocument({ data: await pdf.arrayBuffer() }).promise
+        .catch((e) => { throw e?.name === 'PasswordException' ? new Error('locked') : e; });
       if (doc.numPages > MAX_PAGES) upload.error = `ไฟล์มี ${doc.numPages} หน้า ใช้แค่ ${MAX_PAGES} หน้าแรก`;
       for (let i = 1; i <= Math.min(doc.numPages, MAX_PAGES); i++) {
         const page = await doc.getPage(i);
@@ -647,6 +653,7 @@ async function onPickFiles(event) {
           height_mm: base.height / PT_PER_MM,
         });
       }
+      doc.destroy();
     } else {
       // รูปสแกน — ถือว่าเป็นกระดาษ A4 ตามแนวของรูป
       if (!upload.name) upload.name = files[0].name.replace(/\.(jpe?g|png)$/i, '');
@@ -664,7 +671,12 @@ async function onPickFiles(event) {
     }
   } catch (e) {
     console.error(e);
-    upload.error = 'เปิดไฟล์นี้ไม่ได้ ลองบันทึกเป็น PDF ใหม่ หรือถ่ายรูป/สแกนเป็น JPG';
+    upload.pages.forEach((p) => URL.revokeObjectURL(p.preview));
+    upload.pages = [];
+    // แนบสาเหตุจริงไว้ท้ายข้อความ — ส่งต่อให้ทีมดูได้โดยไม่ต้องเปิด console
+    upload.error = e?.message === 'locked'
+      ? 'ไฟล์ PDF นี้ใส่รหัสผ่านไว้ ปลดรหัสก่อน หรือถ่ายรูป/สแกนเป็น JPG'
+      : `เปิดไฟล์นี้ไม่ได้ ลองบันทึกเป็น PDF ใหม่ หรือถ่ายรูป/สแกนเป็น JPG (${e?.name || 'Error'}: ${e?.message || e})`;
   } finally {
     upload.rendering = false;
   }
