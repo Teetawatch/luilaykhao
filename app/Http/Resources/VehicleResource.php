@@ -45,14 +45,24 @@ class VehicleResource extends JsonResource
                 'sort_order' => $p->sort_order,
             ])
             ),
-            'schedules_count' => $this->whenCounted('schedules'),
-            'upcoming_schedules_count' => $this->whenCounted('upcomingSchedules'),
-            'last_departure_date' => $this->schedules_max_departure_date ?? null,
-            // เคยมีรอบ แต่ไม่เหลือรอบข้างหน้าแล้ว → หน้าจัดการยานพาหนะซ่อนไว้ในแท็บ "เลิกใช้แล้ว"
-            'is_retired' => $this->when(
-                isset($this->schedules_count, $this->upcoming_schedules_count),
-                fn () => $this->schedules_count > 0 && $this->upcoming_schedules_count === 0,
+            // ตัวนับรวมรอบที่ใช้รถผ่าน "ตัวเลือกยานพาหนะ" ด้วย (รอบเดียววิ่งทั้งบัสและตู้)
+            'schedules_count' => $this->when(
+                isset($this->schedules_count),
+                fn () => $this->schedules_count + ($this->option_schedules_count ?? 0),
             ),
+            'upcoming_schedules_count' => $this->when(
+                isset($this->upcoming_schedules_count),
+                fn () => $this->upcoming_schedules_count + ($this->upcoming_option_schedules_count ?? 0),
+            ),
+            'last_departure_date' => collect([
+                $this->schedules_max_departure_date ?? null,
+                $this->option_schedules_max_departure_date ?? null,
+            ])->filter()->max(),
+            // active (มีรอบที่ยังไม่จบ) | never_used (ยังไม่เคยถูกใช้) | past (ใช้ผ่านมาแล้ว)
+            'usage_status' => $this->when(isset($this->schedules_count), fn () => $this->usageStatus()),
+            // เคยมีรอบ แต่ไม่เหลือรอบที่ยังไม่จบแล้ว — คงไว้ให้ผู้เรียกเดิม (= usage_status past)
+            'is_retired' => $this->when(isset($this->schedules_count), fn () => $this->usageStatus() === 'past'),
+            'created_at' => $this->created_at?->toISOString(),
         ];
     }
 }

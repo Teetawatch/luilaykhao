@@ -56,20 +56,29 @@
           <span class="tab-count">{{ tab.count }}</span>
         </button>
       </div>
-      <!-- รถที่ไม่เหลือรอบข้างหน้าแล้วถูกซ่อนอัตโนมัติไว้ในแท็บ "เลิกใช้แล้ว" -->
+      <!-- แยกรถตามการใช้งาน (usage_status จาก backend) — ค่าตั้งต้นโชว์เฉพาะคันที่มีรอบที่ยังไม่จบ
+           คันที่ยังไม่เคยใช้/ใช้ผ่านมาแล้วอยู่แท็บของตัวเอง และเคลียร์ทิ้งทีละหลายคันได้ -->
       <div class="type-tabs">
         <button
           v-for="tab in statusTabs"
           :key="tab.value"
           class="type-tab"
-          :class="{ active: statusFilter === tab.value, 'tab-retired': tab.value === 'retired' && statusFilter === 'retired' }"
-          @click="statusFilter = tab.value"
+          :class="{ active: statusFilter === tab.value, 'tab-retired': tab.value !== 'active' && statusFilter === tab.value }"
+          @click="setStatusFilter(tab.value)"
         >
           <span class="material-symbols-rounded">{{ tab.icon }}</span>
           {{ tab.label }}
           <span class="tab-count">{{ tab.count }}</span>
         </button>
       </div>
+      <button
+        v-if="viewMode === 'vehicle' && statusFilter !== 'active' && !selectMode"
+        class="btn-clear"
+        :disabled="!deletableVehicles.length"
+        @click="startSelect"
+      >
+        <span class="material-symbols-rounded">delete_sweep</span> เคลียร์ข้อมูล
+      </button>
       <div class="view-toggle">
         <button class="view-toggle-btn" :class="{ active: viewMode === 'vehicle' }" @click="viewMode = 'vehicle'">
           <span class="material-symbols-rounded">directions_car</span> ตามคันรถ
@@ -83,6 +92,24 @@
     <!-- Content -->
     <div class="loading-state" v-if="admin.loading"><div class="spinner"></div></div>
     <template v-else-if="viewMode === 'vehicle'">
+      <!-- โหมดเลือกหลายคันเพื่อลบ — เลือกได้เฉพาะคันที่ไม่มีรอบที่ยังไม่จบ -->
+      <div class="select-bar" v-if="selectMode">
+        <span class="select-count">
+          <span class="material-symbols-rounded">check_box</span>
+          เลือกแล้ว {{ selectedIds.size }} คัน
+        </span>
+        <button class="select-link" @click="toggleSelectAll">
+          {{ allDeletableSelected ? 'ไม่เลือกเลย' : `เลือกทั้งหมด (${deletableVehicles.length})` }}
+        </button>
+        <span class="select-hint" v-if="statusFilter === 'all'">รถที่ยังมีรอบอยู่เลือกไม่ได้</span>
+        <div class="select-actions">
+          <button class="btn-secondary" @click="exitSelect">ยกเลิก</button>
+          <button class="btn-danger" :disabled="!selectedIds.size" @click="showBulkDeleteConfirm = true">
+            <span class="material-symbols-rounded">delete</span> ลบที่เลือก
+          </button>
+        </div>
+      </div>
+
       <!-- จัดกลุ่มตามประเภทเสมอ — ถ้ากรองประเภทไว้ ก็จะเหลือกลุ่มเดียวเอง -->
       <template v-for="group in vehicleGroups" :key="group.type">
         <div class="type-section" v-if="group.vehicles.length">
@@ -92,7 +119,18 @@
             <span class="section-count">{{ group.vehicles.length }} คัน</span>
           </div>
           <div class="vehicles-grid">
-            <div class="vehicle-card" :class="{ 'vc-retired': v.is_retired }" v-for="v in group.vehicles" :key="v.id">
+            <div
+              class="vehicle-card"
+              :class="{
+                'vc-retired': usageOf(v) !== 'active',
+                'vc-selectable': selectMode && canDelete(v),
+                'vc-locked': selectMode && !canDelete(v),
+                'vc-selected': selectedIds.has(v.id),
+              }"
+              v-for="v in group.vehicles"
+              :key="v.id"
+              @click="selectMode && toggleSelect(v)"
+            >
               <div class="vc-top" :class="'vtype-bg-' + v.type">
                 <div class="vc-type-icon">
                   <span class="material-symbols-rounded">{{ vehicleTypeIcon(v.type) }}</span>
@@ -109,7 +147,13 @@
                     <span class="plate-chip" v-if="v.license_plate">{{ v.license_plate }}</span>
                   </div>
                 </div>
-                <div class="vc-actions">
+                <div class="vc-check" v-if="selectMode">
+                  <span class="material-symbols-rounded" v-if="canDelete(v)">
+                    {{ selectedIds.has(v.id) ? 'check_box' : 'check_box_outline_blank' }}
+                  </span>
+                  <span class="material-symbols-rounded" v-else title="ยังมีรอบเดินทางอยู่ ลบไม่ได้">lock</span>
+                </div>
+                <div class="vc-actions" v-else>
                   <button class="btn-icon btn-edit" @click="openForm(v)" title="แก้ไข"><span class="material-symbols-rounded">edit</span></button>
                   <button class="btn-icon btn-layout" @click="openLayoutEditor(v)" title="ผังที่นั่ง"><span class="material-symbols-rounded">grid_view</span></button>
                   <button class="btn-icon btn-pickup" @click="openPickupManager(v)" title="จุดรับผู้โดยสาร"><span class="material-symbols-rounded">location_on</span></button>
@@ -181,18 +225,27 @@
                     </div>
                   </div>
                 </div>
-                <div class="retired-note" v-else-if="v.is_retired">
+                <div class="retired-note" v-else-if="usageOf(v) === 'past'">
                   <span class="material-symbols-rounded">history</span>
                   <div class="retired-text">
-                    <span class="retired-title">เลิกใช้แล้ว — ไม่มีรอบข้างหน้า</span>
+                    <span class="retired-title">ใช้ผ่านมาแล้ว — ไม่มีรอบที่ยังไม่จบ</span>
                     <span class="retired-meta">
                       ใช้ครั้งสุดท้าย {{ thaiDate(v.last_departure_date) }} · เคยวิ่ง {{ v.schedules_count }} รอบ
                     </span>
                   </div>
                 </div>
+                <div class="retired-note" v-else-if="usageOf(v) === 'never_used'">
+                  <span class="material-symbols-rounded">new_releases</span>
+                  <div class="retired-text">
+                    <span class="retired-title">ยังไม่เคยถูกใช้ — ไม่เคยใส่ในรอบไหนเลย</span>
+                    <span class="retired-meta" v-if="v.created_at">เพิ่มเข้าระบบเมื่อ {{ thaiDate(v.created_at) }}</span>
+                  </div>
+                </div>
+                <!-- มีรอบที่ยังไม่จบ แต่ไม่อยู่ในรายการรอบข้างหน้า: รอบที่ออกไปแล้วแต่ยังไม่กลับ
+                     หรือรอบที่ใช้รถคันนี้ผ่านตัวเลือกยานพาหนะ -->
                 <div class="no-schedule" v-else>
                   <span class="material-symbols-rounded">event_available</span>
-                  ยังไม่มีรอบที่กำลังจะมาถึง
+                  มีรอบที่ยังไม่จบ {{ v.upcoming_schedules_count }} รอบ
                 </div>
                 <div class="vc-footer">
                   <div class="footer-chip" v-if="v.pickup_points?.length" @click="openPickupManager(v)">
@@ -211,8 +264,8 @@
       </template>
 
       <div class="empty-state-card" v-if="filteredVehicles.length === 0">
-        <span class="material-symbols-rounded">{{ statusFilter === 'retired' ? 'inventory_2' : 'directions_car' }}</span>
-        <p>{{ statusFilter === 'retired' ? 'ไม่มีรถที่เลิกใช้แล้ว' : 'ไม่พบยานพาหนะ' }}</p>
+        <span class="material-symbols-rounded">{{ statusFilter === 'active' || statusFilter === 'all' ? 'directions_car' : 'inventory_2' }}</span>
+        <p>{{ EMPTY_LABELS[statusFilter] }}</p>
       </div>
     </template>
 
@@ -681,6 +734,44 @@
       </div>
     </div>
 
+    <!-- ─── Bulk Delete Confirm ───────────────────── -->
+    <div class="modal-overlay" v-if="showBulkDeleteConfirm">
+      <div class="modal-card modal-sm">
+        <div class="modal-header">
+          <h2>ลบยานพาหนะ {{ selectedVehicles.length }} คัน</h2>
+          <button class="modal-close" @click="showBulkDeleteConfirm = false"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-text">
+            ลบ <strong>{{ selectedVehicles.length }} คัน</strong>
+            <span v-if="bulkSummary.neverUsed"> · ยังไม่เคยใช้ {{ bulkSummary.neverUsed }} คัน</span>
+            <span v-if="bulkSummary.past"> · ใช้ผ่านมาแล้ว {{ bulkSummary.past }} คัน</span>
+          </p>
+          <ul class="bulk-names">
+            <li v-for="v in selectedVehicles.slice(0, 8)" :key="v.id">
+              {{ v.name }}<span v-if="v.license_plate"> · {{ v.license_plate }}</span>
+            </li>
+            <li v-if="selectedVehicles.length > 8" class="muted">และอีก {{ selectedVehicles.length - 8 }} คัน</li>
+          </ul>
+          <p class="confirm-warning">
+            <span class="material-symbols-rounded" style="color:var(--color-gold);">warning</span>
+            การดำเนินการนี้ไม่สามารถย้อนกลับได้
+          </p>
+          <ul class="delete-impact">
+            <li v-if="bulkSummary.rounds">รอบที่ผ่านมา {{ bulkSummary.rounds }} รอบ จะไม่เหลือข้อมูลว่าใช้รถคันไหน (มีผลกับรายงานย้อนหลัง)</li>
+            <li v-if="bulkSummary.pickups">จุดรับผู้โดยสาร {{ bulkSummary.pickups }} จุดของรถเหล่านี้จะถูกลบด้วย</li>
+            <li>ประวัติพิกัด GPS และประวัติซ่อมบำรุงของรถเหล่านี้จะถูกลบด้วย</li>
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" @click="showBulkDeleteConfirm = false">ยกเลิก</button>
+          <button class="btn-danger" @click="doBulkDelete" :disabled="submitting">
+            {{ submitting ? 'กำลังลบ...' : `ลบ ${selectedVehicles.length} คัน` }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Driver Login QR Modal ─────────────────── -->
     <div class="modal-overlay" v-if="showLoginQr">
       <div class="modal-card modal-sm">
@@ -751,7 +842,7 @@ import { colorHex, vehicleTypeIcon, vehicleTypeLabel, VEHICLE_TYPES } from '../.
 
 const admin = useAdminStore();
 const filters = reactive({ type: '' });
-const statusFilter = ref('active'); // 'active' | 'retired' — รถที่เลิกใช้แล้วถูกซ่อนไว้เป็นค่าตั้งต้น
+const statusFilter = ref('active'); // 'active' | 'never_used' | 'past' | 'all' — ค่าตั้งต้นโชว์เฉพาะคันที่มีรอบ
 const searchQuery = ref('');
 const viewMode = ref('vehicle'); // 'vehicle' | 'trip'
 const showForm = ref(false);
@@ -850,8 +941,18 @@ const DORMANT_STATUSES = ['cancelled', 'completed'];
 
 const allVehicles = computed(() => admin.vehicles.data || []);
 
-// รถ "เลิกใช้แล้ว" = เคยมีรอบ แต่ไม่เหลือรอบข้างหน้าแล้ว (backend ตัดสินให้ใน is_retired)
-const isRetired = (v) => v.is_retired === true;
+// active = มีรอบที่ยังไม่จบ · never_used = ไม่เคยใส่ในรอบไหน · past = เคยวิ่ง แต่จบหมดแล้ว
+// backend ตัดสินให้ (Vehicle::usageStatus) — นับรอบที่ใช้รถผ่านตัวเลือกยานพาหนะด้วย
+const usageOf = (v) => v.usage_status || (v.is_retired ? 'past' : 'active');
+// เกณฑ์เดียวกับ guard ของการลบฝั่ง backend — คันที่ยังมีรอบอยู่ลบไม่ได้
+const canDelete = (v) => usageOf(v) !== 'active';
+
+const EMPTY_LABELS = {
+  active: 'ไม่มีรถที่มีรอบเดินทางอยู่',
+  never_used: 'ไม่มีรถที่ยังไม่เคยใช้',
+  past: 'ไม่มีรถที่ใช้ผ่านมาแล้ว',
+  all: 'ไม่พบยานพาหนะ',
+};
 
 const searchedVehicles = computed(() => {
   if (!searchQuery.value) return allVehicles.value;
@@ -864,7 +965,7 @@ const searchedVehicles = computed(() => {
 });
 
 const byType = (list) => (filters.type ? list.filter(v => v.type === filters.type) : list);
-const byStatus = (list) => list.filter(v => isRetired(v) === (statusFilter.value === 'retired'));
+const byStatus = (list) => (statusFilter.value === 'all' ? list : list.filter(v => usageOf(v) === statusFilter.value));
 
 const filteredVehicles = computed(() => byStatus(byType(searchedVehicles.value)));
 
@@ -931,11 +1032,71 @@ const typeTabs = computed(() => {
 
 const statusTabs = computed(() => {
   const data = byType(searchedVehicles.value);
+  const count = (status) => data.filter(v => usageOf(v) === status).length;
   return [
-    { value: 'active', icon: 'check_circle', label: 'ใช้งานอยู่', count: data.filter(v => !isRetired(v)).length },
-    { value: 'retired', icon: 'inventory_2', label: 'เลิกใช้แล้ว', count: data.filter(isRetired).length },
+    { value: 'active', icon: 'check_circle', label: 'มีรอบอยู่', count: count('active') },
+    { value: 'never_used', icon: 'new_releases', label: 'ยังไม่เคยใช้', count: count('never_used') },
+    { value: 'past', icon: 'history', label: 'ใช้ผ่านมาแล้ว', count: count('past') },
+    { value: 'all', icon: 'select_all', label: 'ทั้งหมด', count: data.length },
   ];
 });
+
+// ── เคลียร์ข้อมูล (ลบทีละหลายคัน) ─────────────────────
+const selectMode = ref(false);
+const selectedIds = ref(new Set());
+const showBulkDeleteConfirm = ref(false);
+
+// เลือกได้เฉพาะคันที่มองเห็นอยู่ในแท็บ/คำค้นตอนนี้ — "เลือกทั้งหมด" จะได้ไม่ไปโดนคันที่ซ่อนอยู่
+const deletableVehicles = computed(() => filteredVehicles.value.filter(canDelete));
+const selectedVehicles = computed(() => deletableVehicles.value.filter(v => selectedIds.value.has(v.id)));
+const allDeletableSelected = computed(
+  () => deletableVehicles.value.length > 0 && selectedVehicles.value.length === deletableVehicles.value.length,
+);
+
+const bulkSummary = computed(() => ({
+  neverUsed: selectedVehicles.value.filter(v => usageOf(v) === 'never_used').length,
+  past: selectedVehicles.value.filter(v => usageOf(v) === 'past').length,
+  rounds: selectedVehicles.value.reduce((n, v) => n + (v.schedules_count || 0), 0),
+  pickups: selectedVehicles.value.reduce((n, v) => n + (v.pickup_points?.length || 0), 0),
+}));
+
+const startSelect = () => { selectMode.value = true; selectedIds.value = new Set(); };
+const exitSelect = () => { selectMode.value = false; selectedIds.value = new Set(); };
+
+const setStatusFilter = (value) => {
+  statusFilter.value = value;
+  // เปลี่ยนแท็บแล้วล้างที่เลือกไว้ — ไม่ให้ลบคันที่มองไม่เห็นแล้ว
+  selectedIds.value = new Set();
+  if (value === 'active') selectMode.value = false;
+};
+
+const toggleSelect = (v) => {
+  if (!canDelete(v)) return;
+  const next = new Set(selectedIds.value);
+  next.has(v.id) ? next.delete(v.id) : next.add(v.id);
+  selectedIds.value = next;
+};
+
+const toggleSelectAll = () => {
+  selectedIds.value = allDeletableSelected.value
+    ? new Set()
+    : new Set(deletableVehicles.value.map(v => v.id));
+};
+
+const doBulkDelete = async () => {
+  submitting.value = true;
+  try {
+    const res = await admin.bulkDeleteVehicles(selectedVehicles.value.map(v => v.id));
+    showBulkDeleteConfirm.value = false;
+    exitSelect();
+    alert(res.message);
+    fetchData();
+  } catch (e) {
+    alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
+  } finally {
+    submitting.value = false;
+  }
+};
 
 const vehicleSchedulesMap = computed(() => {
   const map = {};
@@ -1125,6 +1286,8 @@ const submitForm = async () => {
     }
 
     showForm.value = false;
+    // รถใหม่ยังไม่อยู่ในรอบไหน จึงไปอยู่แท็บ "ยังไม่เคยใช้" — พาไปที่นั่นจะได้ไม่หายจากหน้าจอ
+    if (!editing.value && statusFilter.value === 'active') setStatusFilter('never_used');
     fetchData();
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
@@ -1954,6 +2117,58 @@ onMounted(() => fetchData());
 .delete-impact {
   margin: 10px 0 0; padding-left: 18px;
   font-size: 12px; line-height: 1.7; color: var(--color-text-mid);
+}
+
+/* ─── เคลียร์ข้อมูล (เลือกหลายคัน) ───────────────────── */
+.btn-clear {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 8px;
+  border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: 'DB Heavent', 'Anuphan', sans-serif;
+}
+.btn-clear .material-symbols-rounded { font-size: 16px; }
+.btn-clear:hover:not(:disabled) { background: #fee2e2; }
+.btn-clear:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.select-bar {
+  position: sticky; top: 8px; z-index: 5;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px; margin-bottom: 18px;
+  background: var(--color-white);
+  border: 1px solid var(--color-accent); border-radius: 12px;
+}
+.select-count { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--color-text-dark); }
+.select-count .material-symbols-rounded { font-size: 18px; color: var(--color-accent); }
+.select-link {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--color-accent);
+  font-family: inherit;
+}
+.select-hint { font-size: 12px; color: var(--color-text-muted); }
+.select-actions { display: flex; gap: 8px; margin-left: auto; }
+.select-actions .btn-danger { display: inline-flex; align-items: center; gap: 4px; }
+.select-actions .btn-danger .material-symbols-rounded { font-size: 16px; }
+
+.vc-check { margin-left: auto; flex-shrink: 0; display: flex; }
+.vc-check .material-symbols-rounded { font-size: 24px; color: var(--color-text-muted); }
+.vehicle-card.vc-selectable { cursor: pointer; }
+.vehicle-card.vc-selectable:hover { transform: none; }
+.vehicle-card.vc-locked { opacity: 0.5; cursor: not-allowed; }
+.vehicle-card.vc-locked:hover { transform: none; box-shadow: none; }
+.vehicle-card.vc-selected { border-color: var(--color-accent); opacity: 1; }
+.vehicle-card.vc-selected .vc-top { filter: none; }
+.vehicle-card.vc-selected .vc-check .material-symbols-rounded { color: var(--color-accent); }
+
+.bulk-names {
+  margin: 8px 0 0; padding-left: 18px;
+  font-size: 13px; line-height: 1.7; color: var(--color-text-dark);
+}
+.bulk-names .muted { color: var(--color-text-muted); }
+
+@media (max-width: 600px) {
+  .select-actions { width: 100%; margin-left: 0; }
+  .select-actions button { flex: 1; justify-content: center; }
 }
 
 /* Footer chips */

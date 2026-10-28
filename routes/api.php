@@ -1056,6 +1056,7 @@ Route::prefix('v1')->group(function () {
         // Vehicles CRUD
         Route::get('vehicles', [AdminController::class, 'vehicles']);
         Route::post('vehicles', [AdminController::class, 'storeVehicle']);
+        Route::post('vehicles/bulk-delete', [AdminController::class, 'bulkDeleteVehicles']);
         Route::put('vehicles/{id}', [AdminController::class, 'updateVehicle']);
         Route::delete('vehicles/{id}', [AdminController::class, 'deleteVehicle']);
         Route::put('vehicles/{id}/driver-pin', [AdminController::class, 'setVehicleDriverPin']);

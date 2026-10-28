@@ -209,6 +209,12 @@ export const useAdminStore = defineStore('admin', {
       return res.data;
     },
 
+    // ลบทีละหลายคัน — คันที่ยังมีรอบที่ไม่จบจะถูกข้าม (คืนมาใน data.skipped)
+    async bulkDeleteVehicles(ids) {
+      const res = await api.post('/admin/vehicles/bulk-delete', { ids });
+      return res.data;
+    },
+
     async fetchVehiclePickupPoints(vehicleId) {
       const res = await api.get(`/admin/vehicles/${vehicleId}/pickup-points`);
       return res.data;

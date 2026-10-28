@@ -3337,22 +3337,20 @@ class AdminController extends Controller
 
     public function vehicles(Request $request): JsonResponse
     {
-        $query = Vehicle::withCount(['schedules', 'upcomingSchedules'])
-            ->withMax('schedules', 'departure_date')
-            ->with(['pickupPoints', 'driverUser', 'driver']);
+        $query = Vehicle::withUsage()->with(['pickupPoints', 'driverUser', 'driver']);
 
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
 
-        // รถที่ "เลิกใช้แล้ว" = เคยมีรอบ แต่ไม่เหลือรอบข้างหน้าแล้ว
-        // (หน้าจัดการยานพาหนะกรองฝั่งหน้าเว็บอยู่แล้ว พารามิเตอร์นี้ไว้ให้ผู้เรียกอื่นเลือกได้)
+        // active | never_used | past — 'retired' คือชื่อเดิมของ past ส่วน active เดิมรวมรถที่
+        // ยังไม่เคยใช้ด้วย (หน้าจัดการยานพาหนะกรองฝั่งหน้าเว็บ พารามิเตอร์นี้ไว้ให้ผู้เรียกอื่น)
         if ($request->filled('status')) {
-            $query->when(
-                $request->status === 'retired',
-                fn ($q) => $q->has('schedules')->doesntHave('upcomingSchedules'),
-                fn ($q) => $q->where(fn ($w) => $w->has('upcomingSchedules')->orDoesntHave('schedules')),
-            );
+            match ($request->status) {
+                'retired' => $query->usage('past'),
+                'active' => $query->whereNot(fn ($q) => $q->usage('past')),
+                default => $query->usage($request->status),
+            };
         }
 
         $vehicles = $query->orderBy('name')->paginate($request->get('per_page', 15));
@@ -3470,19 +3468,57 @@ class AdminController extends Controller
     {
         $vehicle = Vehicle::findOrFail($id);
 
-        if ($vehicle->upcomingSchedules()->exists()) {
+        if ($vehicle->isInUse()) {
             return $this->error('ไม่สามารถลบยานพาหนะที่มีรอบเดินทางอยู่', 422);
         }
 
+        $this->destroyVehicle($vehicle);
+
+        return $this->success(null, 'ลบยานพาหนะสำเร็จ');
+    }
+
+    /**
+     * เคลียร์รถทีละหลายคัน — ลบได้เฉพาะคันที่ไม่มีรอบที่ยังไม่จบ (เกณฑ์เดียวกับลบทีละคัน)
+     * คันที่ยังมีงานจะถูกข้ามและบอกกลับมา ไม่ทำให้ทั้งชุดล้ม
+     */
+    public function bulkDeleteVehicles(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:200'],
+            'ids.*' => ['integer', 'distinct'],
+        ]);
+
+        $deleted = 0;
+        $skipped = [];
+
+        foreach (Vehicle::whereIn('id', $validated['ids'])->get() as $vehicle) {
+            if ($vehicle->isInUse()) {
+                $skipped[] = ['id' => $vehicle->id, 'name' => $vehicle->name];
+
+                continue;
+            }
+
+            $this->destroyVehicle($vehicle);
+            $deleted++;
+        }
+
+        $message = "ลบยานพาหนะแล้ว {$deleted} คัน";
+        if ($skipped) {
+            $message .= ' · ข้าม '.count($skipped).' คันที่ยังมีรอบเดินทางอยู่';
+        }
+
+        return $this->success(['deleted' => $deleted, 'skipped' => $skipped], $message);
+    }
+
+    private function destroyVehicle(Vehicle $vehicle): void
+    {
         // คืนรหัสหลังลบ ถ้าไม่มีรถคันอื่นและไม่มีคนขับในทะเบียนใช้บัญชีนั้นแล้ว
         // (ลบรถหนึ่งคันต้องไม่ไปล้างรหัสของคนขับที่ยังขับคันอื่นอยู่)
         $pinAccountId = $vehicle->driver_user_id;
 
         $vehicle->delete();
 
-        app(VehicleDriverService::class)->releaseOrphanedPin($pinAccountId);
-
-        return $this->success(null, 'ลบยานพาหนะสำเร็จ');
+        $this->vehicleDriverService->releaseOrphanedPin($pinAccountId);
     }
 
     // ─── Drivers (ทะเบียนคนขับ) ───────────────────────────────
