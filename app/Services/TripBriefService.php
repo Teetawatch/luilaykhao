@@ -789,11 +789,11 @@ class TripBriefService
             'form_name' => $form->name,
             'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
             'overdue' => $deadline !== null && $deadline->toDateString() < now(self::TIMEZONE)->toDateString(),
-            'signed_count' => $passengers->filter(fn ($p) => $p->hasSignedPermitForm($form->id))->count(),
+            'signed_count' => $passengers->filter(fn ($p) => $p->hasCompletedPermitForm($form))->count(),
             'total' => $passengers->count(),
             'passengers' => $passengers->map(fn ($p) => [
                 'name' => $p->displayName(),
-                'signed' => $p->hasSignedPermitForm($form->id),
+                'signed' => $p->hasCompletedPermitForm($form),
                 'url' => url('/f/'.$p->ensurePassToken().'/permit'),
             ])->all(),
         ];

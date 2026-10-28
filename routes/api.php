@@ -77,6 +77,7 @@ use App\Http\Controllers\Api\V1\PageContentController;
 use App\Http\Controllers\Api\V1\PartnerController;
 use App\Http\Controllers\Api\V1\PartyGameController;
 use App\Http\Controllers\Api\V1\PermitSignatureController;
+use App\Http\Controllers\Api\V1\ThaiAddressController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
@@ -153,6 +154,9 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->post('broadcasting/auth', function () {
         return Broadcast::auth(request());
     });
+
+    // รายชื่อตำบล/อำเภอ/จังหวัด — ช่องค้นหาที่อยู่ตอนเซ็นแบบฟอร์มอุทยาน
+    Route::get('thai-address', ThaiAddressController::class)->middleware('throttle:30,1');
 
     // Trips (public)
     Route::middleware('throttle:api')->group(function () {

@@ -50,13 +50,15 @@ class PublicPermitFormController extends Controller
             'trip_title' => $booking->schedule?->trip?->title ?? 'ทริปของคุณ',
             'form_name' => $form->name,
             'open' => $this->signatures->isOpen($booking),
-            'signed' => $passenger->hasSignedPermitForm($form->id),
-            'signed_label' => $passenger->hasSignedPermitForm($form->id)
+            'signed' => $passenger->hasCompletedPermitForm($form),
+            'signed_label' => $passenger->hasCompletedPermitForm($form)
                 ? ThaiDate::full($passenger->permit_signed_at->copy()->timezone('Asia/Bangkok'))
                     .' เวลา '.$passenger->permit_signed_at->copy()->timezone('Asia/Bangkok')->format('H:i').' น.'
                 : null,
             'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
             'overdue' => $deadline !== null && $deadline->toDateString() < now('Asia/Bangkok')->toDateString(),
+            // ลิงก์นี้ส่งต่อในกลุ่มได้ — ไม่เติมที่อยู่เดิมกลับมาให้ (ต้องกรอกใหม่ถ้าเซ็นซ้ำ)
+            'ask' => $this->signatures->askSpec($form),
             ...$this->forms->preview($form, $passenger, mask: true),
         ]]);
     }
@@ -71,6 +73,8 @@ class PublicPermitFormController extends Controller
         $validated = $request->validate([
             'signature' => ['required', 'string', 'max:'.(int) (PermitSignatureService::MAX_BYTES * 1.4)],
             'accept' => ['accepted'],
+            'extra' => ['sometimes', 'array'],
+            'extra.*' => ['nullable', 'string', 'max:100'],
         ], [
             'signature.required' => 'ยังไม่ได้เซ็น วาดลายเซ็นในกรอบก่อนกดยืนยัน',
             'accept.accepted' => 'กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น',
@@ -81,9 +85,9 @@ class PublicPermitFormController extends Controller
                 'channel' => PermitSignatureService::CHANNEL_FRIEND_LINK,
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
-            ]);
+            ], (array) ($validated['extra'] ?? []));
         } catch (\Exception $e) {
-            return $back->with('error', $e->getMessage());
+            return $back->withInput($request->except('signature'))->with('error', $e->getMessage());
         }
 
         return $back->with('notice', 'เซ็นแบบฟอร์มเรียบร้อยแล้ว ขอบคุณครับ ทีมงานจะนำไปลงทะเบียนกับอุทยานให้');

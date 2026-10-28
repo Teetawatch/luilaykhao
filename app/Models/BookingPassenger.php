@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\BookingDocumentService;
 use App\Services\PermitSignatureService;
+use App\Support\PermitFormFields;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -29,7 +30,7 @@ class BookingPassenger extends Model
      * endpoint (รวมฝั่งที่เพื่อนร่วมใบจองเปิดดูได้) จึงซ่อนไว้ก่อน แล้วค่อยส่งออก
      * เฉพาะคนที่มีสิทธิ์ผ่าน CheckInPassService
      */
-    protected $hidden = ['qr_code', 'pass_token', 'permit_signature_path', 'permit_sign_meta'];
+    protected $hidden = ['qr_code', 'pass_token', 'permit_signature_path', 'permit_sign_meta', 'permit_extra'];
 
     protected function casts(): array
     {
@@ -48,6 +49,8 @@ class BookingPassenger extends Model
             'not_going_at' => 'datetime',
             'permit_signed_at' => 'datetime',
             'permit_sign_meta' => 'array',
+            // ภูมิลำเนา/โทรศัพท์บ้านที่อุทยานบังคับ — ถามตอนเซ็นเท่านั้น ดู PermitFormFields::ASK_INPUTS
+            'permit_extra' => 'encrypted:array',
             'custom_pickup_lat' => 'float',
             'custom_pickup_lng' => 'float',
         ];
@@ -99,6 +102,27 @@ class BookingPassenger extends Model
         static::deleted(function (BookingPassenger $passenger) {
             PermitSignatureService::deleteFile($passenger->permit_signature_path);
         });
+    }
+
+    /**
+     * เสร็จสำหรับแบบฟอร์มนี้ = เซ็นแล้ว และกรอกข้อมูลที่ฟอร์มถามตอนเซ็นครบ (คนที่เซ็นก่อน
+     * แอดมินเพิ่มช่องที่อยู่ ยังต้องกลับมากรอกแล้วเซ็นยืนยันอีกครั้ง)
+     */
+    public function hasCompletedPermitForm(PermitForm $form): bool
+    {
+        if (! $this->hasSignedPermitForm($form->id)) {
+            return false;
+        }
+
+        $extra = (array) ($this->permit_extra ?? []);
+
+        foreach (PermitFormFields::askedInputs($form->fields ?? []) as $key) {
+            if (trim((string) ($extra[$key] ?? '')) === '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** เซ็นแบบฟอร์มอุทยานฉบับนี้แล้วหรือยัง — เปลี่ยนแบบฟอร์มแล้วต้องเซ็นใหม่ */

@@ -14,8 +14,10 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\PermitFormService;
+use App\Support\PermitFormFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Spatie\Permission\Models\Role;
@@ -448,6 +450,133 @@ class PermitSignatureTest extends TestCase
 
         $this->assertSame(1, SmartNotification::where('type', 'permit_sign_reminder')->count());
         $this->assertSame(0, $booking->fresh()->permit_reminder_count);
+    }
+
+    /** แบบฟอร์มที่ขอภูมิลำเนา + โทรศัพท์บ้าน (อุทยานบังคับ) */
+    private function addressForm(): PermitForm
+    {
+        $form = $this->form();
+        $fields = $form->fields;
+        foreach (['addr_house_no', 'addr_moo', 'addr_soi', 'addr_road', 'addr_sub_district', 'addr_district', 'addr_province', 'home_phone'] as $i => $source) {
+            $fields[] = ['id' => 'x'.$i, 'page' => 0, 'source' => $source, 'x' => 0.1, 'y' => 0.3 + $i * 0.02, 'w' => 0.2, 'h' => 0.02, 'size' => 11, 'align' => 'left'];
+        }
+        $form->update(['fields' => $fields]);
+
+        return $form->fresh();
+    }
+
+    private function address(array $overrides = []): array
+    {
+        return [
+            'house_no' => '99/1', 'moo' => '-', 'soi' => '-', 'road' => 'สุขุมวิท',
+            'sub_district' => 'คลองเตย', 'district' => 'คลองเตย', 'province' => 'กรุงเทพมหานคร',
+            'home_phone' => '-', ...$overrides,
+        ];
+    }
+
+    public function test_forms_asking_for_an_address_need_every_field_before_signing(): void
+    {
+        $form = $this->addressForm();
+        $booking = $this->booking($form);
+        $p = $booking->passengers->sortBy('id')->first();
+        $sign = fn (array $extra) => $this->actingAs($this->owner, 'sanctum')
+            ->postJson($this->signUrl($booking, $p), ['signature' => $this->signature(), 'accept' => true, 'extra' => $extra]);
+
+        $sign($this->address(['house_no' => '']))->assertStatus(422)->assertJsonPath('message', 'กรุณากรอกบ้านเลขที่');
+        $sign($this->address(['road' => '']))->assertStatus(422);
+        $sign($this->address(['district' => 'บางรัก']))->assertStatus(422)
+            ->assertJsonPath('message', 'ไม่พบแขวง/ตำบล เขต/อำเภอ และจังหวัดชุดนี้ กรุณาเลือกจากรายการ');
+        $this->assertNull($p->fresh()->permit_signed_at, 'nothing half-saved');
+
+        $sign($this->address())->assertOk()->assertJsonPath('data.signed_count', 1);
+
+        $p->refresh();
+        $this->assertTrue($p->hasCompletedPermitForm($form));
+        $this->assertSame('10110', $p->permit_extra['zip']);
+        $raw = DB::table('booking_passengers')->where('id', $p->id)->value('permit_extra');
+        $this->assertStringNotContainsString('สุขุมวิท', (string) $raw, 'stored encrypted');
+        $this->assertArrayNotHasKey('permit_extra', $p->toArray());
+
+        $values = PermitFormFields::values($p, $booking->schedule, 2);
+        $this->assertSame('99/1 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพมหานคร 10110', $values['addr_full']);
+        $this->assertSame('-', $values['addr_moo']);
+    }
+
+    public function test_people_who_signed_before_the_address_fields_were_added_must_finish(): void
+    {
+        $plain = $this->form();
+        $booking = $this->booking($plain);
+        $p = $booking->passengers->sortBy('id')->first();
+        $this->actingAs($this->owner, 'sanctum')->postJson($this->signUrl($booking, $p), ['signature' => $this->signature(), 'accept' => true])->assertOk();
+
+        $plain->update(['fields' => $this->addressForm()->fields]);
+
+        $this->assertFalse($p->fresh()->hasCompletedPermitForm($plain->fresh()));
+        $this->actingAs($this->owner, 'sanctum')->getJson("/api/v1/bookings/{$booking->booking_ref}/permit-form")
+            ->assertJsonPath('data.signed_count', 0);
+    }
+
+    public function test_preview_tells_clients_what_to_ask_and_offers_a_family_address(): void
+    {
+        $form = $this->addressForm();
+        $booking = $this->booking($form);
+        [$a, $b] = $booking->passengers->sortBy('id')->values();
+        $this->actingAs($this->owner, 'sanctum')->postJson($this->signUrl($booking, $a), ['signature' => $this->signature(), 'accept' => true, 'extra' => $this->address()]);
+
+        $res = $this->actingAs($this->owner, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/permit-form/passengers/{$b->id}")
+            ->assertOk();
+
+        $this->assertSame(
+            ['house_no', 'moo', 'soi', 'road', 'sub_district', 'district', 'province', 'home_phone'],
+            collect($res->json('data.ask'))->pluck('key')->all(),
+        );
+        $this->assertTrue(collect($res->json('data.ask'))->firstWhere('key', 'moo')['allow_none']);
+        $this->assertFalse(collect($res->json('data.ask'))->firstWhere('key', 'house_no')['allow_none']);
+        $this->assertSame('สมชาย ใจดี', $res->json('data.address_suggestions.0.name'));
+        $this->assertSame('99/1', $res->json('data.address_suggestions.0.extra.house_no'));
+        $this->assertContains('house_no', collect($res->json('data.fields'))->pluck('input')->filter()->all());
+    }
+
+    public function test_friend_link_collects_the_address_and_never_shows_it_back(): void
+    {
+        $form = $this->addressForm();
+        $booking = $this->booking($form);
+        $p = $booking->passengers->sortBy('id')->first();
+        $token = $p->ensurePassToken();
+
+        $this->get("/f/{$token}/permit")->assertOk()->assertSee('บ้านเลขที่')->assertSee('ไม่มี');
+
+        $this->post("/f/{$token}/permit", ['signature' => $this->signature(), 'accept' => '1', 'extra' => $this->address(['house_no' => ''])])
+            ->assertRedirect()->assertSessionHas('error');
+        $this->post("/f/{$token}/permit", ['signature' => $this->signature(), 'accept' => '1', 'extra' => $this->address()])
+            ->assertRedirect("/f/{$token}/permit");
+
+        $this->assertTrue($p->fresh()->hasCompletedPermitForm($form));
+        $this->get("/f/{$token}/permit")->assertDontSee('99/1')->assertDontSee('สุขุมวิท');
+    }
+
+    public function test_address_list_is_served_with_caching(): void
+    {
+        $res = $this->get('/api/v1/thai-address')->assertOk();
+        $data = json_decode(file_get_contents($res->baseResponse->getFile()->getPathname()), true);
+        $this->assertGreaterThan(7000, count($data['rows']));
+        $this->assertStringContainsString('MIT', $data['source']);
+
+        $this->get('/api/v1/thai-address', ['If-None-Match' => $res->headers->get('ETag')])->assertStatus(304);
+    }
+
+    public function test_purge_also_drops_the_address(): void
+    {
+        $form = $this->addressForm();
+        $booking = $this->booking($form);
+        $p = $booking->passengers->first();
+        $this->actingAs($this->owner, 'sanctum')->postJson($this->signUrl($booking, $p), ['signature' => $this->signature(), 'accept' => true, 'extra' => $this->address()]);
+
+        $booking->update(['status' => 'cancelled']);
+        app()->call([new PurgePermitSignaturesJob, 'handle']);
+
+        $this->assertNull($p->fresh()->permit_extra);
     }
 
     public function test_forms_without_a_due_date_never_remind(): void

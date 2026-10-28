@@ -658,6 +658,7 @@ class SeatHandoverService
                 'permit_signed_at' => null,
                 'permit_signed_form_id' => null,
                 'permit_sign_meta' => null,
+                'permit_extra' => null,
             ])->save();
 
             $seat?->update(['passenger_name' => $passenger->name]);

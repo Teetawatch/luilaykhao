@@ -155,7 +155,7 @@ class PermitFormService
 
         foreach ($passengers->values() as $i => $passenger) {
             $name = trim(preg_replace('/[\\\\\/:*?"<>|]+/u', ' ', $passenger->displayName()) ?: 'ผู้เดินทาง');
-            $unsigned = $needsSignature && ! $passenger->hasSignedPermitForm($form->id) ? ' (ยังไม่เซ็น)' : '';
+            $unsigned = $needsSignature && ! $passenger->hasCompletedPermitForm($form) ? ' (ยังไม่เซ็น)' : '';
             $row = $this->rowFor($form, $passenger, $schedule, $passengers->count());
 
             $zip->addFromString(sprintf('%02d-%s%s.pdf', $i + 1, $name, $unsigned), $this->render($form, [$row]));
@@ -212,12 +212,14 @@ class PermitFormService
                 return [
                     'page' => (int) $f['page'],
                     'type' => $type,
+                    // ช่องที่ลูกค้ากรอกตอนเซ็น — แอป/เว็บแสดงค่าที่กำลังพิมพ์ทับได้ทันที
+                    'input' => PermitFormFields::liveInput($source),
                     'x' => $f['x'], 'y' => $f['y'], 'w' => $f['w'], 'h' => $f['h'],
                     'size' => $f['size'] ?? 11,
                     'align' => $f['align'] ?? 'left',
                     'value' => $type === PermitFormFields::TYPE_CHECK ? ($value !== '' ? '✓' : '') : $value,
                 ];
-            })->filter(fn (array $f) => $f['value'] !== '' || $f['type'] === PermitFormFields::TYPE_SIGNATURE)
+            })->filter(fn (array $f) => $f['value'] !== '' || $f['input'] !== null || $f['type'] === PermitFormFields::TYPE_SIGNATURE)
                 ->values()->all(),
         ];
     }

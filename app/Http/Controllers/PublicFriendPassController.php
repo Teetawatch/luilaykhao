@@ -193,14 +193,14 @@ class PublicFriendPassController extends Controller
     {
         $form = $notGoing ? null : $this->permits->formNeedingSignature($booking);
 
-        if (! $form || (! $this->permits->isOpen($booking) && ! $passenger->hasSignedPermitForm($form->id))) {
+        if (! $form || (! $this->permits->isOpen($booking) && ! $passenger->hasCompletedPermitForm($form))) {
             return null;
         }
 
         $deadline = $this->permits->deadline($booking, $form);
 
         return [
-            'signed' => $passenger->hasSignedPermitForm($form->id),
+            'signed' => $passenger->hasCompletedPermitForm($form),
             'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
             'url' => route('public.friend-permit.show', $passenger->pass_token),
         ];

@@ -3357,7 +3357,7 @@ class AdminController extends Controller
 
         $links = [];
         foreach ($passengers as $p) {
-            if ($p->not_going_at === null && ! $p->hasSignedPermitForm($form->id)) {
+            if ($p->not_going_at === null && ! $p->hasCompletedPermitForm($form)) {
                 $links[$p->id] = [
                     'url' => $signatures->signUrl($p),
                     'share_text' => $signatures->shareText($p, $p->booking, $form),

@@ -32,6 +32,51 @@ class PermitFormFields
     public const SENSITIVE = [
         'id_card', 'passport_no', 'id_or_passport', 'phone', 'email', 'emergency_phone',
         'health_notes', 'allergies', 'birth_date', 'blood_group',
+        'addr_house_no', 'addr_moo', 'addr_soi', 'addr_road', 'addr_full', 'home_phone',
+    ];
+
+    /**
+     * ข้อมูลที่เราไม่เก็บในการจอง (ไม่จำเป็นต่อการเดินทาง + PDPA) แต่อุทยานบังคับกรอก
+     * — ถามตอนเซ็นแบบฟอร์มเท่านั้น เฉพาะฟอร์มที่วางช่องเหล่านี้ไว้ เก็บเข้ารหัสใน
+     * `booking_passengers.permit_extra` และลบพร้อมลายเซ็นหลังจบทริป
+     *
+     * key => [label, ตอบ "ไม่มี" ได้ไหม] — "ไม่มี" พิมพ์เป็น "-" อุทยานไม่รับช่องว่าง
+     */
+    public const ASK_INPUTS = [
+        'house_no' => ['บ้านเลขที่', false],
+        'moo' => ['หมู่ที่', true],
+        'soi' => ['ซอย', true],
+        'road' => ['ถนน', true],
+        'sub_district' => ['แขวง/ตำบล', false],
+        'district' => ['เขต/อำเภอ', false],
+        'province' => ['จังหวัด', false],
+        'home_phone' => ['โทรศัพท์ (บ้าน)', true],
+    ];
+
+    /** ช่องบนฟอร์ม → ข้อมูลที่ต้องถามลูกค้า */
+    private const SOURCE_INPUTS = [
+        'addr_house_no' => ['house_no'],
+        'addr_moo' => ['moo'],
+        'addr_soi' => ['soi'],
+        'addr_road' => ['road'],
+        'addr_sub_district' => ['sub_district', 'district', 'province'],
+        'addr_district' => ['sub_district', 'district', 'province'],
+        'addr_province' => ['sub_district', 'district', 'province'],
+        'addr_zip' => ['sub_district', 'district', 'province'],
+        'addr_full' => ['house_no', 'moo', 'soi', 'road', 'sub_district', 'district', 'province'],
+        'home_phone' => ['home_phone'],
+    ];
+
+    /** ช่องที่ตรงกับข้อมูลที่ถามตัวเดียว — แอป/เว็บใช้แสดงค่าที่กำลังพิมพ์บนฟอร์มทันที */
+    private const SOURCE_SINGLE_INPUT = [
+        'addr_house_no' => 'house_no',
+        'addr_moo' => 'moo',
+        'addr_soi' => 'soi',
+        'addr_road' => 'road',
+        'addr_sub_district' => 'sub_district',
+        'addr_district' => 'district',
+        'addr_province' => 'province',
+        'home_phone' => 'home_phone',
     ];
 
     /** ช่องที่ข้อความมาจากแอดมินพิมพ์เอง (เช่น ชื่อบริษัทประกัน) */
@@ -85,6 +130,17 @@ class PermitFormFields
         'booking_ref' => ['เลขที่การจอง', 'ทริป/รอบ', self::TYPE_TEXT, 'LLK-20261212-0001'],
         'company_name' => ['ชื่อบริษัท/ผู้จัด', 'ทริป/รอบ', self::TYPE_TEXT, 'ลุยเลเขา'],
 
+        'addr_house_no' => ['บ้านเลขที่', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, '99/1'],
+        'addr_moo' => ['หมู่ที่', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, '5'],
+        'addr_soi' => ['ซอย', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, '-'],
+        'addr_road' => ['ถนน', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, 'สุขุมวิท'],
+        'addr_sub_district' => ['แขวง/ตำบล', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, 'คลองเตย'],
+        'addr_district' => ['เขต/อำเภอ', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, 'คลองเตย'],
+        'addr_province' => ['จังหวัด', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, 'กรุงเทพมหานคร'],
+        'addr_zip' => ['รหัสไปรษณีย์', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, '10110'],
+        'addr_full' => ['ที่อยู่เต็ม (บรรทัดเดียว)', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, '99/1 หมู่ 5 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพมหานคร 10110'],
+        'home_phone' => ['โทรศัพท์ (บ้าน)', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, '-'],
+
         'today_day' => ['วันที่ออกเอกสาร — วัน', 'วันที่ยื่น', self::TYPE_TEXT, '28'],
         'today_month' => ['วันที่ออกเอกสาร — เดือน', 'วันที่ยื่น', self::TYPE_TEXT, 'ตุลาคม'],
         'today_year' => ['วันที่ออกเอกสาร — ปี พ.ศ.', 'วันที่ยื่น', self::TYPE_TEXT, '2569'],
@@ -96,6 +152,48 @@ class PermitFormFields
     public static function keys(): array
     {
         return array_keys(self::FIELDS);
+    }
+
+    /**
+     * ข้อมูลที่ต้องถามลูกค้าตอนเซ็นสำหรับฟอร์มนี้ (เรียงตามลำดับในฟอร์มกรอก)
+     *
+     * @return list<string>
+     */
+    public static function askedInputs(array $fields): array
+    {
+        $needed = collect($fields)
+            ->flatMap(fn ($f) => self::SOURCE_INPUTS[$f['source'] ?? ''] ?? [])
+            ->unique()
+            ->all();
+
+        return array_values(array_filter(array_keys(self::ASK_INPUTS), fn ($k) => in_array($k, $needed, true)));
+    }
+
+    /** ช่องนี้แสดงค่าที่ลูกค้ากำลังพิมพ์ช่องไหน (null = ไม่ใช่ช่องที่ถาม หรือประกอบจากหลายช่อง) */
+    public static function liveInput(string $source): ?string
+    {
+        return self::SOURCE_SINGLE_INPUT[$source] ?? null;
+    }
+
+    /** ที่อยู่บรรทัดเดียว — ข้ามช่องที่ตอบ "ไม่มี" กรุงเทพใช้ แขวง/เขต ที่อื่นใช้ ต./อ./จ. */
+    public static function fullAddress(array $extra): string
+    {
+        $v = fn (string $k) => trim((string) ($extra[$k] ?? ''));
+        $has = fn (string $k) => ! in_array($v($k), ['', '-'], true);
+        $bkk = ThaiAddress::isBangkok($v('province'));
+
+        $parts = [
+            $has('house_no') ? $v('house_no') : null,
+            $has('moo') ? 'หมู่ '.$v('moo') : null,
+            $has('soi') ? 'ซอย'.$v('soi') : null,
+            $has('road') ? 'ถนน'.$v('road') : null,
+            $has('sub_district') ? ($bkk ? 'แขวง' : 'ต.').$v('sub_district') : null,
+            $has('district') ? ($bkk ? 'เขต' : 'อ.').$v('district') : null,
+            $has('province') ? ($bkk ? '' : 'จ.').$v('province') : null,
+            $has('zip') ? $v('zip') : null,
+        ];
+
+        return implode(' ', array_filter($parts));
     }
 
     public static function type(string $key): string
@@ -179,8 +277,29 @@ class PermitFormFields
 
             ...self::dateParts('today', $today, withFull: false),
 
+            ...self::extraValues((array) ($passenger->permit_extra ?? [])),
+
             self::STATIC => '',
             self::CHECK_ALWAYS => '1',
+        ];
+    }
+
+    /** ค่าของช่องที่ลูกค้ากรอกตอนเซ็น (ว่าง = ยังไม่ได้กรอก ปล่อยว่างในฟอร์ม) */
+    private static function extraValues(array $extra): array
+    {
+        $v = fn (string $k) => trim((string) ($extra[$k] ?? ''));
+
+        return [
+            'addr_house_no' => $v('house_no'),
+            'addr_moo' => $v('moo'),
+            'addr_soi' => $v('soi'),
+            'addr_road' => $v('road'),
+            'addr_sub_district' => $v('sub_district'),
+            'addr_district' => $v('district'),
+            'addr_province' => $v('province'),
+            'addr_zip' => $v('zip'),
+            'addr_full' => $extra === [] ? '' : self::fullAddress($extra),
+            'home_phone' => $v('home_phone'),
         ];
     }
 

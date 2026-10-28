@@ -33,6 +33,20 @@
     .link-btn { background: none; border: 0; color: #64748b; font-size: 13.5px; font-family: inherit; cursor: pointer; text-decoration: underline; padding: 4px; }
     .btn[disabled] { opacity: .5; }
     .resign { margin-top: 10px; }
+
+    /* ข้อมูลที่ถามตอนเซ็น */
+    .ask-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .ask-row .ask-input, .addr-search { flex: 1; width: 100%; padding: 12px 14px; border: 1.5px solid #cbd5e1; border-radius: 12px; font-size: 16px; font-family: inherit; background: #fff; }
+    .ask-input[readonly] { background: #f1f5f9; color: #64748b; }
+    .none { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #334155; white-space: nowrap; }
+    .none input { width: 18px; height: 18px; }
+    .addr-wrap { position: relative; margin-bottom: 14px; }
+    .addr-results { list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid #e2e8f0; border-radius: 12px; max-height: 260px; overflow-y: auto; background: #fff; }
+    .addr-results li { padding: 10px 14px; font-size: 14px; border-top: 1px solid #f1f5f9; cursor: pointer; }
+    .addr-results li:first-child { border-top: none; }
+    .addr-results li:hover, .addr-results li:active { background: #f0fdfa; }
+    .addr-results small { color: #64748b; }
+    .addr-chosen { margin-top: 6px; font-size: 14px; color: #0B6E5F; font-weight: 700; }
 </style>
 @endpush
 
@@ -91,7 +105,7 @@
                     @foreach ($p['fields'] as $f)
                         @continue($f['page'] !== $i)
                         <div class="pf-f {{ $f['type'] === 'check' ? 'check' : '' }} {{ $f['type'] === 'signature' ? 'sig' : '' }}"
-                             data-size="{{ $f['size'] }}"
+                             data-size="{{ $f['size'] }}" data-input="{{ $f['input'] ?? '' }}"
                              style="left: {{ $f['x'] * 100 }}%; top: {{ $f['y'] * 100 }}%; width: {{ $f['w'] * 100 }}%; height: {{ $f['h'] * 100 }}%; text-align: {{ $f['align'] }};">{{ $f['value'] }}</div>
                     @endforeach
                 </div>
@@ -99,12 +113,48 @@
 
             @if ($p['open'])
                 <div id="sign-area" @if ($p['signed']) hidden @endif>
-                    <div class="step">2. เซ็นชื่อ</div>
-                    <p class="muted" style="margin-bottom: 10px">ลายเซ็นนี้จะไปอยู่ในช่องสีเหลืองของแบบฟอร์ม</p>
-
                     <form method="POST" action="{{ route('public.friend-permit.sign', $p['token']) }}" id="sign-form">
                         @csrf
                         <input type="hidden" name="signature" id="signature-input">
+
+                        @php
+                            $ask = collect($p['ask'])->keyBy('key');
+                            $askAddress = $ask->has('province');
+                        @endphp
+                        @if ($ask->isNotEmpty())
+                            {{-- ภูมิลำเนา/โทรศัพท์บ้าน — อุทยานบังคับ แต่เราไม่เก็บในการจอง จึงถามตรงนี้ --}}
+                            <div class="step">2. กรอกข้อมูลที่อุทยานต้องการ</div>
+                            <p class="muted" style="margin-bottom: 12px">
+                                อุทยานบังคับกรอกทุกช่อง — เราใช้ข้อมูลนี้เฉพาะในแบบฟอร์มฉบับนี้ ไม่เก็บไว้ในการจอง และลบทิ้งหลังจบทริป
+                            </p>
+                            <div id="ask-fields">
+                                @foreach ($ask as $key => $item)
+                                    @continue(in_array($key, ['sub_district', 'district', 'province'], true))
+                                    @if ($key === 'home_phone' && $askAddress)
+                                        @include('friend-permit-address')
+                                    @endif
+                                    <label class="field" for="ask-{{ $key }}">{{ $item['label'] }}</label>
+                                    <div class="ask-row">
+                                        <input type="{{ $key === 'home_phone' ? 'tel' : 'text' }}" id="ask-{{ $key }}" name="extra[{{ $key }}]"
+                                               value="{{ old('extra.'.$key) }}" maxlength="100" data-ask="{{ $key }}"
+                                               autocomplete="off" class="ask-input">
+                                        @if ($item['allow_none'])
+                                            <label class="none"><input type="checkbox" data-none="{{ $key }}" @checked(old('extra.'.$key) === '-')> ไม่มี</label>
+                                        @endif
+                                    </div>
+                                @endforeach
+                                @if ($askAddress && ! $ask->has('home_phone'))
+                                    @include('friend-permit-address')
+                                @endif
+                                <label class="check" style="margin-top: 4px">
+                                    <input type="checkbox" id="remember-address">
+                                    <span>จำที่อยู่นี้ไว้ในเครื่องนี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)</span>
+                                </label>
+                            </div>
+                        @endif
+
+                        <div class="step">{{ $ask->isNotEmpty() ? '3' : '2' }}. เซ็นชื่อ</div>
+                        <p class="muted" style="margin-bottom: 10px">ลายเซ็นนี้จะไปอยู่ในช่องสีเหลืองของแบบฟอร์ม</p>
 
                         <div class="pad-wrap">
                             <canvas id="pad"></canvas>
@@ -236,6 +286,116 @@
         }
 
         if (!document.getElementById('sign-area')?.hidden) setupPad();
+
+        // ─── ข้อมูลที่ถามตอนเซ็น ─────────────────────────────
+        var askBox = document.getElementById('ask-fields');
+        if (askBox) {
+            var STORE = 'llk_permit_address';
+            function setPreview(key, value) {
+                document.querySelectorAll('.pf-f[data-input="' + key + '"]').forEach(function (el) { el.textContent = value; });
+            }
+            function field(key) { return document.querySelector('[name="extra[' + key + ']"]'); }
+
+            askBox.querySelectorAll('[data-ask]').forEach(function (input) {
+                input.addEventListener('input', function () { setPreview(input.dataset.ask, input.value); });
+            });
+            askBox.querySelectorAll('[data-none]').forEach(function (box) {
+                var input = field(box.dataset.none);
+                function apply() {
+                    if (box.checked) { input.value = '-'; input.readOnly = true; }
+                    else if (input.readOnly) { input.value = ''; input.readOnly = false; }
+                    setPreview(box.dataset.none, input.value);
+                }
+                box.addEventListener('change', apply);
+                if (box.checked) apply();
+            });
+
+            // ตำบล/อำเภอ/จังหวัด — เลือกจากรายการเท่านั้น (พิมพ์เองสะกดผิดแล้วอุทยานตีกลับ)
+            var search = document.getElementById('addr-search');
+            var results = document.getElementById('addr-results');
+            var chosen = document.getElementById('addr-chosen');
+            var rows = null;
+            function choose(r) {
+                field('sub_district').value = r[0];
+                field('district').value = r[1];
+                field('province').value = r[2];
+                setPreview('sub_district', r[0]); setPreview('district', r[1]); setPreview('province', r[2]);
+                chosen.textContent = '✓ ' + label(r);
+                search.value = '';
+                results.innerHTML = '';
+            }
+            function label(r) {
+                var bkk = r[2] === 'กรุงเทพมหานคร';
+                return (bkk ? 'แขวง' : 'ต.') + r[0] + ' ' + (bkk ? 'เขต' : 'อ.') + r[1] + ' ' + (bkk ? '' : 'จ.') + r[2] + (r[3] ? ' ' + r[3] : '');
+            }
+            function render() {
+                var q = search.value.trim().replace(/^(ต\.|อ\.|จ\.|ตำบล|อำเภอ|จังหวัด|แขวง|เขต)\s*/, '');
+                results.innerHTML = '';
+                if (!rows || q.length < 2) return;
+                var first = [], rest = [];
+                for (var i = 0; i < rows.length && first.length < 30; i++) {
+                    var r = rows[i];
+                    if (r[0].indexOf(q) === 0) first.push(r);
+                    else if (rest.length < 30 && (r[0].indexOf(q) > -1 || r[1].indexOf(q) > -1 || r[2].indexOf(q) > -1 || String(r[3]) === q)) rest.push(r);
+                }
+                first.concat(rest).slice(0, 15).forEach(function (r) {
+                    var li = document.createElement('li');
+                    li.textContent = label(r);
+                    li.addEventListener('click', function () { choose(r); });
+                    results.appendChild(li);
+                });
+                if (!results.children.length) results.innerHTML = '<li><small>ไม่พบ ลองพิมพ์ชื่อตำบลหรืออำเภอ</small></li>';
+            }
+            if (search) {
+                search.addEventListener('focus', function () {
+                    if (rows) return;
+                    fetch('/api/v1/thai-address').then(function (r) { return r.json(); })
+                        .then(function (d) { rows = d.rows; render(); })
+                        .catch(function () { results.innerHTML = '<li><small>โหลดรายชื่อไม่สำเร็จ ลองใหม่อีกครั้ง</small></li>'; rows = null; });
+                });
+                search.addEventListener('input', render);
+                if (field('province').value) chosen.textContent = '✓ ' + label([field('sub_district').value, field('district').value, field('province').value, '']);
+            }
+
+            // เคยติ๊ก "จำไว้ในเครื่องนี้" — เติมให้เฉพาะช่องที่ยังว่าง
+            var remember = document.getElementById('remember-address');
+            try {
+                var saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+                if (saved) {
+                    remember.checked = true;
+                    Object.keys(saved).forEach(function (key) {
+                        var input = field(key);
+                        if (!input || input.value) return;
+                        input.value = saved[key];
+                        setPreview(key, saved[key]);
+                        var none = askBox.querySelector('[data-none="' + key + '"]');
+                        if (none && saved[key] === '-') { none.checked = true; input.readOnly = true; }
+                    });
+                    if (search && field('province').value) chosen.textContent = '✓ ' + label([field('sub_district').value, field('district').value, field('province').value, '']);
+                }
+            } catch (e) {}
+
+            document.getElementById('sign-form').addEventListener('submit', function (e) {
+                var missing = Array.prototype.find.call(document.querySelectorAll('[name^="extra["]'), function (i) { return !i.value.trim(); });
+                if (missing) {
+                    // หยุดตัวจัดการของแผ่นเซ็นด้วย ไม่งั้นปุ่มค้างเป็น "กำลังบันทึก…"
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    alert(missing.type === 'hidden' ? 'กรุณาเลือกแขวง/ตำบลจากรายการ' : 'กรุณากรอกข้อมูลให้ครบ (ช่องที่ไม่มีให้ติ๊ก "ไม่มี")');
+                    (missing.type === 'hidden' ? search : missing).focus();
+                    return;
+                }
+                try {
+                    if (remember.checked) {
+                        var data = {};
+                        document.querySelectorAll('[name^="extra["]').forEach(function (i) { data[i.name.slice(6, -1)] = i.value; });
+                        localStorage.setItem(STORE, JSON.stringify(data));
+                    } else {
+                        localStorage.removeItem(STORE);
+                    }
+                } catch (err) {}
+            }, true);
+        }
     })();
     </script>
 @endif

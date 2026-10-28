@@ -32,7 +32,8 @@ class PurgePermitSignaturesJob implements ShouldQueue
         $purged = 0;
 
         BookingPassenger::query()
-            ->whereNotNull('permit_signature_path')
+            // ภาพลายเซ็น และภูมิลำเนา/โทรศัพท์บ้านที่ถามตอนเซ็น — ลบไปด้วยกัน
+            ->where(fn (Builder $q) => $q->whereNotNull('permit_signature_path')->orWhereNotNull('permit_extra'))
             ->whereHas('booking', fn (Builder $booking) => $booking
                 ->whereIn('status', ['cancelled', 'refunded', 'expired'])
                 ->orWhereHas('schedule', fn (Builder $schedule) => $schedule

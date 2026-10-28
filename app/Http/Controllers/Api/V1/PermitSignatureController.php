@@ -48,7 +48,7 @@ class PermitSignatureController extends Controller
             return $this->error('ไม่พบผู้เดินทางคนนี้ในการจอง หรือคุณเซ็นแทนคนนี้ไม่ได้', 404);
         }
 
-        $signed = $passenger->hasSignedPermitForm($form->id);
+        $signed = $passenger->hasCompletedPermitForm($form);
 
         return $this->success([
             'passenger' => ['id' => $passenger->id, 'name' => $passenger->displayName()],
@@ -56,6 +56,14 @@ class PermitSignatureController extends Controller
             'open' => $this->signatures->isOpen($booking),
             'signed' => $signed,
             'signed_at' => $signed ? $passenger->permit_signed_at?->toISOString() : null,
+            // ข้อมูลที่อุทยานบังคับแต่ไม่ได้เก็บตอนจอง — ถามตอนเซ็น ดู PermitFormFields::ASK_INPUTS
+            'ask' => $this->signatures->askSpec($form),
+            'extra' => (object) ($passenger->permit_extra ?? []),
+            // "ใช้ที่อยู่เดียวกับ…" — คนอื่นในใบจองที่เรามีสิทธิ์และกรอกไว้แล้ว (ครอบครัวเดียวกัน)
+            'address_suggestions' => $this->signatures->signablePassengers($booking, $request->user())
+                ->reject(fn (BookingPassenger $p) => $p->id === $passenger->id || blank($p->permit_extra))
+                ->map(fn (BookingPassenger $p) => ['name' => $p->displayName(), 'extra' => $p->permit_extra])
+                ->values(),
             'signature_url' => $signed
                 ? URL::temporarySignedRoute('public.permit-signature', now()->addMinutes(30), ['passenger' => $passenger->id])
                 : null,
@@ -87,6 +95,8 @@ class PermitSignatureController extends Controller
             'signature' => ['required', 'string', 'max:'.(int) (PermitSignatureService::MAX_BYTES * 1.4)],
             'accept' => ['accepted'],
             'channel' => ['nullable', 'in:app,web'],
+            'extra' => ['sometimes', 'array'],
+            'extra.*' => ['nullable', 'string', 'max:100'],
         ], [
             'accept.accepted' => 'กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น',
         ]);
@@ -103,7 +113,7 @@ class PermitSignatureController extends Controller
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'user_id' => $request->user()->id,
-            ]);
+            ], (array) ($validated['extra'] ?? []));
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 422);
         }

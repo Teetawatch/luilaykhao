@@ -83,7 +83,7 @@
                 :style="fieldStyle(f, page, pi)">
                 <img v-if="f.type === 'signature' && current.signature_url" :src="current.signature_url" alt="ลายเซ็น"
                   class="pf-sig-img" :class="`pf-align-${f.align}`" />
-                <template v-else>{{ f.value }}</template>
+                <template v-else>{{ f.input && askValues[f.input] !== undefined && current.ask?.length ? askValues[f.input] : f.value }}</template>
               </div>
             </div>
 
@@ -99,6 +99,47 @@
             </div>
 
             <div v-else-if="current.open" class="space-y-3">
+              <!-- ภูมิลำเนา/โทรศัพท์บ้าน — อุทยานบังคับ แต่เราไม่เก็บในการจอง จึงถามตอนเซ็น -->
+              <div v-if="current.ask?.length" class="space-y-3">
+                <p class="text-sm font-bold text-[#1a1c1c]">ข้อมูลที่อุทยานต้องการ</p>
+                <p class="text-xs text-[#505E5E]">อุทยานบังคับกรอกทุกช่อง — ใช้เฉพาะในแบบฟอร์มฉบับนี้ ไม่เก็บไว้ในการจอง และลบทิ้งหลังจบทริป</p>
+                <div v-if="current.address_suggestions?.length" class="flex flex-wrap gap-2">
+                  <button v-for="(sug, si) in current.address_suggestions" :key="si" @click="applyExtra(sug.extra)"
+                    class="text-xs font-bold text-[#006565] border border-[#BCDFDF] rounded-full px-3 py-1 hover:bg-[#F0FAFA]">
+                    ใช้ที่อยู่เดียวกับ {{ sug.name }}
+                  </button>
+                </div>
+                <template v-for="item in askInputs" :key="item.key">
+                  <div v-if="item.key === 'address'" class="relative">
+                    <label class="block text-xs font-bold text-[#505E5E] mb-1">แขวง/ตำบล · เขต/อำเภอ · จังหวัด</label>
+                    <input v-model="addrQuery" @focus="loadAddresses" type="search" placeholder="พิมพ์ชื่อตำบล อำเภอ หรือรหัสไปรษณีย์"
+                      class="w-full border border-[#CBD5E1] rounded-[12px] px-3 py-2.5 text-sm" />
+                    <ul v-if="addrMatches.length" class="mt-1 border border-[#E8EEEF] rounded-[12px] max-h-56 overflow-y-auto bg-white">
+                      <li v-for="(r, ri) in addrMatches" :key="ri" @click="chooseAddress(r)"
+                        class="px-3 py-2 text-sm border-t first:border-t-0 border-[#F1F5F9] cursor-pointer hover:bg-[#F0FAFA]">{{ addressLabel(r) }}</li>
+                    </ul>
+                    <p v-else-if="addrQuery.trim().length >= 2 && addrRows" class="mt-1 text-xs text-[#889696]">ไม่พบ ลองพิมพ์ชื่อตำบลหรืออำเภอ</p>
+                    <p v-if="askValues.province" class="mt-1 text-sm font-bold text-[#006565]">✓ {{ addressLabel([askValues.sub_district, askValues.district, askValues.province, '']) }}</p>
+                  </div>
+                  <div v-else>
+                    <label class="block text-xs font-bold text-[#505E5E] mb-1">{{ item.label }}</label>
+                    <div class="flex items-center gap-3">
+                      <input v-model="askValues[item.key]" :readonly="askValues[item.key] === '-' && item.allow_none" maxlength="100"
+                        :type="item.key === 'home_phone' ? 'tel' : 'text'"
+                        class="flex-1 border border-[#CBD5E1] rounded-[12px] px-3 py-2.5 text-sm read-only:bg-[#F1F5F9] read-only:text-[#889696]" />
+                      <label v-if="item.allow_none" class="flex items-center gap-1.5 text-sm text-[#334155] whitespace-nowrap">
+                        <input type="checkbox" :checked="askValues[item.key] === '-'" @change="askValues[item.key] = $event.target.checked ? '-' : ''" class="w-4 h-4" />
+                        ไม่มี
+                      </label>
+                    </div>
+                  </div>
+                </template>
+                <label class="flex items-start gap-2 text-xs text-[#505E5E]">
+                  <input type="checkbox" v-model="rememberAddress" class="mt-0.5 w-4 h-4 shrink-0" />
+                  <span>จำที่อยู่นี้ไว้ในเบราว์เซอร์นี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)</span>
+                </label>
+              </div>
+
               <p class="text-sm font-bold text-[#1a1c1c]">เซ็นชื่อ <span class="font-normal text-[#889696] text-xs">— ลายเซ็นจะไปอยู่ในช่องสีเหลือง</span></p>
               <div class="relative border-[1.5px] border-[#CBD5E1] rounded-[12px] bg-white" style="touch-action:none">
                 <canvas ref="padEl" class="block w-full h-[190px] rounded-[12px] cursor-crosshair"
@@ -114,7 +155,7 @@
                 <span>ข้าพเจ้า {{ current.passenger.name }} ได้อ่านข้อความในแบบฟอร์มนี้ครบถ้วนแล้ว และยินยอมให้ใช้ลายเซ็นนี้ลงในแบบฟอร์มฉบับนี้</span>
               </label>
               <p v-if="signError" class="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] p-3">{{ signError }}</p>
-              <button @click="submit" :disabled="!drawn || !accepted || signing"
+              <button @click="submit" :disabled="!drawn || !accepted || signing || !askComplete"
                 class="w-full bg-[#006565] text-white py-3 rounded-[12px] font-bold text-sm hover:bg-[#004D4D] disabled:opacity-50 transition-all">
                 {{ signing ? 'กำลังบันทึก…' : 'ยืนยันลายเซ็น' }}
               </button>
@@ -184,6 +225,7 @@ async function openPassenger(p) {
   try {
     const res = await api.get(`${base.value}/passengers/${p.id}`);
     current.value = res.data.data;
+    initAsk();
     accepted.value = false;
     drawn.value = false;
     signError.value = '';
@@ -196,6 +238,80 @@ async function openPassenger(p) {
   await nextTick();
   measure();
   setupPad();
+}
+
+// ─── ข้อมูลที่ถามตอนเซ็น (ดู PermitFormFields::ASK_INPUTS) ──────────────
+const ADDRESS_KEYS = ['sub_district', 'district', 'province'];
+const REMEMBER_KEY = 'llk_permit_address';
+const askValues = ref({});
+const rememberAddress = ref(false);
+const addrQuery = ref('');
+const addrRows = ref(null);
+
+// แขวง/ตำบล·เขต/อำเภอ·จังหวัด รวมเป็นช่องค้นหาช่องเดียว วางตรงตำแหน่งของตำบล
+const askInputs = computed(() => {
+  const out = [];
+  for (const item of current.value?.ask || []) {
+    if (ADDRESS_KEYS.includes(item.key)) {
+      if (!out.some((x) => x.key === 'address')) out.push({ key: 'address' });
+    } else {
+      out.push(item);
+    }
+  }
+  return out;
+});
+const askComplete = computed(() => (current.value?.ask || []).every((item) => String(askValues.value[item.key] || '').trim() !== ''));
+
+function initAsk() {
+  const values = {};
+  for (const item of current.value?.ask || []) values[item.key] = current.value?.extra?.[item.key] || '';
+  askValues.value = values;
+  addrQuery.value = '';
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null'); } catch { saved = null; }
+  rememberAddress.value = Boolean(saved);
+  if (saved && Object.values(values).every((v) => !v)) applyExtra(saved);
+}
+
+function applyExtra(extra) {
+  for (const item of current.value?.ask || []) {
+    if (extra?.[item.key]) askValues.value[item.key] = extra[item.key];
+  }
+}
+
+async function loadAddresses() {
+  if (addrRows.value) return;
+  try {
+    const res = await api.get('/thai-address');
+    addrRows.value = res.data.rows;
+  } catch {
+    toast.error('โหลดรายชื่อตำบลไม่สำเร็จ ลองใหม่อีกครั้ง');
+  }
+}
+
+function addressLabel(r) {
+  const bkk = r[2] === 'กรุงเทพมหานคร';
+  return `${bkk ? 'แขวง' : 'ต.'}${r[0]} ${bkk ? 'เขต' : 'อ.'}${r[1]} ${bkk ? '' : 'จ.'}${r[2]}${r[3] ? ` ${r[3]}` : ''}`;
+}
+
+const addrMatches = computed(() => {
+  const q = addrQuery.value.trim().replace(/^(ต\.|อ\.|จ\.|ตำบล|อำเภอ|จังหวัด|แขวง|เขต)\s*/, '');
+  if (!addrRows.value || q.length < 2) return [];
+  const first = [];
+  const rest = [];
+  for (const r of addrRows.value) {
+    if (first.length >= 15) break;
+    if (r[0].startsWith(q)) first.push(r);
+    else if (rest.length < 15 && (r[0].includes(q) || r[1].includes(q) || r[2].includes(q) || String(r[3]) === q)) rest.push(r);
+  }
+  return [...first, ...rest].slice(0, 15);
+});
+
+function chooseAddress(r) {
+  askValues.value.sub_district = r[0];
+  askValues.value.district = r[1];
+  askValues.value.province = r[2];
+  addrQuery.value = '';
 }
 
 function measure() {
@@ -306,9 +422,18 @@ async function submit() {
   try {
     const res = await api.post(`${base.value}/passengers/${current.value.passenger.id}/sign`, {
       signature: padEl.value.toDataURL('image/png'),
+      extra: askValues.value,
       accept: true,
       channel: 'web',
     });
+    if (current.value.ask?.length) {
+      try {
+        if (rememberAddress.value) localStorage.setItem(REMEMBER_KEY, JSON.stringify(askValues.value));
+        else localStorage.removeItem(REMEMBER_KEY);
+      } catch {
+        // โหมดส่วนตัว/บล็อกที่เก็บข้อมูล — แค่ไม่จำ
+      }
+    }
     summary.value = res.data.data;
     toast.success(res.data.message || 'เซ็นแล้ว');
     current.value = null;

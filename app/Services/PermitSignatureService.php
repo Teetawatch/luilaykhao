@@ -8,6 +8,8 @@ use App\Models\BookingPassenger;
 use App\Models\PermitForm;
 use App\Models\SmartNotification;
 use App\Models\User;
+use App\Support\PermitFormFields;
+use App\Support\ThaiAddress;
 use App\Support\ThaiDate;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -124,13 +126,13 @@ class PermitSignatureService
             'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
             'overdue' => $deadline !== null && $deadline->toDateString() < now('Asia/Bangkok')->toDateString(),
             'viewer_role' => $isOwner ? 'owner' : 'member',
-            'signed_count' => $passengers->filter(fn (BookingPassenger $p) => $p->hasSignedPermitForm($form->id))->count(),
+            'signed_count' => $passengers->filter(fn (BookingPassenger $p) => $p->hasCompletedPermitForm($form))->count(),
             'total' => $passengers->count(),
             'passengers' => $passengers->map(fn (BookingPassenger $p) => [
                 'id' => $p->id,
                 'name' => $p->displayName(),
-                'signed' => $p->hasSignedPermitForm($form->id),
-                'signed_at' => $p->hasSignedPermitForm($form->id) ? $p->permit_signed_at?->toISOString() : null,
+                'signed' => $p->hasCompletedPermitForm($form),
+                'signed_at' => $p->hasCompletedPermitForm($form) ? $p->permit_signed_at?->toISOString() : null,
                 // คนจองส่งลิงก์ให้เพื่อนเซ็นเองได้ — ลิงก์ของเพื่อนไม่มีข้อมูลส่วนตัวเต็ม
                 'sign_url' => $isOwner ? url('/f/'.$p->ensurePassToken().'/permit') : null,
             ])->values()->all(),
@@ -142,10 +144,11 @@ class PermitSignatureService
      *
      * @param  string  $dataUrl  PNG แบบ data URL (`data:image/png;base64,...`) จากแผ่นเซ็นของทุกช่องทาง
      * @param  array{channel: string, ip?: string|null, user_agent?: string|null, user_id?: int|null}  $meta
+     * @param  array<string, mixed>  $extra  ข้อมูลที่ฟอร์มถามตอนเซ็น (ภูมิลำเนา โทรศัพท์บ้าน) ดู askSpec()
      *
      * @throws \Exception ข้อความภาษาไทยสำหรับแสดงลูกค้า
      */
-    public function sign(BookingPassenger $passenger, PermitForm $form, string $dataUrl, array $meta): BookingPassenger
+    public function sign(BookingPassenger $passenger, PermitForm $form, string $dataUrl, array $meta, array $extra = []): BookingPassenger
     {
         $booking = $passenger->booking;
 
@@ -156,6 +159,9 @@ class PermitSignatureService
         if ($passenger->not_going_at !== null) {
             throw new \Exception('คนนี้แจ้งว่าไม่ไปแล้ว ไม่ต้องเซ็นแบบฟอร์ม');
         }
+
+        // ตรวจข้อมูลก่อนแตะลายเซ็น — กรอกไม่ครบต้องไม่เหลือลายเซ็นค้างอยู่ครึ่ง ๆ
+        $extra = $this->validateExtra($form, $extra);
 
         $png = $this->decode($dataUrl);
         $png = $this->trim($png);
@@ -173,9 +179,69 @@ class PermitSignatureService
                 'user_agent' => Str::limit((string) ($meta['user_agent'] ?? ''), 255, ''),
                 'user_id' => $meta['user_id'] ?? null,
             ],
+            'permit_extra' => $extra === [] ? null : $extra,
         ])->save();
 
         return $passenger;
+    }
+
+    /**
+     * ข้อมูลที่ต้องถามตอนเซ็นสำหรับฟอร์มนี้ — ว่าง = ฟอร์มไม่ได้วางช่องที่อยู่ไว้
+     *
+     * @return list<array{key: string, label: string, allow_none: bool}>
+     */
+    public function askSpec(PermitForm $form): array
+    {
+        return array_map(fn (string $key) => [
+            'key' => $key,
+            'label' => PermitFormFields::ASK_INPUTS[$key][0],
+            'allow_none' => PermitFormFields::ASK_INPUTS[$key][1],
+        ], PermitFormFields::askedInputs($form->fields ?? []));
+    }
+
+    /**
+     * ตรวจข้อมูลที่ถาม — ทุกช่องบังคับ (อุทยานไม่รับช่องว่าง) ช่องที่หลายคนไม่มีจริง
+     * (หมู่ ซอย ถนน โทรศัพท์บ้าน) ตอบ "-" ได้ ตำบล/อำเภอ/จังหวัดต้องเป็นชุดที่มีจริง
+     *
+     * @return array<string, string> เฉพาะช่องที่ฟอร์มถาม + รหัสไปรษณีย์ที่หาให้
+     *
+     * @throws \Exception
+     */
+    public function validateExtra(PermitForm $form, array $input): array
+    {
+        $keys = PermitFormFields::askedInputs($form->fields ?? []);
+        $clean = [];
+
+        foreach ($keys as $key) {
+            [$label, $allowNone] = PermitFormFields::ASK_INPUTS[$key];
+            $value = trim(preg_replace('/\s+/u', ' ', (string) ($input[$key] ?? '')));
+
+            if ($value === '' || ($value === '-' && ! $allowNone)) {
+                throw new \Exception("กรุณากรอก{$label}".($allowNone ? ' (ถ้าไม่มี ติ๊ก "ไม่มี")' : ''));
+            }
+
+            if (mb_strlen($value) > 100) {
+                throw new \Exception("{$label}ยาวเกินไป");
+            }
+
+            if ($key === 'home_phone' && $value !== '-' && ! preg_match('/^[0-9+\-\s()#]{6,20}$/', $value)) {
+                throw new \Exception('โทรศัพท์บ้านไม่ถูกต้อง (ถ้าไม่มี ติ๊ก "ไม่มี")');
+            }
+
+            $clean[$key] = $value;
+        }
+
+        if (array_key_exists('province', $clean)) {
+            $zip = ThaiAddress::zipFor($clean['sub_district'], $clean['district'], $clean['province']);
+
+            if ($zip === null) {
+                throw new \Exception('ไม่พบแขวง/ตำบล เขต/อำเภอ และจังหวัดชุดนี้ กรุณาเลือกจากรายการ');
+            }
+
+            $clean['zip'] = $zip;
+        }
+
+        return $clean;
     }
 
     /**
@@ -208,7 +274,7 @@ class PermitSignatureService
 
         $unsigned = $booking->passengers
             ->whereNull('not_going_at')
-            ->reject(fn (BookingPassenger $p) => $p->hasSignedPermitForm($form->id));
+            ->reject(fn (BookingPassenger $p) => $p->hasCompletedPermitForm($form));
 
         if ($unsigned->isEmpty()) {
             return false;
@@ -253,7 +319,7 @@ class PermitSignatureService
     {
         $booking->loadMissing(['schedule.trip', 'passengers']);
         $going = $booking->passengers->whereNull('not_going_at');
-        $unsigned = $going->reject(fn (BookingPassenger $p) => $p->hasSignedPermitForm($form->id));
+        $unsigned = $going->reject(fn (BookingPassenger $p) => $p->hasCompletedPermitForm($form));
 
         if ($unsigned->isEmpty() || ! $booking->user_id) {
             return false;
@@ -347,10 +413,10 @@ class PermitSignatureService
             'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
             'overdue' => $deadline !== null && $deadline->toDateString() < now('Asia/Bangkok')->toDateString(),
             'reminded_today' => $this->remindedToday($booking),
-            'signed_count' => $passengers->filter(fn (BookingPassenger $p) => $p->hasSignedPermitForm($form->id))->count(),
+            'signed_count' => $passengers->filter(fn (BookingPassenger $p) => $p->hasCompletedPermitForm($form))->count(),
             'total' => $passengers->count(),
             'passengers' => $passengers->map(function (BookingPassenger $p) use ($form, $booking) {
-                $signed = $p->hasSignedPermitForm($form->id);
+                $signed = $p->hasCompletedPermitForm($form);
 
                 return [
                     'id' => $p->id,
@@ -373,6 +439,7 @@ class PermitSignatureService
             'permit_signed_at' => null,
             'permit_signed_form_id' => null,
             'permit_sign_meta' => null,
+            'permit_extra' => null,
         ])->save();
     }
 
