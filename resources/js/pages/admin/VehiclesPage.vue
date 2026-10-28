@@ -71,14 +71,16 @@
           <span class="tab-count">{{ tab.count }}</span>
         </button>
       </div>
-      <button
-        v-if="viewMode === 'vehicle' && statusFilter !== 'active' && !selectMode"
-        class="btn-clear"
-        :disabled="!deletableVehicles.length"
-        @click="startSelect"
-      >
-        <span class="material-symbols-rounded">delete_sweep</span> เคลียร์ข้อมูล
-      </button>
+      <!-- เคลียร์ทั้งกองในแท็บนี้ทีเดียว (ตามประเภท/คำค้นที่กรองอยู่) หรือเลือกเองทีละคัน -->
+      <div class="clear-actions" v-if="viewMode === 'vehicle' && statusFilter !== 'active' && !selectMode">
+        <button class="btn-clear" :disabled="!deletableVehicles.length" @click="clearAll">
+          <span class="material-symbols-rounded">delete_sweep</span>
+          เคลียร์ทั้งหมด {{ deletableVehicles.length }} คัน
+        </button>
+        <button class="btn-clear btn-clear--ghost" :disabled="!deletableVehicles.length" @click="startSelect">
+          <span class="material-symbols-rounded">checklist</span> เลือกเอง
+        </button>
+      </div>
       <div class="view-toggle">
         <button class="view-toggle-btn" :class="{ active: viewMode === 'vehicle' }" @click="viewMode = 'vehicle'">
           <span class="material-symbols-rounded">directions_car</span> ตามคันรถ
@@ -104,7 +106,7 @@
         <span class="select-hint" v-if="statusFilter === 'all'">รถที่ยังมีรอบอยู่เลือกไม่ได้</span>
         <div class="select-actions">
           <button class="btn-secondary" @click="exitSelect">ยกเลิก</button>
-          <button class="btn-danger" :disabled="!selectedIds.size" @click="showBulkDeleteConfirm = true">
+          <button class="btn-danger" :disabled="!selectedIds.size" @click="openBulkConfirm('selected')">
             <span class="material-symbols-rounded">delete</span> ลบที่เลือก
           </button>
         </div>
@@ -738,20 +740,21 @@
     <div class="modal-overlay" v-if="showBulkDeleteConfirm">
       <div class="modal-card modal-sm">
         <div class="modal-header">
-          <h2>ลบยานพาหนะ {{ selectedVehicles.length }} คัน</h2>
+          <h2 v-if="bulkMode === 'all'">เคลียร์ “{{ currentTabLabel }}” ทั้งหมด</h2>
+          <h2 v-else>ลบยานพาหนะ {{ bulkTargets.length }} คัน</h2>
           <button class="modal-close" @click="showBulkDeleteConfirm = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
           <p class="confirm-text">
-            ลบ <strong>{{ selectedVehicles.length }} คัน</strong>
+            ลบ <strong>{{ bulkTargets.length }} คัน</strong>
             <span v-if="bulkSummary.neverUsed"> · ยังไม่เคยใช้ {{ bulkSummary.neverUsed }} คัน</span>
             <span v-if="bulkSummary.past"> · ใช้ผ่านมาแล้ว {{ bulkSummary.past }} คัน</span>
           </p>
           <ul class="bulk-names">
-            <li v-for="v in selectedVehicles.slice(0, 8)" :key="v.id">
+            <li v-for="v in bulkTargets.slice(0, 8)" :key="v.id">
               {{ v.name }}<span v-if="v.license_plate"> · {{ v.license_plate }}</span>
             </li>
-            <li v-if="selectedVehicles.length > 8" class="muted">และอีก {{ selectedVehicles.length - 8 }} คัน</li>
+            <li v-if="bulkTargets.length > 8" class="muted">และอีก {{ bulkTargets.length - 8 }} คัน</li>
           </ul>
           <p class="confirm-warning">
             <span class="material-symbols-rounded" style="color:var(--color-gold);">warning</span>
@@ -766,7 +769,7 @@
         <div class="modal-footer">
           <button class="btn-secondary" @click="showBulkDeleteConfirm = false">ยกเลิก</button>
           <button class="btn-danger" @click="doBulkDelete" :disabled="submitting">
-            {{ submitting ? 'กำลังลบ...' : `ลบ ${selectedVehicles.length} คัน` }}
+            {{ submitting ? 'กำลังลบ...' : `ลบ ${bulkTargets.length} คัน` }}
           </button>
         </div>
       </div>
@@ -1053,12 +1056,20 @@ const allDeletableSelected = computed(
   () => deletableVehicles.value.length > 0 && selectedVehicles.value.length === deletableVehicles.value.length,
 );
 
+// 'all' = เคลียร์ทั้งกองของแท็บนี้ · 'selected' = เฉพาะคันที่ติ๊กไว้
+const bulkMode = ref('selected');
+const bulkTargets = computed(() => (bulkMode.value === 'all' ? deletableVehicles.value : selectedVehicles.value));
+const currentTabLabel = computed(() => statusTabs.value.find(t => t.value === statusFilter.value)?.label || '');
+
 const bulkSummary = computed(() => ({
-  neverUsed: selectedVehicles.value.filter(v => usageOf(v) === 'never_used').length,
-  past: selectedVehicles.value.filter(v => usageOf(v) === 'past').length,
-  rounds: selectedVehicles.value.reduce((n, v) => n + (v.schedules_count || 0), 0),
-  pickups: selectedVehicles.value.reduce((n, v) => n + (v.pickup_points?.length || 0), 0),
+  neverUsed: bulkTargets.value.filter(v => usageOf(v) === 'never_used').length,
+  past: bulkTargets.value.filter(v => usageOf(v) === 'past').length,
+  rounds: bulkTargets.value.reduce((n, v) => n + (v.schedules_count || 0), 0),
+  pickups: bulkTargets.value.reduce((n, v) => n + (v.pickup_points?.length || 0), 0),
 }));
+
+const openBulkConfirm = (mode) => { bulkMode.value = mode; showBulkDeleteConfirm.value = true; };
+const clearAll = () => openBulkConfirm('all');
 
 const startSelect = () => { selectMode.value = true; selectedIds.value = new Set(); };
 const exitSelect = () => { selectMode.value = false; selectedIds.value = new Set(); };
@@ -1086,10 +1097,29 @@ const toggleSelectAll = () => {
 const doBulkDelete = async () => {
   submitting.value = true;
   try {
-    const res = await admin.bulkDeleteVehicles(selectedVehicles.value.map(v => v.id));
+    let message;
+    if (bulkMode.value === 'all' && !searchQuery.value) {
+      // ไม่ได้ค้นหาอยู่ = ทั้งกองของแท็บ — ให้เซิร์ฟเวอร์เคลียร์ตามสถานะเอง ไม่ต้องไล่ส่ง id
+      const res = await admin.bulkDeleteVehicles({
+        status: statusFilter.value === 'all' ? 'inactive' : statusFilter.value,
+        type: filters.type || null,
+      });
+      message = res.message;
+    } else {
+      // เคลียร์เฉพาะคันที่เห็นจากคำค้น/ที่ติ๊กไว้ — ส่งทีละไม่เกิน 200 คัน (เพดานของ endpoint)
+      const ids = bulkTargets.value.map(v => v.id);
+      let deleted = 0;
+      let skipped = 0;
+      for (let i = 0; i < ids.length; i += 200) {
+        const res = await admin.bulkDeleteVehicles({ ids: ids.slice(i, i + 200) });
+        deleted += res.data?.deleted || 0;
+        skipped += res.data?.skipped?.length || 0;
+      }
+      message = `ลบยานพาหนะแล้ว ${deleted} คัน` + (skipped ? ` · ข้าม ${skipped} คันที่ยังมีรอบเดินทางอยู่` : '');
+    }
     showBulkDeleteConfirm.value = false;
     exitSelect();
-    alert(res.message);
+    alert(message);
     fetchData();
   } catch (e) {
     alert(e.response?.data?.message || 'เกิดข้อผิดพลาด');
@@ -1139,9 +1169,9 @@ const seatClass = (s) => {
 };
 
 const fetchData = () => {
-  // per_page สูงเพื่อดึงรถมาครบทุกคัน — หน้านี้ไม่มี pagination UI
+  // per_page สูงเพื่อดึงรถมาครบทุกคัน — หน้านี้ไม่มี pagination UI (และยอดบนแท็บ/ปุ่มเคลียร์ต้องตรงจริง)
   // ถ้าไม่ส่ง backend จะ default ที่ 15 ทำให้รถที่เพิ่มใหม่ไม่ขึ้น และสถิติ/รายการนับไม่ครบ
-  admin.fetchVehicles({ ...filters, per_page: 200 });
+  admin.fetchVehicles({ ...filters, per_page: 1000 });
   fetchStaff();
   fetchRegistryDrivers();
   fetchUpcomingSchedules();
@@ -2130,6 +2160,9 @@ onMounted(() => fetchData());
 .btn-clear .material-symbols-rounded { font-size: 16px; }
 .btn-clear:hover:not(:disabled) { background: #fee2e2; }
 .btn-clear:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-clear--ghost { background: var(--color-white); border-color: var(--color-sand-dark); color: var(--color-text-mid); }
+.btn-clear--ghost:hover:not(:disabled) { background: var(--color-sand); }
+.clear-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .select-bar {
   position: sticky; top: 8px; z-index: 5;

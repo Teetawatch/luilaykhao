@@ -112,6 +112,7 @@ class Vehicle extends Model
 
     /**
      * กรองตามสถานะการใช้งาน — active | never_used | past (ค่าเดียวกับ usageStatus())
+     * และ inactive = never_used + past (ทุกคันที่ลบได้)
      */
     public function scopeUsage(Builder $query, string $status): Builder
     {
@@ -122,6 +123,7 @@ class Vehicle extends Model
             'active' => $query->where($inUse),
             'never_used' => $query->whereNot($everUsed),
             'past' => $query->where($everUsed)->whereNot($inUse),
+            'inactive' => $query->whereNot($inUse),
             default => $query,
         };
     }

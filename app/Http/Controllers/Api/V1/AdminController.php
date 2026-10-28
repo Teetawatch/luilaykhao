@@ -3480,18 +3480,28 @@ class AdminController extends Controller
     /**
      * เคลียร์รถทีละหลายคัน — ลบได้เฉพาะคันที่ไม่มีรอบที่ยังไม่จบ (เกณฑ์เดียวกับลบทีละคัน)
      * คันที่ยังมีงานจะถูกข้ามและบอกกลับมา ไม่ทำให้ทั้งชุดล้ม
+     *
+     * ส่ง `ids` = ลบคันที่เลือก · ส่ง `status` (+ `type`) = เคลียร์ทั้งกองฝั่งเซิร์ฟเวอร์
+     * (never_used | past | inactive = ทั้งสองกอง) ไม่ต้องให้หน้าเว็บไล่ส่ง id ทีละคัน
      */
     public function bulkDeleteVehicles(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'ids' => ['required', 'array', 'min:1', 'max:200'],
+            'ids' => ['required_without:status', 'array', 'min:1', 'max:200'],
             'ids.*' => ['integer', 'distinct'],
+            'status' => ['required_without:ids', 'string', Rule::in(['never_used', 'past', 'inactive'])],
+            'type' => ['nullable', 'string', Rule::in(Vehicle::TYPES)],
         ]);
+
+        $query = isset($validated['ids'])
+            ? Vehicle::whereIn('id', $validated['ids'])
+            : Vehicle::usage($validated['status'])
+                ->when($validated['type'] ?? null, fn ($q, $type) => $q->where('type', $type));
 
         $deleted = 0;
         $skipped = [];
 
-        foreach (Vehicle::whereIn('id', $validated['ids'])->get() as $vehicle) {
+        foreach ($query->get() as $vehicle) {
             if ($vehicle->isInUse()) {
                 $skipped[] = ['id' => $vehicle->id, 'name' => $vehicle->name];
 

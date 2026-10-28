@@ -258,4 +258,63 @@ class VehicleRetirementTest extends TestCase
 
         $this->assertDatabaseHas('vehicles', ['id' => $vehicle->id]);
     }
+
+    public function test_clear_all_never_used_vehicles_leaves_past_and_active_ones(): void
+    {
+        $unusedA = $this->makeVehicle('รถยังไม่เคยใช้ A');
+        $unusedB = $this->makeVehicle('รถยังไม่เคยใช้ B');
+        $past = $this->makeVehicle('รถใช้ผ่านมาแล้ว');
+        $this->makeSchedule($past, now('Asia/Bangkok')->subDays(4)->toDateString());
+        $active = $this->makeVehicle('รถมีรอบ');
+        $this->makeSchedule($active, now('Asia/Bangkok')->addDays(4)->toDateString());
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/vehicles/bulk-delete', ['status' => 'never_used'])
+            ->assertOk()
+            ->assertJsonPath('data.deleted', 2);
+
+        $this->assertDatabaseMissing('vehicles', ['id' => $unusedA->id]);
+        $this->assertDatabaseMissing('vehicles', ['id' => $unusedB->id]);
+        $this->assertDatabaseHas('vehicles', ['id' => $past->id]);
+        $this->assertDatabaseHas('vehicles', ['id' => $active->id]);
+    }
+
+    public function test_clear_all_past_vehicles_respects_the_type_filter(): void
+    {
+        $pastVan = $this->makeVehicle('ตู้เก่า');
+        $this->makeSchedule($pastVan, now('Asia/Bangkok')->subDays(4)->toDateString());
+        $pastBus = Vehicle::create(['name' => 'บัสเก่า', 'type' => 'bus', 'capacity' => 40]);
+        $this->makeSchedule($pastBus, now('Asia/Bangkok')->subDays(4)->toDateString());
+        $unused = $this->makeVehicle('ตู้ใหม่');
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/vehicles/bulk-delete', ['status' => 'past', 'type' => 'van'])
+            ->assertOk()
+            ->assertJsonPath('data.deleted', 1);
+
+        $this->assertDatabaseMissing('vehicles', ['id' => $pastVan->id]);
+        $this->assertDatabaseHas('vehicles', ['id' => $pastBus->id]);
+        $this->assertDatabaseHas('vehicles', ['id' => $unused->id]);
+    }
+
+    public function test_clear_all_inactive_never_touches_vehicles_in_use(): void
+    {
+        $unused = $this->makeVehicle('รถยังไม่เคยใช้');
+        $active = $this->makeVehicle('รถมีรอบ');
+        $this->makeSchedule($active, now('Asia/Bangkok')->addDays(1)->toDateString());
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/vehicles/bulk-delete', ['status' => 'inactive'])
+            ->assertOk()
+            ->assertJsonPath('data.deleted', 1);
+
+        $this->assertDatabaseMissing('vehicles', ['id' => $unused->id]);
+        $this->assertDatabaseHas('vehicles', ['id' => $active->id]);
+
+        // ไม่มีทางสั่งเคลียร์กองที่ยังใช้งานอยู่
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/vehicles/bulk-delete', ['status' => 'active'])
+            ->assertStatus(422);
+        $this->assertDatabaseHas('vehicles', ['id' => $active->id]);
+    }
 }
