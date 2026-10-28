@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PermitFormFields;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -15,18 +16,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class PermitForm extends Model
 {
-    protected $fillable = ['name', 'note', 'source_path', 'source_name', 'pages', 'fields'];
+    protected $fillable = ['name', 'note', 'source_path', 'source_name', 'pages', 'fields', 'sign_due_days'];
 
     protected function casts(): array
     {
         return [
             'pages' => 'array',
             'fields' => 'array',
+            'sign_due_days' => 'integer',
         ];
     }
 
     public function trips(): HasMany
     {
         return $this->hasMany(Trip::class);
+    }
+
+    /** มีช่องลายเซ็นวางไว้ = ผู้เดินทางต้องเซ็นก่อนลงทะเบียนกับอุทยาน */
+    public function requiresSignature(): bool
+    {
+        return collect($this->fields ?? [])->contains('source', PermitFormFields::SIGNATURE);
     }
 }

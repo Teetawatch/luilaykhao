@@ -33,6 +33,8 @@
 
     <x-emails.personal-receipts :receipt="$receipt ?? null" :personal="$personalReceipts ?? null" />
 
+    <x-emails.permit-sign :booking="$booking" :recipient-name="$recipientName ?? null" />
+
     <p class="section-label">รายละเอียดการเดินทาง</p>
     <div class="info-card">
       <div class="info-card-header">

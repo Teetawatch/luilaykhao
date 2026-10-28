@@ -135,6 +135,14 @@ class BookingResource extends JsonResource
                 (bool) $request->user()?->hasAnyRole(['admin', 'operator']),
                 $this->hold_note,
             ),
+            // ทริปนี้ให้ผู้เดินทางเซ็นแบบฟอร์มอุทยานไหม — แอป/เว็บโชว์ปุ่ม "เซ็นแบบฟอร์ม"
+            // แล้วดึงสถานะจริงจาก GET bookings/{ref}/permit-form (trips ส่วนใหญ่ไม่มี FK นี้
+            // จึงไม่มี query เพิ่ม)
+            'permit_sign_required' => $this->when(
+                $this->relationLoaded('schedule') && $this->schedule?->relationLoaded('trip'),
+                fn () => in_array($this->status, ['confirmed', 'pending'], true)
+                    && (bool) $this->schedule?->trip?->permitForm?->requiresSignature(),
+            ),
             // ทริปนี้ต้องยื่นแบบฟอร์มอุทยานไหม — หน้าแอดมินโชว์ปุ่มโหลด PDF ของใบนี้
             'permit_form_id' => $this->when(
                 (bool) $request->user()?->hasAnyRole(['admin', 'operator'])

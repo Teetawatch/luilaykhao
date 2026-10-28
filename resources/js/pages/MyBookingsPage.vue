@@ -312,6 +312,14 @@
               </button>
 
               <button
+                v-if="b.permit_sign_required"
+                @click="permitTarget = b"
+                class="flex-1 sm:flex-none bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A] hover:bg-[#FEF3C7] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
+                <span class="material-symbols-rounded text-[18px]">signature</span>
+                เซ็นแบบฟอร์มอุทยาน
+              </button>
+
+              <button
                 v-if="b.seat_handover?.available"
                 @click="handoverTarget = b"
                 class="flex-1 sm:flex-none bg-white text-[#006565] border border-[#BCDFDF] hover:bg-[#F0FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
@@ -530,6 +538,12 @@
       @refund="switchToRefund"
       @done="onRescheduled" />
 
+    <PermitSignModal
+      v-if="permitTarget"
+      :booking="permitTarget"
+      @close="permitTarget = null"
+    />
+
     <SeatHandoverModal
       v-if="handoverTarget"
       :booking="handoverTarget"
@@ -560,6 +574,7 @@ import InstallmentPlanPanel from '../components/InstallmentPlanPanel.vue';
 import RescheduleModal from '../components/RescheduleModal.vue';
 import PostponementRefundModal from '../components/PostponementRefundModal.vue';
 import SeatHandoverModal from '../components/SeatHandoverModal.vue';
+import PermitSignModal from '../components/PermitSignModal.vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const swal = useSwal();
@@ -954,6 +969,8 @@ const rescheduleTarget = ref(null);
 
 // ส่งต่อที่นั่ง — ปุ่มขึ้นเมื่อเซิร์ฟเวอร์บอกว่าผู้เรียกส่งต่อได้ (booking.seat_handover.available)
 const handoverTarget = ref(null);
+// เซ็นแบบฟอร์มอุทยาน — ปุ่มขึ้นเมื่อทริปให้เซ็น (booking.permit_sign_required)
+const permitTarget = ref(null);
 
 function openReschedule(b) {
   rescheduleTarget.value = b;

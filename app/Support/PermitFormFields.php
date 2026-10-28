@@ -20,6 +20,20 @@ class PermitFormFields
 
     public const TYPE_CHECK = 'check';
 
+    public const TYPE_SIGNATURE = 'signature';
+
+    /** ลายเซ็นที่ผู้เดินทางวาดเอง ดู PermitSignatureService — ค่าของช่องคือ path ของภาพ */
+    public const SIGNATURE = 'signature';
+
+    /**
+     * ช่องที่ห้ามโชว์เต็มในหน้าที่เปิดด้วยลิงก์ (ลิงก์ของเพื่อนถูกส่งต่อในกลุ่มแชทได้)
+     * — แสดงแค่ท้ายตัวเลขให้เจ้าตัวจำได้ว่าเป็นของตัวเอง
+     */
+    public const SENSITIVE = [
+        'id_card', 'passport_no', 'id_or_passport', 'phone', 'email', 'emergency_phone',
+        'health_notes', 'allergies', 'birth_date', 'blood_group',
+    ];
+
     /** ช่องที่ข้อความมาจากแอดมินพิมพ์เอง (เช่น ชื่อบริษัทประกัน) */
     public const STATIC = 'static';
 
@@ -55,6 +69,7 @@ class PermitFormFields
         'check_mr' => ['✓ ถ้าเป็น "นาย"', 'ผู้เดินทาง', self::TYPE_CHECK, '1'],
         'check_mrs' => ['✓ ถ้าเป็น "นาง"', 'ผู้เดินทาง', self::TYPE_CHECK, ''],
         'check_miss' => ['✓ ถ้าเป็น "นางสาว"', 'ผู้เดินทาง', self::TYPE_CHECK, ''],
+        self::SIGNATURE => ['ลายเซ็น', 'ผู้เดินทาง', self::TYPE_SIGNATURE, ''],
 
         'trip_name' => ['ชื่อทริป', 'ทริป/รอบ', self::TYPE_TEXT, 'เขาช้างเผือก 3 วัน 2 คืน'],
         'days_count' => ['จำนวนวัน', 'ทริป/รอบ', self::TYPE_TEXT, '3'],
@@ -151,6 +166,8 @@ class PermitFormFields
             'check_mr' => $title === 'นาย' ? '1' : '',
             'check_mrs' => $title === 'นาง' ? '1' : '',
             'check_miss' => $title === 'นางสาว' ? '1' : '',
+            // PermitFormService ใส่ path ของภาพให้เองเมื่อเซ็นแบบฟอร์มฉบับนั้นแล้ว
+            self::SIGNATURE => '',
 
             'trip_name' => (string) $schedule->trip?->title,
             'days_count' => $start && $end ? (string) ((int) $start->diffInDays($end, true) + 1) : '',
@@ -165,6 +182,20 @@ class PermitFormFields
             self::STATIC => '',
             self::CHECK_ALWAYS => '1',
         ];
+    }
+
+    /** "•••••••••3456" — เหลือ 4 ตัวท้ายพอให้เจ้าตัวรู้ว่าเป็นข้อมูลของตัวเอง */
+    public static function mask(string $value): string
+    {
+        $length = mb_strlen($value);
+
+        if ($length === 0) {
+            return '';
+        }
+
+        $keep = $length > 6 ? 4 : 0;
+
+        return str_repeat('•', min($length - $keep, 12)).mb_substr($value, $length - $keep);
     }
 
     /**

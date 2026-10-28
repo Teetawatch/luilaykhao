@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BookingPassenger;
 use App\Models\PermitForm;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Services\PermitFormService;
+use App\Services\PermitSignatureService;
 use App\Support\PermitFormFields;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +29,10 @@ class AdminPermitFormController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private PermitFormService $forms) {}
+    public function __construct(
+        private PermitFormService $forms,
+        private PermitSignatureService $signatures,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -77,12 +82,14 @@ class AdminPermitFormController extends Controller
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'note' => ['sometimes', 'nullable', 'string', 'max:500'],
             'fields' => ['sometimes', 'array', 'max:200'],
+            // ต้องเซ็นก่อนเดินทางกี่วัน (แต่ละอุทยานปิดรับลงทะเบียนไม่เท่ากัน) — null = ไม่เตือน
+            'sign_due_days' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:90'],
             'trip_ids' => ['sometimes', 'array'],
             'trip_ids.*' => ['integer', 'exists:trips,id'],
         ]);
 
         DB::transaction(function () use ($form, $data) {
-            $form->fill(collect($data)->only(['name', 'note'])->all());
+            $form->fill(collect($data)->only(['name', 'note', 'sign_due_days'])->all());
 
             if (array_key_exists('fields', $data)) {
                 $form->fields = $this->forms->normalizeFields($data['fields'], $form);
@@ -133,8 +140,11 @@ class AdminPermitFormController extends Controller
         return $this->pdf($this->forms->renderSample($form, $fields), 'ตัวอย่าง-'.$form->name.'.pdf');
     }
 
-    /** ทั้งรอบ — หนึ่งชุดต่อผู้เดินทางหนึ่งคน */
-    public function schedule(int $scheduleId): Response|JsonResponse
+    /**
+     * ทั้งรอบ — PDF ไฟล์เดียว (หนึ่งชุดต่อคน) หรือ `?format=zip` ไฟล์ละคนสำหรับแนบ
+     * ทีละคนในระบบลงทะเบียนของอุทยาน
+     */
+    public function schedule(Request $request, int $scheduleId): Response|JsonResponse
     {
         $schedule = TripSchedule::with('trip.permitForm')->findOrFail($scheduleId);
         $form = $schedule->trip?->permitForm;
@@ -144,6 +154,16 @@ class AdminPermitFormController extends Controller
         }
 
         $date = $schedule->departure_date?->toDateString() ?? 'round';
+
+        if ($request->query('format') === 'zip') {
+            $path = $this->forms->zipForSchedule($form, $schedule);
+            $filename = "แบบฟอร์ม-{$form->name}-{$date}.zip";
+
+            return response()->download($path, $filename, [
+                'Content-Type' => 'application/zip',
+                'Cache-Control' => 'no-store',
+            ])->deleteFileAfterSend();
+        }
 
         return $this->pdf($this->forms->renderForSchedule($form, $schedule), "แบบฟอร์ม-{$form->name}-{$date}.pdf");
     }
@@ -159,6 +179,17 @@ class AdminPermitFormController extends Controller
         }
 
         return $this->pdf($this->forms->renderForBooking($form, $booking), "แบบฟอร์ม-{$form->name}-{$booking->booking_ref}.pdf");
+    }
+
+    /** ล้างลายเซ็นของคนหนึ่ง — เซ็นผิดคน หรือแก้ข้อมูลแล้วต้องให้เจ้าตัวเซ็นใหม่ */
+    public function clearSignature(string $ref, int $passengerId): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)->firstOrFail();
+        $passenger = BookingPassenger::where('booking_id', $booking->id)->findOrFail($passengerId);
+
+        $this->signatures->clear($passenger);
+
+        return $this->success(null, 'ล้างลายเซ็นของ '.$passenger->displayName().' แล้ว');
     }
 
     private function pdf(string $bytes, string $filename): Response
@@ -185,6 +216,8 @@ class AdminPermitFormController extends Controller
                 'height_mm' => $p['height_mm'],
             ])->values(),
             'fields' => $form->fields ?? [],
+            'sign_due_days' => $form->sign_due_days,
+            'requires_signature' => $form->requiresSignature(),
             'trips' => $form->relationLoaded('trips')
                 ? $form->trips->map(fn (Trip $t) => ['id' => $t->id, 'title' => $t->title])->values()
                 : [],

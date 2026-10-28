@@ -202,6 +202,7 @@ class TripBriefService
             'todo' => $this->todoBlock($booking),
             'checkin' => $this->checkinBlock($booking, $schedule),
             'attendance' => $this->attendanceBlock($booking),
+            'permit' => $this->permitBlock($booking),
             'pickup_status' => $this->pickupStatusBlock($booking, $schedule),
             'progress' => $this->progressBlock($schedule),
             'payment' => $this->paymentBlock($booking),
@@ -762,6 +763,39 @@ class TripBriefService
                     'checked_in' => $p->isCheckedIn(),
                 ])->all()
                 : [],
+        ];
+    }
+
+    /**
+     * เซ็นแบบฟอร์มอุทยาน — คนจองผ่าน LINE ได้ลิงก์เตือนมาที่นี่ (#permit) แต่ละคน
+     * เซ็นผ่านลิงก์ของตัวเอง (/f/…/permit) ซึ่งคนจองส่งต่อให้เพื่อนได้เลย
+     *
+     * @return array<string, mixed>
+     */
+    private function permitBlock(Booking $booking): array
+    {
+        $service = app(PermitSignatureService::class);
+        $form = $service->formNeedingSignature($booking);
+
+        if (! $form || ! $service->isOpen($booking)) {
+            return ['show' => false];
+        }
+
+        $passengers = $booking->passengers->whereNull('not_going_at')->sortBy('id')->values();
+        $deadline = $service->deadline($booking, $form);
+
+        return [
+            'show' => $passengers->isNotEmpty(),
+            'form_name' => $form->name,
+            'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
+            'overdue' => $deadline !== null && $deadline->toDateString() < now(self::TIMEZONE)->toDateString(),
+            'signed_count' => $passengers->filter(fn ($p) => $p->hasSignedPermitForm($form->id))->count(),
+            'total' => $passengers->count(),
+            'passengers' => $passengers->map(fn ($p) => [
+                'name' => $p->displayName(),
+                'signed' => $p->hasSignedPermitForm($form->id),
+                'url' => url('/f/'.$p->ensurePassToken().'/permit'),
+            ])->all(),
         ];
     }
 

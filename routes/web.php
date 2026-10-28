@@ -10,6 +10,7 @@ use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PublicAccountClaimController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicFriendPassController;
+use App\Http\Controllers\PublicPermitFormController;
 use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicGiftVoucherController;
 use App\Http\Controllers\PublicIntakeBookingController;
@@ -241,6 +242,24 @@ Route::post('/f/{token}/attendance', [PublicFriendPassController::class, 'attend
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:20,1')
     ->name('public.friend-pass.attendance');
+
+// เซ็นแบบฟอร์มอุทยานผ่านลิงก์ของเพื่อน + ภาพที่หน้าเซ็น/แอป/เว็บเปิดด้วย signed URL
+Route::get('/f/{token}/permit', [PublicPermitFormController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('public.friend-permit.show');
+Route::post('/f/{token}/permit', [PublicPermitFormController::class, 'sign'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:10,1')
+    ->name('public.friend-permit.sign');
+Route::get('/permit-forms/{form}/pages/{page}', [PublicPermitFormController::class, 'page'])
+    ->whereNumber(['form', 'page'])
+    ->middleware(['signed', 'throttle:120,1'])
+    ->name('public.permit-form.page');
+Route::get('/permit-signatures/{passenger}', [PublicPermitFormController::class, 'signature'])
+    ->whereNumber('passenger')
+    ->middleware(['signed', 'throttle:60,1'])
+    ->name('public.permit-signature');
 
 // ลิงก์เก็บข้อมูลลูกค้าก่อนการจอง — แปะไว้ในไบโอไอจี / auto-reply ไลน์ได้
 // `/r/` คือลิงก์ของทีมงาน (ใช้ซ้ำได้) `/g/` คือลิงก์ของกลุ่มที่คนแรกส่งต่อให้เพื่อน

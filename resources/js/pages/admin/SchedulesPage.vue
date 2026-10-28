@@ -1099,6 +1099,15 @@
             >
               <span class="material-symbols-rounded">{{ downloadingPermitForms ? 'hourglass_top' : 'description' }}</span> แบบฟอร์มอุทยาน (PDF)
             </button>
+            <button
+              v-if="manifestData?.permit_form"
+              class="btn-sm btn-secondary"
+              :disabled="downloadingPermitForms"
+              title="ไฟล์ละคน สำหรับแนบทีละคนในระบบลงทะเบียนของอุทยาน — ชื่อไฟล์บอกว่าใครยังไม่เซ็น"
+              @click="downloadPermitForms('zip')"
+            >
+              <span class="material-symbols-rounded">folder_zip</span> แยกไฟล์รายคน (ZIP)
+            </button>
             <button class="modal-close" @click="showManifest = false"><span class="material-symbols-rounded">close</span></button>
           </div>
         </div>
@@ -1121,6 +1130,13 @@
                 <span class="ms-value">{{ manifestData.total_passengers }}</span>
               </div>
             </div>
+            <div v-if="manifestData.permit_form?.requires_signature" class="permit-sign-summary">
+              <span class="material-symbols-rounded">signature</span>
+              เซ็นแบบฟอร์มอุทยานแล้ว <strong>{{ permitSignedCount }}/{{ permitSignableCount }}</strong> คน
+              <span v-if="manifestData.permit_form.sign_due_days != null" class="text-muted-sm">
+                · ต้องเซ็นก่อนเดินทาง {{ manifestData.permit_form.sign_due_days }} วัน (ลูกค้าได้แจ้งเตือนอัตโนมัติ)
+              </span>
+            </div>
 
             <div class="manifest-table-wrap">
               <table class="data-table manifest-table">
@@ -1140,6 +1156,13 @@
                       <div class="passenger-name-cell">
                         <span class="p-name">{{ p.name }}</span>
                         <span v-if="p.nickname" class="p-nickname">({{ p.nickname }})</span>
+                      </div>
+                      <div v-if="manifestData.permit_form?.requires_signature && !p.not_going_at" class="p-permit">
+                        <template v-if="hasSignedPermit(p)">
+                          <span class="permit-ok">✍️ เซ็นแบบฟอร์มแล้ว</span>
+                          <button class="permit-clear" title="เซ็นผิดคน หรือต้องให้เซ็นใหม่" @click="clearPermitSignature(p)">ล้าง</button>
+                        </template>
+                        <span v-else class="permit-missing">ยังไม่เซ็นแบบฟอร์ม</span>
                       </div>
                     </td>
                     <td>
@@ -4301,18 +4324,39 @@ const printManifest = () => {
   window.print();
 };
 
+// ลายเซ็นบนแบบฟอร์มอุทยาน — นับเฉพาะคนที่ยังไป และเซ็นฟอร์มฉบับที่ทริปใช้อยู่
+const hasSignedPermit = (p) => Boolean(p.permit_signed_at)
+  && p.permit_signed_form_id === manifestData.value?.permit_form?.id;
+const permitSignableCount = computed(() => (manifestData.value?.passengers || []).filter((p) => !p.not_going_at).length);
+const permitSignedCount = computed(() => (manifestData.value?.passengers || []).filter((p) => !p.not_going_at && hasSignedPermit(p)).length);
+const clearPermitSignature = async (p) => {
+  if (!window.confirm(`ล้างลายเซ็นของ ${p.name}? เจ้าตัวต้องเซ็นใหม่ผ่านแอปหรือลิงก์`)) return;
+  try {
+    await api.delete(`/admin/bookings/${p.booking.booking_ref}/passengers/${p.id}/permit-signature`);
+    p.permit_signed_at = null;
+    p.permit_signed_form_id = null;
+    toast.success('ล้างลายเซ็นแล้ว');
+  } catch {
+    toast.error('ล้างลายเซ็นไม่สำเร็จ');
+  }
+};
+
 // แบบฟอร์มขออนุญาตของอุทยาน ทั้งรอบ — ดู /admin/permit-forms
 const downloadingPermitForms = ref(false);
-const downloadPermitForms = async () => {
+const downloadPermitForms = async (format = 'pdf') => {
   const sch = manifestData.value?.schedule;
   if (!sch || downloadingPermitForms.value) return;
   downloadingPermitForms.value = true;
   try {
-    const res = await api.get(`/admin/schedules/${sch.id}/permit-forms`, { responseType: 'blob' });
-    const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+    const zip = format === 'zip';
+    const res = await api.get(`/admin/schedules/${sch.id}/permit-forms`, {
+      params: zip ? { format: 'zip' } : {},
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(new Blob([res.data], { type: zip ? 'application/zip' : 'application/pdf' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `แบบฟอร์ม-${manifestData.value.permit_form.name}-${sch.departure_date || sch.id}.pdf`;
+    link.download = `แบบฟอร์ม-${manifestData.value.permit_form.name}-${sch.departure_date || sch.id}.${zip ? 'zip' : 'pdf'}`;
     link.click();
     URL.revokeObjectURL(url);
   } catch {
@@ -4693,6 +4737,17 @@ onMounted(async () => {
 .ms-join .ms-value { color: #059669; }
 .ms-total { background: #eff6ff; border-color: #dbeafe; }
 .ms-total .ms-value { color: #2563eb; }
+
+.permit-sign-summary {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
+  border-radius: 10px; padding: 10px 14px; margin: -8px 0 16px; font-size: 13px;
+}
+.permit-sign-summary .material-symbols-rounded { font-size: 18px; }
+.p-permit { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 12px; }
+.permit-ok { color: #047857; font-weight: 600; }
+.permit-missing { color: #b45309; font-weight: 600; }
+.permit-clear { border: 0; background: none; color: #9ca3af; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 0; }
 
 .manifest-table-wrap {
   border: 1px solid #e5e7eb;

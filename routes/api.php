@@ -76,6 +76,7 @@ use App\Http\Controllers\Api\V1\PackingController;
 use App\Http\Controllers\Api\V1\PageContentController;
 use App\Http\Controllers\Api\V1\PartnerController;
 use App\Http\Controllers\Api\V1\PartyGameController;
+use App\Http\Controllers\Api\V1\PermitSignatureController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
@@ -258,6 +259,13 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/attendance', [TripAttendanceController::class, 'show']);
         Route::post('bookings/{ref}/attendance', [TripAttendanceController::class, 'confirm']);
         Route::post('bookings/{ref}/attendance/{passengerId}', [TripAttendanceController::class, 'update']);
+
+        // เซ็นแบบฟอร์มอุทยาน — คนจองเซ็นได้ทุกคน เพื่อนที่ผูกชื่อเซ็นได้เฉพาะตัวเอง
+        Route::get('bookings/{ref}/permit-form', [PermitSignatureController::class, 'show']);
+        Route::get('bookings/{ref}/permit-form/passengers/{passengerId}', [PermitSignatureController::class, 'preview'])->whereNumber('passengerId');
+        Route::get('bookings/{ref}/permit-form/passengers/{passengerId}/pdf', [PermitSignatureController::class, 'pdf'])->whereNumber('passengerId');
+        Route::post('bookings/{ref}/permit-form/passengers/{passengerId}/sign', [PermitSignatureController::class, 'sign'])
+            ->whereNumber('passengerId')->middleware('throttle:20,1');
         // เช่าอุปกรณ์เพิ่มเองหลังจอง — ถึง 2 วันก่อนเดินทาง จ่ายผ่านยอดเพิ่มเติม
         Route::get('bookings/{ref}/rentals', [BookingRentalController::class, 'show']);
         Route::post('bookings/{ref}/rentals', [BookingRentalController::class, 'store'])->middleware('throttle:20,1');
@@ -1008,6 +1016,7 @@ Route::prefix('v1')->group(function () {
         Route::post('permit-forms/{id}/preview', [AdminPermitFormController::class, 'preview'])->whereNumber('id');
         Route::get('schedules/{id}/permit-forms', [AdminPermitFormController::class, 'schedule'])->whereNumber('id');
         Route::get('bookings/{ref}/permit-form', [AdminPermitFormController::class, 'booking']);
+        Route::delete('bookings/{ref}/passengers/{passengerId}/permit-signature', [AdminPermitFormController::class, 'clearSignature'])->whereNumber('passengerId');
 
         // ตั้งค่าระบบทั่วไป (เกณฑ์ที่นั่ง/ช่วงเวลางดรบกวน/ข้อมูลติดต่อ)
         Route::get('settings/site', [AdminSettingsController::class, 'show']);

@@ -3331,7 +3331,12 @@ class AdminController extends Controller
             'regular_passengers_count' => $regularPassengersCount,
             'join_trip_passengers_count' => $joinTripPassengersCount,
             // แบบฟอร์มอุทยานที่ทริปนี้ต้องยื่น — มีเมื่อไหร่ หน้ารายชื่อโชว์ปุ่มโหลด PDF
-            'permit_form' => $schedule->trip?->permitForm?->only(['id', 'name']),
+            'permit_form' => $schedule->trip?->permitForm
+                ? [
+                    ...$schedule->trip->permitForm->only(['id', 'name', 'sign_due_days']),
+                    'requires_signature' => $schedule->trip->permitForm->requiresSignature(),
+                ]
+                : null,
         ]);
     }
 

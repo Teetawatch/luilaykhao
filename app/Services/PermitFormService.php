@@ -11,6 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Mpdf\Config\ConfigVariables;
 use Mpdf\Config\FontVariables;
@@ -32,8 +33,8 @@ class PermitFormService
 
     public const MAX_PAGES = 10;
 
-    /** สีหมึกของข้อความที่เติม — น้ำเงินเข้ม ให้แยกออกจากตัวพิมพ์ของฟอร์มได้ */
-    private const INK = '#12307a';
+    /** สีหมึกของข้อความที่เติม — ดำเหมือนตัวพิมพ์ของฟอร์ม (เจ้าของขอ) */
+    private const INK = '#000000';
 
     /**
      * สร้างแบบฟอร์มจากภาพรายหน้าที่หน้าแอดมินเรนเดอร์มาแล้ว
@@ -136,6 +137,91 @@ class PermitFormService
         return $this->renderPassengers($form, $schedule, $passengers, $passengers->count());
     }
 
+    /**
+     * ZIP ไฟล์ละคน — ระบบลงทะเบียนของอุทยานให้แนบแบบฟอร์มทีละคน ชื่อไฟล์ขึ้นต้นด้วย
+     * ลำดับและบอกไว้ว่าใครยังไม่เซ็น จะได้ไม่เผลอแนบใบที่ไม่มีลายเซ็น
+     *
+     * @return string path ของไฟล์ ZIP ชั่วคราว (ผู้เรียกต้องลบเอง)
+     */
+    public function zipForSchedule(PermitForm $form, TripSchedule $schedule): string
+    {
+        $schedule->loadMissing('trip');
+        $passengers = $this->passengersFor($schedule);
+        $needsSignature = $form->requiresSignature();
+
+        $path = tempnam(sys_get_temp_dir(), 'permit-').'.zip';
+        $zip = new \ZipArchive;
+        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+
+        foreach ($passengers->values() as $i => $passenger) {
+            $name = trim(preg_replace('/[\\\\\/:*?"<>|]+/u', ' ', $passenger->displayName()) ?: 'ผู้เดินทาง');
+            $unsigned = $needsSignature && ! $passenger->hasSignedPermitForm($form->id) ? ' (ยังไม่เซ็น)' : '';
+            $row = $this->rowFor($form, $passenger, $schedule, $passengers->count());
+
+            $zip->addFromString(sprintf('%02d-%s%s.pdf', $i + 1, $name, $unsigned), $this->render($form, [$row]));
+        }
+
+        if ($passengers->isEmpty()) {
+            $zip->addFromString('แบบฟอร์มเปล่า.pdf', $this->renderForSchedule($form, $schedule));
+        }
+
+        $zip->close();
+
+        return $path;
+    }
+
+    /** PDF ของคนเดียว — ลูกค้าโหลดของตัวเองในแอป/เว็บ */
+    public function renderForPassenger(PermitForm $form, BookingPassenger $passenger): string
+    {
+        $schedule = $passenger->booking->schedule;
+
+        return $this->renderPassengers($form, $schedule, collect([$passenger]), $this->passengersFor($schedule)->count());
+    }
+
+    /**
+     * แบบฟอร์มของคนหนึ่งสำหรับวาดบนจอก่อนเซ็น (เว็บ/แอป/ลิงก์ของเพื่อน) — ภาพหน้า
+     * เปล่า + ข้อความของแต่ละช่องในตำแหน่งเดียวกับใน PDF
+     *
+     * @param  bool  $mask  ปิดข้อมูลส่วนตัวไว้บางส่วน — ใช้กับหน้าที่เปิดด้วยลิงก์อย่างเดียว
+     */
+    public function preview(PermitForm $form, BookingPassenger $passenger, bool $mask = false): array
+    {
+        $schedule = $passenger->booking->schedule->loadMissing('trip');
+        $values = $this->rowFor($form, $passenger, $schedule, $this->passengersFor($schedule)->count());
+        $expires = now()->addHours(2);
+
+        return [
+            'pages' => collect($form->pages)->map(fn (array $p, int $i) => [
+                'url' => URL::temporarySignedRoute('public.permit-form.page', $expires, ['form' => $form->id, 'page' => $i + 1]),
+                'width_mm' => $p['width_mm'],
+                'height_mm' => $p['height_mm'],
+            ])->values()->all(),
+            'fields' => collect($form->fields ?? [])->map(function (array $f) use ($values, $mask) {
+                $source = $f['source'];
+                $type = PermitFormFields::type($source);
+                $value = match (true) {
+                    $source === PermitFormFields::STATIC => (string) ($f['text'] ?? ''),
+                    $type === PermitFormFields::TYPE_SIGNATURE => '',
+                    default => (string) ($values[$source] ?? ''),
+                };
+
+                if ($mask && in_array($source, PermitFormFields::SENSITIVE, true)) {
+                    $value = PermitFormFields::mask($value);
+                }
+
+                return [
+                    'page' => (int) $f['page'],
+                    'type' => $type,
+                    'x' => $f['x'], 'y' => $f['y'], 'w' => $f['w'], 'h' => $f['h'],
+                    'size' => $f['size'] ?? 11,
+                    'align' => $f['align'] ?? 'left',
+                    'value' => $type === PermitFormFields::TYPE_CHECK ? ($value !== '' ? '✓' : '') : $value,
+                ];
+            })->filter(fn (array $f) => $f['value'] !== '' || $f['type'] === PermitFormFields::TYPE_SIGNATURE)
+                ->values()->all(),
+        ];
+    }
+
     /** PDF เฉพาะคนในใบจองเดียว — ส่งให้ลูกค้ากรอกช่องที่เหลือ */
     public function renderForBooking(PermitForm $form, Booking $booking): string
     {
@@ -157,7 +243,7 @@ class PermitFormService
             $form = (clone $form)->forceFill(['fields' => $fields]);
         }
 
-        return $this->render($form, [PermitFormFields::sampleValues()]);
+        return $this->render($form, [PermitFormFields::sampleValues()], sample: true);
     }
 
     private function renderPassengers(PermitForm $form, TripSchedule $schedule, Collection $passengers, int $groupSize): string
@@ -167,15 +253,28 @@ class PermitFormService
         // รอบที่ยังไม่มีใครจองก็ออกฟอร์มเปล่าได้หนึ่งชุด — ช่องของทริปยังเติมให้
         $rows = $passengers->isEmpty()
             ? [PermitFormFields::values(new BookingPassenger, $schedule, $groupSize)]
-            : $passengers->map(fn (BookingPassenger $p) => PermitFormFields::values($p, $schedule, $groupSize))->all();
+            : $passengers->map(fn (BookingPassenger $p) => $this->rowFor($form, $p, $schedule, $groupSize))->all();
 
         return $this->render($form, $rows);
+    }
+
+    /** ค่าของทุกช่อง + ลายเซ็น (เฉพาะคนที่เซ็นแบบฟอร์มฉบับนี้แล้ว) */
+    private function rowFor(PermitForm $form, BookingPassenger $passenger, TripSchedule $schedule, int $groupSize): array
+    {
+        $values = PermitFormFields::values($passenger, $schedule, $groupSize);
+
+        if ($passenger->hasSignedPermitForm($form->id)
+            && Storage::disk(self::DISK)->exists($passenger->permit_signature_path)) {
+            $values[PermitFormFields::SIGNATURE] = Storage::disk(self::DISK)->path($passenger->permit_signature_path);
+        }
+
+        return $values;
     }
 
     /**
      * @param  array<int, array<string, string>>  $rows  ค่าของแต่ละคน (คนละชุดหน้า)
      */
-    private function render(PermitForm $form, array $rows): string
+    private function render(PermitForm $form, array $rows, bool $sample = false): string
     {
         $mpdf = $this->makeMpdf();
         $disk = Storage::disk(self::DISK);
@@ -196,7 +295,7 @@ class PermitFormService
                 $mpdf->Image($disk->path($page['path']), 0, 0, $w, $h, '', '', true, false);
 
                 foreach ($fieldsByPage->get($index, []) as $field) {
-                    $this->writeField($mpdf, $field, $values, $w, $h);
+                    $this->writeField($mpdf, $field, $values, $w, $h, $sample);
                 }
             }
         }
@@ -204,9 +303,16 @@ class PermitFormService
         return $mpdf->Output('', 'S');
     }
 
-    private function writeField(Mpdf $mpdf, array $field, array $values, float $pageW, float $pageH): void
+    private function writeField(Mpdf $mpdf, array $field, array $values, float $pageW, float $pageH, bool $sample = false): void
     {
         $source = $field['source'];
+
+        if ($source === PermitFormFields::SIGNATURE) {
+            $this->writeSignature($mpdf, $field, $values[$source] ?? '', $pageW, $pageH, $sample);
+
+            return;
+        }
+
         $value = $source === PermitFormFields::STATIC
             ? (string) ($field['text'] ?? '')
             : (string) ($values[$source] ?? '');
@@ -232,6 +338,45 @@ class PermitFormService
             (float) $field['h'] * $pageH,
             'auto',
         );
+    }
+
+    /**
+     * วางภาพลายเซ็นให้พอดีกล่องโดยไม่บิดสัดส่วน — ชิดล่าง (ลายเซ็นนั่งบนเส้นประ)
+     * และจัดแนวนอนตามที่ตั้งไว้ในช่อง
+     */
+    private function writeSignature(Mpdf $mpdf, array $field, string $path, float $pageW, float $pageH, bool $sample): void
+    {
+        $boxX = (float) $field['x'] * $pageW;
+        $boxY = (float) $field['y'] * $pageH;
+        $boxW = (float) $field['w'] * $pageW;
+        $boxH = (float) $field['h'] * $pageH;
+
+        if ($path === '') {
+            if ($sample) {
+                $mpdf->WriteFixedPosHTML(
+                    '<div style="font-family:sarabun;font-size:10pt;color:#9ca3af;text-align:center">( ลายเซ็นของผู้เดินทาง )</div>',
+                    $boxX, $boxY + max(0, $boxH / 2 - 2.5), $boxW, $boxH, 'auto',
+                );
+            }
+
+            return;
+        }
+
+        $size = @getimagesize($path);
+        if (! $size || $size[0] < 1 || $size[1] < 1) {
+            return;
+        }
+
+        $scale = min($boxW / $size[0], $boxH / $size[1]);
+        $w = $size[0] * $scale;
+        $h = $size[1] * $scale;
+        $x = match ($field['align'] ?? 'center') {
+            'left' => $boxX,
+            'right' => $boxX + $boxW - $w,
+            default => $boxX + ($boxW - $w) / 2,
+        };
+
+        $mpdf->Image($path, $x, $boxY + $boxH - $h, $w, $h, 'png', '', true, false);
     }
 
     private function makeMpdf(): Mpdf

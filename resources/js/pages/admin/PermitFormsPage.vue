@@ -33,7 +33,9 @@
         <div v-for="f in forms" :key="f.id" class="table-card pf-card">
           <div class="pf-card-head">
             <h3>{{ f.name }}</h3>
-            <span class="pf-meta">{{ f.pages.length }} หน้า · {{ f.fields.length }} ช่อง</span>
+            <span class="pf-meta">
+              {{ f.pages.length }} หน้า · {{ f.fields.length }} ช่อง<template v-if="f.requires_signature"> · ลูกค้าเซ็นออนไลน์<template v-if="f.sign_due_days != null"> (ก่อน {{ f.sign_due_days }} วัน)</template></template>
+            </span>
           </div>
           <p v-if="f.note" class="pf-note">{{ f.note }}</p>
           <div class="pf-trips">
@@ -92,7 +94,7 @@
               v-for="field in fieldsOnPage(pi)"
               :key="field.id"
               class="pf-field"
-              :class="{ selected: selectedId === field.id, check: isCheck(field.source) }"
+              :class="{ selected: selectedId === field.id, check: isCheck(field.source), sig: isSignature(field.source) }"
               :style="fieldStyle(field, page)"
               @pointerdown.stop="startDrag($event, field, pi, 'move')"
               @click.stop
@@ -121,10 +123,11 @@
               <input v-model="selected.text" maxlength="300" placeholder="เช่น ชื่อบริษัทประกัน" @input="dirty = true" />
             </template>
             <div class="pf-row">
-              <div>
+              <div v-if="!isSignature(selected.source)">
                 <label class="pf-label">ขนาดตัวอักษร (pt)</label>
                 <input v-model.number="selected.size" type="number" min="5" max="36" step="0.5" @input="onSizeChange(selected)" />
               </div>
+              <p v-else class="pf-muted pf-help">ลากมุมขวาล่างเพื่อปรับขนาดกรอบ — ลายเซ็นถูกย่อให้พอดีกรอบและนั่งบนขอบล่าง</p>
               <div v-if="!isCheck(selected.source)">
                 <label class="pf-label">จัดวาง</label>
                 <div class="pf-align">
@@ -179,6 +182,16 @@
               <button class="btn-secondary" @click="exportJson"><i class="fas fa-copy"></i> คัดลอก JSON</button>
               <button class="btn-secondary" @click="importJson"><i class="fas fa-paste"></i> วาง JSON</button>
             </div>
+            <template v-if="hasSignatureField">
+              <label class="pf-label">ต้องเซ็นก่อนวันเดินทางกี่วัน (วันที่ต้องลงทะเบียนกับอุทยาน)</label>
+              <input
+                v-model.number="editing.sign_due_days"
+                type="number" min="0" max="90" placeholder="เช่น 7 — เว้นว่าง = ไม่ส่งเตือน"
+                @input="dirty = true"
+              />
+              <p class="pf-muted pf-help">ลูกค้าที่ยังไม่เซ็นจะได้แจ้งเตือนวันละครั้ง 2 วันก่อนถึงกำหนดจนถึงวันกำหนด</p>
+            </template>
+            <p v-else class="pf-muted pf-help">วางช่อง "ลายเซ็น" ถ้าอยากให้ลูกค้าเซ็นในแอป/เว็บ/ลิงก์ก่อนเดินทาง</p>
             <label class="pf-label">หมายเหตุ</label>
             <input v-model="editing.note" maxlength="500" placeholder="เช่น ปีงบ 2570 ส่งทางอีเมลอุทยาน" @input="dirty = true" />
           </section>
@@ -282,8 +295,11 @@ const filteredTrips = computed(() => {
 
 function labelOf(key) { return catalogByKey.value[key]?.label || key; }
 function isCheck(key) { return catalogByKey.value[key]?.type === 'check'; }
+function isSignature(key) { return catalogByKey.value[key]?.type === 'signature'; }
+const hasSignatureField = computed(() => (editing.value?.fields || []).some((f) => isSignature(f.source)));
 function sampleOf(field) {
   if (isCheck(field.source)) return '✓';
+  if (isSignature(field.source)) return '( ลายเซ็น )';
   if (field.source === 'static') return field.text || '(ข้อความ)';
   return catalogByKey.value[field.source]?.sample || labelOf(field.source);
 }
@@ -364,19 +380,22 @@ function placeArmed(event, pi) {
   const px = (event.clientX - rect.left) / rect.width;
   const py = (event.clientY - rect.top) / rect.height;
   const check = isCheck(armed.value);
+  const sig = isSignature(armed.value);
   const size = check ? 12 : 11;
-  const h = boxHeight(size, page);
-  const w = check ? checkWidth(size, page) : 0.18;
+  // ลายเซ็นสูงราว 3 บรรทัด — ภาพถูกย่อให้พอดีกล่องโดยไม่บิดสัดส่วน
+  const h = sig ? boxHeight(size, page) * 2.6 : boxHeight(size, page);
+  const w = check ? checkWidth(size, page) : sig ? 0.28 : 0.18;
 
-  // คลิกที่เส้นประ = ฐานของตัวอักษร กล่องจึงอยู่เหนือจุดคลิก; เครื่องหมายถูกวางกลางจุดคลิก
+  // คลิกที่เส้นประ = ฐานของตัวอักษร กล่องจึงอยู่เหนือจุดคลิก; เครื่องหมายถูกวางกลางจุดคลิก;
+  // ลายเซ็นนั่งบนเส้นประ (ขอบล่างของกล่องอยู่ที่จุดคลิก) และกึ่งกลางตามแนวนอน
   const field = {
     id: newId(),
     page: pi,
     source: armed.value,
-    x: clamp(check ? px - w / 2 : px, 0, 1 - w),
-    y: clamp(check ? py - h / 2 : py - h * 0.85, 0, 1 - h),
+    x: clamp(check || sig ? px - w / 2 : px, 0, 1 - w),
+    y: clamp(check ? py - h / 2 : sig ? py - h : py - h * 0.85, 0, 1 - h),
     w, h, size,
-    align: check ? 'center' : 'left',
+    align: check || sig ? 'center' : 'left',
     ...(armed.value === 'static' ? { text: '' } : {}),
   };
   editing.value.fields.push(field);
@@ -398,7 +417,7 @@ function fieldStyle(field, page) {
 
 function onSizeChange(field) {
   const page = editing.value.pages[field.page];
-  if (!field.size || field.size < 5) return;
+  if (!field.size || field.size < 5 || isSignature(field.source)) return;
   field.h = Math.min(boxHeight(field.size, page), 1 - field.y);
   if (isCheck(field.source)) field.w = Math.min(checkWidth(field.size, page), 1 - field.x);
   dirty.value = true;
@@ -521,6 +540,7 @@ async function save() {
     const res = await api.put(`/admin/permit-forms/${editing.value.id}`, {
       name: editing.value.name.trim(),
       note: editing.value.note || null,
+      sign_due_days: hasSignatureField.value && editing.value.sign_due_days !== '' ? editing.value.sign_due_days ?? null : null,
       fields: editing.value.fields,
       trip_ids: editing.value.trip_ids,
     });
@@ -808,7 +828,7 @@ onBeforeUnmount(() => {
   background: rgba(219, 234, 254, 0.35);
   cursor: move;
   font-family: 'Sarabun', sans-serif;
-  color: #12307a;
+  color: #000000;
   line-height: 1.15;
   white-space: nowrap;
   overflow: visible;
@@ -816,6 +836,9 @@ onBeforeUnmount(() => {
 .pf-page.armed .pf-field { pointer-events: none; }
 .pf-field.selected { border: 1.5px solid #1d4ed8; background: rgba(191, 219, 254, 0.5); z-index: 2; }
 .pf-field.check { font-family: 'DejaVu Sans', 'Segoe UI Symbol', sans-serif; }
+.pf-field.sig { border-color: #f59e0b; background: rgba(254, 243, 199, 0.55); color: #b45309; text-align: center; }
+.pf-field.sig .pf-field-text { text-align: center !important; font-size: 11px; padding-top: 2px; }
+.pf-help { margin: -2px 0 2px; line-height: 1.5; }
 .pf-field-text { display: block; width: 100%; margin-top: -0.1em; }
 .pf-resize {
   position: absolute; right: -5px; bottom: -5px;

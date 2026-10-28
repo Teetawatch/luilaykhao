@@ -117,6 +117,19 @@
                 </div>
             @endif
 
+            {{-- แบบฟอร์มอุทยาน --}}
+            @if ($pass['permit'])
+                <div class="block">
+                    <h2>แบบฟอร์มอุทยาน</h2>
+                    @if ($pass['permit']['signed'])
+                        <p><span class="pill pill-ok">✓ เซ็นแล้ว</span></p>
+                    @else
+                        <p>อุทยานให้ผู้เดินทางทุกคนเซ็นแบบฟอร์มก่อนลงทะเบียน@if ($pass['permit']['deadline_label']) — <strong>เซ็นภายใน {{ $pass['permit']['deadline_label'] }}</strong>@endif</p>
+                        <a class="btn" href="{{ $pass['permit']['url'] }}" style="margin-top: 12px">อ่านและเซ็นแบบฟอร์ม</a>
+                    @endif
+                </div>
+            @endif
+
             {{-- เข้าแอป --}}
             <div class="block">
                 <h2>ห้องแชทของทริป</h2>

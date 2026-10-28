@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\BookingDocumentService;
+use App\Services\PermitSignatureService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -28,7 +29,7 @@ class BookingPassenger extends Model
      * endpoint (รวมฝั่งที่เพื่อนร่วมใบจองเปิดดูได้) จึงซ่อนไว้ก่อน แล้วค่อยส่งออก
      * เฉพาะคนที่มีสิทธิ์ผ่าน CheckInPassService
      */
-    protected $hidden = ['qr_code', 'pass_token'];
+    protected $hidden = ['qr_code', 'pass_token', 'permit_signature_path', 'permit_sign_meta'];
 
     protected function casts(): array
     {
@@ -45,6 +46,8 @@ class BookingPassenger extends Model
             'self_filled_at' => 'datetime',
             'checked_in_at' => 'datetime',
             'not_going_at' => 'datetime',
+            'permit_signed_at' => 'datetime',
+            'permit_sign_meta' => 'array',
             'custom_pickup_lat' => 'float',
             'custom_pickup_lng' => 'float',
         ];
@@ -86,7 +89,25 @@ class BookingPassenger extends Model
                 && $passenger->travel_document !== Trip::DOC_BORDER_PASS) {
                 app(BookingDocumentService::class)->purgeBorderPass($passenger);
             }
+
+            // เซ็นใหม่หรือล้างลายเซ็น — ไฟล์เดิมไม่มีใครอ้างถึงแล้ว
+            if ($passenger->wasChanged('permit_signature_path') && filled($passenger->getOriginal('permit_signature_path'))) {
+                PermitSignatureService::deleteFile($passenger->getOriginal('permit_signature_path'));
+            }
         });
+
+        static::deleted(function (BookingPassenger $passenger) {
+            PermitSignatureService::deleteFile($passenger->permit_signature_path);
+        });
+    }
+
+    /** เซ็นแบบฟอร์มอุทยานฉบับนี้แล้วหรือยัง — เปลี่ยนแบบฟอร์มแล้วต้องเซ็นใหม่ */
+    public function hasSignedPermitForm(?int $formId): bool
+    {
+        return $formId !== null
+            && $this->permit_signed_at !== null
+            && filled($this->permit_signature_path)
+            && (int) $this->permit_signed_form_id === $formId;
     }
 
     /** หมุดจุดรับของคนนี้เอง (ไม่นับหมุดของใบจอง) */

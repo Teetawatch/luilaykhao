@@ -652,6 +652,12 @@ class SeatHandoverService
                 'pass_token' => null,
                 'checked_in_at' => null,
                 'not_going_at' => null,
+                // ลายเซ็นแบบฟอร์มอุทยานเป็นของคนเดิม — คนรับที่นั่งต้องเซ็นเอง
+                // (BookingPassenger::booted ลบไฟล์ภาพเดิมให้)
+                'permit_signature_path' => null,
+                'permit_signed_at' => null,
+                'permit_signed_form_id' => null,
+                'permit_sign_meta' => null,
             ])->save();
 
             $seat?->update(['passenger_name' => $passenger->name]);

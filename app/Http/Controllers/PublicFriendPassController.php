@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Services\BookingMemberService;
+use App\Services\PermitSignatureService;
 use App\Services\PickupStatusService;
 use App\Services\QrCodeService;
 use App\Services\TripAttendanceService;
@@ -43,6 +44,7 @@ class PublicFriendPassController extends Controller
         private TripAttendanceService $attendance,
         private BookingMemberService $members,
         private TripBriefService $briefs,
+        private PermitSignatureService $permits,
     ) {}
 
     public function show(string $token): Response
@@ -108,7 +110,7 @@ class PublicFriendPassController extends Controller
     {
         $passenger = BookingPassenger::with([
             'pickupPoint',
-            'booking.schedule.trip',
+            'booking.schedule.trip.permitForm',
             'booking.pickupPoint',
         ])->where('pass_token', $token)->first();
 
@@ -177,11 +179,30 @@ class PublicFriendPassController extends Controller
                 ? $this->qrCodes->svgDataUri($passenger->qr_code, 240)
                 : null,
             'needs_fill' => $passenger->self_filled_at === null,
+            'permit' => $this->permitBlock($booking, $passenger, $notGoing),
             'join_url' => $invite ? url('/join/'.$invite->invite_token) : null,
             'in_app_already' => $invite === null,
             'attendance_open' => $this->attendance->isOpen($booking) && ! $checkedIn,
             'ios_url' => AppLinks::ios(),
             'android_url' => AppLinks::android(),
+        ];
+    }
+
+    /** แบบฟอร์มอุทยานที่ต้องเซ็น — null = ทริปนี้ไม่ต้องเซ็น */
+    private function permitBlock(Booking $booking, BookingPassenger $passenger, bool $notGoing): ?array
+    {
+        $form = $notGoing ? null : $this->permits->formNeedingSignature($booking);
+
+        if (! $form || (! $this->permits->isOpen($booking) && ! $passenger->hasSignedPermitForm($form->id))) {
+            return null;
+        }
+
+        $deadline = $this->permits->deadline($booking, $form);
+
+        return [
+            'signed' => $passenger->hasSignedPermitForm($form->id),
+            'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
+            'url' => route('public.friend-permit.show', $passenger->pass_token),
         ];
     }
 

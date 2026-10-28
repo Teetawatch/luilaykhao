@@ -472,6 +472,37 @@
         </div>
     @endif
 
+    {{-- ── เซ็นแบบฟอร์มอุทยาน ─────────────────────────────────────
+         อุทยานให้แนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนล่วงหน้า แต่ละคนเซ็นผ่าน
+         ลิงก์ของตัวเอง — คนจองกดเซ็นให้เอง หรือก๊อปลิงก์ส่งให้เพื่อนก็ได้
+         (ลิงก์ในข้อความ LINE เตือนเซ็นพามาที่ #permit) --}}
+    @if($b['permit']['show'] ?? false)
+        <div class="card" id="permit">
+            <div class="sec">
+                <div class="sec-label">เซ็นแบบฟอร์มอุทยาน</div>
+                <div class="big">เซ็นแล้ว {{ $b['permit']['signed_count'] }} จาก {{ $b['permit']['total'] }} คน</div>
+                @if($b['permit']['deadline_label'])
+                    <div class="sub" @if($b['permit']['overdue']) style="color:var(--red)" @endif>
+                        {{ $b['permit']['overdue'] ? 'เลยกำหนดแล้ว' : 'ต้องเซ็นภายใน' }} {{ $b['permit']['deadline_label'] }}
+                    </div>
+                @endif
+                @foreach($b['permit']['passengers'] as $person)
+                    @if($person['signed'])
+                        <div class="choice on"><span>✅ {{ $person['name'] }} · เซ็นแล้ว</span></div>
+                    @else
+                        <a class="choice" href="{{ $person['url'] }}" style="text-decoration:none;">
+                            <span>✍️ {{ $person['name'] }} · กดเพื่ออ่านและเซ็น</span>
+                        </a>
+                    @endif
+                @endforeach
+                <div class="note">
+                    ให้เจ้าตัวเป็นคนเซ็นนะครับ — กดค้างที่ชื่อเพื่อก๊อปลิงก์ส่งให้เพื่อนในไลน์ได้เลย
+                    ทีมงานจะนำแบบฟอร์มไปลงทะเบียนกับอุทยานให้
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- ── เพิ่มลงปฏิทิน ──────────────────────────────────────────
          ใบเดินทางเป็นของที่ต้องเปิดถึงจะเห็น ปฏิทินเป็นของที่มาหาลูกค้าเอง --}}
     @if($b['when']['start_date'] ?? null)

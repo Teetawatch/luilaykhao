@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Jobs\AnnounceChatMemberJoinedJob;
+use App\Jobs\RequestPermitSignatureJob;
 use App\Jobs\SendTripBriefsJob;
 use App\Jobs\SyncTripActivityJob;
 use App\Models\Booking;
@@ -52,6 +53,7 @@ class BookingObserver
             $this->partnerService->ensureCommission($booking);
             $this->announceInChat($booking);
             $this->maybeSendTripBrief($booking);
+            $this->maybeRequestPermitSignatures($booking);
         }
     }
 
@@ -113,6 +115,7 @@ class BookingObserver
             $this->partnerService->ensureCommission($booking);
             $this->announceInChat($booking);
             $this->maybeSendTripBrief($booking);
+            $this->maybeRequestPermitSignatures($booking);
 
             return;
         }
@@ -188,6 +191,19 @@ class BookingObserver
         }
 
         SendTripBriefsJob::dispatch($booking->id);
+    }
+
+    /**
+     * ทริปที่อุทยานให้เซ็นแบบฟอร์ม — แจ้งคนจองทันทีที่ยืนยัน (เช็คแค่ FK ที่นี่ ให้ใบจอง
+     * ส่วนใหญ่ไม่ต้องเข้าคิวเลย กติกาที่เหลืออยู่ใน PermitSignatureService)
+     */
+    private function maybeRequestPermitSignatures(Booking $booking): void
+    {
+        if ($booking->status === 'confirmed'
+            && $booking->permit_requested_at === null
+            && $booking->schedule?->trip?->permit_form_id) {
+            RequestPermitSignatureJob::dispatch($booking->id);
+        }
     }
 
     /**
