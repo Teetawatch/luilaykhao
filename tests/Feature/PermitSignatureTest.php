@@ -407,6 +407,49 @@ class PermitSignatureTest extends TestCase
         $this->assertStringNotContainsString('อ่านและลงนามแบบฟอร์มอุทยาน', (new PaymentConfirmedMail($plain))->render());
     }
 
+    public function test_admin_gets_ready_to_send_links_for_people_who_have_not_signed(): void
+    {
+        $form = $this->form();
+        $booking = $this->booking($form);
+        [$a, $b] = $booking->passengers->sortBy('id')->values();
+        $this->actingAs($this->owner, 'sanctum')->postJson($this->signUrl($booking, $a), ['signature' => $this->signature(), 'accept' => true]);
+
+        $res = $this->actingAs($this->admin)->getJson("/api/v1/admin/bookings/{$booking->booking_ref}/permit-signatures")
+            ->assertOk()
+            ->assertJsonPath('data.signed_count', 1)
+            ->assertJsonPath('data.passengers.0.signed', true)
+            ->assertJsonPath('data.passengers.0.url', null)
+            ->assertJsonPath('data.passengers.0.channel', 'app');
+
+        $link = $res->json('data.passengers.1.url');
+        $this->assertSame(url('/f/'.$b->fresh()->pass_token.'/permit'), $link);
+        $this->assertStringContainsString('คุณสมหญิง ใจดี กรุณาอ่านและเซ็นแบบฟอร์มอุทยาน', $res->json('data.passengers.1.share_text'));
+        $this->assertStringEndsWith($link, $res->json('data.passengers.1.share_text'));
+        $this->get($link)->assertOk();
+
+        $manifest = $this->actingAs($this->admin)->getJson("/api/v1/admin/schedules/{$booking->schedule_id}/manifest");
+        $this->assertSame([(string) $b->id], array_map('strval', array_keys($manifest->json('data.permit_links'))));
+
+        $customer = User::factory()->create();
+        $customer->assignRole('customer');
+        $this->actingAs($customer)->getJson("/api/v1/admin/bookings/{$booking->booking_ref}/permit-signatures")->assertForbidden();
+    }
+
+    public function test_admin_can_nudge_a_booking_once_a_day_without_using_up_auto_reminders(): void
+    {
+        $booking = $this->booking($this->form());
+        $booking->forceFill(['permit_reminded_at' => now()->subDays(2)])->saveQuietly();
+
+        $this->actingAs($this->admin)->postJson("/api/v1/admin/bookings/{$booking->booking_ref}/permit-reminder")
+            ->assertOk()
+            ->assertJsonPath('data.reminded_today', true);
+        $this->actingAs($this->admin)->postJson("/api/v1/admin/bookings/{$booking->booking_ref}/permit-reminder")
+            ->assertStatus(422);
+
+        $this->assertSame(1, SmartNotification::where('type', 'permit_sign_reminder')->count());
+        $this->assertSame(0, $booking->fresh()->permit_reminder_count);
+    }
+
     public function test_forms_without_a_due_date_never_remind(): void
     {
         $this->booking($this->form(dueDays: null), daysAhead: 1);

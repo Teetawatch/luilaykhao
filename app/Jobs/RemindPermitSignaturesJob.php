@@ -3,11 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Booking;
-use App\Models\BookingMember;
 use App\Models\PermitForm;
-use App\Models\SmartNotification;
 use App\Services\PermitSignatureService;
-use App\Support\ThaiDate;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -70,7 +67,7 @@ class RemindPermitSignaturesJob implements ShouldQueue
                     ->orderBy('id')
                     ->chunkById(200, function ($bookings) use ($form, $signatures, &$reminded) {
                         foreach ($bookings as $booking) {
-                            if ($this->remind($booking, $form, $signatures)) {
+                            if ($signatures->sendReminder($booking, $form)) {
                                 $reminded++;
                             }
                         }
@@ -113,60 +110,5 @@ class RemindPermitSignaturesJob implements ShouldQueue
             });
 
         return $sent;
-    }
-
-    private function remind(Booking $booking, PermitForm $form, PermitSignatureService $signatures): bool
-    {
-        $going = $booking->passengers->whereNull('not_going_at');
-        $unsigned = $going->reject(fn ($p) => $p->hasSignedPermitForm($form->id));
-
-        if ($unsigned->isEmpty()) {
-            return false;
-        }
-
-        // บันทึกก่อนส่ง — งานถูกลองซ้ำได้ อย่าให้คนเดียวกันได้ข้อความสองรอบในวันเดียว
-        $booking->ensureBriefToken();
-        $booking->forceFill([
-            'permit_reminded_at' => now(),
-            'permit_reminder_count' => $booking->permit_reminder_count + 1,
-        ])->saveQuietly();
-
-        $trip = $booking->schedule?->trip?->title ?? 'ทริปของคุณ';
-        $deadline = $signatures->deadline($booking, $form);
-        $due = $deadline ? 'ภายใน '.ThaiDate::full($deadline) : 'ก่อนวันเดินทาง';
-        $data = [
-            'booking_ref' => $booking->booking_ref,
-            'route' => 'permit_form',
-            'web_url' => $booking->briefUrl().'#permit',
-        ];
-
-        $total = $going->count();
-        $signed = $total - $unsigned->count();
-
-        SmartNotification::send(
-            $booking->user_id,
-            'permit_sign_reminder',
-            $total > 1 ? "เซ็นแบบฟอร์มอุทยานแล้ว {$signed}/{$total} คน" : 'อย่าลืมเซ็นแบบฟอร์มอุทยาน',
-            "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due} — "
-                .($total > 1 ? 'ให้แต่ละคนเซ็นเอง หรือส่งลิงก์ให้เพื่อนได้' : 'ใช้เวลาไม่ถึงนาที'),
-            $data,
-        );
-
-        // เพื่อนที่อยู่ในแอปและยังไม่เซ็นของตัวเอง
-        BookingMember::where('booking_id', $booking->id)
-            ->where('status', BookingMember::STATUS_ACTIVE)
-            ->whereIn('passenger_id', $unsigned->pluck('id'))
-            ->where('user_id', '!=', $booking->user_id)
-            ->pluck('user_id')
-            ->unique()
-            ->each(fn ($userId) => SmartNotification::send(
-                $userId,
-                'permit_sign_reminder',
-                'อย่าลืมเซ็นแบบฟอร์มอุทยาน',
-                "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due}",
-                $data,
-            ));
-
-        return true;
     }
 }

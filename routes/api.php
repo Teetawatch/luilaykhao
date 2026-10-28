@@ -1017,6 +1017,8 @@ Route::prefix('v1')->group(function () {
         Route::get('schedules/{id}/permit-forms', [AdminPermitFormController::class, 'schedule'])->whereNumber('id');
         Route::get('bookings/{ref}/permit-form', [AdminPermitFormController::class, 'booking']);
         Route::delete('bookings/{ref}/passengers/{passengerId}/permit-signature', [AdminPermitFormController::class, 'clearSignature'])->whereNumber('passengerId');
+        Route::get('bookings/{ref}/permit-signatures', [AdminPermitFormController::class, 'bookingSignatures']);
+        Route::post('bookings/{ref}/permit-reminder', [AdminPermitFormController::class, 'remindBooking'])->middleware('throttle:30,1');
 
         // ตั้งค่าระบบทั่วไป (เกณฑ์ที่นั่ง/ช่วงเวลางดรบกวน/ข้อมูลติดต่อ)
         Route::get('settings/site', [AdminSettingsController::class, 'show']);

@@ -115,6 +115,10 @@ class Booking extends Model
             'cancelled_at' => 'datetime',
             'rescheduled_at' => 'datetime',
             'force_majeure_at' => 'datetime',
+            // แบบฟอร์มอุทยาน: แจ้งครั้งแรก/เตือนล่าสุด — ดู PermitSignatureService
+            'permit_requested_at' => 'datetime',
+            'permit_reminded_at' => 'datetime',
+            'permit_reminder_count' => 'integer',
             'force_majeure_until' => 'date',
             'force_majeure_resolved_at' => 'datetime',
             'postpone_decide_by' => 'date',

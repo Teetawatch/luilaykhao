@@ -243,6 +243,128 @@ class PermitSignatureService
         return true;
     }
 
+    /**
+     * เตือนคนที่ยังไม่เซ็น — คนจอง (สรุปทั้งใบ) + เพื่อนที่ผูกชื่อในแอปและยังไม่เซ็นของตัวเอง
+     *
+     * @param  bool  $manual  แอดมินกด "ส่งแจ้งเตือนอีกครั้ง" — ไม่นับเป็นโควตาเตือนอัตโนมัติ
+     * @return bool ส่งแล้วหรือไม่ (ทุกคนเซ็นครบแล้ว = ไม่ส่ง)
+     */
+    public function sendReminder(Booking $booking, PermitForm $form, bool $manual = false): bool
+    {
+        $booking->loadMissing(['schedule.trip', 'passengers']);
+        $going = $booking->passengers->whereNull('not_going_at');
+        $unsigned = $going->reject(fn (BookingPassenger $p) => $p->hasSignedPermitForm($form->id));
+
+        if ($unsigned->isEmpty() || ! $booking->user_id) {
+            return false;
+        }
+
+        // บันทึกก่อนส่ง — งานถูกลองซ้ำได้ อย่าให้คนเดียวกันได้ข้อความสองรอบในวันเดียว
+        $booking->ensureBriefToken();
+        $booking->forceFill([
+            'permit_reminded_at' => now(),
+            'permit_reminder_count' => $booking->permit_reminder_count + ($manual ? 0 : 1),
+        ])->saveQuietly();
+
+        $trip = $booking->schedule?->trip?->title ?? 'ทริปของคุณ';
+        $deadline = $this->deadline($booking, $form);
+        $due = $deadline ? 'ภายใน '.ThaiDate::full($deadline) : 'ก่อนวันเดินทาง';
+        $data = [
+            'booking_ref' => $booking->booking_ref,
+            'route' => 'permit_form',
+            'web_url' => $booking->briefUrl().'#permit',
+        ];
+
+        $total = $going->count();
+        $signed = $total - $unsigned->count();
+
+        SmartNotification::send(
+            $booking->user_id,
+            'permit_sign_reminder',
+            $total > 1 ? "เซ็นแบบฟอร์มอุทยานแล้ว {$signed}/{$total} คน" : 'อย่าลืมเซ็นแบบฟอร์มอุทยาน',
+            "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due} — "
+                .($total > 1 ? 'ให้แต่ละคนเซ็นเอง หรือส่งลิงก์ให้เพื่อนได้' : 'ใช้เวลาไม่ถึงนาที'),
+            $data,
+        );
+
+        BookingMember::where('booking_id', $booking->id)
+            ->where('status', BookingMember::STATUS_ACTIVE)
+            ->whereIn('passenger_id', $unsigned->pluck('id'))
+            ->where('user_id', '!=', $booking->user_id)
+            ->pluck('user_id')
+            ->unique()
+            ->each(fn ($userId) => SmartNotification::send(
+                $userId,
+                'permit_sign_reminder',
+                'อย่าลืมเซ็นแบบฟอร์มอุทยาน',
+                "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due}",
+                $data,
+            ));
+
+        return true;
+    }
+
+    /** เตือนไปแล้ววันนี้ (เวลาไทย) หรือยัง — ปุ่มแอดมินกดได้วันละครั้งต่อใบ */
+    public function remindedToday(Booking $booking): bool
+    {
+        return $booking->permit_reminded_at !== null
+            && $booking->permit_reminded_at->copy()->timezone('Asia/Bangkok')->isSameDay(now('Asia/Bangkok'));
+    }
+
+    /** ลิงก์เซ็นของคนหนึ่ง (/f/…/permit) — ปิดข้อมูลส่วนตัวบางส่วน ส่งต่อในไลน์ได้ */
+    public function signUrl(BookingPassenger $passenger): string
+    {
+        return url('/f/'.$passenger->ensurePassToken().'/permit');
+    }
+
+    /** ข้อความพร้อมส่งทางไลน์ ให้ทีมงานก๊อปไปส่งลูกค้า */
+    public function shareText(BookingPassenger $passenger, Booking $booking, PermitForm $form): string
+    {
+        $deadline = $this->deadline($booking, $form);
+        $trip = $booking->schedule?->trip?->title ?? 'ทริป';
+
+        return 'คุณ'.$passenger->displayName().' กรุณาอ่านและเซ็นแบบฟอร์มอุทยาน ('.$trip.')'
+            .($deadline ? ' ภายใน '.ThaiDate::full($deadline) : '')
+            .' ที่ลิงก์นี้ครับ ข้อมูลกรอกไว้ให้แล้ว แค่อ่านและเซ็นบนมือถือ ไม่ต้องสมัครสมาชิก '
+            .$this->signUrl($passenger);
+    }
+
+    /** สถานะทั้งใบสำหรับแอดมิน — ทุกคนที่ยังไป พร้อมลิงก์และข้อความส่งต่อของคนที่ยังไม่เซ็น */
+    public function adminSummary(Booking $booking): ?array
+    {
+        $form = $this->formNeedingSignature($booking);
+
+        if (! $form) {
+            return null;
+        }
+
+        $passengers = $booking->passengers()->whereNull('not_going_at')->orderBy('id')->get();
+        $deadline = $this->deadline($booking, $form);
+
+        return [
+            'form' => ['id' => $form->id, 'name' => $form->name],
+            'open' => $this->isOpen($booking),
+            'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
+            'overdue' => $deadline !== null && $deadline->toDateString() < now('Asia/Bangkok')->toDateString(),
+            'reminded_today' => $this->remindedToday($booking),
+            'signed_count' => $passengers->filter(fn (BookingPassenger $p) => $p->hasSignedPermitForm($form->id))->count(),
+            'total' => $passengers->count(),
+            'passengers' => $passengers->map(function (BookingPassenger $p) use ($form, $booking) {
+                $signed = $p->hasSignedPermitForm($form->id);
+
+                return [
+                    'id' => $p->id,
+                    'name' => $p->displayName(),
+                    'signed' => $signed,
+                    'signed_at' => $signed ? $p->permit_signed_at?->toISOString() : null,
+                    'channel' => $signed ? ($p->permit_sign_meta['channel'] ?? null) : null,
+                    'url' => $signed ? null : $this->signUrl($p),
+                    'share_text' => $signed ? null : $this->shareText($p, $booking, $form),
+                ];
+            })->values()->all(),
+        ];
+    }
+
     /** ล้างลายเซ็น (แอดมิน: คนเซ็นผิดคน / ข้อมูลเปลี่ยน ต้องเซ็นใหม่) */
     public function clear(BookingPassenger $passenger): void
     {

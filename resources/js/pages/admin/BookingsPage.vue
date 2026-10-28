@@ -777,6 +777,40 @@
             </div>
           </section>
 
+          <!-- แบบฟอร์มอุทยาน — ใครเซ็นแล้ว + ลิงก์ส่งลูกค้าทางไลน์ + แจ้งเตือนอีกครั้ง -->
+          <section v-if="permitSummary" class="detail-section">
+            <div class="section-heading">
+              <span class="material-symbols-rounded">signature</span>
+              แบบฟอร์มอุทยาน · เซ็นแล้ว {{ permitSummary.signed_count }}/{{ permitSummary.total }} คน
+            </div>
+            <p v-if="permitSummary.deadline_label" class="permit-deadline" :class="{ overdue: permitSummary.overdue }">
+              {{ permitSummary.overdue ? 'เลยกำหนดแล้ว' : 'ต้องเซ็นภายใน' }} {{ permitSummary.deadline_label }}
+            </p>
+            <div class="permit-rows">
+              <div v-for="p in permitSummary.passengers" :key="p.id" class="permit-row">
+                <span class="permit-name">{{ p.name }}</span>
+                <span v-if="p.signed" class="permit-state ok">✓ เซ็นแล้ว<template v-if="p.channel"> · {{ permitChannelLabel(p.channel) }}</template></span>
+                <template v-else>
+                  <span class="permit-state wait">ยังไม่เซ็น</span>
+                  <button class="btn-secondary compact" @click="copyPermitText(p)">
+                    <span class="material-symbols-rounded">content_copy</span>
+                    ก๊อปลิงก์ส่งลูกค้า
+                  </button>
+                </template>
+              </div>
+            </div>
+            <button
+              v-if="permitSummary.open && permitSummary.signed_count < permitSummary.total"
+              class="btn-secondary compact permit-remind"
+              :disabled="remindingPermit || permitSummary.reminded_today"
+              :title="permitSummary.reminded_today ? 'ใบนี้ได้แจ้งเตือนไปแล้ววันนี้' : 'ส่งแจ้งเตือนไปที่แอป/ไลน์ของคนจองทันที'"
+              @click="remindPermit"
+            >
+              <span class="material-symbols-rounded">notifications_active</span>
+              {{ permitSummary.reminded_today ? 'แจ้งเตือนแล้ววันนี้' : 'ส่งแจ้งเตือนอีกครั้ง' }}
+            </button>
+          </section>
+
           <section class="detail-section">
             <div class="section-heading">
               <span class="material-symbols-rounded">group</span>
@@ -2792,11 +2826,52 @@ async function openDetail(booking) {
   } finally {
     loadingDetail.value = false;
   }
+  loadPermitSummary(detailBooking.value);
 }
 
 function closeDetail() {
   showDetail.value = false;
   detailBooking.value = null;
+  permitSummary.value = null;
+}
+
+// แบบฟอร์มอุทยาน — สถานะเซ็น + ลิงก์ของแต่ละคน (ดู PermitSignatureService::adminSummary)
+const permitSummary = ref(null);
+const remindingPermit = ref(false);
+const permitChannelLabel = (c) => ({ app: 'ในแอป', web: 'ในเว็บ', friend_link: 'ผ่านลิงก์' })[c] || '';
+
+async function loadPermitSummary(booking) {
+  permitSummary.value = null;
+  if (!booking?.permit_form_id) return;
+  try {
+    const res = await api.get(`/admin/bookings/${booking.booking_ref}/permit-signatures`);
+    if (detailBooking.value?.booking_ref === booking.booking_ref) permitSummary.value = res.data?.data || null;
+  } catch {
+    // ไม่มีส่วนนี้ก็ยังดูใบจองได้ตามปกติ
+  }
+}
+
+async function copyPermitText(p) {
+  try {
+    await navigator.clipboard.writeText(p.share_text);
+    toast.success(`ก๊อปลิงก์ของ ${p.name} แล้ว ส่งทางไลน์ได้เลย`);
+  } catch {
+    window.prompt('ก๊อปข้อความนี้', p.share_text);
+  }
+}
+
+async function remindPermit() {
+  if (!detailBooking.value || remindingPermit.value) return;
+  remindingPermit.value = true;
+  try {
+    const res = await api.post(`/admin/bookings/${detailBooking.value.booking_ref}/permit-reminder`);
+    permitSummary.value = res.data?.data || permitSummary.value;
+    toast.success(res.data?.message || 'ส่งแจ้งเตือนแล้ว');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ส่งแจ้งเตือนไม่สำเร็จ');
+  } finally {
+    remindingPermit.value = false;
+  }
 }
 
 // พาร์ทเนอร์ช่วยขาย — ลูกค้าทักมาบอกว่ามาจากใคร ทีมงานผูกให้ (เว้นว่าง = ถอดออก)
@@ -5018,6 +5093,17 @@ async function reverifySlip(bookingRef, slipType) {
   border-top: 1px solid #eeeeee;
   padding-top: 16px;
 }
+
+/* แบบฟอร์มอุทยาน */
+.permit-deadline { margin: -4px 0 10px; font-size: 13px; color: #b45309; font-weight: 700; }
+.permit-deadline.overdue { color: #b91c1c; }
+.permit-rows { display: flex; flex-direction: column; gap: 6px; }
+.permit-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.permit-name { font-weight: 700; min-width: 140px; }
+.permit-state { font-size: 12px; font-weight: 700; }
+.permit-state.ok { color: #047857; }
+.permit-state.wait { color: #b45309; }
+.permit-remind { margin-top: 12px; }
 
 .section-heading {
   display: flex;

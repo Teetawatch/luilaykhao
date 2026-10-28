@@ -1136,6 +1136,15 @@
               <span v-if="manifestData.permit_form.sign_due_days != null" class="text-muted-sm">
                 · ต้องเซ็นก่อนเดินทาง {{ manifestData.permit_form.sign_due_days }} วัน (ลูกค้าได้แจ้งเตือนอัตโนมัติ)
               </span>
+              <button
+                v-if="Object.keys(manifestData.permit_links || {}).length"
+                class="permit-copy-all"
+                title="ข้อความพร้อมลิงก์ของทุกคนที่ยังไม่เซ็น — แปะในกลุ่มไลน์ของรอบได้เลย"
+                @click="copyAllPermitLinks"
+              >
+                <span class="material-symbols-rounded">content_copy</span>
+                ก๊อปลิงก์ทุกคนที่ยังไม่เซ็น ({{ Object.keys(manifestData.permit_links).length }})
+              </button>
             </div>
 
             <div class="manifest-table-wrap">
@@ -1162,7 +1171,21 @@
                           <span class="permit-ok">✍️ เซ็นแบบฟอร์มแล้ว</span>
                           <button class="permit-clear" title="เซ็นผิดคน หรือต้องให้เซ็นใหม่" @click="clearPermitSignature(p)">ล้าง</button>
                         </template>
-                        <span v-else class="permit-missing">ยังไม่เซ็นแบบฟอร์ม</span>
+                        <template v-else>
+                          <span class="permit-missing">ยังไม่เซ็นแบบฟอร์ม</span>
+                          <button
+                            v-if="manifestData.permit_links?.[p.id]"
+                            class="permit-action"
+                            title="ก๊อปข้อความพร้อมลิงก์เซ็นของคนนี้ ไปส่งทางไลน์"
+                            @click="copyPermitLink(p)"
+                          >ก๊อปลิงก์</button>
+                          <button
+                            class="permit-action"
+                            :disabled="remindingRef === p.booking?.booking_ref"
+                            title="ส่งแจ้งเตือนไปที่แอป/ไลน์ของคนจองใบนี้ทันที (วันละครั้งต่อใบ)"
+                            @click="remindPermit(p)"
+                          >แจ้งเตือน</button>
+                        </template>
                       </div>
                     </td>
                     <td>
@@ -4341,6 +4364,45 @@ const clearPermitSignature = async (p) => {
   }
 };
 
+const copyText = async (text, okMessage) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(okMessage);
+  } catch {
+    window.prompt('ก๊อปข้อความนี้', text);
+  }
+};
+const copyPermitLink = (p) => {
+  const link = manifestData.value?.permit_links?.[p.id];
+  if (link) copyText(link.share_text, `ก๊อปลิงก์ของ ${p.name} แล้ว ส่งทางไลน์ได้เลย`);
+};
+const copyAllPermitLinks = () => {
+  const links = manifestData.value?.permit_links || {};
+  const people = (manifestData.value?.passengers || []).filter((p) => links[p.id]);
+  if (!people.length) return;
+  const sch = manifestData.value.schedule;
+  const text = [
+    `แบบฟอร์มอุทยาน ${sch?.trip?.title || ''} — ใครยังไม่เซ็น กดลิงก์ของตัวเองได้เลยครับ (ไม่ต้องสมัครสมาชิก)`,
+    '',
+    ...people.map((p) => `• ${p.name}: ${links[p.id].url}`),
+  ].join('\n');
+  copyText(text, `ก๊อปลิงก์ ${people.length} คนแล้ว แปะในกลุ่มไลน์ได้เลย`);
+};
+const remindingRef = ref(null);
+const remindPermit = async (p) => {
+  const ref_ = p.booking?.booking_ref;
+  if (!ref_ || remindingRef.value) return;
+  remindingRef.value = ref_;
+  try {
+    const res = await api.post(`/admin/bookings/${ref_}/permit-reminder`);
+    toast.success(res.data?.message || 'ส่งแจ้งเตือนแล้ว');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ส่งแจ้งเตือนไม่สำเร็จ');
+  } finally {
+    remindingRef.value = null;
+  }
+};
+
 // แบบฟอร์มขออนุญาตของอุทยาน ทั้งรอบ — ดู /admin/permit-forms
 const downloadingPermitForms = ref(false);
 const downloadPermitForms = async (format = 'pdf') => {
@@ -4748,6 +4810,17 @@ onMounted(async () => {
 .permit-ok { color: #047857; font-weight: 600; }
 .permit-missing { color: #b45309; font-weight: 600; }
 .permit-clear { border: 0; background: none; color: #9ca3af; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 0; }
+.permit-action {
+  border: 1px solid #e5e7eb; background: #fff; color: #0f766e; font-size: 11.5px; font-weight: 600;
+  border-radius: 999px; padding: 1px 8px; cursor: pointer;
+}
+.permit-action:disabled { opacity: .5; cursor: wait; }
+.permit-copy-all {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid #fcd34d; background: #fff; color: #92400e; font-weight: 600; font-size: 12.5px;
+  border-radius: 8px; padding: 4px 10px; cursor: pointer;
+}
+.permit-copy-all .material-symbols-rounded { font-size: 16px; }
 
 .manifest-table-wrap {
   border: 1px solid #e5e7eb;

@@ -51,6 +51,7 @@ use App\Services\CustomerAccountService;
 use App\Services\DriverLoginCodeService;
 use App\Services\ForceMajeureService;
 use App\Services\MailService;
+use App\Services\PermitSignatureService;
 use App\Services\RouteTrackService;
 use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleSeatNotifier;
@@ -3331,6 +3332,8 @@ class AdminController extends Controller
             'regular_passengers_count' => $regularPassengersCount,
             'join_trip_passengers_count' => $joinTripPassengersCount,
             // แบบฟอร์มอุทยานที่ทริปนี้ต้องยื่น — มีเมื่อไหร่ หน้ารายชื่อโชว์ปุ่มโหลด PDF
+            // ลิงก์เซ็นของคนที่ยังไม่เซ็น — ทีมงานก๊อปส่งลูกค้าทางไลน์ได้จากหน้ารายชื่อ
+            'permit_links' => $this->permitLinks($schedule, $passengers),
             'permit_form' => $schedule->trip?->permitForm
                 ? [
                     ...$schedule->trip->permitForm->only(['id', 'name', 'sign_due_days']),
@@ -3338,6 +3341,31 @@ class AdminController extends Controller
                 ]
                 : null,
         ]);
+    }
+
+    /**
+     * @return array<int, array{url: string, share_text: string}> passenger_id => ลิงก์
+     */
+    private function permitLinks(TripSchedule $schedule, $passengers): array
+    {
+        $form = $schedule->trip?->permitForm;
+        $signatures = app(PermitSignatureService::class);
+
+        if (! $form?->requiresSignature()) {
+            return [];
+        }
+
+        $links = [];
+        foreach ($passengers as $p) {
+            if ($p->not_going_at === null && ! $p->hasSignedPermitForm($form->id)) {
+                $links[$p->id] = [
+                    'url' => $signatures->signUrl($p),
+                    'share_text' => $signatures->shareText($p, $p->booking, $form),
+                ];
+            }
+        }
+
+        return $links;
     }
 
     // ─── Vehicles ─────────────────────────────────────────────

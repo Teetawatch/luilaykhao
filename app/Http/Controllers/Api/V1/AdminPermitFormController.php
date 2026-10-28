@@ -181,6 +181,35 @@ class AdminPermitFormController extends Controller
         return $this->pdf($this->forms->renderForBooking($form, $booking), "แบบฟอร์ม-{$form->name}-{$booking->booking_ref}.pdf");
     }
 
+    /** สถานะเซ็นของใบจอง + ลิงก์/ข้อความส่งต่อของคนที่ยังไม่เซ็น (หน้ารายละเอียดการจอง) */
+    public function bookingSignatures(string $ref): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)->firstOrFail();
+
+        return $this->success($this->signatures->adminSummary($booking));
+    }
+
+    /** "ส่งแจ้งเตือนอีกครั้ง" — ส่งทันที วันละครั้งต่อใบ ไม่กินโควตาเตือนอัตโนมัติ */
+    public function remindBooking(string $ref): JsonResponse
+    {
+        $booking = Booking::where('booking_ref', $ref)->firstOrFail();
+        $form = $this->signatures->formNeedingSignature($booking);
+
+        if (! $form || ! $this->signatures->isOpen($booking)) {
+            return $this->error('ใบจองนี้ไม่มีแบบฟอร์มที่ต้องเซ็นแล้ว', 422);
+        }
+
+        if ($this->signatures->remindedToday($booking)) {
+            return $this->error('ใบนี้ได้แจ้งเตือนไปแล้ววันนี้ ลองส่งลิงก์ทางไลน์แทนได้ครับ', 422);
+        }
+
+        if (! $this->signatures->sendReminder($booking, $form, manual: true)) {
+            return $this->error('ทุกคนในใบนี้เซ็นครบแล้ว', 422);
+        }
+
+        return $this->success($this->signatures->adminSummary($booking->fresh()), 'ส่งแจ้งเตือนให้คนจองแล้ว');
+    }
+
     /** ล้างลายเซ็นของคนหนึ่ง — เซ็นผิดคน หรือแก้ข้อมูลแล้วต้องให้เจ้าตัวเซ็นใหม่ */
     public function clearSignature(string $ref, int $passengerId): JsonResponse
     {
