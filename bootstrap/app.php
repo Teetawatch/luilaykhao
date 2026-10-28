@@ -41,6 +41,16 @@ return Application::configure(basePath: dirname(__DIR__))
             return Limit::perMinute(5)->by($key);
         });
 
+        // ออก QR / หน้าชำระเงินของ Beam — แยกจาก 'payment' (5/นาที) เพราะแค่ออกใบแจ้ง
+        // ยอด ไม่มีเงินไหลไหน แต่แอปออกใบใหม่ทุกครั้งที่ลูกค้าสลับเต็ม/มัดจำ/ผ่อน/จำนวน
+        // งวด สลับสามสี่ทีแล้วกดจ่ายด้วยบัตรเลยโดน "Too Many Attempts" ที่นี่กันแค่
+        // การยิงถล่ม Beam
+        RateLimiter::for('beam-charge', function (Request $request) {
+            $key = ($request->user()?->id ?? $request->ip());
+
+            return Limit::perMinute(30)->by($key);
+        });
+
         // Slip OCR scan — อ่านวันที่/เวลาจากสลิป (ลูกค้าอาจเปลี่ยนรูปหลายครั้ง)
         RateLimiter::for('slip-scan', function (Request $request) {
             $key = ($request->user()?->id ?? $request->ip());

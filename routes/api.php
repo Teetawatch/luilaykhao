@@ -581,7 +581,7 @@ Route::prefix('v1')->group(function () {
 
         // Beam Checkout — ออก QR/ลิงก์จ่าย แล้วให้ webhook เป็นคนยืนยันการจอง
         // ต้องประกาศก่อน payments/{booking_ref} ไม่งั้น 'beam' จะถูกอ่านเป็นเลขการจอง
-        Route::post('payments/beam/charge', [BeamPaymentController::class, 'charge'])->middleware('throttle:payment');
+        Route::post('payments/beam/charge', [BeamPaymentController::class, 'charge'])->middleware('throttle:beam-charge');
         Route::get('payments/beam/{payment}', [BeamPaymentController::class, 'status']);
 
         // QR พร้อมเพย์ของยอดที่ต้องโอน "ตอนนี้" — คิดยอดจาก PaymentQuote ที่เดียว

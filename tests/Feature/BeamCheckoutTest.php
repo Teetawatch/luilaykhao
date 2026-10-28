@@ -169,6 +169,42 @@ class BeamCheckoutTest extends TestCase
         });
     }
 
+    /**
+     * แอปออก QR ใหม่ทุกครั้งที่ลูกค้าสลับเต็ม/มัดจำ/ผ่อน — เคยใช้ throttle 'payment'
+     * (5/นาที ร่วมกับการอัปสลิป) สลับไม่กี่ทีแล้วกดจ่ายด้วยบัตรก็โดน "Too Many Attempts"
+     */
+    public function test_switching_payment_options_a_few_times_does_not_lock_out_checkout(): void
+    {
+        Http::fake([
+            '*/api/v1/charges' => Http::response([
+                'chargeId' => 'ch_qr',
+                'actionRequired' => 'ENCODED_IMAGE',
+                'encodedImage' => ['imageBase64Encoded' => 'iVBORw0KGgo=', 'expiry' => now()->addMinutes(10)->toIso8601ZuluString()],
+            ], 200),
+            '*/api/v1/payment-links' => Http::response(['id' => 'pl_test_1', 'url' => 'https://pay.example/pl_test_1'], 200),
+        ]);
+        $booking = $this->pendingBooking();
+
+        for ($i = 0; $i < 8; $i++) {
+            $this->actingAs($booking->user)
+                ->postJson('/api/v1/payments/beam/charge', [
+                    'booking_ref' => $booking->booking_ref,
+                    'purpose' => 'full',
+                    'payment_method_type' => 'QR_PROMPT_PAY',
+                ])
+                ->assertStatus(201);
+        }
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'full',
+                'payment_method_type' => 'CHECKOUT',
+            ])
+            ->assertStatus(201)
+            ->assertJsonPath('data.redirect_url', 'https://pay.example/pl_test_1');
+    }
+
     public function test_a_group_switched_off_in_config_is_sent_as_disabled(): void
     {
         config(['payment.beam.checkout.groups.mobileBanking' => false]);
