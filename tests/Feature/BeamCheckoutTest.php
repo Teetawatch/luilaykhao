@@ -124,7 +124,7 @@ class BeamCheckoutTest extends TestCase
     public function test_checkout_creates_a_payment_link_with_every_payment_group_open(): void
     {
         $this->fakeLinkCreated();
-        $booking = $this->pendingBooking(2500.50);
+        $booking = $this->pendingBooking(4000.50);
 
         $response = $this->actingAs($booking->user)
             ->postJson('/api/v1/payments/beam/charge', [
@@ -151,8 +151,8 @@ class BeamCheckoutTest extends TestCase
 
             $settings = $request['linkSettings'];
 
-            return $request['order']['netAmount'] === 250050
-                && $request['order']['orderItems'][0]['price'] === 250050
+            return $request['order']['netAmount'] === 400050
+                && $request['order']['orderItems'][0]['price'] === 400050
                 && $request['order']['orderItems'][0]['quantity'] === 1
                 && $request['order']['referenceId'] === $payment->reference_id
                 && $request['order']['currency'] === 'THB'
@@ -203,6 +203,98 @@ class BeamCheckoutTest extends TestCase
             ])
             ->assertStatus(201)
             ->assertJsonPath('data.redirect_url', 'https://pay.example/pl_test_1');
+    }
+
+    /**
+     * Beam ปฏิเสธทั้งลิงก์ถ้าเปิดงวดผ่อนให้ยอดที่ต่ำกว่าขั้นต่ำใน Lighthouse — บัตรและ
+     * e-Wallet หายไปด้วย (เกิดจริงกับยอด 1,290 บาท)
+     */
+    public function test_instalments_are_left_off_below_the_minimum_but_cards_and_wallets_stay(): void
+    {
+        $this->fakeLinkCreated();
+        $booking = $this->pendingBooking(1290);
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'full',
+                'payment_method_type' => 'CHECKOUT',
+            ])
+            ->assertStatus(201);
+
+        Http::assertSent(function (Request $request) {
+            $settings = $request['linkSettings'];
+
+            return $settings['cardInstallments']['isEnabled'] === false
+                && $settings['cardInstallments']['installments3m']['isEnabled'] === false
+                && $settings['cardInstallments']['installments10m']['isEnabled'] === false
+                && $settings['card']['isEnabled'] === true
+                && $settings['eWallets']['isEnabled'] === true;
+        });
+    }
+
+    public function test_a_higher_minimum_from_beam_is_learned_and_the_link_still_opens(): void
+    {
+        Http::fake([
+            '*/api/v1/payment-links' => Http::sequence()
+                ->push([
+                    'code' => 400,
+                    'message' => 'inputs are failing validation; card installments (period=10) minimum threshold in payment settings is 10000.00, but amount is 4000.00',
+                    'error' => [
+                        'errorCode' => 'API_VALIDATION_ERROR',
+                        'errorMessage' => 'inputs are failing validation; card installments (period=10) minimum threshold in payment settings is 10000.00, but amount is 4000.00',
+                    ],
+                ], 400)
+                ->push(['id' => 'pl_test_1', 'url' => 'https://pay.example/pl_test_1'], 200),
+        ]);
+        $booking = $this->pendingBooking(4000);
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'full',
+                'payment_method_type' => 'CHECKOUT',
+            ])
+            ->assertStatus(201)
+            ->assertJsonPath('data.redirect_url', 'https://pay.example/pl_test_1');
+
+        // ใบที่สองปิดเฉพาะ 10 เดือน งวดอื่นยังเปิด
+        $sent = Http::recorded()->map(fn ($pair) => $pair[0])->values();
+        $this->assertCount(2, $sent);
+        $this->assertTrue($sent[1]['linkSettings']['cardInstallments']['installments3m']['isEnabled']);
+        $this->assertFalse($sent[1]['linkSettings']['cardInstallments']['installments10m']['isEnabled']);
+
+        // จำไว้แล้ว — ครั้งหน้าไม่ต้องโดนปฏิเสธก่อน
+        $this->assertSame(10000.0, PaymentGateway::installmentMinimum(10));
+    }
+
+    public function test_an_unrelated_beam_rejection_is_not_retried(): void
+    {
+        Http::fake([
+            '*/api/v1/payment-links' => Http::response([
+                'code' => 400,
+                'message' => 'inputs are failing validation; expiresAt must be in the future',
+            ], 400),
+        ]);
+        $booking = $this->pendingBooking(4000);
+
+        $this->actingAs($booking->user)
+            ->postJson('/api/v1/payments/beam/charge', [
+                'booking_ref' => $booking->booking_ref,
+                'purpose' => 'full',
+                'payment_method_type' => 'CHECKOUT',
+            ])
+            ->assertStatus(502);
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_clients_learn_the_lowest_amount_that_can_be_paid_in_instalments(): void
+    {
+        $this->assertSame(3000.0, PaymentGateway::publicConfig()['installment_min_amount']);
+
+        config(['payment.beam.checkout.groups.cardInstallments' => false]);
+        $this->assertNull(PaymentGateway::publicConfig()['installment_min_amount']);
     }
 
     public function test_a_group_switched_off_in_config_is_sent_as_disabled(): void

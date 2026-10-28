@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Cache;
+
 /**
  * "ตอนนี้รับเงินด้วยวิธีไหน" — คำตอบเดียวที่ทุกฝั่งอ่าน
  *
@@ -28,7 +30,10 @@ class PaymentGateway
     /**
      * ก้อนที่ส่งให้ client — ห้ามมี api key หรืออะไรที่เป็นความลับหลุดมาที่นี่
      *
-     * @return array{provider: string, methods: list<string>}
+     * installment_min_amount = ยอดต่ำสุดที่หน้าชำระเงินของ Beam จะมีผ่อนบัตรให้เลือก
+     * (null = ไม่เปิดผ่อนบัตร) ให้ client ไม่โชว์ "ผ่อนบัตร" กับยอดที่ผ่อนไม่ได้
+     *
+     * @return array{provider: string, methods: list<string>, installment_min_amount: float|null}
      */
     public static function publicConfig(): array
     {
@@ -37,6 +42,37 @@ class PaymentGateway
             'methods' => self::isBeam()
                 ? array_values((array) config('payment.beam.methods'))
                 : [],
+            'installment_min_amount' => self::isBeam() ? self::lowestInstallmentMinimum() : null,
         ];
+    }
+
+    /**
+     * ยอดขั้นต่ำของการผ่อน N เดือน — ค่าที่ตั้งไว้ หรือค่าที่ Beam เคยบอกว่าสูงกว่า
+     * (ดู BeamPaymentService::learnInstallmentMinimum) แล้วแต่อันไหนสูงกว่า
+     */
+    public static function installmentMinimum(int $months): float
+    {
+        return max(
+            (float) config('payment.beam.checkout.installment_min_amount'),
+            (float) Cache::get(self::installmentMinimumKey($months), 0),
+        );
+    }
+
+    public static function installmentMinimumKey(int $months): string
+    {
+        return 'beam:installment-min:'.$months.'m';
+    }
+
+    private static function lowestInstallmentMinimum(): ?float
+    {
+        if (! config('payment.beam.checkout.groups.cardInstallments')) {
+            return null;
+        }
+
+        $months = array_map('intval', (array) config('payment.beam.checkout.installment_months'));
+
+        return $months === []
+            ? null
+            : min(array_map(fn (int $m) => self::installmentMinimum($m), $months));
     }
 }

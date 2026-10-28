@@ -119,7 +119,7 @@ class BeamPaymentService
 
         try {
             $response = $payment->isCheckout()
-                ? $this->beam->createPaymentLink($this->checkoutPayload($payment, $booking, $expiresAt, $opts['back_url'] ?? null))
+                ? $this->createCheckoutLink($payment, $booking, $expiresAt, $opts['back_url'] ?? null)
                 : $this->beam->createCharge($this->chargePayload($payment, $methodType, $expiresAt, $opts));
         } catch (BeamException $e) {
             $payment->update([
@@ -696,6 +696,63 @@ class BeamPaymentService
     }
 
     /**
+     * สร้างหน้าชำระเงินของ Beam — ถ้า Beam ปฏิเสธเพราะยอดต่ำกว่าขั้นต่ำผ่อนของงวดไหน
+     * ให้จำขั้นต่ำนั้นไว้แล้วลองใหม่โดยปิดงวดนั้น
+     *
+     * ขั้นต่ำตั้งใน Lighthouse และ Beam ปฏิเสธ "ทั้งลิงก์" เมื่อไม่ผ่าน — บัตรและ e-Wallet
+     * ที่ไม่เกี่ยวอะไรด้วยก็หายไปด้วย จะยอมให้ค่าใน config ที่ไม่ตรงกับ Lighthouse ทำให้
+     * ปุ่มนี้ใช้ไม่ได้ทั้งปุ่มไม่ได้ (เกิดจริงกับยอด 1,290 บาท 2026-10-28)
+     *
+     * @return array<string, mixed>
+     *
+     * @throws BeamException
+     */
+    private function createCheckoutLink(Payment $payment, Booking $booking, Carbon $expiresAt, ?string $backUrl): array
+    {
+        // งวดผ่อนมีสี่แบบ เรียนรู้ได้ครั้งละหนึ่ง — เกินนี้คือ error อื่นที่ไม่ใช่เรื่องขั้นต่ำ
+        for ($attempt = 0; ; $attempt++) {
+            try {
+                return $this->beam->createPaymentLink($this->checkoutPayload($payment, $booking, $expiresAt, $backUrl));
+            } catch (BeamException $e) {
+                if ($attempt >= 4 || ! $this->learnInstallmentMinimum($e)) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /**
+     * อ่าน "card installments (period=3) minimum threshold in payment settings is 3000.00"
+     * จาก error ของ Beam แล้วจำไว้ — คืน true เมื่อได้ค่าที่สูงกว่าที่รู้อยู่ (ลองใหม่แล้ว
+     * จะได้ผลต่างจากเดิม) ไม่งั้นคืน false ให้โยน error ต่อ
+     */
+    private function learnInstallmentMinimum(BeamException $e): bool
+    {
+        $message = (string) (data_get($e->body, 'error.errorMessage') ?? data_get($e->body, 'message') ?? '');
+
+        if (! preg_match('/card installments \(period=(\d+)\) minimum threshold[^0-9]*([\d,]+(?:\.\d+)?)/i', $message, $m)) {
+            return false;
+        }
+
+        $months = (int) $m[1];
+        $minimum = (float) str_replace(',', '', $m[2]);
+
+        if ($minimum <= PaymentGateway::installmentMinimum($months)) {
+            return false;
+        }
+
+        Cache::forever(PaymentGateway::installmentMinimumKey($months), $minimum);
+
+        Log::warning('Beam card instalment minimum is higher than configured — learned it from the error', [
+            'months' => $months,
+            'minimum' => $minimum,
+            'configured' => config('payment.beam.checkout.installment_min_amount'),
+        ]);
+
+        return true;
+    }
+
+    /**
      * คำขอสร้างหน้าชำระเงินของ Beam
      *
      * ยอดในรายการ = ยอดรวม (netAmount) เสมอ เป็นบรรทัดเดียว — แตกเป็นค่าทริป/ส่วนลด/
@@ -724,7 +781,7 @@ class BeamPaymentService
                     'sku' => $booking->booking_ref,
                 ]],
             ],
-            'linkSettings' => $this->checkoutLinkSettings(),
+            'linkSettings' => $this->checkoutLinkSettings((float) $payment->amount),
             'collectDeliveryAddress' => false,
             'collectPhoneNumber' => false,
             'redirectUrl' => $this->returnUrl($payment),
@@ -736,9 +793,11 @@ class BeamPaymentService
     /**
      * linkSettings ของ Beam — ทุกกลุ่มต้องส่งครบ กลุ่มที่ไม่ได้ส่ง Beam ถือว่าปิด
      *
+     * งวดผ่อนเปิดเฉพาะเมื่อยอดถึงขั้นต่ำของงวดนั้น ไม่ถึงสักงวดก็ปิดทั้งกลุ่ม
+     *
      * @return array<string, mixed>
      */
-    private function checkoutLinkSettings(): array
+    private function checkoutLinkSettings(float $amount): array
     {
         $groups = (array) config('payment.beam.checkout.groups');
         $settings = [];
@@ -748,11 +807,18 @@ class BeamPaymentService
         }
 
         $months = array_map('intval', (array) config('payment.beam.checkout.installment_months'));
-        $settings['cardInstallments'] = ['isEnabled' => (bool) ($groups['cardInstallments'] ?? false)];
+        $anyPeriod = false;
+        $periods = [];
 
         foreach ([3, 4, 6, 10] as $m) {
-            $settings['cardInstallments']["installments{$m}m"] = ['isEnabled' => in_array($m, $months, true)];
+            $on = in_array($m, $months, true) && $amount >= PaymentGateway::installmentMinimum($m);
+            $periods["installments{$m}m"] = ['isEnabled' => $on];
+            $anyPeriod = $anyPeriod || $on;
         }
+
+        $settings['cardInstallments'] = [
+            'isEnabled' => (bool) ($groups['cardInstallments'] ?? false) && $anyPeriod,
+        ] + $periods;
 
         return $settings;
     }

@@ -192,7 +192,9 @@
               <span class="material-symbols-rounded text-lg">credit_card</span>
               จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet
             </button>
-            <p class="text-[11px] text-gray-400 font-medium text-center">Visa · Mastercard · Apple Pay · Google Pay · TrueMoney · LINE Pay · ShopeePay · Alipay</p>
+            <p class="text-[11px] text-gray-400 font-medium text-center">
+              Visa · Mastercard · Apple Pay · Google Pay{{ canInstall ? ' · ผ่อนบัตร' : '' }} · TrueMoney · LINE Pay · ShopeePay · Alipay
+            </p>
           </div>
         </div>
 
@@ -321,6 +323,11 @@ const nextInstallment = computed(() => installments.value.find(i => i.status !==
 const gateway = computed(() => booking.value?.payment_gateway || { provider: 'manual' });
 const useBeam = computed(() => gateway.value.provider === 'beam');
 const checkoutAvailable = computed(() => useBeam.value && gateway.value.methods?.includes('CHECKOUT'));
+// ผ่อนบัตรมีขั้นต่ำ — ค่างวดส่วนใหญ่ต่ำกว่านั้น อย่าโชว์ให้เข้าใจว่าผ่อนต่อได้
+const canInstall = computed(() => {
+  const min = Number(gateway.value.installment_min_amount || 0);
+  return min > 0 && Number(nextInstallment.value?.amount || 0) >= min;
+});
 
 const {
   payment: beamPayment,

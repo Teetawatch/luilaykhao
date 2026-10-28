@@ -37,7 +37,8 @@
         ไม่สะดวกสแกน — ไปหน้าชำระเงินของ Beam สำหรับก้อนเดียวกัน (ลิงก์เซ็นไว้ ดู
         PaymentCheckoutController) ชื่อแบรนด์เป็นตัวอักษร ไม่ใช่โลโก้ เหมือนในแอป
     --}}
-    @if (in_array(\App\Models\Payment::METHOD_CHECKOUT, \App\Support\PaymentGateway::publicConfig()['methods'], true))
+    @php($gatewayConfig = \App\Support\PaymentGateway::publicConfig())
+    @if (in_array(\App\Models\Payment::METHOD_CHECKOUT, $gatewayConfig['methods'], true))
         <div class="checkout-alt">
             <div class="checkout-or">หรือ</div>
             <a class="checkout-btn" id="beam-checkout"
@@ -45,7 +46,11 @@
                 💳 จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet
             </a>
             <div class="checkout-chips">
-                <span>Visa / Mastercard</span><span>Apple Pay</span><span>Google Pay</span><span>ผ่อนบัตร</span>
+                <span>Visa / Mastercard</span><span>Apple Pay</span><span>Google Pay</span>
+                {{-- ผ่อนบัตรมีขั้นต่ำ — ยอดไม่ถึง หน้าของ Beam ไม่มีให้เลือก --}}
+                @if ($gatewayConfig['installment_min_amount'] && (float) $beamPayment->amount >= $gatewayConfig['installment_min_amount'])
+                    <span>ผ่อนบัตร</span>
+                @endif
                 <span>TrueMoney</span><span>LINE Pay</span><span>ShopeePay</span><span>Alipay</span>
             </div>
         </div>

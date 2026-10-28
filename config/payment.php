@@ -83,6 +83,11 @@ return [
             ],
             // งวดผ่อนบัตรที่เปิด — Beam รองรับ 3, 4, 6, 10 เดือน
             'installment_months' => [3, 4, 6, 10],
+
+            // ยอดขั้นต่ำที่ผ่อนบัตรได้ ต้องตรงกับ "payment settings" ใน Lighthouse — Beam
+            // ปฏิเสธทั้งลิงก์ (บัตร/e-Wallet หายไปด้วย) ถ้าเปิดงวดผ่อนให้ยอดที่ต่ำกว่านี้
+            // ถ้า Lighthouse ตั้งไว้สูงกว่า ระบบอ่านค่าจริงจาก error ของ Beam แล้วจำไว้เอง
+            'installment_min_amount' => (float) (env('BEAM_INSTALLMENT_MIN_AMOUNT') ?: 3000),
         ],
     ],
 

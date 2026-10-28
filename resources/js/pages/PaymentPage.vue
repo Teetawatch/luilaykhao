@@ -631,7 +631,7 @@
             </p>
 
             <div class="flex flex-wrap gap-2">
-              <span v-for="brand in CHECKOUT_BRANDS" :key="brand"
+              <span v-for="brand in checkoutBrands" :key="brand"
                 class="px-3 py-1.5 rounded-full bg-white border border-teal-100/60 text-[11px] font-bold text-gray-700">
                 {{ brand }}
               </span>
@@ -647,9 +647,7 @@
               </template>
             </button>
 
-            <p class="text-[11px] text-gray-500 font-medium leading-relaxed">
-              ผ่อนชำระได้กับบัตรเครดิตที่ร่วมรายการ ช่องทางและจำนวนงวดที่ใช้ได้จะแสดงบนหน้าชำระเงิน
-            </p>
+            <p class="text-[11px] text-gray-500 font-medium leading-relaxed">{{ installmentNote }}</p>
             <p v-if="beamError" class="text-xs font-bold text-red-600">{{ beamError }}</p>
           </div>
 
@@ -1289,7 +1287,19 @@ const bankApps = computed(() =>
 
 // หน้าชำระเงินของ Beam — ชื่อแบรนด์เป็นตัวอักษร ไม่ใช่โลโก้ (เหมือนในแอป)
 const checkoutAvailable = computed(() => useBeam.value && gateway.value.methods?.includes('CHECKOUT'));
-const CHECKOUT_BRANDS = ['Visa', 'Mastercard', 'Apple Pay', 'Google Pay', 'ผ่อนบัตร', 'TrueMoney', 'LINE Pay', 'ShopeePay', 'Alipay', 'แอปธนาคาร'];
+// ผ่อนบัตรมีขั้นต่ำ (ตั้งใน Lighthouse) — ยอดไม่ถึง หน้าของ Beam ไม่มีให้เลือก อย่าสัญญา
+const installmentMin = computed(() => Number(gateway.value.installment_min_amount || 0));
+const canInstall = computed(() => installmentMin.value > 0 && currentPayAmount.value >= installmentMin.value);
+const checkoutBrands = computed(() => [
+  'Visa', 'Mastercard', 'Apple Pay', 'Google Pay',
+  ...(canInstall.value ? ['ผ่อนบัตร'] : []),
+  'TrueMoney', 'LINE Pay', 'ShopeePay', 'Alipay', 'แอปธนาคาร',
+]);
+const installmentNote = computed(() => {
+  if (canInstall.value) return 'ผ่อนชำระได้กับบัตรเครดิตที่ร่วมรายการ ช่องทางและจำนวนงวดที่ใช้ได้จะแสดงบนหน้าชำระเงิน';
+  if (installmentMin.value > 0) return `ผ่อนบัตรได้เมื่อยอดตั้งแต่ ฿${installmentMin.value.toLocaleString()} ขึ้นไป`;
+  return 'ช่องทางที่ใช้ได้จะแสดงบนหน้าชำระเงิน';
+});
 
 // เงินเข้าแล้ว: ปลดนาฬิกาถอยหลังของที่นั่งก่อน ไม่งั้น handlePaymentExpiry จะยิง
 // ยกเลิกการจองที่เพิ่งจ่ายไปหมาดๆ
