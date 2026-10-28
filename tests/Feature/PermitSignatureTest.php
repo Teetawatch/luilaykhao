@@ -400,11 +400,11 @@ class PermitSignatureTest extends TestCase
 
         $html = (new PaymentConfirmedMail($booking))->render();
 
-        $this->assertStringContainsString('อ่านและเซ็นแบบฟอร์มอุทยาน', $html);
+        $this->assertStringContainsString('อ่านและลงนามแบบฟอร์มอุทยาน', $html);
         $this->assertStringContainsString($booking->fresh()->briefUrl().'#permit', $html);
 
         $plain = $this->booking($this->form(withSignature: false))->load('schedule.trip', 'user', 'passengers');
-        $this->assertStringNotContainsString('อ่านและเซ็นแบบฟอร์มอุทยาน', (new PaymentConfirmedMail($plain))->render());
+        $this->assertStringNotContainsString('อ่านและลงนามแบบฟอร์มอุทยาน', (new PaymentConfirmedMail($plain))->render());
     }
 
     public function test_forms_without_a_due_date_never_remind(): void

@@ -1,12 +1,11 @@
 @php
   $hasProblems = count($failing) > 0;
 @endphp
-<x-emails.partials.base :subject="$hasProblems ? '🚨 [Admin] ระบบเบื้องหลังมีปัญหา' : '✅ [Admin] ระบบเบื้องหลังกลับมาปกติ'">
+<x-emails.partials.base :subject="$hasProblems ? '[Admin] ระบบเบื้องหลังมีปัญหา' : '[Admin] ระบบเบื้องหลังกลับมาปกติ'">
 
   {{-- Header --}}
   <div class="email-header {{ $hasProblems ? 'hdr-red' : 'hdr-green' }}">
     <span class="email-brand">Luilaykhao Admin</span>
-    <div class="header-emoji">{{ $hasProblems ? '🚨' : '✅' }}</div>
     <h1 class="header-title">
       {{ $hasProblems ? 'ระบบเบื้องหลังมีปัญหา '.count($failing).' รายการ' : 'ระบบเบื้องหลังกลับมาปกติแล้ว' }}
     </h1>
@@ -60,7 +59,7 @@
 
     @if ($hasProblems)
     <div class="alert-box alert-neutral">
-      <p class="alert-title">🔧 เช็คบนเซิร์ฟเวอร์</p>
+      <p class="alert-title">เช็คบนเซิร์ฟเวอร์</p>
       <p class="alert-text">
         cd /var/www/luilaykhao<br />
         sudo -u www-data php artisan ops:doctor<br />
@@ -70,7 +69,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim((string) $appUrl, '/') }}/horizon" class="cta-btn cta-red">
-        เปิด Horizon &rarr;
+        เปิด Horizon
       </a>
     </div>
     @endif

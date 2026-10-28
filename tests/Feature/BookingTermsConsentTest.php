@@ -333,7 +333,7 @@ class BookingTermsConsentTest extends TestCase
 
         $html = (new BookingCreatedMail(Booking::where('booking_ref', $ref)->firstOrFail()))->render();
 
-        $this->assertStringContainsString('เงื่อนไขที่คุณได้ยอมรับไว้', $html);
+        $this->assertStringContainsString('เงื่อนไขการจองที่คุณได้ยอมรับไว้', $html);
         foreach (LegalPolicy::bookingTerms() as $line) {
             $this->assertStringContainsString(e($line), $html);
         }
@@ -350,7 +350,7 @@ class BookingTermsConsentTest extends TestCase
 
         $html = (new BookingCreatedMail(Booking::where('booking_ref', $ref)->firstOrFail()))->render();
 
-        $this->assertStringNotContainsString('เงื่อนไขที่คุณได้ยอมรับไว้', $html);
+        $this->assertStringNotContainsString('ที่คุณได้ยอมรับไว้', $html);
         $this->assertStringContainsString('เงื่อนไขการจอง', $html);
     }
 

@@ -35,7 +35,7 @@ class PaymentConfirmedMail extends QueuedMail
         $typeLabel = $this->paymentType === 'installment' ? ' (งวดแรก)' : '';
 
         return new Envelope(
-            subject: "ยืนยันการจองเรียบร้อยแล้วครับ 🎉{$typeLabel} #{$this->booking->booking_ref} - Luilaykhao",
+            subject: "ยืนยันการชำระเงินและการจอง{$typeLabel} #{$this->booking->booking_ref} - Luilaykhao",
         );
     }
 

@@ -6,14 +6,13 @@
   $countryLabel = $booking->schedule?->trip?->countryLabel();
 @endphp
 
-<x-emails.partials.base subject="🛂 พาสปอร์ตใกล้หมดอายุ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="แจ้งเตือนหนังสือเดินทางใกล้หมดอายุ {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-blue">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">🛂</div>
-    <h1 class="header-title">พาสปอร์ตใกล้หมดอายุครับ</h1>
-    <p class="header-subtitle">ยังมีเวลาต่อเล่มก่อนวันเดินทาง เราช่วยดูให้ได้ครับ</p>
+    <h1 class="header-title">หนังสือเดินทางใกล้หมดอายุ</h1>
+    <p class="header-subtitle">กรุณาต่ออายุหนังสือเดินทางก่อนวันเดินทาง</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -21,10 +20,11 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong> 👋<br />
-      ทีมงานตรวจเอกสารของรอบนี้ล่วงหน้าให้ครับ พบว่าพาสปอร์ตของผู้เดินทางบางท่านจะหมดอายุ
-      เร็วกว่าที่สายการบินและด่านตรวจคนเข้าเมืองกำหนด ยังเหลือเวลาอีก
-      <strong>{{ $daysUntilDeparture }} วัน</strong> ก่อนเดินทาง ทำเล่มใหม่ทันสบาย ๆ ครับ
+      เรียน คุณ<strong>{{ $booking->user->name ?? '-' }}</strong><br />
+      จากการตรวจสอบเอกสารของรอบเดินทางนี้ ทีมงานพบว่าหนังสือเดินทางของผู้เดินทางบางท่าน
+      จะหมดอายุก่อนเกณฑ์ที่สายการบินและด่านตรวจคนเข้าเมืองกำหนดครับ
+      ขณะนี้ยังเหลือเวลาอีก <strong>{{ $daysUntilDeparture }} วัน</strong> ก่อนวันเดินทาง
+      ซึ่งเพียงพอสำหรับการทำหนังสือเดินทางเล่มใหม่ครับ
     </div>
 
     <p class="section-label">รายละเอียดทริป</p>
@@ -48,13 +48,13 @@
       </div>
       @if($minimumExpiry)
       <div class="info-row">
-        <span class="info-label">พาสปอร์ตต้องหมดอายุหลัง</span>
+        <span class="info-label">หนังสือเดินทางต้องหมดอายุหลัง</span>
         <span class="info-value accent-teal">{{ \App\Support\ThaiDate::full($minimumExpiry) }}</span>
       </div>
       @endif
     </div>
 
-    <p class="section-label">ท่านที่ต้องต่อเล่ม</p>
+    <p class="section-label">ผู้เดินทางที่ต้องต่ออายุหนังสือเดินทาง</p>
     <div class="info-card">
       @foreach($expiring as $passenger)
       <div class="info-row">
@@ -66,28 +66,21 @@
 
     <div class="cta-wrap">
       <a href="{{ $passportUrl }}" class="cta-btn cta-blue">
-        อัปเดตเลขพาสปอร์ตเล่มใหม่ &rarr;
+        อัปเดตข้อมูลหนังสือเดินทางเล่มใหม่
       </a>
     </div>
     <p class="t-muted" style="text-align:center; font-size:12px; margin-top:8px;">
-      ได้เล่มใหม่แล้วกรอกเลขกับวันหมดอายุใหม่เข้ามาในหน้านี้ หรือแก้ในแอปที่ใบจองก็ได้ครับ
+      เมื่อได้รับเล่มใหม่แล้ว กรุณากรอกเลขที่และวันหมดอายุใหม่ในหน้านี้ หรือแก้ไขในแอปที่หน้าการจอง
     </p>
 
-    <div class="contact-bar">
-      ต่อเล่มไม่ทันหรืออยากปรึกษาเรื่องเลื่อนรอบ ทักทีมงานได้เลยครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
-    </div>
+    <p class="body-text">
+      หากไม่สามารถต่ออายุได้ทัน หรือต้องการปรึกษาเรื่องการเลื่อนรอบเดินทาง กรุณาติดต่อทีมงานครับ
+    </p>
+
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

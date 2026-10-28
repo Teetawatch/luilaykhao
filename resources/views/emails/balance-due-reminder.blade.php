@@ -4,20 +4,17 @@
   $isDueToday = $daysLeft !== null && $daysLeft === 0;
 
   if ($isOverdue) {
-    $emoji       = '💌';
-    $bannerTitle = 'ยอดส่วนที่เหลือเลยกำหนดมานิดนึงแล้วครับ';
+    $bannerTitle = 'ยอดส่วนที่เหลือเลยกำหนดชำระ';
     $headerClass = 'hdr-red';
     $boxClass    = 'hl-red';
     $ctaClass    = 'cta-red';
   } elseif ($isDueToday) {
-    $emoji       = '⏰';
-    $bannerTitle = 'วันนี้ครบกำหนดชำระส่วนที่เหลือแล้วนะครับ';
+    $bannerTitle = 'ครบกำหนดชำระยอดส่วนที่เหลือวันนี้';
     $headerClass = 'hdr-amber';
     $boxClass    = 'hl-amber';
     $ctaClass    = 'cta-amber';
   } else {
-    $emoji       = '🔔';
-    $bannerTitle = 'แจ้งเตือนอย่างอ่อนโยน เรื่องยอดส่วนที่เหลือ';
+    $bannerTitle = 'แจ้งเตือนกำหนดชำระยอดส่วนที่เหลือ';
     $headerClass = 'hdr-blue';
     $boxClass    = 'hl-blue';
     $ctaClass    = 'cta-blue';
@@ -27,14 +24,13 @@
   $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp
 
-<x-emails.partials.base subject="{{ $emoji }} {{ $bannerTitle }} — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="{{ $bannerTitle }} {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header {{ $headerClass }}">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">{{ $emoji }}</div>
     <h1 class="header-title">{{ $bannerTitle }}</h1>
-    <p class="header-subtitle">ชำระส่วนที่เหลือแล้ว ที่นั่งของคุณก็พร้อมออกเดินทางเลยครับ</p>
+    <p class="header-subtitle">กรุณาชำระยอดส่วนที่เหลือเพื่อให้การจองของคุณสมบูรณ์</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -42,22 +38,22 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? '-' }}</strong><br />
+      เรียน คุณ<strong>{{ $booking->user->name ?? '-' }}</strong><br />
       @if($isOverdue)
-        ยอดส่วนที่เหลือของคุณ <strong class="t-red">เลยกำหนดมาแล้ว</strong>ครับ
-        ทีมงานยังกันที่นั่งไว้ให้อยู่ ถ้าสะดวกชำระเมื่อไหร่บอกได้เลยนะครับ
-        หรือถ้าติดขัดอะไร ทักมาคุยกับเราก่อนได้ครับ
+        ทีมงานขอแจ้งว่ายอดส่วนที่เหลือของการจองนี้ <strong class="t-red">เลยกำหนดชำระแล้ว</strong>ครับ
+        ขณะนี้ทีมงานยังคงสำรองที่นั่งไว้ให้คุณ กรุณาชำระโดยเร็วที่สุด
+        หากมีเหตุขัดข้อง สามารถติดต่อทีมงานเพื่อหารือได้ครับ
       @elseif($isDueToday)
-        วันนี้เป็นวันครบกำหนดชำระส่วนที่เหลือของทริปคุณพอดีครับ
-        ชำระเสร็จเมื่อไหร่ก็สบายใจได้เลย เตรียมตัวไปเที่ยวอย่างเดียวครับ
+        ทีมงานขอแจ้งว่า วันนี้เป็นวันครบกำหนดชำระยอดส่วนที่เหลือของการจองนี้ครับ
+        กรุณาชำระภายในวันนี้ เพื่อให้การจองของคุณสมบูรณ์ครับ
       @else
-        ใกล้ถึงกำหนดชำระส่วนที่เหลือแล้วครับ เหลืออีก <strong>{{ $daysLeft }} วัน</strong>
-        ส่งมาเตือนเบา ๆ กันลืม จะได้ไม่ต้องรีบตอนใกล้เดินทางนะครับ
+        ทีมงานขอแจ้งเตือนว่า ยอดส่วนที่เหลือของการจองนี้จะครบกำหนดชำระในอีก
+        <strong>{{ $daysLeft }} วัน</strong> กรุณาชำระภายในวันที่กำหนดครับ
       @endif
     </div>
 
     <div class="highlight-box {{ $boxClass }}" style="text-align:center;">
-      <div class="amount-label">💳 ยอดส่วนที่เหลือที่ต้องชำระ</div>
+      <div class="amount-label">ยอดส่วนที่เหลือที่ต้องชำระ</div>
       <div class="amount">฿{{ number_format($booking->balance_amount, 0) }}</div>
       <div class="amount-note">
         ภายในวันที่ <strong>{{ $dueDateFormatted }}</strong>
@@ -66,7 +62,7 @@
         @elseif($isDueToday)
           &nbsp;&middot;&nbsp;<strong>วันนี้</strong>
         @else
-          &nbsp;&middot;&nbsp;เหลือ {{ $daysLeft }} วัน
+          &nbsp;&middot;&nbsp;อีก {{ $daysLeft }} วัน
         @endif
       </div>
     </div>
@@ -117,11 +113,11 @@
 
     @if($isOverdue)
     <div class="alert-box alert-red">
-      <p class="alert-title">🤝 ถ้ายังไม่สะดวก คุยกับเราได้นะครับ</p>
+      <p class="alert-title">เงื่อนไขกรณีชำระเกินกำหนด</p>
       <p class="alert-text">
-        ตามเงื่อนไข หากเลยกำหนดแล้วยังไม่ได้ชำระ ทางทริปจำเป็นต้องขอสงวนสิทธิ์
-        ยกเลิกการจองโดยไม่คืนเงินมัดจำครับ แต่ก่อนจะถึงตรงนั้น
-        <strong>ทักมาหาทีมงานก่อนได้เสมอ</strong> เรายินดีช่วยหาทางออกและขอขยายเวลาชำระให้ครับ
+        ตามเงื่อนไขการจอง หากไม่ได้รับชำระหลังพ้นกำหนด ทางบริษัทขอสงวนสิทธิ์
+        ยกเลิกการจองโดยไม่คืนเงินมัดจำครับ อย่างไรก็ตาม
+        <strong>หากคุณติดต่อทีมงานเข้ามาก่อน</strong> ทีมงานยินดีพิจารณาขยายเวลาชำระให้ตามความเหมาะสมครับ
       </p>
     </div>
     @endif
@@ -129,28 +125,17 @@
     <div class="cta-wrap">
       <a href="{{ $booking->payUrl() }}"
          class="cta-btn {{ $ctaClass }}">
-        ชำระเงินส่วนที่เหลือตอนนี้ &rarr;
+        ชำระยอดส่วนที่เหลือ
       </a>
     </div>
     <p class="t-muted" style="text-align:center; font-size:12px; margin-top:8px;">
-      กดปุ่มเพื่อดู QR PromptPay และแนบสลิปได้เลย ไม่ต้องเข้าสู่ระบบครับ
+      กดปุ่มด้านบนเพื่อดู QR PromptPay และแนบสลิปการโอน โดยไม่ต้องเข้าสู่ระบบ
     </p>
 
-    <div class="contact-bar">
-      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
-    </div>
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

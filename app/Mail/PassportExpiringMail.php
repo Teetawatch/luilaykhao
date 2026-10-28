@@ -29,7 +29,7 @@ class PassportExpiringMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'พาสปอร์ตใกล้หมดอายุ ต้องต่อเล่มก่อนเดินทาง 🛂 #'.$this->booking->booking_ref.' - Luilaykhao',
+            subject: 'แจ้งเตือนหนังสือเดินทางใกล้หมดอายุ #'.$this->booking->booking_ref.' - Luilaykhao',
         );
     }
 

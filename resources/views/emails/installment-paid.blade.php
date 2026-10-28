@@ -5,14 +5,13 @@
   $nextInstallment = $booking->installmentPayments->where('status', 'pending')->first();
 @endphp
 
-<x-emails.partials.base subject="💚 ได้รับค่างวดที่ {{ $installment->installment_no }} แล้วครับ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="ยืนยันการรับชำระค่างวดที่ {{ $installment->installment_no }} {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-green">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">{{ $isFullyPaid ? '🎉' : '💚' }}</div>
     <h1 class="header-title">
-      {{ $isFullyPaid ? 'ชำระครบทุกงวดแล้วครับ' : "ได้รับค่างวดที่ {$installment->installment_no} แล้วครับ" }}
+      {{ $isFullyPaid ? 'ยืนยันการชำระครบทุกงวด' : "ยืนยันการรับชำระค่างวดที่ {$installment->installment_no}" }}
     </h1>
     <p class="header-subtitle">
       งวด {{ $installment->installment_no }} / {{ $booking->installment_count }}
@@ -25,14 +24,14 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong> 💚<br />
-      ทีมงานได้รับค่างวดที่ {{ $installment->installment_no }} จำนวน ฿{{ number_format($installment->amount, 0) }}
-      เรียบร้อยแล้วครับ ขอบคุณมาก ๆ นะครับ
-      @if($isFullyPaid) <br />ตอนนี้ชำระครบทุกงวดแล้ว เตรียมตัวไปเที่ยวอย่างเดียวเลยครับ 🎉 @endif
+      เรียน คุณ<strong>{{ $booking->user->name }}</strong><br />
+      ทีมงานได้รับชำระค่างวดที่ {{ $installment->installment_no }} จำนวน ฿{{ number_format($installment->amount, 0) }}
+      เรียบร้อยแล้วครับ ขอบคุณที่ชำระตามกำหนดครับ
+      @if($isFullyPaid) <br />ขณะนี้การจองของคุณชำระครบทุกงวดแล้ว ทีมงานจะส่งข้อมูลการเดินทางให้ก่อนวันเดินทางครับ @endif
     </div>
 
     <div class="highlight-box hl-green" style="text-align:center;">
-      <div class="amount-label">✅ งวดที่ {{ $installment->installment_no }} &mdash; ชำระแล้ว</div>
+      <div class="amount-label">งวดที่ {{ $installment->installment_no }} &mdash; ชำระแล้ว</div>
       <div class="amount">฿{{ number_format($installment->amount, 0) }}</div>
       <div class="amount-note">{{ \App\Support\ThaiDate::shortTime(now()) }} น.</div>
     </div>
@@ -130,30 +129,19 @@
 
     @if($nextInstallment && !$isFullyPaid)
     <div class="alert-box alert-blue">
-      <p class="alert-title">📅 งวดถัดไป ไม่ต้องกังวลเรื่องลืมนะครับ</p>
+      <p class="alert-title">งวดถัดไป</p>
       <p class="alert-text">
         งวดที่ {{ $nextInstallment->installment_no }} จำนวน <strong>฿{{ number_format($nextInstallment->amount, 0) }}</strong>
         &nbsp;&mdash;&nbsp;กำหนดชำระ <strong>{{ \App\Support\ThaiDate::full($nextInstallment->due_date ? \Carbon\Carbon::parse($nextInstallment->due_date) : null) }}</strong><br />
-        ใกล้ถึงกำหนดเราจะส่งอีเมลเตือนให้อีกทีครับ
+        ทีมงานจะส่งอีเมลแจ้งเตือนให้อีกครั้งเมื่อใกล้ถึงกำหนดครับ
       </p>
     </div>
     @endif
 
-    <div class="contact-bar">
-      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
-    </div>
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

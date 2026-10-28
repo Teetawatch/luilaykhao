@@ -24,12 +24,11 @@
   $remaining = $booking->total_amount - $booking->paid_amount;
 @endphp
 
-<x-emails.partials.base subject="💸 [Admin] ได้รับชำระเงิน ({{ $ptLabel }}) — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="[Admin] ได้รับชำระเงิน ({{ $ptLabel }}) {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-slate">
     <span class="email-brand">Luilaykhao Admin</span>
-    <div class="header-emoji">💸</div>
     <h1 class="header-title">ได้รับชำระเงิน</h1>
     <p class="header-subtitle">{{ $ptLabel }} &mdash; {{ $booking->user->name ?? 'ลูกค้า' }}</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -45,7 +44,7 @@
     </div>
 
     <div class="highlight-box hl-slate">
-      <div class="amount-label">💵 ยอดที่ได้รับ &mdash; {{ $ptLabel }}</div>
+      <div class="amount-label">ยอดที่ได้รับ &mdash; {{ $ptLabel }}</div>
       <div class="amount">฿{{ number_format($paidAmount, 0) }}</div>
       <div class="amount-note">
         {{ $methodLabel }} &nbsp;&middot;&nbsp; {{ \App\Support\ThaiDate::shortTime(now()) }} น.
@@ -174,21 +173,12 @@
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.url'), '/') }}/admin/bookings/{{ $booking->booking_ref }}"
          class="cta-btn cta-slate">
-        ดูรายละเอียดใน Admin &rarr;
+        ดูรายละเอียดใน Admin
       </a>
     </div>
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao Admin</div>
-    <div class="footer-tagline">แจ้งเตือนอัตโนมัติจากระบบ</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลนี้ถูกส่งอัตโนมัติเฉพาะ Admin เท่านั้น<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; ระบบจัดการภายใน
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" :internal="true" />
 
 </x-emails.partials.base>

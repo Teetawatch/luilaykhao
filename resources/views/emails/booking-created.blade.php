@@ -1,15 +1,14 @@
-<x-emails.partials.base subject="🎉 ยืนยันการจอง {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="ได้รับการจอง {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-teal">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">🎉</div>
-    <h1 class="header-title">รับการจองของคุณแล้วครับ</h1>
+    <h1 class="header-title">ได้รับการจองของคุณเรียบร้อยแล้ว</h1>
     <p class="header-subtitle">
       @if($booking->isOnHold())
-        ทีมงานกันที่นั่งไว้ให้คุณเรียบร้อยแล้วครับ
+        ทีมงานได้สำรองที่นั่งไว้ให้คุณแล้ว
       @else
-        อีกนิดเดียว ชำระเงินแล้วที่นั่งเป็นของคุณเลยครับ
+        กรุณาชำระเงินภายในเวลาที่กำหนดเพื่อยืนยันที่นั่ง
       @endif
     </p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -19,23 +18,24 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong> 👋<br />
+      เรียน คุณ<strong>{{ $booking->user->name }}</strong><br />
       @if($booking->isOnHold())
-        ขอบคุณที่เลือกเดินทางไปกับพวกเรานะครับ ทีมงานจองที่นั่งให้คุณเรียบร้อยแล้ว
-        และกันที่นั่งนี้ไว้ให้ตามเวลาด้านล่าง ยังไม่ต้องรีบชำระเงินครับ
+        ขอบคุณที่เลือกเดินทางกับลุยเลเขาครับ ทีมงานได้บันทึกการจองของคุณ
+        และสำรองที่นั่งไว้ให้จนถึงเวลาที่ระบุด้านล่าง คุณสามารถชำระเงินภายในช่วงเวลาดังกล่าวได้ครับ
       @else
-        ขอบคุณที่เลือกเดินทางไปกับพวกเรานะครับ ทีมงานบันทึกการจองของคุณเรียบร้อยแล้ว
-        เหลืออีกขั้นเดียวคือชำระเงินภายในเวลาที่กำหนด ที่นั่งก็จะเป็นของคุณอย่างสมบูรณ์ครับ
+        ขอบคุณที่เลือกเดินทางกับลุยเลเขาครับ ทีมงานได้บันทึกการจองของคุณเรียบร้อยแล้ว
+        กรุณาชำระเงินภายในเวลาที่กำหนด เพื่อยืนยันที่นั่งของคุณครับ
       @endif
     </div>
 
     @if($booking->isOnHold())
     <div class="alert-box alert-teal">
-      <p class="alert-title">🎟️ ที่นั่งของคุณถูกกันไว้แล้ว</p>
+      <p class="alert-title">การสำรองที่นั่ง</p>
       <p class="alert-text">
-        ทีมงานกันที่นั่งนี้ไว้ให้คุณถึง
+        ที่นั่งของคุณได้รับการสำรองไว้จนถึง
         <strong>{{ \App\Support\ThaiDate::shortTime($booking->hold_until->setTimezone('Asia/Bangkok')) }} น.</strong>
-        ชำระเงินภายในเวลานี้ได้เลยครับ ถ้าต้องการเวลาเพิ่มหรือมีอะไรให้ช่วย ทักมาบอกทีมงานได้ตลอดนะครับ
+        กรุณาชำระเงินภายในเวลาดังกล่าว หากต้องการขยายเวลาหรือต้องการความช่วยเหลือ
+        สามารถติดต่อทีมงานได้ตลอดครับ
       </p>
     </div>
     @endif
@@ -111,7 +111,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">สถานะ</span>
-        <span class="info-value accent-amber">{{ $booking->isOnHold() ? 'กันที่นั่งไว้ให้ รอชำระเงิน' : 'รอชำระเงิน' }}</span>
+        <span class="info-value accent-amber">{{ $booking->isOnHold() ? 'สำรองที่นั่งแล้ว รอชำระเงิน' : 'รอชำระเงิน' }}</span>
       </div>
     </div>
 
@@ -147,21 +147,21 @@
       ใบที่ไม่ได้กดยอมรับ (แอดมินจองแทน) ต้องไม่บอกว่า "คุณได้ยอมรับไว้"
     --}}
     @php($terms = \App\Support\TermsAcceptanceSummary::forBooking($booking))
-    <div class="alert-box alert-amber">
+    <div class="alert-box alert-neutral">
       @if($terms['status'] !== 'none' && ! empty($terms['lines']))
-        <p class="alert-title">📋 เงื่อนไขที่คุณได้ยอมรับไว้ ขออนุญาตทวนอีกครั้งนะครับ</p>
+        <p class="alert-title">เงื่อนไขการจองที่คุณได้ยอมรับไว้</p>
         <p class="alert-text">
           @foreach($terms['lines'] as $i => $line)
             {{ $i + 1 }}.&nbsp;{{ $line }}<br />
           @endforeach
           <span class="t-muted">
-            กดยอมรับเงื่อนไขฉบับวันที่ {{ \App\Support\ThaiDate::full(\Illuminate\Support\Carbon::parse($terms['version'])) }}
+            ยอมรับเงื่อนไขฉบับวันที่ {{ \App\Support\ThaiDate::full(\Illuminate\Support\Carbon::parse($terms['version'])) }}
             เมื่อ {{ \App\Support\ThaiDate::shortTime(\Illuminate\Support\Carbon::parse($terms['accepted_at'])->setTimezone('Asia/Bangkok')) }} น.
             @if(! empty($terms['channel_label'])) ผ่าน{{ $terms['channel_label'] }}@endif
           </span>
         </p>
       @else
-        <p class="alert-title">📋 เงื่อนไขการจอง ขออนุญาตแจ้งไว้นะครับ</p>
+        <p class="alert-title">เงื่อนไขการจอง</p>
         <p class="alert-text">
           @foreach(\App\Support\LegalPolicy::bookingTerms() as $i => $line)
             {{ $i + 1 }}.&nbsp;{{ $line }}<br />
@@ -173,7 +173,7 @@
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/bookings/{{ $booking->booking_ref }}"
          class="cta-btn cta-teal">
-        💳 ดูรายละเอียดและชำระเงิน &rarr;
+        ดูรายละเอียดและชำระเงิน
       </a>
     </div>
 
@@ -186,13 +186,13 @@
     --}}
     @if (! \App\Support\AppLinks::hasApp($booking->user))
       <div class="alert-box alert-teal">
-        <p class="alert-title">💬 เพื่อนร่วมทริปรอบนี้คุยกันอยู่ในแอป</p>
+        <p class="alert-title">ห้องแชทของรอบเดินทางในแอปลุยเลเขา</p>
         <p class="alert-text">
-          ทุกรอบเดินทางมีห้องแชทของตัวเอง ไว้ถามทีมงาน นัดแนะกับเพื่อนร่วมทาง
-          และดูว่าคนอื่นเตรียมอะไรกันไปบ้าง — ในแอปยังมีชื่อและเบอร์ทีมงานที่กดโทรได้
-          QR สำหรับเช็คอินหน้างาน และติดตามรถแบบเรียลไทม์วันเดินทางด้วยครับ<br />
+          ทุกรอบเดินทางมีห้องแชทสำหรับสอบถามทีมงานและติดต่อกับผู้ร่วมเดินทาง
+          ในแอปยังมีข้อมูลติดต่อทีมงาน QR สำหรับเช็คอินหน้างาน
+          และการติดตามตำแหน่งรถแบบเรียลไทม์ในวันเดินทางครับ<br />
           <span class="t-muted">
-            โหลดได้ที่
+            ดาวน์โหลดได้ที่
             <a href="{{ \App\Support\AppLinks::ios() }}" class="t-teal"><strong>App Store</strong></a>
             หรือ
             <a href="{{ \App\Support\AppLinks::android() }}" class="t-teal"><strong>Google Play</strong></a>
@@ -201,18 +201,10 @@
       </div>
     @endif
 
+    <x-emails.partials.signoff />
+
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong class="t-muted">062-612-6006</strong> (08:00&ndash;20:00)<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

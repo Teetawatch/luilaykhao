@@ -1,11 +1,10 @@
-<x-emails.partials.base subject="🎉 ของขวัญของคุณถูกเปิดแล้ว {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="ผู้รับได้รับทริปของขวัญแล้ว {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-green">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">🎉</div>
-    <h1 class="header-title">ของขวัญถูกเปิดแล้วครับ</h1>
-    <p class="header-subtitle">คนพิเศษของคุณกดรับทริปเรียบร้อยแล้วครับ</p>
+    <h1 class="header-title">ผู้รับได้รับทริปของขวัญแล้ว</h1>
+    <p class="header-subtitle">การโอนสิทธิ์การเดินทางเสร็จสมบูรณ์</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -13,8 +12,8 @@
   <div class="email-body">
 
     <div class="greeting">
-      ข่าวดีครับ 🎉 <strong>{{ $recipientName }}</strong> กดรับของขวัญที่คุณมอบให้แล้ว
-      ตอนนี้ทริปนี้เป็นของผู้รับเรียบร้อยแล้วครับ
+      ทีมงานขอแจ้งให้ทราบว่า คุณ<strong>{{ $recipientName }}</strong> ได้กดรับทริปของขวัญที่คุณมอบให้เรียบร้อยแล้วครับ
+      ขณะนี้สิทธิ์การเดินทางของการจองนี้ได้โอนไปยังผู้รับแล้ว
     </div>
 
     <p class="section-label">รายละเอียดทริป</p>
@@ -37,25 +36,17 @@
     </div>
 
     <div class="alert-box alert-green">
-      <p class="alert-title">🎒 ขอบคุณที่แบ่งปันการเดินทางให้กันนะครับ</p>
+      <p class="alert-title">ขั้นตอนถัดไปของผู้รับ</p>
       <p class="alert-text">
-        ผู้รับดูรายละเอียดทริปและเตรียมตัวได้จากในแอปแล้วครับ
-        ทีมงานจะดูแลอย่างดีที่สุด ขอให้เป็นความทรงจำดี ๆ ของทั้งคุณและคนพิเศษนะครับ
+        ผู้รับสามารถดูรายละเอียดทริปและเตรียมตัวเดินทางได้จากแอปลุยเลเขา
+        ทีมงานจะดูแลการเดินทางครั้งนี้อย่างดีที่สุด ขอบคุณที่มอบการเดินทางเป็นของขวัญครับ
       </p>
     </div>
 
+    <x-emails.partials.signoff />
+
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong class="t-muted">062-612-6006</strong> (08:00&ndash;20:00)<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

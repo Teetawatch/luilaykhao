@@ -1,62 +1,49 @@
-<x-emails.partials.base subject="✉️ ยืนยันอีเมลของคุณ">
+<x-emails.partials.base subject="ยืนยันอีเมลของคุณ">
 
   {{-- Header --}}
   <div class="email-header hdr-teal">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">✉️</div>
-    <h1 class="header-title">ยืนยันอีเมลอีกนิดเดียวครับ</h1>
-    <p class="header-subtitle">กดปุ่มเดียวก็เรียบร้อยแล้ว</p>
+    <h1 class="header-title">ยืนยันที่อยู่อีเมล</h1>
+    <p class="header-subtitle">กรุณายืนยันอีเมลเพื่อเปิดใช้งานบัญชีให้สมบูรณ์</p>
   </div>
 
   {{-- Body --}}
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $user->name }}</strong> 👋<br />
-      ยืนยันว่า <strong>{{ $user->email }}</strong> เป็นอีเมลของคุณจริง
-      เราจะได้ส่งใบยืนยันการจอง กำหนดการเดินทาง และเรื่องสำคัญของทริปไปถูกที่ครับ
+      เรียน คุณ<strong>{{ $user->name }}</strong><br />
+      กรุณายืนยันว่า <strong>{{ $user->email }}</strong> เป็นอีเมลของคุณ
+      เพื่อให้ทีมงานสามารถส่งเอกสารยืนยันการจอง กำหนดการเดินทาง
+      และข้อมูลสำคัญเกี่ยวกับทริปถึงคุณได้อย่างถูกต้องครับ
     </div>
 
     <div class="cta-wrap">
       <a href="{{ $verifyUrl }}" class="cta-btn cta-teal">
-        ยืนยันอีเมลของฉัน &rarr;
+        ยืนยันอีเมล
       </a>
     </div>
 
     <div class="alert-box alert-teal">
-      <p class="alert-title">💚 ยืนยันแล้วดียังไง</p>
+      <p class="alert-title">ประโยชน์ของการยืนยันอีเมล</p>
       <p class="alert-text">
-        ถ้าวันหนึ่งคุณลืมรหัสผ่าน เราจะช่วยกู้บัญชีคืนให้ได้ทันที
-        และอีเมลเรื่องทริปจะไม่ตกหล่นระหว่างทางครับ
+        หากคุณลืมรหัสผ่าน จะสามารถกู้คืนบัญชีได้ทันที
+        และจะได้รับอีเมลเกี่ยวกับทริปครบถ้วนทุกฉบับครับ
       </p>
     </div>
 
     <p class="body-text t-muted" style="font-size:12px;">
-      ถ้ากดปุ่มไม่ได้ ลองคัดลอกลิงก์นี้ไปวางในเบราว์เซอร์ดูนะครับ<br />
+      หากไม่สามารถกดปุ่มได้ กรุณาคัดลอกลิงก์ด้านล่างไปวางในเบราว์เซอร์ครับ<br />
       <span class="t-teal" style="word-break:break-all;">{{ $verifyUrl }}</span>
     </p>
 
     <p class="body-text t-muted" style="font-size:12px; margin-bottom:0;">
-      ถ้าคุณไม่ได้สมัครสมาชิกกับลุยเลเขา ไม่ต้องทำอะไรเลยครับ
-      ปล่อยอีเมลฉบับนี้ไว้ได้เลย
+      หากคุณไม่ได้สมัครสมาชิกกับลุยเลเขา กรุณาละเว้นอีเมลฉบับนี้ โดยไม่ต้องดำเนินการใดครับ
     </p>
 
-    <div class="contact-bar">
-      มีอะไรไม่แน่ใจทักมาได้เลยนะครับ ทีมงานอยู่ทุกวัน 08:00&ndash;20:00
-      โทร <strong>062-612-6006</strong>
-    </div>
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">ออกไปเดินด้วยกันนะครับ</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer />
 
 </x-emails.partials.base>

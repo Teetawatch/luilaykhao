@@ -30,7 +30,7 @@ class BookingStatusChangedMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "อัปเดตสถานะการจอง #{$this->booking->booking_ref} - {$this->statusLabel}",
+            subject: "แจ้งการเปลี่ยนแปลงสถานะการจอง #{$this->booking->booking_ref} - {$this->statusLabel}",
         );
     }
 

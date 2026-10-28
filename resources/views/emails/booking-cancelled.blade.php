@@ -3,9 +3,8 @@
   {{-- Header --}}
   <div class="email-header hdr-slate">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">🌾</div>
     <h1 class="header-title">ยืนยันการยกเลิกการจอง</h1>
-    <p class="header-subtitle">ไว้เจอกันใหม่ในทริปหน้านะครับ</p>
+    <p class="header-subtitle">การจองนี้ได้รับการยกเลิกเรียบร้อยแล้ว</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -13,9 +12,9 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong><br />
-      ทีมงานได้ยกเลิกการจองนี้ให้เรียบร้อยแล้วครับ เสียดายที่ครั้งนี้ยังไม่ได้เดินทางด้วยกัน
-      แต่พวกเราหวังว่าจะได้ดูแลคุณในทริปหน้านะครับ 🌿
+      เรียน คุณ<strong>{{ $booking->user->name }}</strong><br />
+      ทีมงานขอยืนยันว่าการจองตามรายละเอียดด้านล่างได้รับการยกเลิกเรียบร้อยแล้วครับ
+      ขอบคุณที่ให้ความสนใจเดินทางกับลุยเลเขา และหวังว่าจะได้ให้บริการคุณในโอกาสต่อไปครับ
     </div>
 
     <p class="section-label">รายละเอียดการจองที่ยกเลิก</p>
@@ -71,8 +70,8 @@
     </div>
 
     @if($reason)
-    <div class="alert-box alert-amber">
-      <p class="alert-title">📝 เหตุผลการยกเลิกที่บันทึกไว้</p>
+    <div class="alert-box alert-neutral">
+      <p class="alert-title">เหตุผลการยกเลิก</p>
       <p class="alert-text">{{ $reason }}</p>
     </div>
     @endif
@@ -85,43 +84,37 @@
 
     @if($booking->refund_amount > 0)
     <div class="highlight-box hl-green">
-      <div class="amount-label">💸 ยอดคืนเงิน{{ $underfilledRefund ? ' (เต็มจำนวน)' : '' }}</div>
+      <div class="amount-label">ยอดคืนเงิน{{ $underfilledRefund ? ' (เต็มจำนวน)' : '' }}</div>
       <div class="amount">฿{{ number_format($booking->refund_amount, 0) }}</div>
       @if($underfilledRefund && $refundAccount)
-      <div class="amount-note">โอนเข้า {{ $refundAccount }} ภายใน 3&ndash;7 วันทำการครับ ไม่ต้องทำอะไรเพิ่มเลย</div>
+      <div class="amount-note">ทีมงานจะโอนเงินคืนเข้า {{ $refundAccount }} ภายใน 3&ndash;7 วันทำการ โดยคุณไม่ต้องดำเนินการใดเพิ่มเติมครับ</div>
       @elseif($underfilledRefund)
-      <div class="amount-note">ทีมงานจะติดต่อขอเลขบัญชีสำหรับรับเงินคืน แล้วโอนให้ภายใน 3&ndash;7 วันทำการครับ</div>
+      <div class="amount-note">ทีมงานจะติดต่อเพื่อขอเลขบัญชีสำหรับรับเงินคืน และโอนเงินให้ภายใน 3&ndash;7 วันทำการครับ</div>
       @else
-      <div class="amount-note">ทีมงานจะโอนคืนให้ภายใน 3&ndash;7 วันทำการครับ ไม่ต้องทำอะไรเพิ่มเลย</div>
+      <div class="amount-note">ทีมงานจะโอนเงินคืนให้ภายใน 3&ndash;7 วันทำการ โดยคุณไม่ต้องดำเนินการใดเพิ่มเติมครับ</div>
       @endif
     </div>
     @endif
 
     @unless($underfilledRefund)
     <div class="alert-box alert-neutral">
-      <p class="alert-title">📋 นโยบายการคืนเงิน (ขออนุญาตแจ้งไว้เป็นข้อมูลครับ)</p>
+      <p class="alert-title">นโยบายการคืนเงิน</p>
       <p class="alert-text">
-        ยกเลิกก่อนเดินทาง 7+ วัน: คืน 80%&nbsp;&middot;&nbsp;ยกเลิก 3&ndash;6 วัน: คืน 50%&nbsp;&middot;&nbsp;น้อยกว่า 3 วัน: ไม่คืนเงิน<br />
-        มัดจำ: ไม่คืนทุกกรณี
+        ยกเลิกก่อนเดินทาง 7 วันขึ้นไป: คืนเงิน 80%&nbsp;&middot;&nbsp;ยกเลิก 3&ndash;6 วัน: คืนเงิน 50%&nbsp;&middot;&nbsp;น้อยกว่า 3 วัน: ไม่คืนเงิน<br />
+        เงินมัดจำ: ไม่คืนทุกกรณี
       </p>
     </div>
     @endunless
 
-    <div class="contact-bar">
-      อยากจองรอบใหม่หรือมีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
-    </div>
+    <p class="body-text">
+      หากต้องการจองรอบเดินทางใหม่ หรือมีข้อสงสัยเกี่ยวกับการยกเลิกครั้งนี้
+      สามารถติดต่อทีมงานได้ตามช่องทางด้านล่างครับ
+    </p>
+
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

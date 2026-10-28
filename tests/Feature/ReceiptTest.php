@@ -282,15 +282,15 @@ class ReceiptTest extends TestCase
             && $m->recipientName === 'สมหญิง รักเที่ยว');
 
         $payerHtml = (new PaymentConfirmedMail($booking, 'full', $parent, $parent->personalReceipts))->render();
-        $this->assertStringContainsString('ใบเสร็จแยกรายคน', $payerHtml);
+        $this->assertStringContainsString('ใบเสร็จแยกรายบุคคล', $payerHtml);
         $this->assertStringContainsString('สมศักดิ์ ขึ้นเขา', $payerHtml);
         $this->assertStringContainsString('/receipt/'.$mine->verify_token, $payerHtml);
 
         $friendMail = new PaymentConfirmedMail($booking, 'full', $mine, new Collection([$mine]), 'สมหญิง รักเที่ยว');
         $friendHtml = $friendMail->render();
-        $this->assertStringContainsString('สวัสดีคุณ <strong>สมหญิง รักเที่ยว</strong>', $friendHtml);
-        $this->assertStringContainsString('ในชื่อของคุณ', $friendHtml);
-        $this->assertStringNotContainsString('ใบเสร็จแยกรายคน', $friendHtml);
+        $this->assertStringContainsString('เรียน คุณ<strong>สมหญิง รักเที่ยว</strong>', $friendHtml);
+        $this->assertStringContainsString('ในนามของคุณ', $friendHtml);
+        $this->assertStringNotContainsString('ใบเสร็จแยกรายบุคคล', $friendHtml);
         $this->assertCount(1, $friendMail->attachments());
     }
 

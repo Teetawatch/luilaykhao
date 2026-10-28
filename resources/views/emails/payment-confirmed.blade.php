@@ -1,15 +1,14 @@
-<x-emails.partials.base subject="🎉 ยืนยันการจองเรียบร้อยแล้วครับ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="ยืนยันการชำระเงินและการจอง {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-green">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">🎉</div>
-    <h1 class="header-title">ที่นั่งของคุณยืนยันแล้วครับ</h1>
+    <h1 class="header-title">ยืนยันการชำระเงินและการจอง</h1>
     <p class="header-subtitle">
       @if($paymentType === 'installment')
-        ได้รับงวดแรกเรียบร้อยแล้วครับ
+        ทีมงานได้รับชำระค่างวดแรกเรียบร้อยแล้ว
       @else
-        ชำระครบเรียบร้อย เตรียมตัวไปเที่ยวกันได้เลยครับ
+        ทีมงานได้รับชำระเงินครบถ้วนเรียบร้อยแล้ว
       @endif
     </p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -19,13 +18,13 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ ($recipientName ?? null) ?: ($booking->user->name ?? '-') }}</strong> 💚<br />
-      ขอบคุณมาก ๆ นะครับ ทีมงานได้รับเงินเรียบร้อยแล้ว
-      การจองของคุณยืนยันสมบูรณ์ อีกไม่นานเราจะได้เจอกันแล้วครับ
+      เรียน คุณ<strong>{{ ($recipientName ?? null) ?: ($booking->user->name ?? '-') }}</strong><br />
+      ทีมงานได้รับการชำระเงินของคุณเรียบร้อยแล้ว และขอยืนยันการจองตามรายละเอียดด้านล่างครับ
+      ขอบคุณที่เลือกเดินทางกับลุยเลเขาครับ
     </div>
 
     <div class="highlight-box hl-green">
-      <div class="amount-label">💵 ยอดที่ชำระ</div>
+      <div class="amount-label">ยอดที่ชำระ</div>
       <div class="amount">฿{{ number_format((float) $booking->paid_amount + ($booking->payment_method === 'gift_voucher' ? (float) $booking->voucher_amount : 0), 0) }}</div>
       <div class="amount-note">
         {{ $booking->payment_method === 'promptpay' ? 'PromptPay' : ($booking->payment_method === 'mobile_banking' ? 'โอนผ่านธนาคาร' : ($booking->payment_method === 'gift_voucher' ? 'บัตรของขวัญ' : ($booking->payment_method ?? '-'))) }}
@@ -35,7 +34,7 @@
 
     @if($receipt ?? null)
     <div class="cta-wrap">
-      <a href="{{ url('/receipt/'.$receipt->verify_token) }}" class="cta-btn cta-teal">🧾 ดูใบเสร็จรับเงิน (Digital Travel Receipt)</a>
+      <a href="{{ url('/receipt/'.$receipt->verify_token) }}" class="cta-btn cta-teal">ดูใบเสร็จรับเงิน (Digital Travel Receipt)</a>
     </div>
     @endif
 
@@ -157,22 +156,22 @@
       <div class="step-item">
         <div class="step-num step-green">1</div>
         <div class="step-content">
-          <p class="step-title">เก็บอีเมลฉบับนี้ไว้นะครับ</p>
-          <p class="step-desc">ใช้ยืนยันตัวตนตอนขึ้นรถในวันเดินทางได้เลยครับ</p>
+          <p class="step-title">เก็บอีเมลฉบับนี้ไว้เป็นหลักฐาน</p>
+          <p class="step-desc">สามารถใช้ยืนยันการจองกับทีมงานในวันเดินทางได้</p>
         </div>
       </div>
       <div class="step-item">
         <div class="step-num step-green">2</div>
         <div class="step-content">
-          <p class="step-title">รอรับรายละเอียดนัดหมายจากทีมงาน</p>
-          <p class="step-desc">เราจะส่งจุดนัดพบและเวลาให้ก่อนวันเดินทางครับ ไม่ต้องกังวลเลย</p>
+          <p class="step-title">รอรับรายละเอียดการนัดหมาย</p>
+          <p class="step-desc">ทีมงานจะแจ้งจุดนัดพบและเวลาให้ทราบก่อนวันเดินทาง</p>
         </div>
       </div>
       <div class="step-item">
         <div class="step-num step-green">3</div>
         <div class="step-content">
-          <p class="step-title">เตรียมของตามเช็กลิสต์ได้เลย</p>
-          <p class="step-desc">ดูรายการสิ่งของที่ควรพกได้ในหน้าทริปครับ</p>
+          <p class="step-title">เตรียมสัมภาระตามรายการที่แนะนำ</p>
+          <p class="step-desc">ดูรายการสิ่งของที่ควรเตรียมได้ในหน้าข้อมูลทริป</p>
         </div>
       </div>
       @if($paymentType === 'installment')
@@ -180,27 +179,16 @@
         <div class="step-num step-green">4</div>
         <div class="step-content">
           <p class="step-title">ชำระงวดถัดไปตามกำหนด</p>
-          <p class="step-desc">ใกล้ถึงกำหนดเราจะส่งอีเมลเตือนให้อีกทีครับ</p>
+          <p class="step-desc">ทีมงานจะส่งอีเมลแจ้งเตือนให้อีกครั้งเมื่อใกล้ถึงกำหนด</p>
         </div>
       </div>
       @endif
     </div>
 
-    <div class="contact-bar">
-      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
-    </div>
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

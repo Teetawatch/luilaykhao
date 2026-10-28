@@ -23,7 +23,7 @@ class GiftVoucherIssuedMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'บัตรของขวัญ ฿'.number_format((float) $this->voucher->amount).' พร้อมใช้แล้วครับ 🎁 - Luilaykhao',
+            subject: 'บัตรของขวัญ ฿'.number_format((float) $this->voucher->amount).' พร้อมใช้งาน - Luilaykhao',
         );
     }
 

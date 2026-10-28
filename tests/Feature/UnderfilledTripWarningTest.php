@@ -310,10 +310,10 @@ class UnderfilledTripWarningTest extends TestCase
 
         $html = (new TripUnderfilledWarningMail($b, 7, 3, 8))->render();
 
-        $this->assertStringContainsString('ส่งลิงก์ชวนเพื่อนมาร่วมทริป', $html);
+        $this->assertStringContainsString('ส่งลิงก์ชวนผู้ร่วมเดินทาง', $html);
         $this->assertStringContainsString('?schedule='.$b->schedule_id, $html);
-        $this->assertStringContainsString('รอบอื่นของทริปนี้ที่ยังจองได้', $html);
-        $this->assertStringContainsString('9 ท่านแล้ว', $html);
+        $this->assertStringContainsString('รอบอื่นของทริปนี้ที่ยังเปิดจอง', $html);
+        $this->assertStringContainsString('จองแล้ว 9 ท่าน', $html);
     }
 
     /**
@@ -329,7 +329,7 @@ class UnderfilledTripWarningTest extends TestCase
 
         $html = (new TripUnderfilledWarningMail($b, 7, 3, 8))->render();
 
-        $this->assertStringContainsString('ระหว่าง 7 วันนี้', $html);
+        $this->assertStringContainsString('ระหว่างช่วง 7 วันนี้', $html);
         $this->assertStringContainsString('รับเงินคืนเต็มจำนวนได้ทันที', $html);
         $this->assertStringContainsString('เฉพาะรอบที่ผู้ร่วมทริปยังไม่ครบตามกำหนดนี้', $html);
         $this->assertStringContainsString(config('app.support_line_id'), $html);

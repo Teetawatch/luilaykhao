@@ -182,7 +182,7 @@ class UnderfilledPostponementTest extends TestCase
             $html = $mail->render();
 
             return str_contains($mail->envelope()->subject, 'รับเงินคืนเต็มจำนวน')
-                && str_contains($html, 'รอบใหม่ฟรี หรือเงินคืนเต็มจำนวน')
+                && str_contains($html, 'รอบใหม่โดยไม่มีค่าใช้จ่าย หรือเงินคืนเต็มจำนวน')
                 && str_contains($html, '15 ตุลาคม 2569')
                 && ! str_contains($html, 'เหตุสุดวิสัย');
         });

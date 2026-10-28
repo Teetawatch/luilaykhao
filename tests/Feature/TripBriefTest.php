@@ -286,7 +286,7 @@ class TripBriefTest extends TestCase
         $this->assertStringContainsString('ลุงชัย', $html);
         $this->assertStringContainsString('ฮข 1234 กทม', $html);
         $this->assertStringContainsString('ถึงที่ทำการอุทยาน', $html);
-        $this->assertStringContainsString('รถออกก่อนวันทริป', $html);
+        $this->assertStringContainsString('รถออกเดินทางก่อนวันทริป', $html);
         // ทุกฉบับต้องจบด้วยลิงก์หน้าที่อัปเดตตัวเองได้
         $this->assertStringContainsString('/t/'.$booking->fresh()->brief_token, $html);
     }

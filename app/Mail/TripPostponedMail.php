@@ -25,8 +25,8 @@ class TripPostponedMail extends QueuedMail
 
         return new Envelope(
             subject: $this->booking->isUnderfilledPostponement()
-                ? "รอบเดินทาง {$title} ไม่ได้ออก — เลือกรอบใหม่หรือรับเงินคืนเต็มจำนวน #{$this->booking->booking_ref}"
-                : "รอบเดินทาง {$title} ต้องเลื่อน — เลือกรอบใหม่ได้เลยครับ #{$this->booking->booking_ref}",
+                ? "แจ้งงดการเดินทางรอบ {$title} — เลือกรอบใหม่หรือรับเงินคืนเต็มจำนวน #{$this->booking->booking_ref}"
+                : "แจ้งเลื่อนรอบเดินทาง {$title} — กรุณาเลือกรอบใหม่ #{$this->booking->booking_ref}",
         );
     }
 

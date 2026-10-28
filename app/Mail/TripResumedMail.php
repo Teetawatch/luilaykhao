@@ -22,7 +22,7 @@ class TripResumedMail extends QueuedMail
         $title = $this->booking->schedule->trip->title ?? 'ทริป';
 
         return new Envelope(
-            subject: "แก้ไข: ทริป {$title} เดินทางตามกำหนดเดิมครับ #{$this->booking->booking_ref}",
+            subject: "แก้ไขข้อมูล: ทริป {$title} เดินทางตามกำหนดเดิม #{$this->booking->booking_ref}",
         );
     }
 

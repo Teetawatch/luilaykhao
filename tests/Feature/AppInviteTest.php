@@ -128,8 +128,8 @@ class AppInviteTest extends TestCase
         $without = (new BookingCreatedMail($this->booking($this->customer(withApp: false))))->render();
         $with = (new BookingCreatedMail($this->booking($this->customer(withApp: true))))->render();
 
-        $this->assertStringContainsString('เพื่อนร่วมทริปรอบนี้คุยกันอยู่ในแอป', $without);
-        $this->assertStringNotContainsString('เพื่อนร่วมทริปรอบนี้คุยกันอยู่ในแอป', $with);
+        $this->assertStringContainsString('ห้องแชทของรอบเดินทางในแอปลุยเลเขา', $without);
+        $this->assertStringNotContainsString('ห้องแชทของรอบเดินทางในแอปลุยเลเขา', $with);
     }
 
     public function test_the_trip_brief_email_invites_only_customers_without_the_app(): void
@@ -137,8 +137,8 @@ class AppInviteTest extends TestCase
         $without = (new TripBriefMail($this->booking($this->customer(withApp: false))))->render();
         $with = (new TripBriefMail($this->booking($this->customer(withApp: true))))->render();
 
-        $this->assertStringContainsString('มีอะไรอยู่ในแอปอีก', $without);
-        $this->assertStringNotContainsString('มีอะไรอยู่ในแอปอีก', $with);
+        $this->assertStringContainsString('บริการเพิ่มเติมในแอปลุยเลเขา', $without);
+        $this->assertStringNotContainsString('บริการเพิ่มเติมในแอปลุยเลเขา', $with);
     }
 
     public function test_the_claim_done_page_hands_over_store_links(): void

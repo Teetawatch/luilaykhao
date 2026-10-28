@@ -1,9 +1,8 @@
-<x-emails.partials.base subject="🔒 [Admin] ค้างปิดงบ {{ count($rounds) }} รอบเดินทาง">
+<x-emails.partials.base subject="[Admin] ค้างปิดงบ {{ count($rounds) }} รอบเดินทาง">
 
   {{-- Header --}}
   <div class="email-header hdr-amber">
     <span class="email-brand">Luilaykhao Admin</span>
-    <div class="header-emoji">🔒</div>
     <h1 class="header-title">ค้างปิดงบ {{ count($rounds) }} รอบ</h1>
     <p class="header-subtitle">
       รอบเหล่านี้เดินทางจบไปเกิน {{ $graceDays }} วันแล้ว แต่ยังไม่มีใครปิดงบ
@@ -16,7 +15,7 @@
 
     @if ($blocksNewRounds)
     <div class="alert-box alert-neutral">
-      <p class="alert-title">⛔ เปิดรอบใหม่ของทริปเหล่านี้ไม่ได้</p>
+      <p class="alert-title">เปิดรอบใหม่ของทริปเหล่านี้ไม่ได้</p>
       <p class="alert-text">
         ระบบตั้งค่าให้ทริปที่ค้างปิดงบเปิดรอบใหม่ไม่ได้จนกว่าจะเคลียร์
         ถ้าต้องเปิดขายรอบถัดไป ต้องปิดงบรอบเดิมก่อน
@@ -54,7 +53,7 @@
 
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.url'), '/') }}/admin/finance" class="cta-btn cta-slate">
-        เปิดหน้าบัญชีทริป &rarr;
+        เปิดหน้าบัญชีทริป
       </a>
     </div>
 

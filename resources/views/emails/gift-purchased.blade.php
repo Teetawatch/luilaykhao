@@ -1,11 +1,10 @@
-<x-emails.partials.base subject="🎁 ของขวัญของคุณพร้อมแล้ว {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="ทริปของขวัญของคุณพร้อมส่งต่อแล้ว {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-teal">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">🎁</div>
-    <h1 class="header-title">ของขวัญของคุณพร้อมแล้วครับ</h1>
-    <p class="header-subtitle">ส่งโค้ดหรือลิงก์ด้านล่างให้คนพิเศษได้เลยครับ</p>
+    <h1 class="header-title">ทริปของขวัญพร้อมส่งต่อแล้ว</h1>
+    <p class="header-subtitle">กรุณาส่งโค้ดหรือลิงก์ด้านล่างให้แก่ผู้รับ</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -13,16 +12,16 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? '' }}</strong><br />
-      ขอบคุณที่เลือกมอบการเดินทางเป็นของขวัญนะครับ 🎁
-      ด้านล่างคือโค้ดและลิงก์สำหรับส่งต่อให้คนพิเศษของคุณครับ
+      เรียน คุณ<strong>{{ $booking->user->name ?? '' }}</strong><br />
+      ขอบคุณที่เลือกมอบการเดินทางกับลุยเลเขาเป็นของขวัญครับ
+      ด้านล่างนี้คือโค้ดและลิงก์สำหรับส่งต่อให้แก่ผู้รับครับ
     </div>
 
     {{-- โค้ดของขวัญ --}}
     <div class="highlight-box hl-teal" style="text-align:center;">
-      <div class="amount-label">🎁 โค้ดของขวัญ</div>
+      <div class="amount-label">โค้ดของขวัญ</div>
       <div class="amount">{{ $booking->gift_code }}</div>
-      <div class="amount-note">ให้ผู้รับกรอกโค้ดนี้ในแอปเพื่อรับทริปได้เลยครับ</div>
+      <div class="amount-note">ผู้รับกรอกโค้ดนี้ในแอปเพื่อรับทริป</div>
     </div>
 
     <p class="section-label">รายละเอียดของขวัญ</p>
@@ -52,10 +51,10 @@
 
     @if(! $booking->isFullyPaid())
     <div class="alert-box alert-amber">
-      <p class="alert-title">⏳ รออีกนิดเดียวครับ</p>
+      <p class="alert-title">กรุณาชำระเงินให้ครบก่อนส่งโค้ด</p>
       <p class="alert-text">
-        ผู้รับจะกดรับของขวัญได้เมื่อชำระเงินครบแล้วนะครับ
-        แนะนำให้ชำระให้เรียบร้อยก่อนส่งโค้ดไปให้ จะได้เซอร์ไพรส์แบบไม่มีสะดุดครับ
+        ผู้รับจะสามารถกดรับของขวัญได้เมื่อการจองนี้ชำระเงินครบถ้วนแล้วเท่านั้น
+        จึงแนะนำให้ชำระให้เรียบร้อยก่อนส่งโค้ดให้ผู้รับครับ
       </p>
     </div>
     @endif
@@ -63,32 +62,24 @@
     @if($giftUrl)
     <div class="cta-wrap">
       <a href="{{ $giftUrl }}" class="cta-btn cta-teal">
-        🎉 เปิดหน้าของขวัญเพื่อส่งต่อ &rarr;
+        เปิดหน้าของขวัญเพื่อส่งต่อ
       </a>
     </div>
     @endif
 
     <div class="alert-box alert-neutral">
-      <p class="alert-title">🎀 วิธีมอบของขวัญ ง่าย ๆ 3 ขั้นตอนครับ</p>
+      <p class="alert-title">ขั้นตอนการมอบของขวัญ</p>
       <p class="alert-text">
         1.&nbsp;ส่งลิงก์ด้านบน (หรือโค้ด <strong class="t-teal">{{ $booking->gift_code }}</strong>) ให้ผู้รับ<br />
-        2.&nbsp;ผู้รับเปิดแอป "ลุยเลเขา" แล้วเข้าที่ โปรไฟล์ → ของขวัญ<br />
-        3.&nbsp;กรอกโค้ดเพื่อรับทริป — ข้อมูลผู้เดินทางจะถูกเติมจากโปรไฟล์ของผู้รับให้อัตโนมัติ
+        2.&nbsp;ผู้รับเปิดแอป "ลุยเลเขา" แล้วไปที่ โปรไฟล์ &rsaquo; ของขวัญ<br />
+        3.&nbsp;กรอกโค้ดเพื่อรับทริป ระบบจะกรอกข้อมูลผู้เดินทางจากโปรไฟล์ของผู้รับให้โดยอัตโนมัติ
       </p>
     </div>
 
+    <x-emails.partials.signoff />
+
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong class="t-muted">062-612-6006</strong> (08:00&ndash;20:00)<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

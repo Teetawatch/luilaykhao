@@ -20,7 +20,7 @@ class EmailVerificationMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ยืนยันอีเมลของคุณกับลุยเลเขา ✉️',
+            subject: 'ยืนยันอีเมลของคุณ - Luilaykhao',
         );
     }
 

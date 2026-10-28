@@ -23,7 +23,7 @@ class CharterQuoteMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ใบเสนอราคาเหมาทริป '.$this->charter->ref.' มาแล้วครับ 📝 - Luilaykhao',
+            subject: 'ใบเสนอราคาเหมาทริป '.$this->charter->ref.' - Luilaykhao',
         );
     }
 

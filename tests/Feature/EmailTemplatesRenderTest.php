@@ -197,23 +197,23 @@ class EmailTemplatesRenderTest extends TestCase
     }
 
     #[DataProvider('mailables')]
-    public function test_template_renders_on_the_dark_theme(callable $make): void
+    public function test_template_renders_on_the_light_letterhead(callable $make): void
     {
-        $html = $make($this)->render();
+        $mailable = $make($this);
+        $html = $mailable->render();
 
-        // The dark shell must survive: page background, card background, rounded wrapper.
-        $this->assertStringContainsString('#0a0a0a', $html);
-        $this->assertStringContainsString('background: #141414', $html);
-        $this->assertStringContainsString('border-radius: 18px', $html);
+        // The light shell must survive: page background, white card, shared footer.
+        $this->assertStringContainsString('background-color: #f3f4f6', $html);
+        $this->assertStringContainsString('background: #ffffff', $html);
+        $this->assertStringContainsString('class="email-footer"', $html);
 
-        // No template may reintroduce a light panel via an inline style.
-        foreach (['#ffffff', '#f8fafc', '#f0fdf4', '#fffbeb', '#eff6ff', '#fef2f2', '#f6f8fa'] as $lightHex) {
-            $this->assertStringNotContainsString(
-                'style="background:'.$lightHex,
-                $html,
-                "A light panel ({$lightHex}) leaked back into the dark theme."
-            );
-        }
+        // Colours live in the base component's classes only — never inline.
+        $this->assertDoesNotMatchRegularExpression('/style="[^"]*#[0-9a-fA-F]{3,6}/', $html);
+
+        // Formal look: no emoji in the body or the subject line.
+        $emoji = '/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{2300}-\x{23FF}\x{FE0F}]/u';
+        $this->assertDoesNotMatchRegularExpression($emoji, $html, 'An emoji leaked into the email body.');
+        $this->assertDoesNotMatchRegularExpression($emoji, $mailable->envelope()->subject, 'An emoji leaked into the subject.');
 
         // Blade variables must all resolve — an unset one would print as literal syntax.
         $this->assertStringNotContainsString('{{', $html);

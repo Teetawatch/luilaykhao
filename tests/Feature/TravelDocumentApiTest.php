@@ -414,7 +414,7 @@ class TravelDocumentApiTest extends TestCase
 
         $html = (new PassportExpiringMail($booking, $booking->passportUrl(), 21))->render();
 
-        $this->assertStringContainsString('พาสปอร์ตใกล้หมดอายุ', $html);
+        $this->assertStringContainsString('หนังสือเดินทางใกล้หมดอายุ', $html);
         $this->assertStringContainsString('สมชาย ใจดี', $html);
         $this->assertStringContainsString('21 วัน', $html);
         // วันหมดอายุที่เร็วที่สุดที่ยังรับได้ ต้องบอกเป็นวันจริง ไม่ใช่ "6 เดือน" ลอย ๆ

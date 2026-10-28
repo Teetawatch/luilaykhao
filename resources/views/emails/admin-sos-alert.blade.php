@@ -13,7 +13,6 @@
   {{-- Header --}}
   <div class="email-header hdr-red">
     <span class="email-brand">Luilaykhao Admin</span>
-    <div class="header-emoji">🆘</div>
     <h1 class="header-title">มีสัญญาณ SOS เข้ามา</h1>
     <p class="header-subtitle">ต้องมีคนรับเรื่องทันที</p>
     <div class="ref-badge">เคส #{{ $alert->id }}</div>
@@ -29,7 +28,7 @@
 
     @if($alert->message)
       <div class="highlight-box hl-red">
-        <div class="amount-label">💬 ข้อความจากผู้แจ้ง</div>
+        <div class="amount-label">ข้อความจากผู้แจ้ง</div>
         <div class="amount-note">{{ $alert->message }}</div>
       </div>
     @endif
@@ -101,5 +100,7 @@
     </div>
 
   </div>
+
+  <x-emails.partials.footer label="เคส SOS" :value="'#'.$alert->id" :internal="true" />
 
 </x-emails.partials.base>

@@ -1,9 +1,8 @@
-<x-emails.partials.base subject="🆕 [Admin] การจองใหม่ — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="[Admin] การจองใหม่ {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header hdr-slate">
     <span class="email-brand">Luilaykhao Admin</span>
-    <div class="header-emoji">🆕</div>
     <h1 class="header-title">การจองใหม่เข้ามา</h1>
     <p class="header-subtitle">มีการจองใหม่จากระบบที่ต้องดำเนินการ</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -19,9 +18,9 @@
     </div>
 
     <div class="highlight-box hl-slate">
-      <div class="amount-label">💰 ยอดรวมการจอง</div>
+      <div class="amount-label">ยอดรวมการจอง</div>
       <div class="amount">฿{{ number_format($booking->total_amount, 0) }}</div>
-      <div class="amount-note">สถานะ: ⏳ รอชำระเงิน</div>
+      <div class="amount-note">สถานะ: รอชำระเงิน</div>
     </div>
 
     <p class="section-label">รายละเอียดทริป</p>
@@ -127,7 +126,7 @@
 
     @if($booking->group_notes)
     <div class="alert-box alert-neutral">
-      <p class="alert-title">📝 หมายเหตุจากลูกค้า</p>
+      <p class="alert-title">หมายเหตุจากลูกค้า</p>
       <p class="alert-text">{{ $booking->group_notes }}</p>
     </div>
     @endif
@@ -135,21 +134,12 @@
     <div class="cta-wrap">
       <a href="{{ rtrim(config('app.url'), '/') }}/admin/bookings/{{ $booking->booking_ref }}"
          class="cta-btn cta-slate">
-        ดูรายละเอียดใน Admin &rarr;
+        ดูรายละเอียดใน Admin
       </a>
     </div>
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao Admin</div>
-    <div class="footer-tagline">แจ้งเตือนอัตโนมัติจากระบบ</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลนี้ถูกส่งอัตโนมัติเฉพาะ Admin เท่านั้น<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; ระบบจัดการภายใน
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" :internal="true" />
 
 </x-emails.partials.base>

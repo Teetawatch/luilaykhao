@@ -6,8 +6,7 @@
      * ลำดับของบล็อกเรียงตาม "สิ่งที่คนเปิดอ่านตอนตีสี่ต้องเห็นก่อน":
      * เวลา/จุดขึ้นรถ → เบอร์ที่โทรได้ → รถคันไหน → กำหนดการ → ที่เหลือ
      */
-    $emoji       = $isUpdate ? '🔄' : '🧭';
-    $bannerTitle = $isUpdate ? 'ใบเดินทางของคุณมีอัปเดตครับ' : 'ใบเดินทางของคุณพร้อมแล้วครับ';
+    $bannerTitle = $isUpdate ? 'ใบเดินทางฉบับปรับปรุง' : 'ใบเดินทางของคุณ';
     $headerClass = $isUpdate ? 'hdr-amber' : 'hdr-teal';
 
     $when   = $b['when'] ?? [];
@@ -21,12 +20,11 @@
     }
 @endphp
 
-<x-emails.partials.base subject="{{ $emoji }} {{ $bannerTitle }} — {{ $b['booking']['ref'] }}">
+<x-emails.partials.base subject="{{ $bannerTitle }} {{ $b['booking']['ref'] }}">
 
   {{-- Header --}}
   <div class="email-header {{ $headerClass }}">
-    <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">{{ $emoji }}</div>
+    <span class="email-brand">Luilaykhao &middot; {{ $bannerTitle }}</span>
     <h1 class="header-title">{{ $b['trip']['title'] }}</h1>
     <p class="header-subtitle">
       {{ $when['range_label'] ?? $when['date_label'] ?? '' }}
@@ -39,25 +37,25 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $b['booking']['customer_name'] ?? 'นักเดินทาง' }}</strong><br />
+      เรียน คุณ<strong>{{ $b['booking']['customer_name'] ?? 'นักเดินทาง' }}</strong><br />
       @if($isUpdate)
-        มีข้อมูลของรอบนี้เปลี่ยนไปนิดหน่อยครับ เลยส่งใบเดินทางฉบับล่าสุดมาให้ใหม่
-        ใช้ฉบับนี้แทนฉบับก่อนหน้าได้เลยนะครับ
+        ข้อมูลของรอบเดินทางนี้มีการปรับปรุง ทีมงานจึงขอส่งใบเดินทางฉบับล่าสุดมาให้
+        กรุณาใช้ฉบับนี้แทนฉบับก่อนหน้าครับ
       @else
-        ใกล้ถึงวันเดินทางแล้วครับ ทีมงานรวมทุกอย่างที่ต้องรู้ไว้ให้ในอีเมลฉบับนี้แล้ว
-        ทั้งเวลา จุดขึ้นรถ และเบอร์ทีมงานที่โทรหาได้ตลอดช่วงทริป
-        <strong>ไม่ต้องโหลดแอปก็ดูได้ครับ</strong>
+        ใกล้ถึงวันเดินทางแล้วครับ ทีมงานได้รวบรวมข้อมูลที่จำเป็นสำหรับการเดินทางไว้ในอีเมลฉบับนี้
+        ได้แก่ เวลา จุดขึ้นรถ และเบอร์ติดต่อทีมงานตลอดช่วงทริป
+        <strong>โดยไม่จำเป็นต้องติดตั้งแอปครับ</strong>
       @endif
     </div>
 
     {{-- รถออกก่อนวันทริป: ความเข้าใจผิดที่ทำให้ลูกค้าตกรถมากที่สุด --}}
     @if($when['night_before'] ?? false)
       <div class="alert-box alert-amber">
-        <p class="alert-title">⚠️ รถออกก่อนวันทริปนะครับ</p>
+        <p class="alert-title">โปรดทราบ: รถออกเดินทางก่อนวันทริป</p>
         <p class="alert-text">
-          รถออกวันที่ <strong>{{ $when['departs_on_label'] }}</strong> เวลา
+          รถออกเดินทางวันที่ <strong>{{ $when['departs_on_label'] }}</strong> เวลา
           <strong>{{ $when['time_label'] }} น.</strong> ไม่ใช่เช้าวันทริป
-          เตรียมตัวให้ทันตั้งแต่คืนก่อนหน้านะครับ
+          กรุณาเตรียมตัวให้พร้อมตั้งแต่คืนก่อนหน้าครับ
         </p>
       </div>
     @endif
@@ -65,23 +63,23 @@
     {{-- ── จุดขึ้นรถ / จุดนัดพบ ──────────────────────────────── --}}
     @if($meetup)
       <div class="highlight-box hl-teal">
-        <div class="amount-label">✈️ จุดนัดพบ</div>
+        <div class="amount-label">จุดนัดพบ</div>
         @if($pickupTime)<div class="amount">{{ $pickupTime }} น.</div>@endif
         <div class="amount-note">
           <strong>{{ $meetup['point'] ?: 'ทีมงานจะแจ้งจุดนัดพบอีกครั้ง' }}</strong>
           @if($meetup['date_label'])<br />{{ $meetup['date_label'] }}@endif
-          @if($meetup['baggage'])<br />🧳 สัมภาระ: {{ $meetup['baggage'] }}@endif
+          @if($meetup['baggage'])<br />สัมภาระ: {{ $meetup['baggage'] }}@endif
         </div>
       </div>
       @if($meetup['map_url'])
         <div class="cta-wrap">
-          <a href="{{ $meetup['map_url'] }}" class="cta-btn cta-teal">🗺 เปิดแผนที่จุดนัดพบ</a>
+          <a href="{{ $meetup['map_url'] }}" class="cta-btn cta-teal">เปิดแผนที่จุดนัดพบ</a>
         </div>
       @endif
 
     @elseif($first)
       <div class="highlight-box hl-teal">
-        <div class="amount-label">🚐 จุดขึ้นรถของคุณ</div>
+        <div class="amount-label">จุดขึ้นรถของคุณ</div>
         @if($pickupTime)<div class="amount">{{ $pickupTime }} น.</div>@endif
         <div class="amount-note">
           <strong>{{ $first['location'] }}</strong>
@@ -108,24 +106,24 @@
 
       @if($first['map_url'])
         <div class="cta-wrap">
-          <a href="{{ $first['map_url'] }}" class="cta-btn cta-teal">🗺 เปิดแผนที่จุดขึ้นรถ</a>
+          <a href="{{ $first['map_url'] }}" class="cta-btn cta-teal">เปิดแผนที่จุดขึ้นรถ</a>
         </div>
       @endif
 
     @elseif($b['booking']['is_join_trip'] ?? false)
       <div class="alert-box alert-neutral">
-        <p class="alert-title">🥾 จอยทริป</p>
-        <p class="alert-text">รอบนี้คุณจองแบบจอยทริป ไม่มีรถไปรับนะครับ นัดเจอทีมงานที่หน้างานได้เลย</p>
+        <p class="alert-title">จอยทริป</p>
+        <p class="alert-text">การจองนี้เป็นแบบจอยทริป ซึ่งไม่มีบริการรถรับส่ง กรุณาเดินทางไปพบทีมงาน ณ จุดนัดหมายครับ</p>
       </div>
     @endif
 
     {{-- ── เพิ่มลงปฏิทิน ─────────────────────────────────────── --}}
     @if($when['start_date'] ?? null)
       <div class="cta-wrap">
-        <a href="{{ $b['links']['calendar'] }}" class="cta-btn cta-slate">📅 เพิ่มลงปฏิทินในมือถือ</a>
+        <a href="{{ $b['links']['calendar'] }}" class="cta-btn cta-slate">เพิ่มลงปฏิทิน</a>
       </div>
       <p class="body-text" style="text-align:center;margin-top:-8px;">
-        <span class="t-muted">ปฏิทินจะเตือนล่วงหน้าให้เองครับ จะได้ไม่ต้องคอยจำ</span>
+        <span class="t-muted">ปฏิทินในโทรศัพท์จะแจ้งเตือนล่วงหน้าก่อนวันเดินทาง</span>
       </p>
     @endif
 
@@ -137,7 +135,7 @@
       <div class="info-card">
         @foreach(array_slice($b['announcements'], 0, 5) as $ann)
           <div class="info-row">
-            <span class="info-label">{{ $ann['is_pinned'] ? '📌 ' : '' }}{{ $ann['category_label'] }}</span>
+            <span class="info-label">{{ $ann['category_label'] }}@if($ann['is_pinned'])<br /><span class="t-muted">ปักหมุด</span>@endif</span>
             <span class="info-value">
               {{ $ann['title'] }}<br />
               <span class="t-muted" style="font-weight:400;">{{ $ann['body'] }}</span>
@@ -147,14 +145,14 @@
       </div>
       @if(count($b['announcements']) > 5)
         <p class="body-text" style="margin-top:-12px;">
-          <span class="t-muted">ยังมีประกาศอีก {{ count($b['announcements']) - 5 }} ฉบับ อ่านครบได้ในใบเดินทางครับ</span>
+          <span class="t-muted">ยังมีประกาศอีก {{ count($b['announcements']) - 5 }} ฉบับ สามารถอ่านทั้งหมดได้ในใบเดินทางออนไลน์</span>
         </p>
       @endif
     @endif
 
     {{-- ── เบอร์ที่โทรได้ ────────────────────────────────────── --}}
     @if(! empty($b['crew']) || ($b['vehicle']['driver_name'] ?? null))
-      <p class="section-label">ติดต่อได้ที่ใคร</p>
+      <p class="section-label">ผู้ติดต่อระหว่างการเดินทาง</p>
       <div class="info-card">
         @foreach($b['crew'] as $staff)
           <div class="info-row">
@@ -176,7 +174,7 @@
         @endif
       </div>
       <p class="body-text" style="margin-top:-12px;">
-        <span class="t-muted">เบอร์เหล่านี้ใช้ติดต่อเรื่องทริปในช่วงเดินทางนะครับ เรื่องอื่น ๆ ทักทีมงานที่เบอร์กลางได้เลย</span>
+        <span class="t-muted">หมายเลขเหล่านี้สำหรับติดต่อเรื่องทริปในช่วงเดินทางเท่านั้น เรื่องอื่น ๆ กรุณาติดต่อฝ่ายบริการลูกค้าตามช่องทางด้านล่าง</span>
       </p>
     @endif
 
@@ -231,7 +229,7 @@
         @endforeach
       </div>
       <p class="body-text" style="margin-top:-12px;">
-        <span class="t-muted">กำหนดการอาจปรับตามสภาพอากาศและหน้างานนะครับ</span>
+        <span class="t-muted">กำหนดการอาจมีการปรับเปลี่ยนตามสภาพอากาศและสถานการณ์หน้างาน</span>
       </p>
     @endif
 
@@ -250,7 +248,7 @@
       @if($meals['self_count'] > 0 || $meals['note'])
         <p class="body-text" style="margin-top:-12px;">
           <span class="t-muted">
-            @if($meals['self_count'] > 0)เตรียมเงินสำหรับมื้อที่จ่ายเองไว้ด้วยนะครับ ({{ $meals['self_count'] }} มื้อ)@endif
+            @if($meals['self_count'] > 0)กรุณาเตรียมเงินสำหรับมื้อที่ชำระเอง ({{ $meals['self_count'] }} มื้อ)@endif
             @if($meals['self_count'] > 0 && $meals['note'])<br />@endif
             {{ $meals['note'] }}
           </span>
@@ -261,7 +259,7 @@
     {{-- ── เตรียมตัว ─────────────────────────────────────────── --}}
     @if($b['trip']['bring'] || ! empty($b['trip']['preparations']))
       <div class="alert-box alert-teal">
-        <p class="alert-title">🎒 เตรียมตัวก่อนออกเดินทาง</p>
+        <p class="alert-title">การเตรียมตัวก่อนออกเดินทาง</p>
         <p class="alert-text">
           @if($b['trip']['bring'])
             <strong>สิ่งที่ต้องพก:</strong> {{ $b['trip']['bring'] }}<br />
@@ -276,33 +274,33 @@
     {{-- ── ยังขาดข้อมูลอะไรอยู่ ─────────────────────────────── --}}
     @if(! empty($b['todo']))
       <div class="alert-box alert-amber">
-        <p class="alert-title">📝 ยังขาดข้อมูลอยู่นิดหน่อยครับ</p>
+        <p class="alert-title">ข้อมูลที่ยังไม่ครบถ้วน</p>
         <p class="alert-text">
           @foreach($b['todo'] as $item)
             <strong>{{ $item['title'] }}</strong> &middot; {{ $item['detail'] }}
             @if($item['url'])
-              <br /><a href="{{ $item['url'] }}" class="t-teal"><strong>{{ $item['cta'] }} &rarr;</strong></a>
+              <br /><a href="{{ $item['url'] }}" class="t-teal"><strong>{{ $item['cta'] }}</strong></a>
             @endif
             @if(! $loop->last)<br /><br />@endif
           @endforeach
         </p>
       </div>
       <p class="body-text" style="margin-top:-12px;">
-        <span class="t-muted">ลิงก์ในส่วนนี้เป็นของการจองคุณโดยเฉพาะ ถ้าส่งเอกสารทางอื่นไว้แล้วข้ามได้เลยครับ</span>
+        <span class="t-muted">ลิงก์ในส่วนนี้ใช้สำหรับการจองของคุณโดยเฉพาะ หากส่งเอกสารผ่านช่องทางอื่นแล้ว สามารถข้ามส่วนนี้ได้</span>
       </p>
     @endif
 
     {{-- ── ยอดค้างชำระ ──────────────────────────────────────── --}}
     @if(! $b['payment']['is_settled'])
       <div class="highlight-box hl-amber">
-        <div class="amount-label">💳 ยอดที่ยังค้างอยู่</div>
+        <div class="amount-label">ยอดค้างชำระ</div>
         <div class="amount">฿{{ number_format($b['payment']['outstanding'], 0) }}</div>
         <div class="amount-note">
           @if($b['payment']['due_label'])
             กำหนดชำระ <strong>{{ $b['payment']['due_label'] }}</strong>
             @if($b['payment']['is_overdue']) &middot; <strong>เลยกำหนดแล้ว</strong> @endif
           @else
-            ชำระก่อนวันเดินทางนะครับ
+            กรุณาชำระก่อนวันเดินทาง
           @endif
         </div>
       </div>
@@ -314,17 +312,17 @@
     {{-- ── ชวนโหลดแอป (เฉพาะคนที่ยังไม่มี) ──────────────────── --}}
     @if($b['app']['show'])
       <div class="alert-box alert-blue">
-        <p class="alert-title">📱 มีอะไรอยู่ในแอปอีก</p>
+        <p class="alert-title">บริการเพิ่มเติมในแอปลุยเลเขา</p>
         <p class="alert-text">
-          <strong>ห้องแชทของรอบนี้</strong> คุยกับเพื่อนร่วมทริปและทีมงานก่อนออกเดินทาง<br />
-          <strong>QR เช็คอิน</strong> ให้ทีมงานสแกนหน้างาน ไม่ต้องขานชื่อทีละคน<br />
-          <strong>ติดตามรถแบบเรียลไทม์</strong> เห็นว่ารถถึงไหนแล้ววันเดินทาง<br />
+          <strong>ห้องแชทของรอบเดินทาง</strong> ติดต่อผู้ร่วมทริปและทีมงานก่อนออกเดินทาง<br />
+          <strong>QR เช็คอิน</strong> สำหรับให้ทีมงานสแกน ณ จุดขึ้นรถ<br />
+          <strong>ติดตามตำแหน่งรถแบบเรียลไทม์</strong> ในวันเดินทาง<br />
           <span class="t-muted">
-            โหลดได้ที่
+            ดาวน์โหลดได้ที่
             <a href="{{ $b['app']['ios'] }}" class="t-blue"><strong>App Store</strong></a>
             หรือ
             <a href="{{ $b['app']['android'] }}" class="t-blue"><strong>Google Play</strong></a>
-            &middot; ไม่โหลดก็ใช้ใบเดินทางนี้ได้เหมือนเดิมครับ
+            &middot; หากไม่ติดตั้งแอป ยังคงใช้ใบเดินทางนี้ได้ตามปกติ
           </span>
         </p>
       </div>
@@ -336,28 +334,15 @@
     </div>
     <p class="body-text" style="text-align:center;">
       <span class="t-muted">
-        ลิงก์นี้อัปเดตตัวเองเสมอ ถ้าทีมงานเปลี่ยนรถหรือขยับกำหนดการ เปิดลิงก์นี้จะเห็นของใหม่ทันที<br />
-        ส่งต่อให้คนที่บ้านเก็บไว้ได้เลยนะครับ
+        ข้อมูลในลิงก์นี้อัปเดตอัตโนมัติ หากทีมงานเปลี่ยนรถหรือปรับกำหนดการ จะแสดงข้อมูลล่าสุดทันที<br />
+        สามารถส่งต่อให้ครอบครัวเก็บไว้เพื่อติดตามการเดินทางได้
       </span>
     </p>
 
-    <div class="contact-bar">
-      มีอะไรถามได้ตลอดครับ โทร <strong>{{ $b['support']['phone'] }}</strong>
-      @if($b['support']['line_id']) &middot; LINE <strong>{{ $b['support']['line_id'] }}</strong> @endif
-      <br />{{ $b['support']['hours'] }}
-    </div>
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <p class="footer-tagline">ลุยเลเขา &middot; ทริปเดินป่าและทะเลที่ออกเดินทางจริงทุกครั้ง</p>
-    <div class="footer-divider"></div>
-    <p class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งถึงคุณเพราะมีการจอง <strong>{{ $b['booking']['ref'] }}</strong> ที่กำลังจะถึงกำหนดเดินทาง<br />
-      เบอร์ทีมงานในอีเมลนี้ใช้สำหรับติดต่อเรื่องทริปในช่วงเดินทางเท่านั้น
-    </p>
-  </div>
+  <x-emails.partials.footer :value="$b['booking']['ref']" />
 
 </x-emails.partials.base>

@@ -17,19 +17,19 @@
 
 @if($showPermit)
   <div class="alert-box alert-amber">
-    <p class="alert-title">✍️ ทริปนี้ต้องเซ็นแบบฟอร์มอุทยาน</p>
+    <p class="alert-title">ทริปนี้ต้องลงนามในแบบฟอร์มของอุทยาน</p>
     <p class="alert-text">
-      อุทยานให้ผู้เดินทางทุกคนเซ็นแบบฟอร์มก่อนลงทะเบียน เรากรอกข้อมูลที่ให้ไว้ตอนจองลงแบบฟอร์มแล้ว
-      แค่อ่านและเซ็นชื่อบนมือถือครับ
+      อุทยานกำหนดให้ผู้เดินทางทุกท่านลงนามในแบบฟอร์มก่อนลงทะเบียน ทีมงานได้กรอกข้อมูลจากการจองลงในแบบฟอร์มไว้แล้ว
+      คุณเพียงอ่านและลงนามผ่านโทรศัพท์มือถือครับ
       @if($permitDeadline)
-        <strong>กรุณาเซ็นภายใน {{ \App\Support\ThaiDate::full($permitDeadline) }}</strong>
+        <strong>กรุณาลงนามภายใน {{ \App\Support\ThaiDate::full($permitDeadline) }}</strong>
       @endif
       @if($booking->passengers->whereNull('not_going_at')->count() > 1)
-        — เพื่อน ๆ ในการจองนี้เซ็นของตัวเองผ่านลิงก์ในหน้านั้นได้เลยครับ
+        — ผู้เดินทางท่านอื่นในการจองนี้สามารถลงนามของตนเองผ่านลิงก์ในหน้าดังกล่าวได้
       @endif
     </p>
   </div>
   <div class="cta-wrap">
-    <a href="{{ $booking->briefUrl() }}#permit" class="cta-btn cta-amber">✍️ อ่านและเซ็นแบบฟอร์มอุทยาน</a>
+    <a href="{{ $booking->briefUrl() }}#permit" class="cta-btn cta-amber">อ่านและลงนามแบบฟอร์มอุทยาน</a>
   </div>
 @endif

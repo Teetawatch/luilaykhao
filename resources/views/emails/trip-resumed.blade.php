@@ -2,17 +2,14 @@
   $customerName = $booking->user->name ?? $booking->passengers->first()?->name ?? 'ลูกค้า';
   $tripTitle    = $booking->schedule->trip->title ?? 'ทริป';
   $departure    = $booking->schedule?->departureLabelThai() ?? '-';
-  $lineId       = config('app.support_line_id');
-  $phone        = config('company.phone');
 @endphp
 
-<x-emails.partials.base subject="แก้ไข: ทริป {{ $tripTitle }} เดินทางตามกำหนดเดิมครับ">
+<x-emails.partials.base subject="แก้ไขข้อมูล: ทริป {{ $tripTitle }} เดินทางตามกำหนดเดิม">
 
   {{-- Header --}}
   <div class="email-header hdr-green">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">✅</div>
-    <h1 class="header-title">เดินทางตามกำหนดเดิมครับ</h1>
+    <h1 class="header-title">เดินทางตามกำหนดเดิม</h1>
     <p class="header-subtitle">{{ $tripTitle }}</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
@@ -21,9 +18,9 @@
   <div class="email-body">
 
     <div class="greeting">
-      เรียน คุณ <strong>{{ $customerName }}</strong><br />
-      ทีมงานขออภัยในความสับสนครับ ข้อความแจ้งว่ารอบเดินทางต้องเลื่อนที่ส่งถึงคุณก่อนหน้านี้<strong>ส่งผิด</strong>
-      รอบของคุณ<strong class="t-green">เดินทางตามกำหนดเดิม</strong> ไม่ต้องเลือกรอบใหม่ครับ
+      เรียน คุณ<strong>{{ $customerName }}</strong><br />
+      ทีมงานขออภัยในความสับสนครับ ข้อความแจ้งเลื่อนรอบเดินทางที่ส่งถึงคุณก่อนหน้านี้<strong>เป็นการแจ้งที่คลาดเคลื่อน</strong>
+      รอบเดินทางของคุณ<strong class="t-green">ยังคงเดินทางตามกำหนดเดิม</strong> โดยไม่ต้องเลือกรอบใหม่ครับ
     </div>
 
     <div class="info-card">
@@ -48,28 +45,15 @@
       </div>
     </div>
 
-    <p class="body-text">
-      ที่นั่ง จุดรับ และยอดที่ชำระไว้ทั้งหมดยังเหมือนเดิมทุกอย่างครับ
-      ถ้ามีข้อสงสัย ทักหาทีมงานได้เลยนะครับ<br /><br />
-      ด้วยรักและใส่ใจ,<br />
-      <strong>ลุยเลเขา</strong>
+    <p class="body-text" style="margin-bottom:0;">
+      ที่นั่ง จุดรับ และยอดที่ชำระไว้ทั้งหมดยังคงเดิมทุกประการครับ
+      หากมีข้อสงสัย กรุณาติดต่อทีมงานได้ตามช่องทางด้านล่างครับ
     </p>
 
-    <div class="contact-bar">
-      ติดต่อทีมงาน <strong>{{ $phone }}</strong> &middot; LINE <strong>{{ $lineId }}</strong> (08:00&ndash;20:00)
-    </div>
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

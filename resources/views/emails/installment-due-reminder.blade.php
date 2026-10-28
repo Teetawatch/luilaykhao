@@ -1,21 +1,18 @@
 @php
   if ($reminderType === 'overdue') {
-    $emoji       = '💌';
-    $bannerTitle = 'ค่างวดเลยกำหนดมานิดนึงแล้วครับ';
+    $bannerTitle = 'ค่างวดเลยกำหนดชำระ';
     $headerClass = 'hdr-red';
     $boxClass    = 'hl-red';
     $rowAmtClass = 't-red';
     $ctaClass    = 'cta-red';
   } elseif ($reminderType === 'due_today') {
-    $emoji       = '⏰';
-    $bannerTitle = 'วันนี้ครบกำหนดชำระค่างวดนะครับ';
+    $bannerTitle = 'ครบกำหนดชำระค่างวดวันนี้';
     $headerClass = 'hdr-amber';
     $boxClass    = 'hl-amber';
     $rowAmtClass = 't-amber';
     $ctaClass    = 'cta-amber';
   } else {
-    $emoji       = '🔔';
-    $bannerTitle = 'แจ้งเตือนเบา ๆ เรื่องค่างวด';
+    $bannerTitle = 'แจ้งเตือนกำหนดชำระค่างวด';
     $headerClass = 'hdr-blue';
     $boxClass    = 'hl-blue';
     $rowAmtClass = 't-blue';
@@ -28,12 +25,11 @@
   $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp
 
-<x-emails.partials.base subject="{{ $emoji }} {{ $bannerTitle }} งวดที่ {{ $installment->installment_no }} — {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="{{ $bannerTitle }} งวดที่ {{ $installment->installment_no }} {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header {{ $headerClass }}">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">{{ $emoji }}</div>
     <h1 class="header-title">{{ $bannerTitle }}</h1>
     <p class="header-subtitle">งวดที่ {{ $installment->installment_no }} / {{ $booking->installment_count }}</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
@@ -43,18 +39,17 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name ?? 'ลูกค้า' }}</strong><br />
+      เรียน คุณ<strong>{{ $booking->user->name ?? 'ลูกค้า' }}</strong><br />
       @if($reminderType === 'overdue')
-        ค่างวดที่ {{ $installment->installment_no }} ของการจอง <strong>{{ $booking->booking_ref }}</strong>
-        <strong class="t-red">เลยกำหนดมาแล้ว</strong>ครับ ทีมงานยังกันที่นั่งไว้ให้อยู่
-        ถ้าติดขัดอะไร ทักมาคุยกับเราก่อนได้เสมอนะครับ
+        ทีมงานขอแจ้งว่าค่างวดที่ {{ $installment->installment_no }} ของการจอง <strong>{{ $booking->booking_ref }}</strong>
+        <strong class="t-red">เลยกำหนดชำระแล้ว</strong>ครับ ขณะนี้ทีมงานยังคงสำรองที่นั่งไว้ให้คุณ
+        กรุณาชำระโดยเร็วที่สุด หากมีเหตุขัดข้อง สามารถติดต่อทีมงานเพื่อหารือได้ครับ
       @elseif($reminderType === 'due_today')
-        วันนี้ครบกำหนดค่างวดที่ {{ $installment->installment_no }}
-        ของการจอง <strong>{{ $booking->booking_ref }}</strong> พอดีครับ
-        ชำระเรียบร้อยเมื่อไหร่ก็สบายใจได้เลยครับ
+        ทีมงานขอแจ้งว่า วันนี้เป็นวันครบกำหนดชำระค่างวดที่ {{ $installment->installment_no }}
+        ของการจอง <strong>{{ $booking->booking_ref }}</strong> กรุณาชำระภายในวันนี้ครับ
       @else
-        ค่างวดที่ {{ $installment->installment_no }} ของการจอง <strong>{{ $booking->booking_ref }}</strong>
-        จะครบกำหนดในอีก <strong>2 วัน</strong> ส่งมาเตือนกันลืมล่วงหน้านะครับ
+        ทีมงานขอแจ้งเตือนล่วงหน้าว่า ค่างวดที่ {{ $installment->installment_no }} ของการจอง <strong>{{ $booking->booking_ref }}</strong>
+        จะครบกำหนดชำระในอีก <strong>2 วัน</strong> กรุณาชำระภายในวันที่กำหนดครับ
       @endif
     </div>
 
@@ -129,11 +124,11 @@
 
     @if($reminderType === 'overdue')
     <div class="alert-box alert-red">
-      <p class="alert-title">🤝 ถ้ายังไม่สะดวก คุยกับเราได้นะครับ</p>
+      <p class="alert-title">เงื่อนไขกรณีชำระเกินกำหนด</p>
       <p class="alert-text">
-        ตามเงื่อนไข หากเลยกำหนดเกิน 3 วันแล้วยังไม่ได้ชำระ ทาง Luilaykhao
-        จำเป็นต้องขอสงวนสิทธิ์ยกเลิกทริปโดยไม่คืนเงินครับ แต่ก่อนจะถึงตรงนั้น
-        <strong>ทักมาหาทีมงานก่อนได้เลย</strong> เรายินดีขยายเวลาชำระให้ครับ
+        ตามเงื่อนไขการจอง หากพ้นกำหนดเกิน 3 วันแล้วยังไม่ได้รับชำระ ทางบริษัท
+        ขอสงวนสิทธิ์ยกเลิกทริปโดยไม่คืนเงินครับ อย่างไรก็ตาม
+        <strong>หากคุณติดต่อทีมงานเข้ามาก่อน</strong> ทีมงานยินดีพิจารณาขยายเวลาชำระให้ตามความเหมาะสมครับ
       </p>
     </div>
     @endif
@@ -141,28 +136,17 @@
     <div class="cta-wrap">
       <a href="{{ $booking->payUrl() }}"
          class="cta-btn {{ $ctaClass }}">
-        ชำระค่างวดตอนนี้ &rarr;
+        ชำระค่างวด
       </a>
     </div>
     <p class="t-muted" style="text-align:center; font-size:12px; margin-top:8px;">
-      กดปุ่มเพื่อดู QR PromptPay และแนบสลิปได้เลย ไม่ต้องเข้าสู่ระบบครับ
+      กดปุ่มด้านบนเพื่อดู QR PromptPay และแนบสลิปการโอน โดยไม่ต้องเข้าสู่ระบบ
     </p>
 
-    <div class="contact-bar">
-      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
-    </div>
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

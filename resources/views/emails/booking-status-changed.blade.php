@@ -1,28 +1,26 @@
 @php
   $configs = [
-    'confirmed' => ['emoji' => '✅', 'header' => 'hdr-green', 'text' => 't-green', 'box' => 'st-green'],
-    'cancelled' => ['emoji' => '❌', 'header' => 'hdr-red',   'text' => 't-red',   'box' => 'st-red'],
-    'refunded'  => ['emoji' => '💸', 'header' => 'hdr-amber', 'text' => 't-amber', 'box' => 'st-amber'],
-    'pending'   => ['emoji' => '⏳', 'header' => 'hdr-blue',  'text' => 't-blue',  'box' => 'st-blue'],
+    'confirmed' => ['header' => 'hdr-green', 'text' => 't-green', 'box' => 'st-green'],
+    'cancelled' => ['header' => 'hdr-red',   'text' => 't-red',   'box' => 'st-red'],
+    'refunded'  => ['header' => 'hdr-amber', 'text' => 't-amber', 'box' => 'st-amber'],
+    'pending'   => ['header' => 'hdr-blue',  'text' => 't-blue',  'box' => 'st-blue'],
   ];
 
   $cfg         = $configs[$newStatus] ?? $configs['pending'];
   $headerClass = $cfg['header'];
   $accentClass = $cfg['text'];
   $boxClass    = $cfg['box'];
-  $statusEmoji = $cfg['emoji'];
 
   $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
 @endphp
 
-<x-emails.partials.base subject="{{ $statusEmoji }} อัปเดตสถานะการจอง {{ $booking->booking_ref }}">
+<x-emails.partials.base subject="แจ้งการเปลี่ยนแปลงสถานะการจอง {{ $booking->booking_ref }}">
 
   {{-- Header --}}
   <div class="email-header {{ $headerClass }}">
     <span class="email-brand">Luilaykhao</span>
-    <div class="header-emoji">{{ $statusEmoji }}</div>
-    <h1 class="header-title">อัปเดตสถานะการจอง</h1>
-    <p class="header-subtitle">แจ้งให้ทราบว่าการจองของคุณมีการเปลี่ยนแปลงครับ</p>
+    <h1 class="header-title">แจ้งการเปลี่ยนแปลงสถานะการจอง</h1>
+    <p class="header-subtitle">สถานะการจองของคุณได้รับการปรับปรุง</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -30,15 +28,15 @@
   <div class="email-body">
 
     <div class="greeting">
-      สวัสดีคุณ <strong>{{ $booking->user->name }}</strong><br />
-      ขออนุญาตแจ้งว่าสถานะการจองของคุณเปลี่ยนเป็น
-      <strong class="{{ $accentClass }}">{{ $statusLabel }}</strong> แล้วนะครับ
-      หากมีอะไรไม่ตรงกับที่เข้าใจ ทักมาบอกทีมงานได้เลยครับ
+      เรียน คุณ<strong>{{ $booking->user->name }}</strong><br />
+      ทีมงานขอแจ้งให้ทราบว่า สถานะการจองของคุณได้เปลี่ยนเป็น
+      <strong class="{{ $accentClass }}">{{ $statusLabel }}</strong> แล้วครับ
+      หากข้อมูลไม่ตรงกับที่คุณเข้าใจ กรุณาติดต่อทีมงานได้ทันทีครับ
     </div>
 
     <div class="status-box {{ $boxClass }}">
       <div class="status-label-small">สถานะปัจจุบัน</div>
-      <div class="status-value">{{ $statusEmoji }} {{ $statusLabel }}</div>
+      <div class="status-value">{{ $statusLabel }}</div>
     </div>
 
     <p class="section-label">รายละเอียดการจอง</p>
@@ -101,21 +99,10 @@
       @endif
     </div>
 
-    <div class="contact-bar">
-      มีอะไรสงสัย ทักหาทีมงานได้เลยนะครับ <strong>062-612-6006</strong> (08:00&ndash;20:00)
-    </div>
+    <x-emails.partials.signoff />
 
   </div>
 
-  {{-- Footer --}}
-  <div class="email-footer">
-    <div class="footer-logo">Luilaykhao</div>
-    <div class="footer-tagline">หมายเลขการจอง: {{ $booking->booking_ref }}</div>
-    <div class="footer-divider"></div>
-    <div class="footer-disclaimer">
-      อีเมลฉบับนี้ส่งอัตโนมัติ ตอบกลับมาทีมงานอาจไม่เห็นนะครับ<br />
-      &copy; {{ date('Y') }} Luilaykhao &middot; สงวนสิทธิ์ทุกประการ
-    </div>
-  </div>
+  <x-emails.partials.footer :value="$booking->booking_ref" />
 
 </x-emails.partials.base>

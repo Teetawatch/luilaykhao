@@ -20,7 +20,7 @@ class WelcomeRegistrationMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ยินดีต้อนรับสู่ครอบครัวลุยเลเขา 🌿',
+            subject: 'ยินดีต้อนรับสู่ลุยเลเขา',
         );
     }
 
