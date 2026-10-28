@@ -17,6 +17,7 @@
         "laravel/tinker": "^3.0",
         "league/flysystem-aws-s3-v3": "^3.34",
         "mews/purifier": "^3.4",
+        "mpdf/mpdf": "^8.2",
         "predis/predis": "^3.4",
         "sentry/sentry-laravel": "^4.26",
         "socialiteproviders/line": "^4.1",

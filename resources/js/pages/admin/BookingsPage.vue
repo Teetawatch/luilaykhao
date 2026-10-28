@@ -386,6 +386,16 @@
               ก๊อปลิงก์ใบเดินทาง
             </button>
             <button
+              v-if="detailBooking?.permit_form_id"
+              class="btn-secondary compact"
+              :disabled="downloadingPermitForm"
+              title="แบบคำขออนุญาตของอุทยาน คนละชุด กรอกข้อมูลที่มีให้แล้ว — ส่งให้ลูกค้ากรอกช่องที่เหลือ"
+              @click="downloadPermitForm(detailBooking)"
+            >
+              <span class="material-symbols-rounded">description</span>
+              แบบฟอร์มอุทยาน
+            </button>
+            <button
               v-if="detailBooking && canSplitBooking(detailBooking)"
               class="btn-secondary compact"
               @click="openSplitModal(detailBooking)"
@@ -4028,6 +4038,26 @@ async function copyTermsProof(booking) {
     toast.success('คัดลอกหลักฐานแล้ว');
   } catch {
     toast.error('คัดลอกไม่สำเร็จ');
+  }
+}
+
+// แบบฟอร์มขออนุญาตของอุทยาน เฉพาะคนในใบนี้ — ดู /admin/permit-forms
+const downloadingPermitForm = ref(false);
+async function downloadPermitForm(booking) {
+  if (downloadingPermitForm.value) return;
+  downloadingPermitForm.value = true;
+  try {
+    const res = await api.get(`/admin/bookings/${booking.booking_ref}/permit-form`, { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `แบบฟอร์มอุทยาน-${booking.booking_ref}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    toast.error('สร้างแบบฟอร์มไม่สำเร็จ');
+  } finally {
+    downloadingPermitForm.value = false;
   }
 }
 

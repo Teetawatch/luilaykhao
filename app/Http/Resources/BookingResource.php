@@ -135,6 +135,12 @@ class BookingResource extends JsonResource
                 (bool) $request->user()?->hasAnyRole(['admin', 'operator']),
                 $this->hold_note,
             ),
+            // ทริปนี้ต้องยื่นแบบฟอร์มอุทยานไหม — หน้าแอดมินโชว์ปุ่มโหลด PDF ของใบนี้
+            'permit_form_id' => $this->when(
+                (bool) $request->user()?->hasAnyRole(['admin', 'operator'])
+                    && $this->relationLoaded('schedule') && $this->schedule?->relationLoaded('trip'),
+                fn () => $this->schedule?->trip?->permit_form_id,
+            ),
             // พาร์ทเนอร์ที่ขายใบนี้ + สถานะคอม — ทีมงานเท่านั้น ลูกค้าไม่ต้องรู้
             'partner' => $this->when(
                 $this->partner_id && (bool) $request->user()?->hasAnyRole(['admin', 'operator']),

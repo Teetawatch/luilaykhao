@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\AdminPartnerController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
 use App\Http\Controllers\Api\V1\AdminPriceSheetController;
+use App\Http\Controllers\Api\V1\AdminPermitFormController;
 use App\Http\Controllers\Api\V1\AdminRentalController;
 use App\Http\Controllers\Api\V1\AdminSeatHandoverController;
 use App\Http\Controllers\Api\V1\AdminSettingsController;
@@ -997,6 +998,16 @@ Route::prefix('v1')->group(function () {
         Route::get('rentals/schedules', [AdminRentalController::class, 'schedules']);
         Route::get('rentals/schedules/{id}', [AdminRentalController::class, 'show'])->whereNumber('id');
         Route::get('rentals/schedules/{id}/pdf', [AdminRentalController::class, 'pdf'])->whereNumber('id');
+
+        // แบบฟอร์มขออนุญาตของอุทยาน — เติมข้อมูลผู้เดินทางลง PDF ต่อคน
+        Route::get('permit-forms', [AdminPermitFormController::class, 'index']);
+        Route::post('permit-forms', [AdminPermitFormController::class, 'store']);
+        Route::put('permit-forms/{id}', [AdminPermitFormController::class, 'update'])->whereNumber('id');
+        Route::delete('permit-forms/{id}', [AdminPermitFormController::class, 'destroy'])->whereNumber('id');
+        Route::get('permit-forms/{id}/pages/{page}', [AdminPermitFormController::class, 'page'])->whereNumber(['id', 'page']);
+        Route::post('permit-forms/{id}/preview', [AdminPermitFormController::class, 'preview'])->whereNumber('id');
+        Route::get('schedules/{id}/permit-forms', [AdminPermitFormController::class, 'schedule'])->whereNumber('id');
+        Route::get('bookings/{ref}/permit-form', [AdminPermitFormController::class, 'booking']);
 
         // ตั้งค่าระบบทั่วไป (เกณฑ์ที่นั่ง/ช่วงเวลางดรบกวน/ข้อมูลติดต่อ)
         Route::get('settings/site', [AdminSettingsController::class, 'show']);

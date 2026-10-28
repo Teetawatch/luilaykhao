@@ -10,6 +10,7 @@ use App\Support\TripRentalItems;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -38,7 +39,7 @@ class Trip extends Model
         'status', 'cover_image', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
         'highlights', 'is_women_only', 'must_know', 'itinerary', 'preparations', 'faqs', 'rental_items',
         'document_requirements', 'checkin_bring', 'meal_plan',
-        'route_track',
+        'route_track', 'permit_form_id',
     ];
 
     protected function casts(): array
@@ -121,6 +122,12 @@ class Trip extends Model
         $note = trim((string) $this->checkin_bring);
 
         return $note !== '' ? $note : null;
+    }
+
+    /** แบบฟอร์มขออนุญาตของอุทยานที่ต้องกรอกต่อผู้เดินทาง (ถ้าทริปนี้ต้องยื่น) */
+    public function permitForm(): BelongsTo
+    {
+        return $this->belongsTo(PermitForm::class);
     }
 
     public function schedules(): HasMany

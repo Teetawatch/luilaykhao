@@ -347,6 +347,7 @@ const routes = [
       { path: 'hero-slides', name: 'admin-hero-slides', component: () => import('../pages/admin/HeroSlidesPage.vue') },
       { path: 'stickers', name: 'admin-stickers', component: () => import('../pages/admin/StickersPage.vue') },
       { path: 'party-games', name: 'admin-party-games', component: () => import('../pages/admin/PartyGamesPage.vue') },
+      { path: 'permit-forms', name: 'admin-permit-forms', component: () => import('../pages/admin/PermitFormsPage.vue') },
       { path: 'gallery', name: 'admin-gallery', component: () => import('../pages/admin/GalleryPage.vue') },
       { path: 'schedule-photos', name: 'admin-schedule-photos', component: () => import('../pages/admin/SchedulePhotosPage.vue') },
       { path: 'places', name: 'admin-places', component: () => import('../pages/admin/PlacesPage.vue') },

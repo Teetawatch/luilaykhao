@@ -1090,6 +1090,15 @@
             <button v-if="manifestData?.passengers?.length" class="btn-sm btn-secondary" @click="printManifest">
               <span class="material-symbols-rounded">print</span> พิมพ์รายชื่อ
             </button>
+            <button
+              v-if="manifestData?.permit_form"
+              class="btn-sm btn-secondary"
+              :disabled="downloadingPermitForms"
+              :title="`แบบฟอร์ม ${manifestData.permit_form.name} — คนละชุด กรอกข้อมูลที่มีให้แล้ว`"
+              @click="downloadPermitForms"
+            >
+              <span class="material-symbols-rounded">{{ downloadingPermitForms ? 'hourglass_top' : 'description' }}</span> แบบฟอร์มอุทยาน (PDF)
+            </button>
             <button class="modal-close" @click="showManifest = false"><span class="material-symbols-rounded">close</span></button>
           </div>
         </div>
@@ -4290,6 +4299,27 @@ const viewPassengerDetails = (p) => {
 
 const printManifest = () => {
   window.print();
+};
+
+// แบบฟอร์มขออนุญาตของอุทยาน ทั้งรอบ — ดู /admin/permit-forms
+const downloadingPermitForms = ref(false);
+const downloadPermitForms = async () => {
+  const sch = manifestData.value?.schedule;
+  if (!sch || downloadingPermitForms.value) return;
+  downloadingPermitForms.value = true;
+  try {
+    const res = await api.get(`/admin/schedules/${sch.id}/permit-forms`, { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `แบบฟอร์ม-${manifestData.value.permit_form.name}-${sch.departure_date || sch.id}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    toast.error('สร้างแบบฟอร์มไม่สำเร็จ');
+  } finally {
+    downloadingPermitForms.value = false;
+  }
 };
 
 const openManifest = async (sch) => {

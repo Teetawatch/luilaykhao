@@ -116,7 +116,9 @@ class ChatSocialTest extends TestCase
         $this->assertSame(0, app(ChatBirthdayService::class)->notifyStaffDue());
         $this->assertCount(1, $this->pushesTo($staff));
         $this->assertStringContainsString('เอ', $this->pushesTo($staff)[0]['body']);
-        $this->assertStringNotContainsString('30', $this->pushesTo($staff)[0]['body']);
+        // อายุ 30 ห้ามโผล่ — แต่วันเกิดเองอาจเป็นวันที่ 30 ("30 ต.ค.") จึงเช็กคำบอกอายุแทนเลขเปล่า
+        $this->assertStringNotContainsString('30 ปี', $this->pushesTo($staff)[0]['body']);
+        $this->assertStringNotContainsString('อายุ', $this->pushesTo($staff)[0]['body']);
         $this->assertCount(0, $this->pushesTo($owner));
 
         $this->actingAs($owner, 'sanctum')
@@ -139,7 +141,8 @@ class ChatSocialTest extends TestCase
 
         $body = ChatMessage::where('system_key', "birthday:{$p1->id}")->value('body');
         $this->assertStringContainsString('วันเกิดของ เอ', $body);
-        $this->assertStringNotContainsString('30', $body);
+        $this->assertStringNotContainsString('30 ปี', $body);
+        $this->assertStringNotContainsString('อายุ', $body);
     }
 
     public function test_leap_day_birthday_is_celebrated_on_feb_28(): void
