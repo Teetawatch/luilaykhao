@@ -53,7 +53,37 @@ return [
             ?: rtrim((string) env('APP_URL'), '/').'/payment/return',
 
         // ช่องทางที่เปิดรับ เรียงตามที่อยากให้ลูกค้าเห็น
-        'methods' => ['QR_PROMPT_PAY', 'KPLUS', 'SCB_EASY', 'KRUNGSRI_APP', 'BANGKOK_BANK_APP'],
+        // CHECKOUT ไม่ใช่ paymentMethodType ของ Beam — เป็นชื่อของเราเองสำหรับ "ส่งไปหน้า
+        // ชำระเงินของ Beam" (Payment Link) ดูก้อน checkout ข้างล่าง
+        'methods' => ['QR_PROMPT_PAY', 'KPLUS', 'SCB_EASY', 'KRUNGSRI_APP', 'BANGKOK_BANK_APP', 'CHECKOUT'],
+
+        /*
+        | หน้าชำระเงินของ Beam — บัตร / Apple Pay / Google Pay / ผ่อนบัตร / e-Wallet /
+        | โมบายแบงก์กิ้ง ทั้งหมดในปุ่มเดียว
+        |
+        | ทำไมไม่ยิง Charges API ทีละช่องทางเหมือน QR: บัตรผ่าน API ต้องให้ลูกค้ากรอกเลขบัตร
+        | ในฟอร์มของเรา (ขอบเขต PCI DSS + ต้องทำฟอร์มเองทั้งเว็บและแอป) และ Apple Pay /
+        | Google Pay ไม่มีใน Charges API เลย มีแค่บนหน้าของ Beam ส่วน e-Wallet ก็จะต้องมี
+        | ปุ่มแยกอีกห้าปุ่ม หน้าเดียวของ Beam ครอบได้หมดและโชว์เฉพาะที่ใช้ได้บนเครื่องนั้น
+        |
+        | groups คือ linkSettings ของ Beam — ส่งไปแล้ว ค่าตั้งต้นใน Lighthouse จะไม่ถูกใช้
+        | กับลิงก์นั้นอีก กลุ่มที่ปิดที่นี่จึงหายจากหน้าจริงๆ แต่กลุ่มที่เปิดที่นี่จะขึ้นได้ก็
+        | ต่อเมื่อบัญชี merchant เปิดช่องทางนั้นไว้แล้วด้วย
+        */
+        'checkout' => [
+            // เผื่อเวลากรอกบัตร + 3DS นานกว่าสแกน QR — ยังถูกตัดด้วยเวลาคืนที่นั่งเสมอ
+            'ttl_minutes' => (int) (env('BEAM_CHECKOUT_TTL_MINUTES') ?: 30),
+            'groups' => [
+                'card' => (bool) env('BEAM_CHECKOUT_CARD', true),
+                'cardInstallments' => (bool) env('BEAM_CHECKOUT_CARD_INSTALLMENTS', true),
+                'eWallets' => (bool) env('BEAM_CHECKOUT_E_WALLETS', true),
+                'mobileBanking' => (bool) env('BEAM_CHECKOUT_MOBILE_BANKING', true),
+                'qrPromptPay' => (bool) env('BEAM_CHECKOUT_QR_PROMPT_PAY', true),
+                'buyNowPayLater' => (bool) env('BEAM_CHECKOUT_BUY_NOW_PAY_LATER', false),
+            ],
+            // งวดผ่อนบัตรที่เปิด — Beam รองรับ 3, 4, 6, 10 เดือน
+            'installment_months' => [3, 4, 6, 10],
+        ],
     ],
 
     /*

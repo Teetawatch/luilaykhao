@@ -117,6 +117,89 @@ class BeamPublicPagesTest extends TestCase
         ]);
     }
 
+    public function test_balance_link_offers_the_beam_checkout_page_for_the_same_bill(): void
+    {
+        Http::fake([
+            '*/api/v1/charges' => Http::response([
+                'chargeId' => 'ch_public_qr',
+                'actionRequired' => 'ENCODED_IMAGE',
+                'encodedImage' => ['imageBase64Encoded' => 'iVBORw0KGgo=', 'expiry' => now()->addMinutes(15)->toIso8601ZuluString()],
+            ], 200),
+            '*/api/v1/payment-links' => Http::response([
+                'id' => 'pl_public_1',
+                'url' => 'https://playground-pay.beamcheckout.com/merchant_test/pl_public_1',
+            ], 200),
+        ]);
+        $booking = $this->confirmedBooking([
+            'payment_type' => 'deposit',
+            'deposit_amount' => 2000,
+            'balance_amount' => 3000,
+            'balance_due_at' => now()->addMonth(),
+        ]);
+
+        $page = $this->get('/pay/'.$booking->payment_token)
+            ->assertOk()
+            ->assertSee('จ่ายด้วยบัตร')
+            ->assertSee('Apple Pay');
+
+        preg_match('/id="beam-checkout"\s+href="([^"]+)"/', $page->getContent(), $m);
+        $this->assertNotEmpty($m[1] ?? null);
+        $checkoutUrl = html_entity_decode($m[1]);
+
+        $this->from('/pay/'.$booking->payment_token)
+            ->get($checkoutUrl)
+            ->assertRedirect('https://playground-pay.beamcheckout.com/merchant_test/pl_public_1');
+
+        $checkout = Payment::where('payment_method_type', Payment::METHOD_CHECKOUT)->firstOrFail();
+        $this->assertSame(Payment::PURPOSE_BALANCE, $checkout->purpose);
+        $this->assertEquals(3000.0, (float) $checkout->amount);
+
+        // ยกเลิกบนหน้าของ Beam แล้วต้องกลับมาหน้าลิงก์เดิม ไม่ใช่หน้าที่ต้องล็อกอิน
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/api/v1/payment-links')
+            && str_contains($request['cancelUrl'], 'back='.rawurlencode(url('/pay/'.$booking->payment_token))));
+    }
+
+    public function test_the_checkout_link_must_be_signed(): void
+    {
+        $this->fakeBeamOk();
+        $booking = $this->confirmedBooking([
+            'payment_type' => 'deposit',
+            'deposit_amount' => 2000,
+            'balance_amount' => 3000,
+            'balance_due_at' => now()->addMonth(),
+        ]);
+        $this->get('/pay/'.$booking->payment_token)->assertOk();
+        $qr = Payment::firstOrFail();
+
+        // id ของ payments เรียงต่อกัน — เดาเลขแล้วเปิดบิลของคนอื่นต้องไม่ได้
+        $this->get('/payment/checkout/'.$qr->id)->assertForbidden();
+        $this->assertSame(0, Payment::where('payment_method_type', Payment::METHOD_CHECKOUT)->count());
+    }
+
+    public function test_the_return_page_only_links_back_to_our_own_site(): void
+    {
+        $booking = $this->confirmedBooking();
+        $payment = Payment::create([
+            'booking_id' => $booking->id,
+            'purpose' => Payment::PURPOSE_BALANCE,
+            'provider' => 'beam',
+            'reference_id' => $booking->booking_ref.'-9',
+            'amount' => 3000,
+            'status' => Payment::STATUS_PENDING,
+            'payment_method_type' => Payment::METHOD_CHECKOUT,
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->get('/payment/return?payment='.$payment->id.'&cancelled=1&back='.rawurlencode('https://evil.example/phish'))
+            ->assertOk()
+            ->assertDontSee('evil.example');
+
+        $ours = url('/pay/'.$booking->payment_token);
+        $this->get('/payment/return?payment='.$payment->id.'&cancelled=1&back='.rawurlencode($ours))
+            ->assertOk()
+            ->assertSee($ours, false);
+    }
+
     public function test_refreshing_the_link_reuses_the_same_charge(): void
     {
         $this->fakeBeamOk();

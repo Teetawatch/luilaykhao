@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Callback จาก Beam — "charge ใบนี้จ่ายแล้ว/ล้มเหลวแล้ว"
+ * Callback จาก Beam — "charge ใบนี้จ่ายแล้ว/ล้มเหลวแล้ว" และ "หน้าชำระเงินใบนี้ถูกจ่ายแล้ว"
  *
  * ไม่มี Sanctum เพราะเกตเวย์เซ็นด้วย token ของเราไม่ได้ ความปลอดภัยจึงอยู่ที่ลายเซ็น
  * HMAC ทั้งหมด: Beam ส่ง base64(HMAC-SHA256(key, raw body)) มาใน X-Beam-Signature
@@ -45,34 +45,72 @@ class BeamWebhookController extends Controller
 
         $event = (string) $request->header('X-Beam-Event', '');
         $payload = $request->all();
-        $referenceId = $payload['referenceId'] ?? null;
+
+        // payment_link.* ส่งตัวลิงก์มา (referenceId อยู่ใน order) ส่วน charge.* ส่ง charge
+        $referenceId = $event === 'payment_link.paid'
+            ? data_get($payload, 'order.referenceId')
+            : ($payload['referenceId'] ?? null);
 
         Log::info('Beam webhook accepted', [
             'event' => $event,
             'reference_id' => $referenceId,
             'charge_id' => $payload['chargeId'] ?? null,
+            'payment_link_id' => $payload['paymentLinkId'] ?? null,
         ]);
 
-        if (! in_array($event, ['charge.succeeded', 'charge.failed'], true)) {
+        if (! in_array($event, ['charge.succeeded', 'charge.failed', 'payment_link.paid'], true)) {
             // refund.* / transaction.* ยังไม่มีคนรับ — รับทราบไว้ก่อน ไม่ให้ Beam retry
             return $this->success(null, 'Acknowledged');
         }
 
-        $payment = Payment::where('reference_id', $referenceId)->first();
+        $payment = $this->findPayment($event, $payload, $referenceId);
 
         if (! $payment) {
-            Log::warning('Beam webhook references an unknown payment', ['reference_id' => $referenceId]);
+            Log::warning('Beam webhook references an unknown payment', [
+                'reference_id' => $referenceId,
+                'source_id' => $payload['sourceId'] ?? null,
+            ]);
 
             return $this->success(null, 'Acknowledged');
         }
 
-        if ($event === 'charge.succeeded') {
-            $beamPayments->settle($payment, $payload);
-        } else {
+        if ($event === 'charge.failed') {
             $beamPayments->markFailed($payment, $payload);
+        } else {
+            // charge.succeeded หรือ payment_link.paid — มาถึงทั้งคู่ก็ settle ครั้งเดียว
+            $beamPayments->settle($payment, $payload);
         }
 
         return $this->success(null, 'Processed');
+    }
+
+    /**
+     * หาแถวที่ webhook นี้พูดถึง
+     *
+     * ใบที่ออกเป็นหน้าชำระเงิน (Payment Link) — charge ที่ Beam สร้างให้บนหน้านั้นอาจไม่ได้
+     * พก referenceId ของเรามา จึงหาด้วย sourceId (= id ของลิงก์) เป็นทางสำรอง
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function findPayment(string $event, array $payload, mixed $referenceId): ?Payment
+    {
+        if (is_string($referenceId) && $referenceId !== '') {
+            $payment = Payment::where('reference_id', $referenceId)->first();
+
+            if ($payment) {
+                return $payment;
+            }
+        }
+
+        $linkId = $event === 'payment_link.paid'
+            ? ($payload['paymentLinkId'] ?? null)
+            : (strtoupper((string) ($payload['source'] ?? '')) === 'PAYMENT_LINK' ? ($payload['sourceId'] ?? null) : null);
+
+        if (! is_string($linkId) || $linkId === '') {
+            return null;
+        }
+
+        return Payment::where('provider_link_id', $linkId)->first();
     }
 
     /**

@@ -41,6 +41,13 @@ class Payment extends Model
     /** ยอดเพิ่มเติมบนใบที่ยืนยันแล้ว — ดู Booking::extraDueAmount(). */
     public const PURPOSE_EXTRA = 'extra';
 
+    /**
+     * ชื่อของเราเองสำหรับ "ส่งลูกค้าไปหน้าชำระเงินของ Beam" (Payment Link) — ลูกค้า
+     * เลือกบัตร / ผ่อน / e-Wallet / Apple Pay / Google Pay บนหน้านั้นเอง
+     * ไม่ใช่ค่าที่ส่งเป็น paymentMethodType ให้ Beam
+     */
+    public const METHOD_CHECKOUT = 'CHECKOUT';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_SUCCEEDED = 'succeeded';
@@ -50,7 +57,7 @@ class Payment extends Model
     public const STATUS_EXPIRED = 'expired';
 
     protected $fillable = [
-        'booking_id', 'purpose', 'purpose_id', 'provider', 'provider_charge_id',
+        'booking_id', 'purpose', 'purpose_id', 'provider', 'provider_charge_id', 'provider_link_id',
         'reference_id', 'amount', 'currency', 'status', 'payment_method_type',
         'user_id', 'expires_at', 'succeeded_at', 'failure_code',
         'raw_response', 'raw_webhook',
@@ -80,6 +87,12 @@ class Payment extends Model
     public function isSettled(): bool
     {
         return $this->status === self::STATUS_SUCCEEDED;
+    }
+
+    /** ใบที่ส่งลูกค้าไปหน้าชำระเงินของ Beam (ไม่ใช่ charge ที่เราออกเอง). */
+    public function isCheckout(): bool
+    {
+        return $this->payment_method_type === self::METHOD_CHECKOUT;
     }
 
     public function isExpired(): bool

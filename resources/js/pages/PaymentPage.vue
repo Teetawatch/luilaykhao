@@ -446,7 +446,7 @@
             เลือกช่องทางชำระเงิน
           </h2>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+          <div class="grid grid-cols-1 gap-4 mb-10" :class="checkoutAvailable ? 'sm:grid-cols-3' : 'sm:grid-cols-2'">
             <button @click="paymentMethod = 'promptpay'"
               class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full"
               :class="paymentMethod === 'promptpay'
@@ -472,6 +472,21 @@
               <div class="text-center">
                 <p class="font-black text-gray-900 tracking-tight">{{ useBeam ? 'เปิดแอปธนาคาร' : 'โอนผ่านบัญชีธนาคาร' }}</p>
                 <p class="text-[11px] text-gray-500 font-medium tracking-tight">{{ useBeam ? 'เด้งเข้าแอปธนาคารของคุณโดยตรง' : 'แนบสลิปผ่านทางหน้านี้' }}</p>
+              </div>
+            </button>
+
+            <!-- หน้าชำระเงินของ Beam — บัตร / Apple Pay / Google Pay / ผ่อน / e-Wallet -->
+            <button v-if="checkoutAvailable" @click="paymentMethod = 'card'"
+              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full"
+              :class="paymentMethod === 'card'
+                ? 'border-teal-600 bg-teal-50/30'
+                : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
+              <div class="bg-white p-4 rounded-2xl border border-gray-100 group-hover:scale-105 transition-transform h-20 flex items-center justify-center">
+                <span class="material-symbols-rounded text-teal-600 text-[40px]">credit_card</span>
+              </div>
+              <div class="text-center">
+                <p class="font-black text-gray-900 tracking-tight">บัตร · ผ่อน · e-Wallet</p>
+                <p class="text-[11px] text-gray-500 font-medium tracking-tight">Apple Pay · Google Pay · TrueMoney</p>
               </div>
             </button>
           </div>
@@ -600,6 +615,42 @@
                 <span class="material-symbols-rounded text-teal-600 text-sm" style="font-variation-settings:'FILL' 1">verified_user</span>
                 <p class="text-[11px] text-gray-500 font-bold">e-Wallet: <span class="text-gray-900">004-99923936-2071</span></p>
              </div>
+          </div>
+
+          <!--
+            ไปจ่ายบนหน้าของ Beam แล้วกลับมาที่ /payment/return — ช่องทางที่ขึ้นจริงขึ้นกับ
+            เครื่อง (Apple Pay เฉพาะ Safari, Google Pay เฉพาะ Chrome/Android)
+          -->
+          <div v-else-if="useBeam && paymentMethod === 'card'" class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100">
+            <p class="text-sm font-black text-teal-900 flex items-center gap-2">
+              <span class="material-symbols-rounded text-teal-600 text-[20px]">credit_card</span>
+              จ่ายด้วยบัตร ผ่อนบัตร หรือ e-Wallet
+            </p>
+            <p class="text-xs text-teal-800/80 font-medium leading-relaxed">
+              ระบบจะพาไปหน้าชำระเงินที่ปลอดภัยของ Beam พร้อมยอด ฿{{ currentPayAmount.toLocaleString() }} เลือกช่องทางที่สะดวกได้เลย จ่ายเสร็จแล้วที่นั่งจะถูกยืนยันให้อัตโนมัติ
+            </p>
+
+            <div class="flex flex-wrap gap-2">
+              <span v-for="brand in CHECKOUT_BRANDS" :key="brand"
+                class="px-3 py-1.5 rounded-full bg-white border border-teal-100/60 text-[11px] font-bold text-gray-700">
+                {{ brand }}
+              </span>
+            </div>
+
+            <button @click="createBeamCharge('CHECKOUT')"
+              :disabled="beamLoading"
+              class="w-full py-4 rounded-2xl bg-teal-600 text-white font-black text-sm flex items-center justify-center gap-2 hover:bg-teal-700 active:scale-95 transition-all disabled:opacity-60">
+              <div v-if="beamLoading" class="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+              <template v-else>
+                <span>ไปหน้าชำระเงิน ฿{{ currentPayAmount.toLocaleString() }}</span>
+                <span class="material-symbols-rounded text-lg">arrow_forward</span>
+              </template>
+            </button>
+
+            <p class="text-[11px] text-gray-500 font-medium leading-relaxed">
+              ผ่อนชำระได้กับบัตรเครดิตที่ร่วมรายการ ช่องทางและจำนวนงวดที่ใช้ได้จะแสดงบนหน้าชำระเงิน
+            </p>
+            <p v-if="beamError" class="text-xs font-bold text-red-600">{{ beamError }}</p>
           </div>
 
           <!-- โหมดเกตเวย์: เด้งเข้าแอปธนาคารโดยตรง ไม่ต้องจดเลขบัญชีหรือแนบสลิป -->
@@ -938,7 +989,7 @@
                 <div v-else class="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse mt-1.5 shrink-0"></div>
                 <div class="space-y-1">
                   <p class="text-sm font-black text-teal-900">
-                    {{ beamSettling ? 'กำลังตรวจสอบการชำระเงิน' : 'สแกน QR แล้วรอสักครู่' }}
+                    {{ beamSettling ? 'กำลังตรวจสอบการชำระเงิน' : paymentMethod === 'card' ? 'จ่ายบนหน้าชำระเงินของ Beam' : 'สแกน QR แล้วรอสักครู่' }}
                   </p>
                   <p class="text-xs text-teal-800/80 font-medium leading-relaxed">
                     {{ beamSettling
@@ -1235,6 +1286,10 @@ const ALL_BANK_APPS = [
 const bankApps = computed(() =>
   ALL_BANK_APPS.filter((app) => gateway.value.methods?.includes(app.type))
 );
+
+// หน้าชำระเงินของ Beam — ชื่อแบรนด์เป็นตัวอักษร ไม่ใช่โลโก้ (เหมือนในแอป)
+const checkoutAvailable = computed(() => useBeam.value && gateway.value.methods?.includes('CHECKOUT'));
+const CHECKOUT_BRANDS = ['Visa', 'Mastercard', 'Apple Pay', 'Google Pay', 'ผ่อนบัตร', 'TrueMoney', 'LINE Pay', 'ShopeePay', 'Alipay', 'แอปธนาคาร'];
 
 // เงินเข้าแล้ว: ปลดนาฬิกาถอยหลังของที่นั่งก่อน ไม่งั้น handlePaymentExpiry จะยิง
 // ยกเลิกการจองที่เพิ่งจ่ายไปหมาดๆ

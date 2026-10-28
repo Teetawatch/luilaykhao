@@ -146,11 +146,15 @@ class BeamPaymentController extends Controller
             'amount' => (float) $payment->amount,
             'currency' => $payment->currency,
             'payment_method_type' => $payment->payment_method_type,
-            'action_required' => $raw['actionRequired'] ?? null,
+            // หน้าชำระเงินของ Beam (บัตร/ผ่อน/e-Wallet/Apple Pay/Google Pay) ตอบแค่ url —
+            // ให้ client เห็นเป็น REDIRECT แบบเดียวกับแอปธนาคาร จะได้มีทางเดินทางเดียว
+            'action_required' => $payment->isCheckout() ? 'REDIRECT' : ($raw['actionRequired'] ?? null),
             // PNG ของ QR — client แสดงตรงๆ ได้เลย ไม่ต้องประกอบ payload เอง
             'qr_image_base64' => data_get($raw, 'encodedImage.imageBase64Encoded'),
             'qr_raw_data' => data_get($raw, 'encodedImage.rawData'),
-            'redirect_url' => data_get($raw, 'redirect.redirectUrl'),
+            'redirect_url' => $payment->isCheckout()
+                ? ($raw['url'] ?? null)
+                : data_get($raw, 'redirect.redirectUrl'),
             'expires_at' => $payment->expires_at?->toISOString(),
         ];
     }

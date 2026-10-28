@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\EmailVerificationController;
 use App\Http\Controllers\Api\V1\PublicAlbumController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\MedalPageController;
+use App\Http\Controllers\PaymentCheckoutController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PublicAccountClaimController;
 use App\Http\Controllers\PublicBirthdateController;
@@ -352,6 +353,12 @@ Route::get('/payment/return', PaymentReturnController::class)
 Route::get('/payment/return/{payment}/status', [PaymentReturnController::class, 'status'])
     ->middleware('throttle:120,1')
     ->name('payment.return.status');
+
+// หน้าชำระเงินของ Beam (บัตร/Apple Pay/Google Pay/ผ่อน/e-Wallet) จากหน้าลิงก์สาธารณะ —
+// ลิงก์เซ็นไว้ใน payment.partials.gateway-qr เท่านั้น
+Route::get('/payment/checkout/{payment}', PaymentCheckoutController::class)
+    ->middleware(['signed', 'throttle:20,1'])
+    ->name('payment.checkout');
 
 // Public split-share payment — เพื่อนร่วมทริปจ่ายส่วนของตัวเองจากลิงก์ (ไม่ต้องล็อกอิน)
 Route::get('/pay-share/{token}', [PublicSharePaymentController::class, 'show'])

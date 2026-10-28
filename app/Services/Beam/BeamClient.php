@@ -60,6 +60,43 @@ class BeamClient
     }
 
     /**
+     * สร้างหน้าชำระเงินของ Beam (Payment Link) — ตอบ id + url
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     *
+     * @throws BeamException
+     */
+    public function createPaymentLink(array $payload): array
+    {
+        return $this->send('post', '/api/v1/payment-links', $payload);
+    }
+
+    /**
+     * สถานะลิงก์: ACTIVE / PAID / EXPIRED / DISABLED / VOIDED / REFUNDED
+     *
+     * @return array<string, mixed>
+     *
+     * @throws BeamException
+     */
+    public function getPaymentLink(string $paymentLinkId): array
+    {
+        return $this->send('get', '/api/v1/payment-links/'.urlencode($paymentLinkId));
+    }
+
+    /**
+     * ปิดลิงก์ที่ยัง ACTIVE — กันคนจ่ายเข้ามาหลังจากที่นั่งถูกคืนไปแล้ว
+     *
+     * @return array<string, mixed>
+     *
+     * @throws BeamException
+     */
+    public function disablePaymentLink(string $paymentLinkId): array
+    {
+        return $this->send('patch', '/api/v1/payment-links/'.urlencode($paymentLinkId).'/disable');
+    }
+
+    /**
      * คืนเงิน (ยังไม่มีที่เรียกในเฟสนี้ — เตรียมไว้ให้ processRefund() มาต่อทีหลัง)
      *
      * @return array<string, mixed>
@@ -88,9 +125,11 @@ class BeamClient
         }
 
         try {
-            $response = $method === 'get'
-                ? $this->request()->get($path)
-                : $this->request()->post($path, $payload ?? []);
+            $response = match ($method) {
+                'get' => $this->request()->get($path),
+                'patch' => $this->request()->patch($path, $payload ?? []),
+                default => $this->request()->post($path, $payload ?? []),
+            };
         } catch (\Throwable $e) {
             // ต่อไม่ติด/timeout — ไม่ใช่ความผิดลูกค้า ให้ฝั่งเรียกตกกลับไปทางโอนเองได้
             Log::error('Beam request failed to send', [
@@ -102,6 +141,11 @@ class BeamClient
         }
 
         $body = $response->json();
+
+        // disable ตอบ 2xx ด้วย body ว่างได้ — นับว่าสำเร็จ ไม่ใช่ "อ่านไม่ได้"
+        if ($response->successful() && $body === null && $method === 'patch') {
+            $body = [];
+        }
 
         if (! $response->successful()) {
             Log::error('Beam responded with an error', [
@@ -124,6 +168,7 @@ class BeamClient
         Log::info('Beam request ok', [
             'path' => $path,
             'charge_id' => $body['chargeId'] ?? null,
+            'payment_link_id' => $body['paymentLinkId'] ?? $body['id'] ?? null,
             'status' => $body['status'] ?? null,
         ]);
 

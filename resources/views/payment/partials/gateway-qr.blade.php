@@ -32,6 +32,24 @@
         <li class="todo"><span class="settle-dot todo"></span> รอธนาคารยืนยันว่าเงินเข้า</li>
         <li class="todo"><span class="settle-dot todo"></span> บันทึกยอดที่ชำระให้อัตโนมัติ</li>
     </ol>
+
+    {{--
+        ไม่สะดวกสแกน — ไปหน้าชำระเงินของ Beam สำหรับก้อนเดียวกัน (ลิงก์เซ็นไว้ ดู
+        PaymentCheckoutController) ชื่อแบรนด์เป็นตัวอักษร ไม่ใช่โลโก้ เหมือนในแอป
+    --}}
+    @if (in_array(\App\Models\Payment::METHOD_CHECKOUT, \App\Support\PaymentGateway::publicConfig()['methods'], true))
+        <div class="checkout-alt">
+            <div class="checkout-or">หรือ</div>
+            <a class="checkout-btn" id="beam-checkout"
+                href="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('payment.checkout', now()->addDay(), ['payment' => $beamPayment->id]) }}">
+                💳 จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet
+            </a>
+            <div class="checkout-chips">
+                <span>Visa / Mastercard</span><span>Apple Pay</span><span>Google Pay</span><span>ผ่อนบัตร</span>
+                <span>TrueMoney</span><span>LINE Pay</span><span>ShopeePay</span><span>Alipay</span>
+            </div>
+        </div>
+    @endif
 </div>
 
 <div id="beam-settling" style="display:none">

@@ -6,7 +6,7 @@
 <div class="card">
     <div class="card-header">
         <div class="brand">LUILAYKHAO</div>
-        <h1 id="headline">กำลังตรวจสอบการชำระเงิน</h1>
+        <h1 id="headline">{{ $cancelled ? 'ยกเลิกการชำระเงินแล้ว' : 'กำลังตรวจสอบการชำระเงิน' }}</h1>
         @if ($bookingRef)
             <div class="ref-badge">{{ $bookingRef }}</div>
         @endif
@@ -16,6 +16,20 @@
             <div class="alert alert-error">
                 ไม่พบรายการชำระเงินนี้ หากคุณเพิ่งจ่ายเงินไป กรุณาตรวจสอบในแอปหรือหน้าการจองของคุณ
             </div>
+        @elseif ($cancelled)
+            <div class="alert alert-error">
+                ยังไม่มีการตัดเงินสำหรับรายการนี้ เลือกวิธีชำระเงินใหม่ได้เลย
+            </div>
+            <div class="amount-box" style="margin-bottom:0">
+                <div class="amount-label">ยอดที่ต้องชำระ</div>
+                <div class="amount">฿{{ number_format((float) $payment->amount, 0) }}</div>
+            </div>
+            @if ($backUrl)
+                <a href="{{ $backUrl }}" class="btn" style="display:block;text-align:center;margin-top:20px;text-decoration:none">
+                    กลับไปเลือกวิธีชำระเงิน
+                </a>
+            @endif
+            <p class="note">ถ้าจ่ายจากแอป ปิดหน้านี้แล้วกลับเข้าแอปได้เลย</p>
         @else
             <div id="pending-state">
                 <div class="settle">
@@ -52,12 +66,22 @@
                     รับชำระเงินเรียบร้อยแล้ว<br>
                     <span style="font-size:13px">ที่นั่งของคุณได้รับการยืนยันแล้ว</span>
                 </div>
+                @if ($doneUrl)
+                    <a href="{{ $doneUrl }}" class="btn" style="display:block;text-align:center;text-decoration:none">
+                        ดูการจองของฉัน
+                    </a>
+                @endif
             </div>
 
             <div id="unpaid-state" style="display:none">
                 <div class="alert alert-error">
                     ยังไม่ได้รับการชำระเงินสำหรับรายการนี้ หากคุณกดยกเลิกไป สามารถกลับไปทำรายการใหม่ได้
                 </div>
+                @if ($backUrl)
+                    <a href="{{ $backUrl }}" class="btn" style="display:block;text-align:center;text-decoration:none">
+                        กลับไปเลือกวิธีชำระเงิน
+                    </a>
+                @endif
             </div>
 
             <p class="note" id="hint">
@@ -69,7 +93,7 @@
 @endsection
 
 @section('scripts')
-@if ($pollUrl)
+@if ($pollUrl && ! $cancelled)
 <script>
     // หน้านี้ไม่ตัดสินอะไรเอง — ถามเซิร์ฟเวอร์อย่างเดียว เพราะคนยืนยันจริงคือ webhook
     (function () {
@@ -119,7 +143,7 @@
                     document.getElementById('headline').textContent = 'ชำระเงินสำเร็จ';
                     document.getElementById('pending-state').style.display = 'none';
                     document.getElementById('paid-state').style.display = '';
-                    document.getElementById('hint').textContent = 'ปิดหน้านี้แล้วกลับเข้าแอปได้เลย';
+                    document.getElementById('hint').textContent = 'ถ้าจ่ายจากแอป ปิดหน้านี้แล้วกลับเข้าแอปได้เลย';
                 } else if (data.status === 'failed' || data.status === 'expired') {
                     clearInterval(timer);
                     stopClock();

@@ -177,7 +177,8 @@ export function useBeamCharge(onPaid) {
       payment.value = res.data?.data;
       watchPayment();
 
-      // แอปธนาคารตอบเป็นลิงก์ ไม่ใช่ QR — พาไปเลย แล้วกลับมาผ่าน returnUrl
+      // แอปธนาคาร และหน้าชำระเงินของ Beam (บัตร/ผ่อน/e-Wallet) ตอบเป็นลิงก์ ไม่ใช่ QR —
+      // พาไปเลย แล้วกลับมาผ่าน returnUrl
       if (payment.value?.redirect_url) {
         window.location.href = payment.value.redirect_url;
       }

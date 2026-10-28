@@ -181,6 +181,19 @@
 
           <p v-if="beamError" class="text-xs font-bold text-red-600 px-6 text-center">{{ beamError }}</p>
           <p class="text-xs font-bold text-gray-400 px-6 text-center">จ่ายแล้วระบบจะตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป</p>
+
+          <!-- ไม่สะดวกสแกน — ไปหน้าชำระเงินของ Beam สำหรับงวดเดียวกัน -->
+          <div v-if="checkoutAvailable" class="w-full px-4 space-y-3">
+            <div class="flex items-center gap-3 text-[11px] font-bold text-gray-400">
+              <div class="flex-1 h-px bg-gray-200"></div>หรือ<div class="flex-1 h-px bg-gray-200"></div>
+            </div>
+            <button @click="createBeamCharge('CHECKOUT')" :disabled="beamLoading"
+              class="w-full py-3.5 rounded-xl border-2 border-amber-500 bg-white text-amber-700 text-sm font-black flex items-center justify-center gap-2 hover:bg-amber-50 active:scale-95 transition-all disabled:opacity-60">
+              <span class="material-symbols-rounded text-lg">credit_card</span>
+              จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet
+            </button>
+            <p class="text-[11px] text-gray-400 font-medium text-center">Visa · Mastercard · Apple Pay · Google Pay · TrueMoney · LINE Pay · ShopeePay · Alipay</p>
+          </div>
         </div>
 
         <!-- QR Code -->
@@ -307,6 +320,7 @@ const nextInstallment = computed(() => installments.value.find(i => i.status !==
 // ── Beam Checkout ────────────────────────────────────────────
 const gateway = computed(() => booking.value?.payment_gateway || { provider: 'manual' });
 const useBeam = computed(() => gateway.value.provider === 'beam');
+const checkoutAvailable = computed(() => useBeam.value && gateway.value.methods?.includes('CHECKOUT'));
 
 const {
   payment: beamPayment,
@@ -327,14 +341,14 @@ const {
   if (nextInstallment.value) createBeamCharge();
 });
 
-function createBeamCharge() {
+function createBeamCharge(methodType = 'QR_PROMPT_PAY') {
   if (!booking.value || !nextInstallment.value) return;
 
   return createBeamPayment({
     booking_ref: booking.value.booking_ref,
     purpose: 'installment_due',
     installment_id: nextInstallment.value.id,
-    payment_method_type: 'QR_PROMPT_PAY',
+    payment_method_type: methodType,
   });
 }
 

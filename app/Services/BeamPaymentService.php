@@ -15,12 +15,14 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * ตัวกลางระหว่างการจองกับ Beam
  *
  * สองหน้าที่เท่านั้น:
- *   startCharge()  ออก QR/ลิงก์จ่ายหนึ่งใบ แล้วจดไว้ในตาราง payments ว่ารออยู่
+ *   startCharge()  ออก QR/ลิงก์จ่าย/หน้าชำระเงินของ Beam หนึ่งใบ แล้วจดไว้ในตาราง
+ *                  payments ว่ารออยู่
  *   settle()       เงินเข้าแล้ว — ทำให้เกิดผลเหมือนกับตอนลูกค้าอัปสลิปเป๊ะๆ
  *
  * ยอดมาจาก PaymentQuote/ตารางต้นทางเสมอ ไม่เคยเชื่อยอดที่ client หรือ Beam ส่งมา
@@ -35,6 +37,21 @@ class BeamPaymentService
         Payment::PURPOSE_SPLIT,
         Payment::PURPOSE_INSTALLMENT,
     ];
+
+    /** บรรทัดรายการบนหน้าชำระเงินของ Beam — ลูกค้าต้องรู้ว่ากำลังจ่ายก้อนไหน. */
+    private const PURPOSE_LABELS = [
+        Payment::PURPOSE_FULL => 'ชำระเต็มจำนวน',
+        Payment::PURPOSE_DEPOSIT => 'ค่ามัดจำ',
+        Payment::PURPOSE_SPLIT => 'ส่วนของผู้จอง (แบ่งจ่าย)',
+        Payment::PURPOSE_INSTALLMENT => 'ผ่อนชำระ งวดแรก',
+        Payment::PURPOSE_INSTALLMENT_DUE => 'ค่างวด',
+        Payment::PURPOSE_BALANCE => 'ยอดคงเหลือ',
+        Payment::PURPOSE_SPLIT_SHARE => 'ส่วนแบ่งค่าทริป',
+        Payment::PURPOSE_EXTRA => 'ยอดเพิ่มเติม',
+    ];
+
+    /** สถานะลิงก์ที่แปลว่า "จบแล้ว ไม่มีเงินเข้า" — ปิดแถวได้. */
+    private const DEAD_LINK_STATUSES = ['EXPIRED', 'DISABLED'];
 
     public function __construct(
         private BeamClient $beam,
@@ -54,7 +71,7 @@ class BeamPaymentService
     /**
      * ออกใบชำระเงินหนึ่งใบ
      *
-     * @param  array{installment_count?: int|null, purpose_id?: int|null, device_type?: string|null, user_id?: int|null}  $opts
+     * @param  array{installment_count?: int|null, purpose_id?: int|null, device_type?: string|null, user_id?: int|null, back_url?: string|null}  $opts
      *
      * @throws PaymentNotAvailableException รอบนี้จ่ายแบบนี้ไม่ได้ (422)
      * @throws BeamException Beam ล่ม/ตอบ error — ผู้เรียกควรตกกลับไปทางโอนเอง
@@ -80,7 +97,7 @@ class BeamPaymentService
             ]));
         }
 
-        $expiresAt = $this->expiryFor($booking, $purpose);
+        $expiresAt = $this->expiryFor($booking, $purpose, $methodType);
 
         // จดแถวก่อนยิง Beam เพื่อให้ได้ id ไปทำ reference_id ที่ไม่มีวันซ้ำ — และเพื่อ
         // ให้มีร่องรอยไว้ตามต่อ แม้ Beam จะตอบกลับมาไม่ถึง (timeout กลางทาง)
@@ -101,7 +118,9 @@ class BeamPaymentService
         $payment->update(['reference_id' => $booking->booking_ref.'-'.$payment->id]);
 
         try {
-            $response = $this->beam->createCharge($this->chargePayload($payment, $methodType, $expiresAt, $opts));
+            $response = $payment->isCheckout()
+                ? $this->beam->createPaymentLink($this->checkoutPayload($payment, $booking, $expiresAt, $opts['back_url'] ?? null))
+                : $this->beam->createCharge($this->chargePayload($payment, $methodType, $expiresAt, $opts));
         } catch (BeamException $e) {
             $payment->update([
                 'status' => Payment::STATUS_FAILED,
@@ -112,11 +131,20 @@ class BeamPaymentService
             throw $e;
         }
 
-        $payment->update([
-            'provider_charge_id' => $response['chargeId'] ?? null,
-            'raw_response' => $response,
-            'expires_at' => $this->resolveExpiry(data_get($response, 'encodedImage.expiry'), $expiresAt),
-        ]);
+        if ($payment->isCheckout()) {
+            // charge จริงยังไม่เกิด — Beam สร้างให้ตอนลูกค้ากดจ่ายบนหน้าของเขา
+            $payment->update([
+                'provider_link_id' => $response['id'] ?? $response['paymentLinkId'] ?? null,
+                'raw_response' => $response,
+                'expires_at' => $this->resolveExpiry($response['expiresAt'] ?? null, $expiresAt),
+            ]);
+        } else {
+            $payment->update([
+                'provider_charge_id' => $response['chargeId'] ?? null,
+                'raw_response' => $response,
+                'expires_at' => $this->resolveExpiry(data_get($response, 'encodedImage.expiry'), $expiresAt),
+            ]);
+        }
 
         return $payment->fresh();
     }
@@ -164,6 +192,8 @@ class BeamPaymentService
      */
     public function settle(Payment $payment, array $payload = []): void
     {
+        $this->rememberCheckoutCharge($payment, $payload);
+
         // กันสองเส้นทาง (webhook + reconcile) เข้ามาพร้อมกันด้วย lock ที่ระดับแถว
         $claimed = DB::transaction(function () use ($payment, $payload): bool {
             $locked = Payment::whereKey($payment->id)->lockForUpdate()->first();
@@ -231,6 +261,15 @@ class BeamPaymentService
             return;
         }
 
+        // บนหน้าชำระเงินของ Beam บัตรโดนปฏิเสธหนึ่งใบไม่ได้ปิดลิงก์ — ลูกค้าลองบัตรอื่น
+        // หรือเปลี่ยนไปจ่าย e-Wallet ต่อในหน้าเดิมได้ ถ้าปิดแถวตรงนี้ หน้าจอเราจะขึ้น
+        // "ไม่สำเร็จ" ทั้งที่เขากำลังจ่ายใบที่สองอยู่ จดเหตุผลไว้อย่างเดียว
+        if ($payment->isCheckout()) {
+            $payment->update(['failure_code' => $payload['failureCode'] ?? $payment->failure_code]);
+
+            return;
+        }
+
         $payment->update([
             'status' => Payment::STATUS_FAILED,
             'failure_code' => $payload['failureCode'] ?? null,
@@ -254,7 +293,9 @@ class BeamPaymentService
      */
     public function syncForWatcher(Payment $payment): Payment
     {
-        if ($payment->status !== Payment::STATUS_PENDING || ! $payment->provider_charge_id) {
+        $providerId = $payment->isCheckout() ? $payment->provider_link_id : $payment->provider_charge_id;
+
+        if ($payment->status !== Payment::STATUS_PENDING || ! $providerId) {
             return $payment;
         }
 
@@ -287,6 +328,10 @@ class BeamPaymentService
             return Payment::STATUS_SUCCEEDED;
         }
 
+        if ($payment->isCheckout()) {
+            return $this->syncCheckoutFromProvider($payment);
+        }
+
         if (! $payment->provider_charge_id) {
             // ยิงไม่ถึง Beam ตั้งแต่แรก ไม่มีอะไรให้ถาม
             $payment->update(['status' => Payment::STATUS_EXPIRED]);
@@ -317,6 +362,91 @@ class BeamPaymentService
         }
 
         return Payment::STATUS_PENDING;
+    }
+
+    /**
+     * ใบที่ส่งไปหน้าชำระเงินของ Beam — ถามที่ตัวลิงก์ ไม่ใช่ที่ charge
+     *
+     * ลิงก์หนึ่งมีได้หลาย charge (บัตรใบแรกถูกปฏิเสธ ใบที่สองผ่าน) และ PAID ของลิงก์คือ
+     * สัญญาณเดียวที่บอกว่ามีใบไหนสักใบผ่านแล้ว
+     */
+    private function syncCheckoutFromProvider(Payment $payment): string
+    {
+        if (! $payment->provider_link_id) {
+            $payment->update(['status' => Payment::STATUS_EXPIRED]);
+
+            return Payment::STATUS_EXPIRED;
+        }
+
+        $link = $this->beam->getPaymentLink($payment->provider_link_id);
+        $status = strtoupper((string) ($link['status'] ?? ''));
+
+        if ($status === 'PAID') {
+            $this->settle($payment, $link);
+
+            return Payment::STATUS_SUCCEEDED;
+        }
+
+        // จ่ายแล้วแต่ถูกคืนเงินไปก่อนที่เราจะรู้ — ห้ามยืนยันที่นั่งด้วยเงินที่ไม่อยู่แล้ว
+        if (in_array($status, ['VOIDED', 'REFUNDED'], true)) {
+            $payment->update([
+                'status' => Payment::STATUS_FAILED,
+                'failure_code' => strtolower($status),
+                'raw_webhook' => $link,
+            ]);
+
+            return Payment::STATUS_FAILED;
+        }
+
+        if (in_array($status, self::DEAD_LINK_STATUSES, true)) {
+            $payment->update(['status' => Payment::STATUS_EXPIRED, 'raw_webhook' => $link]);
+
+            return Payment::STATUS_EXPIRED;
+        }
+
+        if (! $payment->isExpired()) {
+            return Payment::STATUS_PENDING;
+        }
+
+        // เลยเวลาของเราแล้วแต่ลิงก์ยังเปิดอยู่ (Beam ยังไม่ทันตัด) — ปิดเองก่อนปิดแถว
+        // ไม่งั้นลูกค้าที่ยังค้างหน้าบัตรไว้จะจ่ายเข้าที่นั่งที่ถูกคืนไปแล้วได้
+        try {
+            $this->beam->disablePaymentLink($payment->provider_link_id);
+        } catch (BeamException) {
+            // ปิดไม่ได้มักแปลว่าเพิ่งถูกจ่ายไปพอดี — ถามอีกรอบแทนการเดา
+            $latest = $this->beam->getPaymentLink($payment->provider_link_id);
+
+            if (strtoupper((string) ($latest['status'] ?? '')) === 'PAID') {
+                $this->settle($payment, $latest);
+
+                return Payment::STATUS_SUCCEEDED;
+            }
+        }
+
+        $payment->update(['status' => Payment::STATUS_EXPIRED, 'raw_webhook' => $link]);
+
+        return Payment::STATUS_EXPIRED;
+    }
+
+    /**
+     * จด chargeId ของใบที่จ่ายผ่านหน้าชำระเงินของ Beam — ตอนออกใบเรามีแค่ id ของลิงก์
+     * แต่การคืนเงินต้องใช้ chargeId และต้องรู้ว่าจ่ายมาด้วยบัตรหรือ e-Wallet
+     *
+     * ทำนอกตัวกัน settle ซ้ำ เพราะ payment_link.paid อาจมาถึงก่อน charge.succeeded
+     * (ใบถูก settle ไปแล้ว แต่ข้อมูลชิ้นนี้ยังต้องเก็บ)
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function rememberCheckoutCharge(Payment $payment, array $payload): void
+    {
+        if (! $payment->isCheckout() || empty($payload['chargeId']) || $payment->provider_charge_id) {
+            return;
+        }
+
+        $payment->update([
+            'provider_charge_id' => $payload['chargeId'],
+            'raw_webhook' => $payload,
+        ]);
     }
 
     // ── settle helpers ───────────────────────────────────────────────
@@ -506,9 +636,11 @@ class BeamPaymentService
      * บนการจองที่ยัง pending ต้องไม่เกินเวลาที่ที่นั่งจะถูกคืน มิฉะนั้นลูกค้าจะสแกน QR
      * ที่ยังไม่หมดอายุ จ่ายเงิน แล้วพบว่าที่นั่งหายไปแล้ว
      */
-    private function expiryFor(Booking $booking, string $purpose): Carbon
+    private function expiryFor(Booking $booking, string $purpose, string $methodType): Carbon
     {
-        $ttl = max(1, (int) config('payment.beam.qr_ttl_minutes'));
+        $ttl = max(1, (int) ($methodType === Payment::METHOD_CHECKOUT
+            ? config('payment.beam.checkout.ttl_minutes')
+            : config('payment.beam.qr_ttl_minutes')));
         $expiry = now()->addMinutes($ttl);
 
         if (! in_array($purpose, self::PENDING_BOOKING_PURPOSES, true)) {
@@ -551,7 +683,7 @@ class BeamPaymentService
             'amount' => $payment->amountInSatang(),
             'currency' => 'THB',
             'referenceId' => $payment->reference_id,
-            'returnUrl' => rtrim((string) config('payment.beam.return_url'), '/').'?payment='.$payment->id,
+            'returnUrl' => $this->returnUrl($payment),
             'paymentMethod' => $paymentMethod,
         ];
 
@@ -561,6 +693,85 @@ class BeamPaymentService
         }
 
         return $payload;
+    }
+
+    /**
+     * คำขอสร้างหน้าชำระเงินของ Beam
+     *
+     * ยอดในรายการ = ยอดรวม (netAmount) เสมอ เป็นบรรทัดเดียว — แตกเป็นค่าทริป/ส่วนลด/
+     * ของเช่า จะต้องคำนวณซ้ำกับ PaymentQuote แล้วเสี่ยงยอดไม่ตรงกันทีละสตางค์
+     *
+     * @return array<string, mixed>
+     */
+    private function checkoutPayload(Payment $payment, Booking $booking, Carbon $expiresAt, ?string $backUrl = null): array
+    {
+        $satang = $payment->amountInSatang();
+        $tripTitle = (string) ($booking->schedule?->trip?->title ?: 'ทริปลุยเลเขา');
+        $purposeLabel = self::PURPOSE_LABELS[$payment->purpose] ?? 'ค่าทริป';
+
+        return [
+            'order' => [
+                'currency' => 'THB',
+                'netAmount' => $satang,
+                'description' => Str::limit($tripTitle.' · '.$booking->booking_ref, 120, ''),
+                'referenceId' => $payment->reference_id,
+                'orderItems' => [[
+                    'itemName' => Str::limit($tripTitle, 120, ''),
+                    'description' => $purposeLabel.' · '.$booking->booking_ref,
+                    'price' => $satang,
+                    'quantity' => 1,
+                    'productId' => 'schedule-'.$booking->schedule_id,
+                    'sku' => $booking->booking_ref,
+                ]],
+            ],
+            'linkSettings' => $this->checkoutLinkSettings(),
+            'collectDeliveryAddress' => false,
+            'collectPhoneNumber' => false,
+            'redirectUrl' => $this->returnUrl($payment),
+            'cancelUrl' => $this->returnUrl($payment, cancelled: true, backUrl: $backUrl),
+            'expiresAt' => $expiresAt->toIso8601ZuluString(),
+        ];
+    }
+
+    /**
+     * linkSettings ของ Beam — ทุกกลุ่มต้องส่งครบ กลุ่มที่ไม่ได้ส่ง Beam ถือว่าปิด
+     *
+     * @return array<string, mixed>
+     */
+    private function checkoutLinkSettings(): array
+    {
+        $groups = (array) config('payment.beam.checkout.groups');
+        $settings = [];
+
+        foreach (['card', 'qrPromptPay', 'eWallets', 'mobileBanking', 'buyNowPayLater'] as $group) {
+            $settings[$group] = ['isEnabled' => (bool) ($groups[$group] ?? false)];
+        }
+
+        $months = array_map('intval', (array) config('payment.beam.checkout.installment_months'));
+        $settings['cardInstallments'] = ['isEnabled' => (bool) ($groups['cardInstallments'] ?? false)];
+
+        foreach ([3, 4, 6, 10] as $m) {
+            $settings['cardInstallments']["installments{$m}m"] = ['isEnabled' => in_array($m, $months, true)];
+        }
+
+        return $settings;
+    }
+
+    /**
+     * ปลายทางที่ Beam พาลูกค้ากลับมา — ทั้งหลังจ่ายผ่านแอปธนาคาร และหลังจ่าย/กดยกเลิก
+     * บนหน้าชำระเงินของ Beam
+     */
+    private function returnUrl(Payment $payment, bool $cancelled = false, ?string $backUrl = null): string
+    {
+        $url = rtrim((string) config('payment.beam.return_url'), '/').'?payment='.$payment->id;
+
+        if ($cancelled) {
+            $url .= '&cancelled=1';
+        }
+
+        // หน้าที่ลูกค้ามา (ลิงก์ชำระเงินที่ไม่ต้องล็อกอิน) — PaymentReturnController รับเฉพาะ
+        // ที่อยู่บนโดเมนเราเท่านั้น
+        return $backUrl ? $url.'&back='.rawurlencode($backUrl) : $url;
     }
 
     /**
@@ -609,6 +820,14 @@ class BeamPaymentService
      */
     private function paymentMethodLabel(Payment $payment): string
     {
+        // จ่ายบนหน้าของ Beam — บันทึกช่องทางที่ลูกค้าเลือกจริง (card / line_pay / ...)
+        // ถ้า charge.succeeded มาถึงก่อน ไม่งั้นก็รู้แค่ว่ามาทางหน้าชำระเงิน
+        if ($payment->isCheckout()) {
+            $actual = data_get($payment->raw_webhook, 'paymentMethod.paymentMethodType');
+
+            return 'beam_'.strtolower((string) ($actual ?: 'checkout'));
+        }
+
         return 'beam_'.strtolower((string) $payment->payment_method_type);
     }
 }

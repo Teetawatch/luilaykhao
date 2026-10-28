@@ -38,3 +38,12 @@
             .settle-wave { animation: none; opacity: .3; }
             .settle-spin, .settle-dot.now { animation-duration: 3s; }
         }
+
+        /* ทางเลือกที่สอง: หน้าชำระเงินของ Beam (บัตร / Apple Pay / ผ่อน / e-Wallet) */
+        .checkout-alt { margin-top: 18px; text-align: center; }
+        .checkout-or { display: flex; align-items: center; gap: 12px; font-size: 12.5px; font-weight: 700; color: #94a3b8; margin-bottom: 12px; }
+        .checkout-or::before, .checkout-or::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
+        .checkout-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 16px; border-radius: 14px; border: 1.5px solid #059669; color: #047857; background: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
+        .checkout-btn:active { transform: translateY(1px); }
+        .checkout-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+        .checkout-chips span { padding: 4px 9px; border-radius: 999px; background: #f1f5f9; color: #475569; font-size: 11.5px; font-weight: 700; }
