@@ -32,7 +32,9 @@ class PublicTripBriefController extends Controller
             return response()->view('trip-brief', ['brief' => null], 404);
         }
 
-        $this->markRead($token);
+        if ($brief['ack']['open']) {
+            $this->markRead($token);
+        }
 
         return response()->view('trip-brief', ['brief' => $brief]);
     }
@@ -70,7 +72,10 @@ class PublicTripBriefController extends Controller
     {
         $booking = Booking::where('brief_token', $token)->first();
 
-        if ($booking && $this->briefs->isViewable($booking) && $booking->brief_ack_at === null) {
+        if ($booking
+            && $this->briefs->isViewable($booking)
+            && $this->briefs->countsAsRead($booking)
+            && $booking->brief_ack_at === null) {
             // saveQuietly: การกดปุ่มอ่านแล้วไม่ใช่การเปลี่ยนแปลงของการจอง จึงไม่ควร
             // ไปปลุกงานเบื้องหลังที่เฝ้าดูใบจองอยู่ (แจ้งเตือน/การ์ดวันเดินทาง)
             $booking->forceFill(['brief_ack_at' => now()])->saveQuietly();

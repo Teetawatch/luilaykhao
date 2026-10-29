@@ -94,7 +94,10 @@ class BookingSmsTest extends TestCase
 
         // ลิงก์ต้องเปิดได้โดยไม่ต้องล็อกอิน — SMS วิ่งเข้าเบอร์ผู้โดยสารคนแรก
         // ซึ่งอาจไม่มีบัญชีในระบบเลย
-        $this->assertStringContainsString('/track/'.$booking->fresh()->share_token, $confirmed);
+        // และต้องพาไปหน้าที่มีประโยชน์ตั้งแต่วันนี้ — ใบเดินทาง ไม่ใช่หน้าติดตามรถ
+        // ที่ใช้ได้แค่วันรถออก
+        $this->assertStringContainsString('/t/'.$booking->fresh()->brief_token, $confirmed);
+        $this->assertStringNotContainsString('/track/', $confirmed);
         $this->assertStringNotContainsString('/confirmation/', $confirmed);
         // และต้องบอกได้เองว่าไปทริปไหน วันไหน
         $this->assertStringContainsString('Test Trip', $confirmed);

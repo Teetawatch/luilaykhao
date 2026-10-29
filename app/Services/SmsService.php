@@ -29,17 +29,17 @@ class SmsService
         $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
         // ข้อความนี้จะค้างอยู่ในเครื่องลูกค้าไปจนถึงวันเดินทาง จึงต้องตอบได้ด้วยตัวเอง
-        // ว่าไปทริปไหน วันไหน และกดดูจุดนัดพบต่อได้ที่ไหน
+        // ว่าไปทริปไหน วันไหน และกดดูรายละเอียดการเดินทางต่อได้ที่ไหน
         return $this->queueOrSend(
             booking: $booking,
             type: 'payment_confirmed',
             dedupeKey: $paymentType,
             message: sprintf(
-                'ยืนยันที่นั่งแล้ว %s %s %s ขอบคุณครับ จุดนัดพบ/ติดตามรถ %s',
+                'ยืนยันที่นั่งแล้ว %s %s %s ขอบคุณครับ ดูกำหนดการและจุดขึ้นรถ %s',
                 $this->tripTitle($booking),
                 $this->departureDate($booking),
                 $booking->booking_ref,
-                $this->trackUrl($booking),
+                $this->briefUrl($booking),
             ),
         );
     }
@@ -323,10 +323,10 @@ class SmsService
             type: 'balance_paid',
             dedupeKey: 'default',
             message: sprintf(
-                'รับชำระครบแล้ว %s บาท %s ขอบคุณครับ ดูจุดนัดพบ/ติดตามรถ %s',
+                'รับชำระครบแล้ว %s บาท %s ขอบคุณครับ ดูกำหนดการและจุดขึ้นรถ %s',
                 $this->money($booking->balance_amount),
                 $booking->booking_ref,
-                $this->trackUrl($booking),
+                $this->briefUrl($booking),
             ),
         );
     }
@@ -342,12 +342,12 @@ class SmsService
             dedupeKey: $daysBefore.'_days_before'
                 .($booking->roundChangedAt() ? ':s'.$booking->schedule_id : ''),
             message: sprintf(
-                'อีก %d วันถึงทริป %s %s จุดนัดพบ %s ติดตามรถ %s',
+                'อีก %d วันถึงทริป %s %s จุดนัดพบ %s ใบเดินทาง %s',
                 $daysBefore,
                 $this->tripTitle($booking),
                 $this->departureDate($booking),
                 $this->meetingPoint($booking),
-                $this->trackUrl($booking),
+                $this->briefUrl($booking),
             ),
         );
     }
@@ -631,12 +631,17 @@ class SmsService
     }
 
     /**
-     * ลิงก์หน้าติดตามรถสาธารณะ /track/{token} — เปิดได้โดยไม่ต้องล็อกอิน และก่อน
-     * วันเดินทางก็ยังบอกชื่อทริป วันเดินทาง และจุดนัดพบให้อยู่
+     * ลิงก์ "ใบเดินทาง" สาธารณะ /t/{token} — เปิดได้โดยไม่ต้องล็อกอินตั้งแต่วันที่จอง
+     * และอัปเดตตัวเองจนถึงวันเดินทาง (กำหนดการ จุดขึ้นรถ ของที่ต้องเตรียม ยอดค้าง
+     * เพิ่มลงปฏิทิน แล้ว QR เช็คอินตอนใกล้วัน)
+     *
+     * ไม่ใช่หน้าติดตามรถ /track/ — หน้านั้นมีประโยชน์แค่วันรถออก ก่อนหน้านั้น
+     * ลูกค้าที่กดจาก SMS ยืนยันจะเจอแค่ "จะติดตามรถได้ในวันออกเดินทาง" ใบเดินทาง
+     * มีปุ่มไปหน้าติดตามรถให้อยู่แล้วเมื่อถึงวัน
      */
-    private function trackUrl(Booking $booking): string
+    private function briefUrl(Booking $booking): string
     {
-        return $booking->shareUrl();
+        return $booking->briefUrl();
     }
 
     /** ลิงก์หน้าชำระเงินสาธารณะ /pay/{token} — ตัวเดียวกับที่อีเมลแจ้งยอดค้างใช้ */

@@ -431,7 +431,7 @@ class TripBriefExtrasTest extends TestCase
     public function test_opening_the_link_records_the_first_read_only(): void
     {
         $schedule = $this->schedule();
-        $booking = $this->booking($schedule);
+        $booking = $this->booking($schedule, ['brief_sent_at' => now()]);
         $token = $booking->ensureBriefToken();
 
         $this->get('/t/'.$token)->assertOk();
@@ -448,7 +448,7 @@ class TripBriefExtrasTest extends TestCase
     public function test_customer_can_acknowledge_and_the_page_says_thank_you(): void
     {
         $schedule = $this->schedule();
-        $booking = $this->booking($schedule);
+        $booking = $this->booking($schedule, ['brief_sent_at' => now()]);
         $token = $booking->ensureBriefToken();
 
         $this->get('/t/'.$token)->assertSee('รับทราบแล้ว');
@@ -464,6 +464,23 @@ class TripBriefExtrasTest extends TestCase
         Carbon::setTestNow(Carbon::now()->addHour());
         $this->post('/t/'.$token.'/ack');
         $this->assertEquals($acked->timestamp, $booking->fresh()->brief_ack_at->timestamp);
+    }
+
+    public function test_opening_the_link_before_the_brief_is_sent_does_not_count_as_read(): void
+    {
+        // ลิงก์เดียวกันอยู่ใน SMS ยืนยันที่นั่งตั้งแต่วันจอง — ตอนนั้นข้อมูลจริงของ
+        // รอบยังไม่ลง ทีมงานต้องยังเห็นว่าคนนี้ "ยังไม่ได้อ่าน" ใบเดินทางของ D-2
+        $schedule = $this->schedule();
+        $booking = $this->booking($schedule);
+        $token = $booking->ensureBriefToken();
+
+        $this->get('/t/'.$token)
+            ->assertOk()
+            ->assertDontSee('อ่านครบแล้วกดปุ่มนี้');
+        $this->post('/t/'.$token.'/ack');
+
+        $this->assertNull($booking->fresh()->brief_read_at);
+        $this->assertNull($booking->fresh()->brief_ack_at);
     }
 
     public function test_acknowledging_an_expired_link_changes_nothing(): void

@@ -216,6 +216,8 @@ class TripBriefService
                 'receipt' => $this->receiptUrl($booking),
             ],
             'ack' => [
+                // ปุ่มรับทราบโผล่หลังใบเดินทางฉบับแรกถูกส่งแล้วเท่านั้น — ดู [countsAsRead]
+                'open' => $this->countsAsRead($booking),
                 'read_at' => $booking->brief_read_at?->toISOString(),
                 'acknowledged' => $booking->brief_ack_at !== null,
             ],
@@ -268,6 +270,18 @@ class TripBriefService
         }
 
         return sha1(json_encode($parts, JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * การเปิดลิงก์/กดรับทราบตอนนี้ นับเป็น "ลูกค้าได้อ่านใบเดินทางแล้ว" ได้หรือยัง
+     *
+     * ลิงก์เดียวกันนี้อยู่ใน SMS ยืนยันที่นั่งตั้งแต่วันจอง ซึ่งตอนนั้นรอบยังไม่มีรถ
+     * ไม่มีทีมงาน จุดขึ้นรถอาจยังไม่ลง ถ้านับการเปิดตอนนั้นเป็น "อ่านแล้ว" ทีมงานจะ
+     * ข้ามการโทรตามคนที่ไม่เคยเห็นข้อมูลจริงของ D-2 เลย จึงนับหลังฉบับแรกถูกส่งเท่านั้น
+     */
+    public function countsAsRead(Booking $booking): bool
+    {
+        return $booking->brief_sent_at !== null;
     }
 
     /**
