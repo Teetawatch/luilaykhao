@@ -695,7 +695,7 @@
                   </div>
                   <label class="flex items-center gap-2 text-sm font-bold text-gray-600 pl-1 cursor-pointer select-none">
                     <input type="checkbox" v-model="doc.required" class="w-4 h-4 accent-violet-600" />
-                    บังคับแนบ — ลูกค้าต้องแนบให้ครบทุกคนก่อนกดจอง
+                    บังคับแนบ — ต้องแนบครบทุกคนก่อนวันเดินทาง (ลูกค้าจองก่อนแล้วแนบทีหลังได้)
                   </label>
                 </div>
                 <button type="button" @click="removeItem('document_requirements', idx)" class="text-red-400 hover:text-red-600 p-2 mt-1">

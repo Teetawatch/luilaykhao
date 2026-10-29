@@ -1132,13 +1132,14 @@
                     <div>
                       <p class="text-sm font-bold text-gray-900">เอกสารที่ต้องแนบ</p>
                       <p class="text-xs text-gray-600 mt-0.5">รองรับไฟล์รูปภาพและ PDF ขนาดไม่เกิน {{ MAX_DOC_MB }} MB ต่อไฟล์</p>
+                      <p class="text-xs text-violet-700 font-bold mt-1">ยังไม่พร้อม? กดจองต่อได้เลย แล้วกลับมาแนบที่หน้ารายละเอียดการจองก่อนวันเดินทาง</p>
                     </div>
                   </div>
 
                   <div v-for="doc in passengerDocRequirements(p)" :key="doc.key">
                     <label class="block text-sm font-bold text-gray-700">
                       {{ doc.label }}
-                      <span v-if="doc.required" class="text-red-500">*</span>
+                      <span v-if="doc.required" class="text-xs font-bold text-red-500">(ต้องแนบก่อนเดินทาง)</span>
                       <span v-else class="text-xs font-bold text-gray-400">(ไม่บังคับ)</span>
                     </label>
                     <p v-if="doc.note" class="text-xs text-gray-600 mt-1">{{ doc.note }}</p>
@@ -1160,17 +1161,13 @@
                     </div>
 
                     <label v-if="docFiles(i, doc.key).length < maxDocFiles(doc)"
-                      class="mt-2 flex items-center justify-center gap-2 w-full py-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all font-bold text-sm"
-                      :class="showErr(i, `doc:${doc.key}`) ? 'border-red-300 text-red-500 bg-red-50/40' : 'border-violet-200 text-violet-600 bg-white hover:border-violet-400'">
+                      class="mt-2 flex items-center justify-center gap-2 w-full py-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all font-bold text-sm border-violet-200 text-violet-600 bg-white hover:border-violet-400">
                       <span class="material-symbols-rounded text-[18px]">upload_file</span>
                       {{ docFiles(i, doc.key).length ? 'แนบไฟล์เพิ่ม' : 'เลือกไฟล์' }}
                       <input type="file" class="hidden" :accept="ACCEPTED_DOC_TYPES" :multiple="maxDocFiles(doc) > 1"
                         @change="addDocFiles(i, doc.key, $event)" />
                     </label>
 
-                    <p v-if="showErr(i, `doc:${doc.key}`)" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
-                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, `doc:${doc.key}`) }}
-                    </p>
                   </div>
                 </div>
               </div>
@@ -2731,12 +2728,8 @@ function computePassengerErrors(p, i) {
   if (!hasText(p.health_notes)) errors.health_notes = 'กรุณากรอกหมายเหตุสุขภาพ (หากไม่มีให้พิมพ์ "ไม่มี")';
   // เมื่อผู้ใช้ปักหมุดจุดรับเอง (customPickup) ถือว่าเลือกจุดรับแล้ว ไม่ต้องบังคับจุดที่กำหนดไว้
   if (pickupPoints.value.length && !p.pickup_point_id && !customPickup.value) errors.pickup_point_id = 'กรุณาเลือกจุดขึ้นรถ';
-  // เอกสารที่แอดมินตั้งเป็น "บังคับแนบ" — นับเป็นช่องที่ยังกรอกไม่ครบเหมือนช่องอื่น
-  for (const doc of passengerDocRequirements(p)) {
-    if (doc.required && !docFiles(i, doc.key).length) {
-      errors[`doc:${doc.key}`] = `กรุณาแนบ${doc.label}`;
-    }
-  }
+  // เอกสารแนบไม่นับเป็นช่องที่ต้องกรอก — หลายคนยังไม่มีเอกสารในมือตอนจอง
+  // จองก่อนแล้วตามมาแนบที่หน้ารายละเอียดการจองได้ ("บังคับ" = ต้องมีก่อนเดินทาง)
   return errors;
 }
 
