@@ -425,80 +425,78 @@
                 <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform duration-300" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
               </button>
 
-              <div v-if="userDropdownOpen" class="absolute top-full right-0 w-64 pt-3 z-[60] animation-fade-slide">
-                <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden p-1.5">
-                  <div class="px-4 py-3 border-b border-sand-dark/40 mb-1">
-                    <p class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</p>
-                    <p class="text-[10px] text-accent font-bold uppercase tracking-wider">{{ isAdmin ? 'Admin' : isStaff ? 'Staff' : 'Member' }}</p>
+              <!-- เมนูบัญชี: การ์ดโปรไฟล์ → ทางลัด 3 ช่อง → ตาราง 2 คอลัมน์ → งานสตาฟ/แอดมิน → ออกจากระบบ
+                   เคยเป็นรายการยาว 13 แถว + 4 หัวข้อ จนล้นจอโน้ตบุ๊ก -->
+              <div v-if="userDropdownOpen" class="absolute top-full right-0 w-[22rem] pt-3 z-[60] animation-fade-slide">
+                <div class="max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl ring-1 ring-primary/5 border border-sand-dark/40 p-2">
+                  <router-link to="/profile" class="account-card" @click="userDropdownOpen = false">
+                    <span class="w-11 h-11 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white shrink-0">
+                      <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                      <span v-else class="text-white text-[15px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+                    </span>
+                    <span class="flex-1 min-w-0">
+                      <span class="flex items-center gap-1.5">
+                        <span class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</span>
+                        <span class="role-chip">{{ accountRoleLabel }}</span>
+                      </span>
+                      <span class="block mt-0.5 text-[11px] font-semibold text-text-muted">จัดการโปรไฟล์และข้อมูลส่วนตัว</span>
+                    </span>
+                    <span class="material-symbols-rounded text-[20px] text-text-muted">chevron_right</span>
+                  </router-link>
+
+                  <div class="grid grid-cols-3 gap-1.5 mt-2">
+                    <router-link
+                      v-for="item in accountQuickLinks"
+                      :key="item.to"
+                      :to="item.to"
+                      class="menu-tile"
+                      @click="userDropdownOpen = false"
+                    >
+                      <span class="relative">
+                        <span class="material-symbols-rounded text-[22px]">{{ item.icon }}</span>
+                        <span v-if="item.badge" class="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                          {{ item.badge > 9 ? '9+' : item.badge }}
+                        </span>
+                      </span>
+                      {{ item.short }}
+                    </router-link>
                   </div>
 
-                  <router-link to="/profile" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">account_circle</span>
-                    ข้อมูลส่วนตัว
-                  </router-link>
-
-                  <p class="menu-caption">กิจกรรมของฉัน</p>
-                  <router-link to="/my-bookings" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">confirmation_number</span>
-                    การจองของฉัน
-                  </router-link>
-                  <router-link to="/my-reviews" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">reviews</span>
-                    รีวิวของฉัน
-                  </router-link>
-                  <router-link to="/group-plans" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">groups</span>
-                    กลุ่มไปด้วยกัน
-                  </router-link>
-                  <router-link to="/support" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">support_agent</span>
-                    ศูนย์ช่วยเหลือ
-                    <span v-if="supportUnread" class="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
-                      {{ supportUnread > 9 ? '9+' : supportUnread }}
-                    </span>
-                  </router-link>
-
-                  <p class="menu-caption">สถิติของฉัน</p>
-                  <router-link to="/passport" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">hiking</span>
-                    สมุดสะสมการเดินทาง
-                  </router-link>
-                  <router-link to="/my-tracks" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">route</span>
-                    บันทึกการเดินของฉัน
-                  </router-link>
-
-                  <p class="menu-caption">สิทธิพิเศษ</p>
-                  <router-link to="/loyalty" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">stars</span>
-                    แต้มสะสม
-                  </router-link>
-                  <router-link to="/referral" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">group_add</span>
-                    ชวนเพื่อน
-                  </router-link>
-                  <router-link v-if="auth.user?.is_partner" to="/partner" class="menu-row" @click="userDropdownOpen = false">
-                    <span class="material-symbols-rounded text-[20px]">handshake</span>
-                    พาร์ทเนอร์ช่วยขาย
-                  </router-link>
-
-                  <template v-if="isStaff || isAdmin">
-                    <p class="menu-caption">การทำงาน</p>
-                    <router-link v-if="isStaff" to="/my-staff-trips" class="menu-row" @click="userDropdownOpen = false">
-                      <span class="material-symbols-rounded text-[20px]">badge</span>
-                      ตารางงานสตาฟ
+                  <div class="grid grid-cols-2 gap-0.5 mt-2 pt-2 border-t border-sand-dark/50">
+                    <router-link
+                      v-for="item in accountMoreLinks"
+                      :key="item.to"
+                      :to="item.to"
+                      :title="item.label"
+                      class="menu-cell"
+                      @click="userDropdownOpen = false"
+                    >
+                      <span class="material-symbols-rounded text-[18px]">{{ item.icon }}</span>
+                      <span class="truncate">{{ item.short || item.label }}</span>
                     </router-link>
-                    <router-link v-if="isAdmin" to="/admin" class="menu-row menu-row--accent" @click="userDropdownOpen = false">
-                      <span class="material-symbols-rounded text-[20px]">admin_panel_settings</span>
-                      ผู้ดูแลระบบ
-                    </router-link>
-                  </template>
+                  </div>
 
-                  <div class="h-px bg-sand-dark my-1 mx-2"></div>
-                  <button type="button" class="menu-row menu-row--danger w-full" @click="handleLogout">
-                    <span class="material-symbols-rounded text-[20px]">logout</span>
-                    ออกจากระบบ
-                  </button>
+                  <div v-if="accountWorkLinks.length" class="mt-2 pt-2 border-t border-sand-dark/50 space-y-0.5">
+                    <router-link
+                      v-for="item in accountWorkLinks"
+                      :key="item.to"
+                      :to="item.to"
+                      class="menu-row"
+                      :class="{ 'menu-row--accent': item.accent }"
+                      @click="userDropdownOpen = false"
+                    >
+                      <span class="material-symbols-rounded text-[20px]">{{ item.icon }}</span>
+                      {{ item.label }}
+                      <span class="material-symbols-rounded ml-auto text-[18px] opacity-60">arrow_forward</span>
+                    </router-link>
+                  </div>
+
+                  <div class="mt-2 pt-2 border-t border-sand-dark/50">
+                    <button type="button" class="menu-row menu-row--danger w-full" @click="handleLogout">
+                      <span class="material-symbols-rounded text-[20px]">logout</span>
+                      ออกจากระบบ
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -714,7 +712,7 @@
                 </div>
                 <div class="min-w-0">
                   <p class="truncate text-[16px] font-bold text-text-dark">{{ auth.userName }}</p>
-                  <p class="text-[10px] font-bold uppercase tracking-wider text-accent">{{ isAdmin ? 'Admin' : isStaff ? 'Staff' : 'Member' }}</p>
+                  <span class="role-chip mt-1 inline-block">{{ accountRoleLabel }}</span>
                 </div>
               </div>
               <button type="button" class="icon-btn w-11 h-11" aria-label="ปิด" @click="closeSheets">
@@ -722,49 +720,61 @@
               </button>
             </div>
 
+            <!-- ใช้รายการชุดเดียวกับ dropdown เดสก์ท็อป — มือถือเคยขาดกลุ่มไปด้วยกัน/สมุดสะสม/บันทึกการเดิน -->
             <div class="flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
-              <router-link to="/profile" class="sheet-item sheet-row" :style="{ '--i': 0 }" @click="closeSheets">
+              <div class="sheet-item grid grid-cols-3 gap-2" :style="{ '--i': 0 }">
+                <router-link
+                  v-for="item in accountQuickLinks"
+                  :key="item.to"
+                  :to="item.to"
+                  class="menu-tile menu-tile--sheet"
+                  @click="closeSheets"
+                >
+                  <span class="relative">
+                    <span class="material-symbols-rounded text-[24px]">{{ item.icon }}</span>
+                    <span v-if="item.badge" class="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                      {{ item.badge > 9 ? '9+' : item.badge }}
+                    </span>
+                  </span>
+                  {{ item.short }}
+                </router-link>
+              </div>
+
+              <router-link to="/profile" class="sheet-item sheet-row mt-3" :style="{ '--i': 1 }" @click="closeSheets">
                 <span class="material-symbols-rounded text-[22px]">account_circle</span>
                 จัดการโปรไฟล์
+                <span class="material-symbols-rounded ml-auto text-[18px] text-text-muted">chevron_right</span>
+              </router-link>
+              <router-link
+                v-for="(item, i) in accountMoreLinks"
+                :key="item.to"
+                :to="item.to"
+                class="sheet-item sheet-row"
+                :style="{ '--i': i + 2 }"
+                @click="closeSheets"
+              >
+                <span class="material-symbols-rounded text-[22px]">{{ item.icon }}</span>
+                {{ item.label }}
+                <span class="material-symbols-rounded ml-auto text-[18px] text-text-muted">chevron_right</span>
               </router-link>
 
-              <p class="sheet-item menu-caption" :style="{ '--i': 1 }">กิจกรรมของฉัน</p>
-              <router-link to="/my-bookings" class="sheet-item sheet-row" :style="{ '--i': 2 }" @click="closeSheets">
-                <span class="material-symbols-rounded text-[22px]">confirmation_number</span>
-                การจองของฉัน
-              </router-link>
-              <router-link to="/my-reviews" class="sheet-item sheet-row" :style="{ '--i': 3 }" @click="closeSheets">
-                <span class="material-symbols-rounded text-[22px]">reviews</span>
-                รีวิวของฉัน
-              </router-link>
-
-              <p class="sheet-item menu-caption" :style="{ '--i': 4 }">สิทธิพิเศษ</p>
-              <router-link to="/loyalty" class="sheet-item sheet-row" :style="{ '--i': 5 }" @click="closeSheets">
-                <span class="material-symbols-rounded text-[22px]">stars</span>
-                แต้มสะสม
-              </router-link>
-              <router-link to="/referral" class="sheet-item sheet-row" :style="{ '--i': 6 }" @click="closeSheets">
-                <span class="material-symbols-rounded text-[22px]">group_add</span>
-                ชวนเพื่อน
-              </router-link>
-              <router-link v-if="auth.user?.is_partner" to="/partner" class="sheet-item sheet-row" :style="{ '--i': 6 }" @click="closeSheets">
-                <span class="material-symbols-rounded text-[22px]">handshake</span>
-                พาร์ทเนอร์ช่วยขาย
-              </router-link>
-
-              <template v-if="isStaff || isAdmin">
-                <p class="sheet-item menu-caption" :style="{ '--i': 7 }">การทำงาน</p>
-                <router-link v-if="isStaff" to="/my-staff-trips" class="sheet-item sheet-row" :style="{ '--i': 8 }" @click="closeSheets">
-                  <span class="material-symbols-rounded text-[22px]">badge</span>
-                  ตารางงานสตาฟ
-                </router-link>
-                <router-link v-if="isAdmin" to="/admin" class="sheet-item sheet-row sheet-row--accent" :style="{ '--i': 9 }" @click="closeSheets">
-                  <span class="material-symbols-rounded text-[22px]">admin_panel_settings</span>
-                  ผู้ดูแลระบบ
+              <template v-if="accountWorkLinks.length">
+                <p class="sheet-item menu-caption" :style="{ '--i': accountMoreLinks.length + 2 }">การทำงาน</p>
+                <router-link
+                  v-for="item in accountWorkLinks"
+                  :key="item.to"
+                  :to="item.to"
+                  class="sheet-item sheet-row"
+                  :class="{ 'sheet-row--accent': item.accent }"
+                  :style="{ '--i': accountMoreLinks.length + 3 }"
+                  @click="closeSheets"
+                >
+                  <span class="material-symbols-rounded text-[22px]">{{ item.icon }}</span>
+                  {{ item.label }}
                 </router-link>
               </template>
 
-              <div class="sheet-item mt-5 border-t border-sand-dark pt-4" :style="{ '--i': 10 }">
+              <div class="sheet-item mt-5 border-t border-sand-dark pt-4" :style="{ '--i': accountMoreLinks.length + 4 }">
                 <button type="button" class="sheet-row sheet-row--danger w-full" @click="handleLogout">
                   <span class="material-symbols-rounded text-[22px]">logout</span>
                   ออกจากระบบ
@@ -1342,6 +1352,30 @@ const isStaff = computed(() => {
   return roles.includes('staff');
 });
 
+// เมนูบัญชีชุดเดียว ใช้ทั้ง dropdown เดสก์ท็อปและ sheet มือถือ
+// `short` คือป้ายสั้นสำหรับช่องแคบ (ทางลัด 3 ช่อง / ตาราง 2 คอลัมน์)
+const accountRoleLabel = computed(() => (isAdmin.value ? 'Admin' : isStaff.value ? 'Staff' : 'Member'));
+
+const accountQuickLinks = computed(() => [
+  { to: '/my-bookings', icon: 'confirmation_number', label: 'การจองของฉัน', short: 'การจอง' },
+  { to: '/loyalty', icon: 'stars', label: 'แต้มสะสม', short: 'แต้มสะสม' },
+  { to: '/support', icon: 'support_agent', label: 'ศูนย์ช่วยเหลือ', short: 'ช่วยเหลือ', badge: supportUnread.value },
+]);
+
+const accountMoreLinks = computed(() => [
+  { to: '/my-reviews', icon: 'reviews', label: 'รีวิวของฉัน' },
+  { to: '/group-plans', icon: 'groups', label: 'กลุ่มไปด้วยกัน' },
+  { to: '/passport', icon: 'hiking', label: 'สมุดสะสมการเดินทาง', short: 'สมุดสะสมทริป' },
+  { to: '/my-tracks', icon: 'route', label: 'บันทึกการเดินของฉัน', short: 'บันทึกการเดิน' },
+  { to: '/referral', icon: 'group_add', label: 'ชวนเพื่อน' },
+  ...(auth.user?.is_partner ? [{ to: '/partner', icon: 'handshake', label: 'พาร์ทเนอร์ช่วยขาย', short: 'พาร์ทเนอร์' }] : []),
+]);
+
+const accountWorkLinks = computed(() => [
+  ...(isStaff.value ? [{ to: '/my-staff-trips', icon: 'badge', label: 'ตารางงานสตาฟ' }] : []),
+  ...(isAdmin.value ? [{ to: '/admin', icon: 'admin_panel_settings', label: 'ผู้ดูแลระบบ', accent: true }] : []),
+]);
+
 async function handleLogout() {
   await auth.logout();
   closeAllOverlays();
@@ -1530,6 +1564,84 @@ async function handleLogout() {
 .menu-row--danger:hover {
   color: #ef4444;
   background-color: #fef2f2;
+}
+
+/* ── Account menu ───────────────────────────────────────────────── */
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.875rem;
+  background-color: var(--color-sand);
+  transition: background-color 0.2s ease;
+}
+.account-card:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 8%, var(--color-sand));
+}
+.role-chip {
+  flex-shrink: 0;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+.menu-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.75rem 0.25rem;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--color-sand-dark) 60%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+.menu-tile .material-symbols-rounded {
+  color: var(--color-primary);
+}
+.menu-tile:hover,
+.menu-tile.router-link-active {
+  border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  background-color: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  color: var(--color-primary);
+}
+.menu-tile--sheet {
+  padding: 1rem 0.25rem;
+  font-size: 13px;
+}
+.menu-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.625rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-mid);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.menu-cell .material-symbols-rounded {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: color 0.2s ease;
+}
+.menu-cell:hover,
+.menu-cell.router-link-active {
+  color: var(--color-primary);
+  background-color: var(--color-sand);
+}
+.menu-cell:hover .material-symbols-rounded,
+.menu-cell.router-link-active .material-symbols-rounded {
+  color: var(--color-primary);
 }
 
 .menu-caption {
