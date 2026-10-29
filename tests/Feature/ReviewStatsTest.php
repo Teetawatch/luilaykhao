@@ -172,4 +172,17 @@ class ReviewStatsTest extends TestCase
         $this->assertEqualsWithDelta(0.0, $data['average'], 0.001);
         $this->assertSame(0, $data['distribution']['5']);
     }
+
+    public function test_index_caps_page_size_and_returns_trip_slug_for_links(): void
+    {
+        $trip = $this->makeTrip('slug-for-links');
+        $user = User::factory()->create();
+        $this->makeReview($trip, $user, ['rating' => 5]);
+
+        $response = $this->getJson('/api/v1/reviews?per_page=100000')->assertOk();
+
+        // หน้าเว็บลิงก์ไปหน้าทริปด้วย slug — /trips/{id} เปิดไม่เจอ
+        $this->assertSame('slug-for-links', $response->json('data.0.trip_slug'));
+        $this->assertSame(50, (int) $response->json('meta.per_page'));
+    }
 }

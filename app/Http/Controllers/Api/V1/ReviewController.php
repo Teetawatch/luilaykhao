@@ -57,7 +57,10 @@ class ReviewController extends Controller
             $query->withMedia();
         }
 
-        $reviews = $query->orderByDesc('created_at')->paginate($request->get('per_page', 10));
+        // เพดาน 50 ต่อหน้า — ไม่งั้น per_page=100000 ดึงรีวิวทั้งระบบพร้อม relation ในคำขอเดียว
+        $perPage = min(max((int) $request->get('per_page', 10), 1), 50);
+
+        $reviews = $query->orderByDesc('created_at')->paginate($perPage);
 
         return $this->paginated($reviews->through(fn ($r) => $this->formatReview($r)));
     }
