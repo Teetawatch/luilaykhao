@@ -72,13 +72,13 @@ class Trip extends Model
     }
 
     /**
-     * เอกสารที่ทริปนี้ขอให้ลูกค้าแนบ — จัดระเบียบแล้ว พร้อมส่งให้ทุกหน้าจอ
+     * เอกสารที่ทริปนี้ขอให้ลูกค้าแนบ — จัดระเบียบแล้ว พร้อมวิธีแนบ ส่งให้ทุกหน้าจอ
      *
-     * @return array<int, array{key: string, label: string, note: string, required: bool}>
+     * @return array<int, array<string, mixed>>
      */
     public function documentRequirements(): array
     {
-        return TripDocumentRequirements::normalize($this->document_requirements);
+        return TripDocumentRequirements::forCustomers($this->document_requirements);
     }
 
     /**

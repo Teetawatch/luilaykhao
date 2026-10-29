@@ -1142,6 +1142,7 @@
                       <span v-else class="text-xs font-bold text-gray-400">(ไม่บังคับ)</span>
                     </label>
                     <p v-if="doc.note" class="text-xs text-gray-600 mt-1">{{ doc.note }}</p>
+                    <DocumentGuideButton :doc="doc" :max-size-mb="MAX_DOC_MB" :max-files="maxDocFiles(doc)" class="mt-1" />
 
                     <div v-if="docFiles(i, doc.key).length" class="mt-2 space-y-2">
                       <div v-for="(file, fi) in docFiles(i, doc.key)" :key="fi"
@@ -1838,6 +1839,7 @@ import { useAuthStore } from '../stores/auth';
 import api from '../lib/axios';
 import { useSeatsStore } from '../stores/seats';
 import { useBookingStore } from '../stores/booking';
+import DocumentGuideButton from '../components/DocumentGuideButton.vue';
 import SeatMap from '../components/SeatMap.vue';
 import CountdownTimer from '../components/CountdownTimer.vue';
 import CustomPickupModal from '../components/CustomPickupModal.vue';

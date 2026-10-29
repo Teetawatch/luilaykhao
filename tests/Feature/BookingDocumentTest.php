@@ -287,4 +287,84 @@ class BookingDocumentTest extends TestCase
 
         $this->assertNotSame($normalized[0]['key'], $normalized[1]['key']);
     }
+
+    public function test_the_admin_can_save_a_how_to_guide_and_an_example_image(): void
+    {
+        Role::findOrCreate('admin');
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        Category::create(['name' => 'ดำน้ำ', 'slug' => 'diving']);
+        $trip = $this->makeTrip();
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/trips/{$trip->id}", [
+                'title' => $trip->title,
+                'type' => 'diving',
+                'location' => $trip->location,
+                'region' => 'south',
+                'difficulty' => 'medium',
+                'duration_days' => 2,
+                'max_participants' => 20,
+                'price_per_person' => 4900,
+                'document_requirements' => [[
+                    'label' => 'บัตรดำน้ำ',
+                    // บรรทัดว่างและช่องว่างหัวท้ายถูกตัด — ลูกค้าเห็นทีละข้อ
+                    'guide' => "  ถ่ายด้านที่มีชื่อและระดับ\r\n\r\nบัตรดิจิทัลแคปหน้าจอได้  ",
+                    'example_image_url' => 'https://cdn.example.com/dive-card.jpg',
+                ]],
+            ])
+            ->assertOk();
+
+        $saved = $trip->fresh()->document_requirements[0];
+        $this->assertSame("ถ่ายด้านที่มีชื่อและระดับ\nบัตรดิจิทัลแคปหน้าจอได้", $saved['guide']);
+        $this->assertSame('https://cdn.example.com/dive-card.jpg', $saved['example_image_url']);
+        // เช็คลิสต์เป็นข้อความของระบบ ไม่ถูกเขียนลงทริป
+        $this->assertArrayNotHasKey('tips', $saved);
+    }
+
+    public function test_an_example_image_that_is_not_a_web_link_is_dropped(): void
+    {
+        $normalized = TripDocumentRequirements::normalize([
+            ['label' => 'ก', 'example_image_url' => 'javascript:alert(1)'],
+            ['label' => 'ข', 'example_image_url' => '//evil.example.com/x.png'],
+            ['label' => 'ค', 'example_image_url' => '/storage/media/doc.png'],
+        ]);
+
+        $this->assertNull($normalized[0]['example_image_url']);
+        $this->assertNull($normalized[1]['example_image_url']);
+        $this->assertSame('/storage/media/doc.png', $normalized[2]['example_image_url']);
+    }
+
+    public function test_the_customer_sees_the_guide_and_the_checklist_everywhere_the_document_is_asked_for(): void
+    {
+        $owner = User::factory()->create();
+        $trip = $this->makeTrip([[
+            ...$this->divingRequirement()[0],
+            'guide' => 'ถ่ายด้านที่มีชื่อและระดับ',
+            'example_image_url' => 'https://cdn.example.com/dive-card.jpg',
+        ]]);
+        $booking = $this->makeBooking($owner, $trip);
+
+        // หน้าทริป (ตอนจอง)
+        $fromTrip = $trip->fresh()->documentRequirements()[0];
+        $this->assertSame('ถ่ายด้านที่มีชื่อและระดับ', $fromTrip['guide']);
+        $this->assertSame(TripDocumentRequirements::GENERAL_TIPS, $fromTrip['tips']);
+
+        // หน้าเอกสารแนบของการจอง (ตามมาแนบทีหลัง)
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/documents")
+            ->assertOk()
+            ->assertJsonPath('data.passengers.0.requirements.0.guide', 'ถ่ายด้านที่มีชื่อและระดับ')
+            ->assertJsonPath('data.passengers.0.requirements.0.example_image_url', 'https://cdn.example.com/dive-card.jpg')
+            ->assertJsonPath('data.passengers.0.requirements.0.tips', TripDocumentRequirements::GENERAL_TIPS);
+    }
+
+    public function test_the_border_pass_id_card_comes_with_its_own_how_to(): void
+    {
+        foreach (TripDocumentRequirements::borderPass() as $requirement) {
+            $this->assertNotSame('', $requirement['guide']);
+            $this->assertSame(TripDocumentRequirements::GENERAL_TIPS, $requirement['tips']);
+        }
+    }
 }

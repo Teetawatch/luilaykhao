@@ -673,6 +673,26 @@
                 <div class="flex-1 space-y-2 min-w-0">
                   <input v-model="doc.label" placeholder="ชื่อเอกสาร (เช่น ใบรับรองแพทย์, บัตรดำน้ำ)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 ring-violet-500/20 font-bold" />
                   <input v-model="doc.note" placeholder="หมายเหตุ เช่น ใช้สำหรับยื่นขออนุญาตเข้าเขตอุทยาน" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 ring-violet-500/20 text-sm" />
+                  <!-- วิธีกรอก/แนบ — ลูกค้ากด "ดูวิธีแนบ" ข้างช่องแนบไฟล์แล้วเห็นเป็นข้อ ๆ พร้อมรูปตัวอย่าง -->
+                  <textarea v-model="doc.guide" rows="3" maxlength="1000"
+                    placeholder="วิธีกรอก/แนบ บรรทัดละข้อ (ไม่บังคับ) เช่น&#10;ถ่ายหน้าที่มีชื่อและเลขบัตร&#10;เซ็นรับรองสำเนาถูกต้องก่อนถ่าย"
+                    class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 ring-violet-500/20 text-sm resize-y"></textarea>
+                  <div class="flex items-center gap-3">
+                    <div class="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden border border-violet-200 bg-violet-50 flex items-center justify-center">
+                      <img v-if="doc.example_image_url" :src="doc.example_image_url" alt="" class="w-full h-full object-cover" />
+                      <span v-else class="material-symbols-rounded text-violet-300" style="font-size:26px;">image</span>
+                      <button v-if="doc.example_image_url" type="button" @click="doc.example_image_url = ''" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/55 text-white flex items-center justify-center" title="ลบรูป">
+                        <span class="material-symbols-rounded" style="font-size:13px;">close</span>
+                      </button>
+                    </div>
+                    <div class="min-w-0">
+                      <button type="button" @click="triggerDocExample(idx)" :disabled="docExampleUploading" class="text-sm font-bold text-violet-600 hover:text-violet-700 flex items-center gap-1 disabled:opacity-50">
+                        <span class="material-symbols-rounded" style="font-size:18px;">{{ docExampleUploading && docExampleTargetIdx === idx ? 'hourglass_top' : 'upload' }}</span>
+                        {{ doc.example_image_url ? 'เปลี่ยนรูปตัวอย่าง' : 'อัปโหลดรูปตัวอย่าง' }}
+                      </button>
+                      <p class="text-xs text-gray-400 mt-0.5">รูปเอกสารที่แนบถูกต้อง (ปิดข้อมูลส่วนตัวในรูปก่อน) — ไม่บังคับ</p>
+                    </div>
+                  </div>
                   <label class="flex items-center gap-2 text-sm font-bold text-gray-600 pl-1 cursor-pointer select-none">
                     <input type="checkbox" v-model="doc.required" class="w-4 h-4 accent-violet-600" />
                     บังคับแนบ — ลูกค้าต้องแนบให้ครบทุกคนก่อนกดจอง
@@ -686,6 +706,7 @@
               <button type="button" @click="addItem('document_requirements')" class="w-full py-4 border-2 border-dashed border-violet-200 rounded-2xl text-violet-600 font-bold hover:bg-white hover:border-violet-400 transition-all flex items-center justify-center gap-2 group">
                 <span class="material-symbols-rounded group-hover:scale-110 transition-transform">add_circle</span> เพิ่มเอกสารที่ต้องแนบ
               </button>
+              <input ref="docExampleInput" type="file" accept="image/*" class="hidden-file-input" @change="handleDocExampleSelect" />
             </div>
 
             <!-- สิ่งที่ต้องพกติดตัว — เข้าไปอยู่ในข้อความห้องแชทคืนก่อนเดินทาง -->
@@ -1521,6 +1542,8 @@ const buildTripPayload = () => {
         key: String(doc?.key || '').trim(),
         label: String(doc?.label || '').trim(),
         note: String(doc?.note || '').trim(),
+        guide: String(doc?.guide || '').trim(),
+        example_image_url: String(doc?.example_image_url || '').trim(),
         required: !!doc?.required,
       }))
       .filter((doc) => doc.label),
@@ -1793,6 +1816,40 @@ const handleRentalImageSelect = async (event) => {
   }
 };
 
+// รูปตัวอย่างของเอกสารแนบ — ลูกค้าเห็นในหน้า "ดูวิธีแนบ"
+const docExampleInput = ref(null);
+const docExampleTargetIdx = ref(null);
+const docExampleUploading = ref(false);
+
+const triggerDocExample = (idx) => {
+  docExampleTargetIdx.value = idx;
+  docExampleInput.value?.click();
+};
+
+const handleDocExampleSelect = async (event) => {
+  const file = event.target.files?.[0];
+  const idx = docExampleTargetIdx.value;
+  if (!file || idx == null) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('ไฟล์มีขนาดเกิน 10MB');
+    if (docExampleInput.value) docExampleInput.value.value = '';
+    return;
+  }
+  docExampleUploading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/admin/upload-image', formData);
+    if (form.document_requirements[idx]) form.document_requirements[idx].example_image_url = res.data.data.url;
+  } catch (e) {
+    alert(e.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
+  } finally {
+    docExampleUploading.value = false;
+    docExampleTargetIdx.value = null;
+    if (docExampleInput.value) docExampleInput.value.value = '';
+  }
+};
+
 const removeRentalImage = (idx) => {
   if (form.rental_items[idx]) form.rental_items[idx].image_url = '';
 };
@@ -1876,7 +1933,7 @@ const addItem = (field, extra = null) => {
   } else if (field === 'document_requirements') {
     if (!form.document_requirements) form.document_requirements = [];
     // key ปล่อยว่าง — backend เป็นคนตั้งให้ตอนบันทึก แล้วส่งกลับมาคาไว้ในฟอร์ม
-    form.document_requirements.push({ key: '', label: '', note: '', required: false });
+    form.document_requirements.push({ key: '', label: '', note: '', guide: '', example_image_url: '', required: false });
   } else {
     if (!form[field]) form[field] = [];
     form[field].push('');
@@ -2302,6 +2359,8 @@ const initData = async () => {
         key: doc?.key || '',
         label: doc?.label || '',
         note: doc?.note || '',
+        guide: doc?.guide || '',
+        example_image_url: doc?.example_image_url || '',
         required: !!doc?.required,
       }));
       form.checkin_bring = trip.checkin_bring || '';

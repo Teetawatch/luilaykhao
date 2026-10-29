@@ -27,6 +27,7 @@
             <span v-else-if="!req.required" class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[11px] font-bold">ไม่บังคับ</span>
           </div>
           <p v-if="req.note" class="text-xs text-gray-600 mt-1">{{ req.note }}</p>
+          <DocumentGuideButton :doc="req" :max-size-mb="maxSizeMb" :max-files="req.for === 'border_pass' ? 1 : maxFiles" class="mt-1" />
 
           <div v-if="req.files.length" class="mt-2 space-y-2">
             <div v-for="file in req.files" :key="file.id"
@@ -78,6 +79,7 @@
  */
 import { computed, ref } from 'vue';
 import api from '../lib/axios';
+import DocumentGuideButton from './DocumentGuideButton.vue';
 import { useToast } from '../lib/toast';
 
 const props = defineProps({

@@ -32,11 +32,25 @@ class TripDocumentRequirements
         .'และระบบลบทิ้งอัตโนมัติ '.PurgeBorderPassDocumentsJob::RETENTION_DAYS.' วันหลังจบทริป';
 
     /**
+     * เช็คลิสต์ก่อนแนบที่ใช้ได้กับเอกสารทุกชิ้น — ขึ้นท้ายหน้า "วิธีแนบ" เสมอ
+     * แม้แอดมินจะไม่ได้เขียนวิธีของเอกสารชิ้นนั้นไว้ (ไฟล์ที่ทีมงานต้องขอใหม่
+     * เกือบทั้งหมดพลาดเพราะสามข้อนี้)
+     */
+    public const GENERAL_TIPS = [
+        'เป็นเอกสารของผู้เดินทางคนนี้ ชื่อตรงกับที่กรอกไว้',
+        'เห็นเอกสารครบทั้งแผ่น ไม่ตัดขอบหรือมุมหาย',
+        'ตัวหนังสืออ่านออกชัด ไม่เบลอ ไม่มีแสงแฟลชสะท้อน',
+    ];
+
+    /** ความยาวสูงสุดของ "วิธีกรอก/แนบ" — ตรงกับกฎใน StoreTripRequest */
+    public const GUIDE_MAX = 1000;
+
+    /**
      * บัตรประชาชนด้านหน้า/ด้านหลังของคนทำ Border Pass — กฎของด่าน ไม่ใช่สิ่งที่
      * แอดมินเลือก จึงไม่อยู่ใน `trips.document_requirements` แต่ระบบใส่ให้เอง
      * กับทุกทริปที่ให้เลือก Border Pass (ดู BookingDocumentService::requirementsFor)
      *
-     * @return array<int, array{key: string, label: string, note: string, required: bool, for: string}>
+     * @return array<int, array{key: string, label: string, note: string, guide: string, example_image_url: ?string, required: bool, for: string, tips: array<int, string>}>
      */
     public static function borderPass(): array
     {
@@ -45,17 +59,43 @@ class TripDocumentRequirements
                 'key' => self::BORDER_PASS_FRONT,
                 'label' => 'บัตรประชาชน (ด้านหน้า)',
                 'note' => self::BORDER_PASS_NOTE,
+                'guide' => "ใช้บัตรประชาชนตัวจริงที่ยังไม่หมดอายุ\n"
+                    ."วางบัตรบนพื้นเรียบ ถ่ายตรง ๆ ให้เห็นครบทั้ง 4 มุม\n"
+                    ."ชื่อ เลขบัตร 13 หลัก และรูปหน้าต้องอ่านออกชัด\n"
+                    .'ไม่ต้องปิดหรือขีดทับเลขบัตร — ด่านต้องเห็นครบทุกหลัก',
+                'example_image_url' => null,
                 'required' => true,
                 'for' => self::FOR_BORDER_PASS,
+                'tips' => self::GENERAL_TIPS,
             ],
             [
                 'key' => self::BORDER_PASS_BACK,
                 'label' => 'บัตรประชาชน (ด้านหลัง)',
                 'note' => self::BORDER_PASS_NOTE,
+                'guide' => "พลิกบัตรใบเดียวกับด้านหน้า ถ่ายให้เห็นครบทั้ง 4 มุม\n"
+                    .'รหัสหลังบัตร (ตัวอักษร 2 ตัวตามด้วยตัวเลข) ต้องอ่านออกชัด',
+                'example_image_url' => null,
                 'required' => true,
                 'for' => self::FOR_BORDER_PASS,
+                'tips' => self::GENERAL_TIPS,
             ],
         ];
+    }
+
+    /**
+     * ฉบับที่ส่งให้ลูกค้า — เติมเช็คลิสต์ทั่วไปให้ทุกรายการ
+     *
+     * แยกจาก [normalize] เพราะผลของ normalize ถูกเขียนลงฐานข้อมูล เช็คลิสต์เป็น
+     * ข้อความของระบบ ไม่ใช่ของทริป แก้ข้อความแล้วทุกทริปต้องเห็นของใหม่ทันที
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function forCustomers(mixed $raw): array
+    {
+        return array_map(
+            fn (array $requirement) => [...$requirement, 'tips' => self::GENERAL_TIPS],
+            self::normalize($raw),
+        );
     }
 
     public static function isBorderPassKey(string $key): bool
@@ -70,7 +110,7 @@ class TripDocumentRequirements
      * ต้องส่งอะไร ส่วนแถวที่ไม่มี `key` (แอดมินเพิ่งเพิ่มในหน้าแก้ทริป) จะได้
      * key จากชื่อของมันเอง
      *
-     * @return array<int, array{key: string, label: string, note: string, required: bool, for: string}>
+     * @return array<int, array{key: string, label: string, note: string, guide: string, example_image_url: ?string, required: bool, for: string}>
      */
     public static function normalize(mixed $raw): array
     {
@@ -103,6 +143,9 @@ class TripDocumentRequirements
                 'key' => $key,
                 'label' => $label,
                 'note' => trim((string) ($row['note'] ?? '')),
+                // วิธีกรอก/แนบ — บรรทัดละขั้น หน้าจอแตกเป็นข้อ ๆ ให้เอง
+                'guide' => self::guide($row['guide'] ?? ''),
+                'example_image_url' => self::imageUrl($row['example_image_url'] ?? null),
                 'required' => (bool) ($row['required'] ?? false),
                 'for' => self::FOR_ALL,
             ];
@@ -121,6 +164,26 @@ class TripDocumentRequirements
         }
 
         return null;
+    }
+
+    /** ตัดบรรทัดว่างและช่องว่างหัวท้าย — ลูกค้าเห็นทีละบรรทัดเป็นข้อ ๆ */
+    private static function guide(mixed $value): string
+    {
+        $lines = preg_split('/\R/u', (string) $value) ?: [];
+        $lines = array_filter(array_map('trim', $lines), fn (string $line) => $line !== '');
+
+        return mb_substr(implode("\n", $lines), 0, self::GUIDE_MAX);
+    }
+
+    /**
+     * รูปตัวอย่างต้องเป็นลิงก์ที่เปิดได้จริงเท่านั้น (อัปโหลดผ่าน /admin/upload-image)
+     * ค่าแปลก ๆ อย่าง `javascript:` จะไม่มีวันไปถึง src ของหน้าลูกค้า
+     */
+    private static function imageUrl(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return preg_match('#^(https?://|/)#i', $value) && ! str_starts_with($value, '//') ? $value : null;
     }
 
     /**

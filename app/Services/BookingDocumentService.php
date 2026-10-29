@@ -40,7 +40,7 @@ class BookingDocumentService
     public function requirementsFor(Booking $booking): array
     {
         $trip = $booking->schedule?->trip;
-        $requirements = TripDocumentRequirements::normalize($trip?->document_requirements);
+        $requirements = TripDocumentRequirements::forCustomers($trip?->document_requirements);
 
         $booking->loadMissing('passengers');
         if ($booking->passengers->contains(fn (BookingPassenger $passenger) => $this->isBorderPass($booking, $passenger))) {
