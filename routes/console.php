@@ -6,6 +6,7 @@ use App\Jobs\AnnounceSaleCampaignJob;
 use App\Jobs\ApprovePartnerCommissionsJob;
 use App\Jobs\AskTripAttendanceJob;
 use App\Jobs\RemindPermitSignaturesJob;
+use App\Jobs\SendBookingDocumentRemindersJob;
 use App\Jobs\AwardTripMedalsJob;
 use App\Jobs\BroadcastLowSeatsJob;
 use App\Jobs\ClearEndedTripDriverPinsJob;
@@ -75,6 +76,8 @@ Schedule::job(new SendTripReminderNotificationsJob)->dailyAt('08:20')->timezone(
 Schedule::job(new AskTripAttendanceJob)->dailyAt('10:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // เตือนเซ็นแบบฟอร์มอุทยานก่อนวันที่ทีมงานต้องลงทะเบียน (กำหนดต่อแบบฟอร์ม)
 Schedule::job(new RemindPermitSignaturesJob)->dailyAt('11:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+// เอกสารแนบที่ทริปบังคับแต่ยังไม่ได้แนบ — push D-7 / D-3 / D-1 (ลูกค้าจองก่อนแนบทีหลังได้)
+Schedule::job(new SendBookingDocumentRemindersJob)->dailyAt('10:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 // เตือน push ~2–3 ชม. ก่อนเวลาออกรถจริง (departs_at) — เติมช่องว่างระหว่าง
 // เตือน 1 วันก่อน กับ ETA จุดรับ; รองรับรถที่ออกคืนก่อนวันทริป
 Schedule::job(new SendDepartureSoonRemindersJob)->everyFifteenMinutes()->withoutOverlapping();

@@ -367,4 +367,18 @@ class BookingDocumentTest extends TestCase
             $this->assertSame(TripDocumentRequirements::GENERAL_TIPS, $requirement['tips']);
         }
     }
+
+    public function test_an_empty_optional_only_booking_is_not_reported_as_complete(): void
+    {
+        $owner = User::factory()->create();
+        $booking = $this->makeBooking($owner, $this->makeTrip([[
+            'key' => 'photo', 'label' => 'รูปถ่าย', 'required' => false,
+        ]]));
+
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/documents")
+            ->assertOk()
+            ->assertJsonPath('data.has_missing', false)
+            ->assertJsonPath('data.has_any_file', false);
+    }
 }

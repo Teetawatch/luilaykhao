@@ -120,6 +120,48 @@ class BookingDocumentService
     }
 
     /**
+     * เอกสารบังคับที่แต่ละคนยังขาด — สำหรับแจ้งเตือนรายคน
+     *
+     * ต่างจาก [missingRequirements] ตรงที่ตัดคนที่แจ้งว่า "ไปไม่ได้" ออก (ที่นั่ง
+     * ยังอยู่ แต่ไม่มีเหตุให้ทวงเอกสารของคนที่ไม่ไป)
+     *
+     * @return array<int, array<int, string>> passenger_id → ชื่อเอกสารที่ยังขาด
+     */
+    public function missingByPassenger(Booking $booking): array
+    {
+        $requirements = array_values(array_filter(
+            $this->requirementsFor($booking),
+            fn (array $requirement) => $requirement['required'],
+        ));
+
+        if ($requirements === []) {
+            return [];
+        }
+
+        $booking->loadMissing(['passengers', 'documents']);
+        $keysByPassenger = $booking->documents->groupBy('booking_passenger_id')
+            ->map(fn ($documents) => $documents->pluck('requirement_key')->all());
+
+        $missing = [];
+
+        foreach ($booking->passengers->whereNull('not_going_at') as $passenger) {
+            $have = $keysByPassenger->get($passenger->id, []);
+            $labels = collect($requirements)
+                ->filter(fn (array $requirement) => $this->appliesTo($requirement, $booking, $passenger))
+                ->reject(fn (array $requirement) => in_array($requirement['key'], $have, true))
+                ->pluck('label')
+                ->values()
+                ->all();
+
+            if ($labels !== []) {
+                $missing[$passenger->id] = $labels;
+            }
+        }
+
+        return $missing;
+    }
+
+    /**
      * เก็บไฟล์หนึ่งใบ
      *
      * @throws \Exception เมื่อทริปไม่ได้ขอเอกสารชิ้นนี้ หรือแนบเกินโควตา
@@ -344,6 +386,10 @@ class BookingDocumentService
             'has_missing' => $passengers->contains(
                 fn (array $row) => collect($row['requirements'])->contains('is_missing', true)
             ),
+            // แนบอะไรไว้บ้างหรือยัง — แยกจาก has_missing เพราะทริปที่มีแต่เอกสาร
+            // ไม่บังคับ has_missing เป็น false ตั้งแต่ยังไม่แนบสักไฟล์ หน้าจอที่อ่านแค่
+            // has_missing จะขึ้น "เอกสารครบแล้ว" ทั้งที่ว่างเปล่า
+            'has_any_file' => $booking->documents->isNotEmpty(),
         ];
     }
 

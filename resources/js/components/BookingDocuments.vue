@@ -6,11 +6,13 @@
       <span class="material-symbols-rounded text-[22px]"
         :class="hasMissing ? 'text-amber-600' : 'text-violet-600'">attach_file</span>
       <div class="flex-1">
-        <h2 class="font-black text-gray-900">{{ hasMissing ? 'ยังขาดเอกสารแนบ' : 'เอกสารแนบ' }}</h2>
+        <h2 class="font-black text-gray-900">{{ hasMissing ? 'ยังขาดเอกสารแนบ' : isEmpty ? 'ยังไม่ได้แนบเอกสาร' : 'เอกสารแนบ' }}</h2>
         <p class="text-xs text-gray-600 mt-0.5">
           {{ hasMissing
             ? 'ทริปนี้ต้องใช้เอกสารของผู้เดินทางทุกท่าน แนบเป็นรูปหรือไฟล์ PDF ก็ได้'
-            : 'ทีมงานได้รับเอกสารของทุกท่านแล้ว แนบผิดไฟล์สามารถลบแล้วแนบใหม่ได้' }}
+            : isEmpty
+              ? 'เอกสารของทริปนี้ไม่บังคับ มีไว้ก็แนบได้เลย แนบเป็นรูปหรือไฟล์ PDF ก็ได้'
+              : 'ทีมงานได้รับเอกสารของทุกท่านแล้ว แนบผิดไฟล์สามารถลบแล้วแนบใหม่ได้' }}
         </p>
       </div>
     </div>
@@ -100,6 +102,8 @@ const payload = computed(() => local.value || props.documents || {});
 const requirements = computed(() => payload.value.requirements || []);
 const passengers = computed(() => payload.value.passengers || []);
 const hasMissing = computed(() => payload.value.has_missing === true);
+// ไม่ขาดของบังคับ ≠ ครบ — ทริปที่มีแต่เอกสารไม่บังคับอาจยังไม่ได้แนบอะไรเลย
+const isEmpty = computed(() => !hasMissing.value && payload.value.has_any_file === false);
 
 const uploadingSlot = ref('');
 const deletingId = ref(null);
