@@ -25,6 +25,7 @@ Thumbs.db
 # /driver_app
 /luilaykhao-app
 /luilaykhao-driver-app
+/luilaykhao-app/FC Mittraphap Clear
 
 # Licensed font source — keep the installable .ttf/.otf desktop files out of
 # the repo. Only the web-optimized woff2/woff under public/fonts are served.

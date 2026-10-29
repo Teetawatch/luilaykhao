@@ -59,6 +59,14 @@ cd luilaykhao-driver-app
 flutter run --dart-define=API_BASE_URL=http://localhost:8000/api/v1
 ```
 
+## Delegating to cheaper subagents
+
+The owner wants routine work handed to the project subagents in `.claude/agents/` without being asked each time, to save tokens:
+- **`code-finder`** (Haiku) — "where is X / who calls X / which files touch X" lookups that end in a list of locations or a short explanation.
+- **`test-runner`** (Sonnet) — running Laravel/Flutter tests after a change and summarising failures.
+
+Keep the work in the main session when it needs this conversation's context or will edit code — a subagent starts cold, so a lookup you can answer with one grep is cheaper done directly.
+
 ## Architecture
 
 ### Data model hierarchy
