@@ -1,33 +1,26 @@
 <template>
   <div class="privacy-page font-anuphan bg-[var(--color-sand)] min-h-screen">
-    <!-- HERO -->
-    <section class="relative min-h-[300px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
-      <div class="absolute inset-0">
-        <img
-          src="/images/phusoidao.webp"
-          alt="ทะเลหมอกที่ภูสอยดาว"
-          class="w-full h-full object-cover"
-        />
-        <div class="absolute inset-0 bg-black/40"></div>
-      </div>
-      <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center flex flex-col items-center">
-        <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
-        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
-          นโยบายความเป็นส่วนตัว
-        </h1>
-        <p class="text-base md:text-lg text-white/85 max-w-2xl mx-auto leading-relaxed">
-          นโยบายนี้อธิบายว่าเราเก็บข้อมูลอะไร เก็บไปทำอะไร ส่งต่อให้ใคร เก็บไว้นานเท่าไร และท่านสั่งให้เราทำอะไรกับข้อมูลได้บ้าง
-        </p>
-        <p v-if="effectiveLabel" class="mt-5 text-sm text-white/75">
-          ฉบับที่ {{ version }} · มีผลตั้งแต่ {{ effectiveLabel }}
-        </p>
-      </div>
-    </section>
+    <PageHero
+      image="/images/phusoidao.webp"
+      badge="เอกสารทางกฎหมาย"
+      badge-icon="policy"
+      title="นโยบายความเป็นส่วนตัว"
+      subtitle="นโยบายนี้อธิบายว่าเราเก็บข้อมูลอะไร เก็บไปทำอะไร ส่งต่อให้ใคร เก็บไว้นานเท่าไร และท่านสั่งให้เราทำอะไรกับข้อมูลได้บ้าง"
+      compact
+    >
+      <p v-if="effectiveLabel" class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-white/70">
+        <span class="material-symbols-rounded text-[18px]">history_edu</span>
+        ฉบับที่ {{ version }} · มีผลตั้งแต่ {{ effectiveLabel }}
+      </p>
+    </PageHero>
 
     <!-- CONTENT -->
-    <section class="py-16 md:py-24">
-      <div class="max-w-4xl mx-auto px-6 md:px-8">
-        <div class="bg-white rounded-[2.5rem] p-8 md:p-12 border border-[var(--color-sand-dark)] space-y-12">
+    <section class="py-10 md:py-16">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-start">
+        <aside class="lg:col-span-3 print:hidden">
+          <DocToc :target="doc" />
+        </aside>
+        <article ref="doc" class="legal-doc lg:col-span-9 min-w-0 bg-white rounded-3xl p-6 sm:p-8 md:p-12 border border-[var(--color-sand-dark)] space-y-12">
 
           <!-- ผู้ควบคุมข้อมูลส่วนบุคคล — PDPA บังคับให้ระบุ ไม่ใช่ของประดับ -->
           <div class="rounded-2xl border border-[var(--color-sand-dark)] bg-[var(--color-sand)] p-6 space-y-3">
@@ -204,14 +197,16 @@
               นโยบายฉบับที่ {{ version }} · ปรับปรุงล่าสุดเมื่อ {{ effectiveLabel }}
             </p>
           </div>
-        </div>
+        </article>
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import DocToc from '../components/DocToc.vue'
+import PageHero from '../components/PageHero.vue'
 import { privacyEffectiveLabel, privacyVersion } from '../lib/policy'
 import { licenceNo } from '../lib/licence'
 import {
@@ -220,7 +215,9 @@ import {
   supportLine, supportLineUrl, supportPhone, supportPhoneHref,
 } from '../lib/contact'
 
-const headingClass = 'text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] flex items-center gap-3'
+const doc = ref(null)
+
+const headingClass = 'text-xl md:text-2xl font-extrabold text-[var(--color-text-dark)] flex items-center gap-3'
 
 const licence = licenceNo()
 const version = privacyVersion()

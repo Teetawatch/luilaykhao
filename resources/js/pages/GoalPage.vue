@@ -1,124 +1,100 @@
 <template>
-  <div class="goal-page font-anuphan bg-[var(--color-sand)]">
+  <div ref="root" class="goal-page font-anuphan bg-[var(--color-sand)]">
+
+    <PageHero
+      image="/images/hiking.webp"
+      badge="จุดมุ่งหมาย"
+      badge-icon="flag"
+      title="ทำให้การท่องเที่ยวธรรมชาติ เป็นเรื่องง่ายสำหรับทุกคน"
+      subtitle="เพราะเราเชื่อว่าการผจญภัยที่ดี ไม่ควรถูกขัดจังหวะด้วยความยุ่งยากในการจองและข้อมูลที่สับสน"
+    >
+      <!-- ตัวเลขจริงจาก /stats — ไม่มีก็ไม่โชว์ (เดิมขึ้น "0+" และ "5.0 ดาว" ทั้งที่ยังไม่มีรีวิว) -->
+      <dl v-if="heroStats.length" class="mt-9 flex flex-wrap gap-x-10 gap-y-5 border-t border-white/15 pt-6">
+        <div v-for="stat in heroStats" :key="stat.key">
+          <dt class="sr-only">{{ stat.label }}</dt>
+          <dd class="flex items-center gap-1.5 text-3xl font-extrabold text-white tabular-nums leading-none">
+            {{ stat.display }}
+            <span v-if="stat.key === 'rating'" class="material-symbols-rounded text-[24px] text-[var(--color-gold)]" :style="FILLED">star</span>
+          </dd>
+          <dd class="mt-1.5 text-[13px] font-semibold text-white/65" aria-hidden="true">{{ stat.label }}</dd>
+        </div>
+      </dl>
+
+      <template #actions>
+        <router-link to="/trips" class="hero-btn hero-btn--solid">
+          ดูทริปที่เปิดรับ
+          <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
+        </router-link>
+        <router-link to="/problem" class="hero-btn hero-btn--outline">ปัญหาที่เราอยากแก้</router-link>
+      </template>
+    </PageHero>
 
     <!-- ══════════════════════════════════════════
-         HERO SECTION
+         OUR STORY
     ══════════════════════════════════════════ -->
-    <section class="relative min-h-[440px] md:min-h-[560px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
-      <div class="absolute inset-0">
-        <img
-          src="/images/hiking.webp"
-          alt="ทำให้การท่องเที่ยวธรรมชาติ เป็นเรื่องง่ายสำหรับทุกคน"
-          class="w-full h-full object-cover scale-110 motion-safe:animate-[subtle-zoom_20s_infinite_alternate]"
-        />
-        <!-- Deep color overlay for better text readability -->
-        <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-[var(--color-sand)]/20"></div>
-      </div>
-
-      <div class="hero-content relative z-10 w-full h-full flex items-center justify-center px-6 md:px-8 py-16 md:py-24">
-        <div class="text-center max-w-4xl mt-6 flex flex-col items-center">
-          <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
-
-          <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tight">
-            ทำให้การท่องเที่ยวธรรมชาติ<br/>
-            <span class="text-[var(--color-accent-light)]">เป็นเรื่องง่าย</span> สำหรับทุกคน
-          </h1>
-
-          <p class="text-base md:text-lg lg:text-xl text-white/90 font-medium leading-relaxed max-w-2xl mx-auto tracking-wide mb-8">
-            เพราะเราเชื่อว่าการผจญภัยที่ยอดเยี่ยม ไม่ควรถูกขัดจังหวะด้วยความยุ่งยากในการจองและข้อมูลที่สับสน
-          </p>
-
-          <!-- Trust Signals -->
-          <div class="flex flex-wrap justify-center gap-8 md:gap-16 pt-6 border-t border-white/20 w-full max-w-2xl">
-            <div class="flex flex-col items-center">
-              <span class="text-3xl md:text-4xl font-black text-white">{{ stats.total_customers.toLocaleString() }}+</span>
-              <span class="text-sm md:text-base text-white/70 font-bold uppercase tracking-widest">นักเดินทางที่ไว้วางใจ</span>
+    <section class="py-16 md:py-24">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+          <div class="lg:col-span-7 order-2 lg:order-1 reveal">
+            <SectionHeading eyebrow="จุดเริ่มต้นของเรา">จากความเจ็บปวด สู่ความตั้งใจที่จะเปลี่ยน</SectionHeading>
+            <div class="mt-6 space-y-5 text-base md:text-lg text-[var(--color-text-mid)] leading-relaxed">
+              <p>เราไม่ได้เริ่มจากการอยากสร้างธุรกิจใหญ่ แต่เริ่มจาก "ความหงุดหงิด" ที่เจอในฐานะนักเดินทางเหมือนกับคุณ</p>
+              <p>เราเคยติดอยู่กับข้อมูลทริปที่กระจัดกระจาย การจองที่ต้องรอแอดมินตอบเป็นวัน ๆ และความไม่มั่นใจว่าทริปที่จองไปจะเป็นอย่างไร</p>
+              <p>ลุยเลเขาจึงถูกสร้างขึ้น เพื่อให้คุณไม่ต้องพึ่ง "โชค" ในการไปเที่ยว แต่วางแผนและออกเดินทางได้ทันทีที่พร้อม</p>
             </div>
-            <div class="flex flex-col items-center">
-              <div class="flex items-center gap-1 mb-1">
-                <span class="text-3xl md:text-4xl font-black text-white">{{ stats.avg_rating.toFixed(1) }}</span>
-                <span class="material-symbols-rounded text-[var(--color-gold)] text-2xl md:text-3xl">star</span>
-              </div>
-              <span class="text-sm md:text-base text-white/70 font-bold uppercase tracking-widest">คะแนนรีวิวจากผู้ใช้จริง</span>
-            </div>
-            <div class="flex flex-col items-center">
-              <span class="text-3xl md:text-4xl font-black text-white">24/7</span>
-              <span class="text-sm md:text-base text-white/70 font-bold uppercase tracking-widest">ทีมงานดูแลตลอดทริป</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Scroll indicator -->
-      <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 opacity-70 hover:opacity-100 transition-opacity">
-        <div class="w-8 h-14 border-[3px] border-white/30 rounded-full flex justify-center pt-2 backdrop-blur-sm">
-          <div class="w-2 h-3 bg-white rounded-full scroll-dot"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ══════════════════════════════════════════
-         OUR STORY SECTION
-    ══════════════════════════════════════════ -->
-    <section class="py-24 md:py-40 bg-[var(--color-sand)] relative overflow-hidden">
-      <!-- Decorative element -->
-      <div class="absolute top-0 right-0 w-[800px] h-[800px] bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 opacity-50"></div>
-      <div class="absolute bottom-0 left-0 w-64 h-64 bg-[var(--color-accent)]/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-
-      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-center">
-          <!-- Text -->
-          <div class="lg:col-span-7 order-2 lg:order-1 space-y-10 reveal-section">
-            <div class="inline-flex items-center gap-3 text-[var(--color-accent)] font-bold tracking-wider uppercase text-xs">
-              <span class="w-10 h-[2px] bg-[var(--color-accent)]"></span>
-              จุดเริ่มต้นของเรา
-            </div>
-            <h2 class="text-3xl md:text-4xl lg:text-6xl font-extrabold text-[var(--color-text-dark)] leading-[1.1]">
-              จากความเจ็บปวด<br class="hidden sm:block" />สู่ความตั้งใจที่จะเปลี่ยน
-            </h2>
-            <div class="space-y-8 text-xl text-[var(--color-text-mid)] leading-relaxed font-medium">
-              <p>
-                เราไม่ได้เริ่มต้นจากการอยากสร้างธุรกิจใหญ่ แต่เริ่มจาก "ความหงุดหงิด" ที่เราเจอในฐานะนักเดินทางเหมือนกับคุณ
+            <blockquote class="mt-8 rounded-2xl border-l-4 border-[var(--color-accent)] bg-white px-6 py-5">
+              <p class="text-xl md:text-2xl font-bold text-[var(--color-text-dark)] leading-snug">
+                “ช่วงเวลาที่ดีที่สุดในการออกไปเห็นโลก คือตอนที่คุณอยากไปที่สุด”
               </p>
-              <p>
-                เราเคยติดอยู่กับการหาข้อมูลทริปที่กระจัดกระจาย การจองที่ต้องรอแอดมินตอบเป็นวัน ๆ และความรู้สึกไม่มั่นใจว่าทริปที่จองไปจะเป็นอย่างไร
-              </p>
-              <p>
-                ลุยเลเขา (Luilaykhao) จึงถูกสร้างขึ้นมาเพื่อให้คุณไม่ต้องมองหา 'โชค' ในการไปเที่ยว แต่ให้คุณสามารถวางแผนและออกเดินทางได้ทันทีที่คุณพร้อม
-              </p>
-              
-              <blockquote class="relative pl-10 py-6 mt-12 bg-white/40 backdrop-blur-sm rounded-3xl border-l-8 border-[var(--color-accent)] pr-8">
-                <p class="text-[var(--color-text-dark)] font-bold text-2xl md:text-3xl italic leading-snug">
-                  "เพราะช่วงเวลาที่ดีที่สุดในการออกไปเห็นโลก คือตอนที่คุณ 'อยากไป' ที่สุด"
-                </p>
-              </blockquote>
-            </div>
+            </blockquote>
           </div>
-          <!-- Image -->
-          <div class="lg:col-span-5 order-1 lg:order-2 reveal-section">
-            <div class="relative group">
-              <div class="absolute -inset-6 bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-gold)]/20 rounded-[3rem] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-              <div class="relative rounded-[2.5rem] overflow-hidden aspect-[4/5]">
-                <img
-                  src="/images/ceoluilaykhao.webp"
-                  alt="ผู้ก่อตั้งลุยเลเขา"
-                  class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                />
-                <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              </div>
-              
-              <!-- Floating Badge -->
-              <div class="absolute -bottom-6 -left-6 bg-white p-6 rounded-3xl z-20 hidden md:block border border-[var(--color-sand-dark)] animate-bounce-subtle">
-                <div class="flex items-center gap-4">
-                  <div class="w-12 h-12 bg-[var(--color-accent)]/10 rounded-2xl flex items-center justify-center">
-                    <span class="material-symbols-rounded text-[var(--color-accent)] text-3xl">favorite</span>
-                  </div>
-                  <div>
-                    <div class="text-sm text-[var(--color-text-mid)] font-bold uppercase">Travel with Heart</div>
-                    <div class="text-lg text-[var(--color-text-dark)] font-black">ใส่ใจทุกย่างก้าว</div>
-                  </div>
-                </div>
-              </div>
+
+          <div class="lg:col-span-5 order-1 lg:order-2 reveal" style="--reveal-delay: 0.1s">
+            <figure class="relative">
+              <img
+                src="/images/ceoluilaykhao.webp"
+                alt="ผู้ก่อตั้งลุยเลเขา"
+                loading="lazy"
+                class="w-full aspect-[4/3] lg:aspect-[4/5] object-cover rounded-3xl"
+              />
+              <figcaption class="absolute left-4 bottom-4 right-4 sm:right-auto flex items-center gap-3 rounded-2xl bg-white px-4 py-3">
+                <span class="w-10 h-10 rounded-xl bg-[var(--color-accent)]/10 flex items-center justify-center shrink-0">
+                  <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)]" :style="FILLED">favorite</span>
+                </span>
+                <span>
+                  <span class="block text-[11px] font-bold text-[var(--color-text-muted)]">Travel with Heart</span>
+                  <span class="block text-[15px] font-extrabold text-[var(--color-text-dark)]">ใส่ใจทุกย่างก้าว</span>
+                </span>
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         PART OF YOUR JOURNEY
+    ══════════════════════════════════════════ -->
+    <section class="bg-white border-y border-[var(--color-sand-dark)] py-16 md:py-24">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
+        <div class="reveal">
+          <SectionHeading eyebrow="ไม่ใช่แค่แพลตฟอร์ม แต่คือเพื่อนร่วมทาง" tone="gold">
+            เราอยากเป็น<span class="text-[var(--color-accent)]">ส่วนหนึ่ง</span>ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น
+          </SectionHeading>
+        </div>
+        <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+          <div
+            v-for="(item, i) in journey"
+            :key="item.title"
+            class="reveal flex gap-5 rounded-3xl bg-[var(--color-sand)] p-6 md:p-7"
+            :style="{ '--reveal-delay': `${i * 0.08}s` }"
+          >
+            <span class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shrink-0" :class="item.tone">
+              <span class="material-symbols-rounded text-[26px]">{{ item.icon }}</span>
+            </span>
+            <div>
+              <h3 class="text-xl font-extrabold text-[var(--color-text-dark)]">{{ item.title }}</h3>
+              <p class="mt-2 text-[15px] text-[var(--color-text-mid)] leading-relaxed">{{ item.desc }}</p>
             </div>
           </div>
         </div>
@@ -126,173 +102,67 @@
     </section>
 
     <!-- ══════════════════════════════════════════
-         PART OF YOUR JOURNEY (Supporting Section)
+         WHAT WE GIVE
     ══════════════════════════════════════════ -->
-    <section class="py-32 md:py-48 bg-white relative overflow-hidden">
-      <div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[var(--color-sand-dark)] to-transparent"></div>
-      
-      <div class="max-w-6xl mx-auto px-6 md:px-8 relative z-10 text-center">
-        <div class="inline-flex items-center gap-3 justify-center text-[var(--color-gold)] font-bold tracking-wider uppercase text-xs mb-8">
-          <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
-          ไม่ใช่แค่แพลตฟอร์ม แต่คือเพื่อนร่วมทาง
-          <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
+    <section class="py-16 md:py-24">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
+        <div class="reveal">
+          <SectionHeading eyebrow="ค่านิยมที่เรายึดถือ" title="สิ่งที่เราตั้งใจมอบให้คุณ" />
         </div>
-        
-        <h2 class="text-4xl md:text-5xl lg:text-7xl font-extrabold text-[var(--color-text-dark)] leading-tight mb-12">
-          เราอยากเป็น <span class="text-[var(--color-accent)]">"ส่วนหนึ่ง"</span><br />ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น
-        </h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 text-left mt-20">
-          <div class="space-y-4 reveal-section">
-            <div class="w-14 h-14 bg-[var(--color-accent)]/10 rounded-2xl flex items-center justify-center mb-6">
-              <span class="material-symbols-rounded text-[var(--color-accent)] text-3xl">map</span>
-            </div>
-            <h3 class="text-2xl font-bold text-[var(--color-text-dark)]">วางแผนให้เสร็จในที่เดียว</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed">
-              ไม่ต้องเปิดหาข้อมูลหลายเว็บหรือรอแอดมินตอบเป็นชั่วโมง เราคัดกรองข้อมูลทริป เส้นทาง และราคาที่โปร่งใสมาให้คุณเลือกได้ทันที
-            </p>
-          </div>
-          <div class="space-y-4 reveal-section">
-            <div class="w-14 h-14 bg-[var(--color-gold)]/10 rounded-2xl flex items-center justify-center mb-6">
-              <span class="material-symbols-rounded text-[var(--color-gold)] text-3xl">support_agent</span>
-            </div>
-            <h3 class="text-2xl font-bold text-[var(--color-text-dark)]">อุ่นใจเหมือนมีเพื่อนไปด้วย</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed">
-              ไม่ว่าจะเป็นทริปเดินป่าครั้งแรก หรือการเดินทางไปยังจุดหมายที่ไม่คุ้นเคย ทีมงานและพาร์ทเนอร์ของเราจะคอยดูแลคุณตั้งแต่ก้าวแรก
-            </p>
-          </div>
+        <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+          <IllustratedCard
+            v-for="(item, i) in goals"
+            :key="item.title"
+            v-bind="item"
+            class="reveal"
+            :style="{ '--reveal-delay': `${i * 0.08}s` }"
+          />
         </div>
       </div>
-      
-      <!-- Decorative pattern -->
-      <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-[var(--color-sand)] rounded-full opacity-50 blur-3xl"></div>
-    </section>
-
-    <!-- ══════════════════════════════════════════
-         VALUE CARDS (Three Goals)
-    ══════════════════════════════════════════ -->
-    <section class="py-32 md:py-48 bg-[var(--color-sand)] relative">
-      <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(var(--color-primary) 1px, transparent 1px); background-size: 32px 32px;"></div>
-
-      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="text-center mb-24 reveal-section">
-          <div class="inline-flex items-center gap-3 justify-center text-[var(--color-accent)] font-bold tracking-wider uppercase text-xs mb-4">
-            <span class="w-8 h-[2px] bg-[var(--color-accent)]"></span>
-            ค่านิยมที่เรายึดถือ
-            <span class="w-8 h-[2px] bg-[var(--color-accent)]"></span>
-          </div>
-          <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[var(--color-text-dark)]">สิ่งที่เราตั้งใจมอบให้คุณ</h2>
-        </div>
-        
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 items-stretch">
-          <!-- Card 1 -->
-          <div class="bg-white p-12 pt-32 rounded-[3rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
-              <img 
-                src="/images/fast_nowaitng.webp" 
-                alt="จองทริปได้ในไม่กี่คลิก" 
-                class="w-64 h-64 max-w-none object-contain"
-              />
-            </div>
-            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">จองทริปได้ในไม่กี่คลิก</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">ไม่ต้องเสียเวลาหาข้อมูล ไม่ต้องรอแอดมินตอบกลับ อยากไปวันไหนระบบเราจัดให้ทันที</p>
-          </div>
-          
-          <!-- Card 2 (Featured) -->
-          <div class="bg-white p-12 pt-32 rounded-[3rem] transition-all duration-500 border-2 border-[var(--color-accent)]/10 hover:border-[var(--color-accent)]/40 md:translate-y-0 cursor-default group reveal-section relative mt-24 text-center">
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
-              <img 
-                src="/images/feel_good.webp" 
-                alt="ดูแลคุณตลอดเส้นทาง" 
-                class="w-64 h-64 max-w-none object-contain"
-              />
-            </div>
-            <h3 class="text-3xl font-bold mb-6 text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors">ดูแลคุณตลอดเส้นทาง</h3>
-            <p class="text-[var(--color-text-mid)] text-lg leading-relaxed mx-auto max-w-xs">ไม่ใช่แค่การจอง แต่เราคือเพื่อนร่วมทางที่พร้อมช่วยเหลือคุณจนถึงจุดหมายอย่างปลอดภัย</p>
-            <div class="mt-10 mx-auto w-14 h-1.5 bg-[var(--color-accent)] rounded-full"></div>
-          </div>
-          
-          <!-- Card 3 -->
-          <div class="bg-white p-12 pt-32 rounded-[3rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 md:translate-y-8 cursor-default group reveal-section relative mt-24 text-center">
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
-              <img 
-                src="/images/no_wating.webp" 
-                alt="เริ่มผจญภัยได้ทุกคน" 
-                class="w-64 h-64 max-w-none object-contain"
-              />
-            </div>
-            <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">เริ่มผจญภัยได้ทุกคน</h3>
-            <p class="text-lg text-[var(--color-text-mid)] leading-relaxed mx-auto max-w-xs">มีแผนการเดินทางที่ออกแบบมาให้เหมาะสม ตั้งแต่นักเดินป่ามือใหม่ไปจนถึงสายลุยระดับโปร</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ══════════════════════════════════════════
-         GOAL CTA (Action Focused)
-    ══════════════════════════════════════════ -->
-    <section class="relative py-32 w-full overflow-hidden bg-[#0D2B1E]">
-      <!-- Premium Background Effects -->
-      <div class="absolute inset-0 z-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 font-[Inter]"></div>
-      <div class="absolute top-0 right-0 w-[50rem] h-[50rem] bg-[var(--color-accent)]/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-      <div class="absolute bottom-0 left-0 w-[40rem] h-[40rem] bg-[var(--color-gold)]/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/4 pointer-events-none"></div>
-      
-      <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="max-w-4xl mx-auto text-center reveal-section">
-          <h2 class="font-anuphan text-4xl md:text-5xl lg:text-7xl font-black text-white mb-8 leading-[1.1] tracking-tight">
-            การท่องเที่ยวที่คุณ<br />
-            <span class="text-[var(--color-gold)]">"วางใจได้"</span> ในทุกคลิก
-          </h2>
-          <p class="text-white/70 text-lg md:text-2xl font-medium leading-relaxed max-w-3xl mx-auto">
-            ลบภาพการจองทริปที่แสนวุ่นวายออกไป — <span class="text-white border-b-2 border-[var(--color-gold)] italic">เราเปลี่ยนความกังวลของคุณ</span> ให้เป็นความตื่นเต้นที่จะได้ออกไปเจอโลกกว้าง
-          </p>
-        </div>
-
-
-        </div>
     </section>
 
     <!-- ══════════════════════════════════════════
          LONG-TERM VISION
     ══════════════════════════════════════════ -->
-    <section class="py-32 md:py-48 bg-[var(--color-sand)] relative">
-      <div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[var(--color-sand-dark)] to-transparent"></div>
-      
-      <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="text-center mb-24 reveal-section">
-          <div class="inline-flex items-center gap-3 justify-center text-[var(--color-accent)] font-bold tracking-wider uppercase text-xs mb-4">
-            <span class="w-8 h-[2px] bg-[var(--color-accent)]"></span>
-            วิสัยทัศน์ในอนาคต
-            <span class="w-8 h-[2px] bg-[var(--color-accent)]"></span>
-          </div>
-          <h2 class="text-4xl md:text-5xl lg:text-7xl font-extrabold text-[var(--color-text-dark)] leading-tight">
-            อนาคตการท่องเที่ยว<br/>ที่เราสร้างร่วมกัน
-          </h2>
+    <section class="bg-white border-y border-[var(--color-sand-dark)] py-16 md:py-24">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
+        <div class="reveal">
+          <SectionHeading eyebrow="วิสัยทัศน์ในอนาคต" title="อนาคตการท่องเที่ยวที่เราสร้างร่วมกัน" />
         </div>
-        
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 mt-16 md:mt-12 items-stretch">
-          <div
-            v-for="(vision, idx) in visions"
-            :key="vision.title"
-            class="bg-white p-12 pt-32 rounded-[3.5rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/20 cursor-default group relative mt-24 text-center flex flex-col justify-between reveal-section"
-            :class="{ 'lg:translate-y-8': idx % 2 === 1 }"
-          >
-            <!-- Image Wrapper (Out-of-bound) -->
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
-              <img 
-                :src="vision.image" 
-                :alt="vision.title" 
-                class="w-64 h-64 max-w-none object-contain"
-              />
-            </div>
+        <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+          <IllustratedCard
+            v-for="(item, i) in visions"
+            :key="item.title"
+            v-bind="item"
+            sand
+            small
+            class="reveal"
+            :style="{ '--reveal-delay': `${i * 0.08}s` }"
+          />
+        </div>
+      </div>
+    </section>
 
-            <div class="relative z-10 flex flex-col items-center h-full pt-4">
-              <h3 class="text-3xl font-bold text-[var(--color-text-dark)] mb-6 group-hover:text-[var(--color-accent)] transition-colors">{{ vision.title }}</h3>
-              <p class="text-[var(--color-text-mid)] text-lg font-medium leading-relaxed mx-auto max-w-xs">{{ vision.desc }}</p>
-              <!-- Decorative Line -->
-              <div class="mt-auto pt-10">
-                <div class="mx-auto w-14 h-1.5 bg-[var(--color-accent)]/20 group-hover:bg-[var(--color-accent)] transition-all duration-500 rounded-full"></div>
-              </div>
+    <!-- ══════════════════════════════════════════
+         CLOSING
+    ══════════════════════════════════════════ -->
+    <section class="py-16 md:py-24">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
+        <div class="reveal relative overflow-hidden rounded-[2rem] bg-[var(--color-primary)] px-6 py-12 sm:px-10 md:px-16 md:py-16">
+          <span class="material-symbols-rounded pointer-events-none absolute -top-6 right-4 md:right-10 text-[160px] md:text-[220px] leading-none text-white/[0.06] select-none" aria-hidden="true">verified</span>
+          <div class="relative max-w-3xl">
+            <h2 class="text-3xl md:text-5xl font-extrabold text-white leading-tight tracking-tight">
+              การท่องเที่ยวที่คุณ<span class="text-[var(--color-gold)]">วางใจได้</span>ในทุกคลิก
+            </h2>
+            <p class="mt-5 text-lg md:text-xl text-white/75 leading-relaxed">
+              ลบภาพการจองทริปที่วุ่นวายออกไป แล้วเปลี่ยนความกังวลให้เป็นความตื่นเต้นที่จะได้ออกไปเจอโลกกว้าง
+            </p>
+            <div class="mt-9 flex flex-wrap items-center gap-3">
+              <router-link to="/trips" class="hero-btn hero-btn--solid">
+                เริ่มหาทริป
+                <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
+              </router-link>
+              <router-link to="/how-to-book" class="hero-btn hero-btn--outline">ดูวิธีการจอง</router-link>
             </div>
           </div>
         </div>
@@ -302,103 +172,40 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import api from '../lib/axios'
+import { computed, onMounted, ref } from 'vue'
+import IllustratedCard from '../components/IllustratedCard.vue'
+import PageHero from '../components/PageHero.vue'
+import SectionHeading from '../components/SectionHeading.vue'
+import { fetchCommunityStats } from '../lib/communityStats'
+import { useReveal } from '../lib/useReveal'
 
-const stats = ref({
-  total_customers: 0,
-  avg_rating: 0,
-  total_trips: 0
-})
+const FILLED = "font-variation-settings:'FILL' 1"
 
-const visions = ref([
-  { image: '/images/no_wating.webp', title: 'เที่ยวได้ทันที', desc: 'ไม่ต้องรอคิว ไม่ต้องรอแอดมิน ทุกอย่างจัดการได้ด้วยตัวเองแบบเรียลไทม์', color: '#4CAF7D' },
-  { image: '/images/no_hassle.webp', title: 'จองง่ายใน 1 นาที', desc: 'ออกแบบให้เรียบง่ายที่สุด เพื่อให้คุณใช้เวลาไปกับการเตรียมตัวเที่ยว ไม่ใช่การจอง', color: '#66C291' },
-  { image: '/images/nohidden_show.webp', title: 'ราคาใสสะอาด', desc: 'สิ่งที่เห็นคือสิ่งที่คุณจ่าย ไม่มีค่าบริการแฝงหรือความซับซ้อนให้ปวดหัว', color: '#C8963E' },
-  { image: '/images/no_lucky.webp', title: 'มั่นใจได้ทุกทริป', desc: 'ระบบที่เชื่อถือได้ พร้อมทีมงานดูแล เพื่อให้ทุกการเดินทางของคุณราบรื่นที่สุด', color: '#007B8F' },
-])
+const root = ref(null)
+useReveal(root)
+
+const stats = ref([])
+const heroStats = computed(() => stats.value.filter((s) => ['travellers', 'rounds', 'rating'].includes(s.key)))
+
+const journey = [
+  { icon: 'map', tone: 'text-[var(--color-accent)]', title: 'วางแผนให้เสร็จในที่เดียว', desc: 'ไม่ต้องเปิดหาข้อมูลหลายเว็บหรือรอแอดมินตอบเป็นชั่วโมง เราคัดข้อมูลทริป เส้นทาง และราคาที่โปร่งใสมาให้เลือกได้ทันที' },
+  { icon: 'support_agent', tone: 'text-[var(--color-gold)]', title: 'อุ่นใจเหมือนมีเพื่อนไปด้วย', desc: 'ไม่ว่าจะเป็นทริปเดินป่าครั้งแรก หรือจุดหมายที่ไม่คุ้นเคย ทีมงานและพาร์ทเนอร์ของเราดูแลคุณตั้งแต่ก้าวแรก' },
+]
+
+const goals = [
+  { image: '/images/fast_nowaitng.webp', title: 'จองทริปได้ในไม่กี่คลิก', desc: 'ไม่ต้องเสียเวลาหาข้อมูล ไม่ต้องรอแอดมินตอบกลับ อยากไปวันไหนก็เลือกได้ทันที' },
+  { image: '/images/feel_good.webp', title: 'ดูแลคุณตลอดเส้นทาง', desc: 'ไม่ใช่แค่การจอง แต่เป็นเพื่อนร่วมทางที่พร้อมช่วยจนถึงจุดหมายอย่างปลอดภัย' },
+  { image: '/images/no_wating.webp', title: 'เริ่มผจญภัยได้ทุกคน', desc: 'มีทริปที่ออกแบบให้เหมาะ ตั้งแต่นักเดินป่ามือใหม่ไปจนถึงสายลุยระดับโปร' },
+]
+
+const visions = [
+  { image: '/images/no_wating.webp', title: 'เที่ยวได้ทันที', desc: 'ไม่ต้องรอคิว ไม่ต้องรอแอดมิน จัดการทุกอย่างได้เอง' },
+  { image: '/images/no_hassle.webp', title: 'จองง่ายใน 1 นาที', desc: 'เรียบง่ายที่สุด ให้เวลาของคุณไปอยู่กับการเตรียมตัวเที่ยว ไม่ใช่การจอง' },
+  { image: '/images/nohidden_show.webp', title: 'ราคาใสสะอาด', desc: 'สิ่งที่เห็นคือสิ่งที่จ่าย ไม่มีค่าบริการแฝงให้ปวดหัว' },
+  { image: '/images/no_lucky.webp', title: 'มั่นใจได้ทุกทริป', desc: 'ระบบที่เชื่อถือได้พร้อมทีมงานดูแล ให้ทุกการเดินทางราบรื่น' },
+]
 
 onMounted(async () => {
-  try {
-    const res = await api.get('/stats')
-    if (res.data?.data) {
-      stats.value = res.data.data
-    }
-  } catch (e) {
-    console.error('Failed to load stats', e)
-  }
-
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-visible')
-          observer.unobserve(entry.target)
-        }
-      })
-    },
-    { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
-  )
-
-  document.querySelectorAll('.reveal-section').forEach((el) => observer.observe(el))
+  stats.value = await fetchCommunityStats()
 })
 </script>
-
-<style scoped>
-/* Hero entrance */
-.hero-content {
-  animation: slideUpFade 1s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(60px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Animations */
-@keyframes subtle-zoom {
-  from { transform: scale(1); }
-  to   { transform: scale(1.1); }
-}
-
-@keyframes bounce-subtle {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-10px); }
-}
-
-/* Scroll indicator */
-.scroll-dot {
-  animation: scrollBounce 1.6s ease-in-out infinite;
-}
-
-@keyframes scrollBounce {
-  0%, 100% { transform: translateY(0); opacity: 1; }
-  50%       { transform: translateY(12px); opacity: 0.3; }
-}
-
-/* Reveal on scroll */
-.reveal-section {
-  opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.reveal-section.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.animate-bounce-subtle {
-  animation: bounce-subtle 3s ease-in-out infinite;
-}
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .hero-content { animation: none; }
-  .scroll-dot { animation: none; }
-  .reveal-section { opacity: 1; transform: none; transition: none; }
-  .animate-bounce-subtle { animation: none; }
-}
-</style>

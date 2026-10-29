@@ -1,65 +1,101 @@
 <template>
-  <div class="booking-guide-page font-anuphan bg-[var(--color-sand)] min-h-screen">
-    <!-- HERO SECTION -->
-    <section class="relative min-h-[300px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
-      <div class="absolute inset-0">
-        <img
-          src="/images/landscape.webp"
-          alt="How to Book"
-          class="w-full h-full object-cover"
-        />
-        <div class="absolute inset-0 bg-black/30"></div>
-      </div>
-      <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center flex flex-col items-center">
-        <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
-        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
-          {{ content.hero_title }}
-        </h1>
-        <p class="text-lg md:text-xl text-white/80 font-bold max-w-2xl mx-auto tracking-wide">
-          {{ content.hero_subtitle }}
-        </p>
-      </div>
-    </section>
+  <div ref="root" class="booking-guide-page font-anuphan bg-[var(--color-sand)] min-h-screen">
 
-    <!-- CONTENT SECTION -->
+    <PageHero
+      image="/images/landscape.webp"
+      badge="วิธีการจอง"
+      badge-icon="menu_book"
+      :title="content.hero_title"
+      :subtitle="content.hero_subtitle"
+      :loading="loading"
+    >
+      <template #actions>
+        <router-link to="/trips" class="hero-btn hero-btn--solid">
+          {{ content.cta_label || 'ดูทริปที่เปิดรับ' }}
+          <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
+        </router-link>
+        <router-link to="/faq" class="hero-btn hero-btn--outline">คำถามที่พบบ่อย</router-link>
+      </template>
+    </PageHero>
+
     <section class="py-16 md:py-24">
-      <div class="max-w-4xl mx-auto px-6 md:px-8">
-        <div class="bg-white rounded-[2.5rem] p-8 md:p-12 border border-[var(--color-sand-dark)] space-y-12">
-          
-          <div class="space-y-10">
-            <div
-              v-for="(step, index) in content.steps"
-              :key="index"
-              class="flex flex-col md:flex-row gap-6 md:gap-10 items-start"
-            >
-              <div
-                class="w-16 h-16 shrink-0 text-white rounded-2xl flex items-center justify-center text-3xl font-black"
-                :class="STEP_COLORS[index % STEP_COLORS.length]"
-              >{{ index + 1 }}</div>
-              <div class="space-y-3">
-                <h2 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)]">{{ step.title }}</h2>
-                <p class="text-lg text-[var(--color-text-mid)] leading-relaxed font-medium whitespace-pre-line">
-                  {{ step.detail }}
-                </p>
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
+
+          <header class="lg:col-span-4 reveal">
+            <div class="lg:sticky lg:top-28">
+              <SectionHeading eyebrow="ขั้นตอนการจอง" :title="steps.length ? `${steps.length} ขั้นตอน ก็พร้อมออกเดินทาง` : 'ขั้นตอนการจอง'" />
+              <p class="mt-4 text-[15px] text-[var(--color-text-mid)] leading-relaxed">
+                จองได้เองทั้งบนเว็บและในแอป ที่นั่งจะถูกกันไว้ให้ระหว่างทำรายการ
+              </p>
+            </div>
+          </header>
+
+          <!-- Steps -->
+          <div class="lg:col-span-8">
+            <ol v-if="steps.length" class="relative">
+              <li
+                v-for="(step, index) in steps"
+                :key="index"
+                class="step reveal relative flex gap-5 pb-8 last:pb-0"
+                :style="{ '--reveal-delay': `${Math.min(index, 4) * 0.06}s` }"
+              >
+                <!-- เส้นเชื่อมระหว่างขั้น -->
+                <span v-if="index < steps.length - 1" class="absolute left-6 top-14 bottom-2 w-px bg-[var(--color-sand-dark)]" aria-hidden="true"></span>
+                <span class="relative z-10 w-12 h-12 shrink-0 rounded-2xl bg-[var(--color-primary)] text-white flex items-center justify-center text-lg font-extrabold tabular-nums">
+                  {{ index + 1 }}
+                </span>
+                <div class="flex-1 min-w-0 rounded-3xl border border-[var(--color-sand-dark)] bg-white p-5 md:p-6">
+                  <h2 class="text-lg md:text-xl font-extrabold text-[var(--color-text-dark)]">{{ step.title }}</h2>
+                  <p class="mt-2 text-[15px] text-[var(--color-text-mid)] leading-relaxed whitespace-pre-line">{{ step.detail }}</p>
+                </div>
+              </li>
+            </ol>
+
+            <div v-else-if="loading" class="space-y-4" aria-hidden="true">
+              <div v-for="n in 4" :key="n" class="flex gap-5">
+                <div class="w-12 h-12 rounded-2xl bg-white border border-[var(--color-sand-dark)] animate-pulse shrink-0"></div>
+                <div class="flex-1 h-28 rounded-3xl bg-white border border-[var(--color-sand-dark)] animate-pulse"></div>
               </div>
             </div>
-          </div>
 
-          <div class="p-8 bg-blue-50 rounded-[2rem] border border-blue-100 flex flex-col md:flex-row items-center gap-6">
-            <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white shrink-0">
-              <span class="material-symbols-rounded text-[32px]">contact_support</span>
+            <!-- Help -->
+            <div v-if="content.help_title" class="reveal mt-10 rounded-3xl bg-[var(--color-primary)] p-6 md:p-8 text-white">
+              <div class="flex flex-col md:flex-row md:items-center gap-5">
+                <span class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+                  <span class="material-symbols-rounded text-[26px] text-[var(--color-accent-light)]">support_agent</span>
+                </span>
+                <div class="flex-1">
+                  <h2 class="text-xl font-extrabold">{{ content.help_title }}</h2>
+                  <p class="mt-1 text-[15px] text-white/75 leading-relaxed whitespace-pre-line">{{ content.help_detail }}</p>
+                </div>
+              </div>
+              <div class="mt-6 flex flex-wrap gap-2">
+                <a :href="supportLineUrl()" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-colors">
+                  <span class="material-symbols-rounded text-[18px]">chat</span>
+                  LINE {{ supportLine() }}
+                </a>
+                <a :href="supportPhoneHref()" class="inline-flex items-center gap-2 rounded-xl border border-white/25 px-5 py-3 text-sm font-bold text-white hover:bg-white/10 transition-colors">
+                  <span class="material-symbols-rounded text-[18px]">call</span>
+                  {{ supportPhone() }}
+                </a>
+                <router-link to="/contact" class="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white/80 hover:text-white transition-colors">
+                  ส่งข้อความหาเรา
+                </router-link>
+              </div>
             </div>
-            <div class="text-center md:text-left">
-              <h3 class="text-xl font-bold text-blue-900 mb-1">{{ content.help_title }}</h3>
-              <p class="text-blue-800/70 font-medium">{{ content.help_detail }}</p>
-            </div>
-          </div>
 
-          <div class="pt-8 border-t border-[var(--color-sand-dark)] text-center">
-             <router-link to="/trips" class="inline-flex items-center gap-2 px-10 py-4 bg-[var(--color-text-dark)] text-white rounded-full font-bold hover:bg-black transition-all">
-              {{ content.cta_label }}
-              <span class="material-symbols-rounded text-[20px]">shopping_cart</span>
-            </router-link>
+            <!-- Related -->
+            <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <router-link v-for="link in related" :key="link.to" :to="link.to" class="related-link reveal">
+                <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)]">{{ link.icon }}</span>
+                <span class="flex-1 min-w-0">
+                  <span class="block text-sm font-bold text-[var(--color-text-dark)]">{{ link.label }}</span>
+                  <span class="block text-[12px] text-[var(--color-text-muted)] truncate">{{ link.desc }}</span>
+                </span>
+                <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)]">chevron_right</span>
+              </router-link>
+            </div>
           </div>
         </div>
       </div>
@@ -68,37 +104,44 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { usePageContent } from '../lib/pageContent';
+import { computed, ref } from 'vue'
+import PageHero from '../components/PageHero.vue'
+import SectionHeading from '../components/SectionHeading.vue'
+import { usePageContent } from '../lib/pageContent'
+import { useReveal } from '../lib/useReveal'
+import { supportLine, supportLineUrl, supportPhone, supportPhoneHref } from '../lib/contact'
 
-/** สีประจำลำดับขั้นตอน วนซ้ำเมื่อแอดมินเพิ่มเกินสี่ขั้น */
-const STEP_COLORS = [
-  'bg-[var(--color-primary)]',
-  'bg-[var(--color-accent)]',
-  'bg-[var(--color-gold)]',
-  'bg-teal-500',
-];
+const root = ref(null)
+useReveal(root)
 
-const { content } = usePageContent('booking_guide', {
+const { content, loading } = usePageContent('booking_guide', {
   hero_title: '',
   hero_subtitle: '',
   steps: [],
   help_title: '',
   help_detail: '',
   cta_label: '',
-});
-
-onMounted(() => {
-  window.scrollTo(0, 0)
 })
+
+const steps = computed(() => (content.value.steps || []).filter((s) => s?.title))
+
+const related = [
+  { to: '/faq', icon: 'quiz', label: 'คำถามที่พบบ่อย', desc: 'การจอง ชำระเงิน การเดินทาง' },
+  { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'การยกเลิก เลื่อน และคืนเงิน' },
+  { to: '/checklist', icon: 'checklist', label: 'ของที่ควรเตรียม', desc: 'เช็กลิสต์ก่อนออกเดินทาง' },
+]
 </script>
 
 <style scoped>
-.booking-guide-page {
-  animation: fadeIn 0.8s ease-out;
+.related-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1.25rem;
+  border: 1px solid var(--color-sand-dark);
+  background-color: #fff;
+  padding: 1rem;
+  transition: border-color 0.2s ease;
 }
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+.related-link:hover { border-color: var(--color-accent); }
 </style>

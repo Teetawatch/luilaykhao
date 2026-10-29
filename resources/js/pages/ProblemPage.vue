@@ -1,58 +1,22 @@
 <template>
   <div class="problem-page font-anuphan bg-[var(--color-sand)]">
 
-    <!-- ══════════════════════════════════════════
-         HERO SECTION
-    ══════════════════════════════════════════ -->
-    <section class="relative overflow-hidden bg-[var(--color-primary)]">
-      <div class="absolute inset-0">
-        <img
-          src="/images/about.jpg"
-          alt=""
-          class="w-full h-full object-cover opacity-45"
-        />
-        <div class="absolute inset-0 bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-primary)]/85 to-[var(--color-primary)]/30"></div>
-      </div>
-
-      <div class="hero-content relative z-10 max-w-6xl mx-auto px-4 sm:px-6 md:px-8 pt-20 pb-16 md:pt-28 md:pb-24">
-        <div class="max-w-2xl">
-          <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[13px] font-bold text-white/90">
-            <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">flag</span>
-            เรื่องที่เราตั้งใจแก้
-          </span>
-
-          <template v-if="content.hero_title">
-            <h1 class="mt-6 text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-[1.15] tracking-tight">
-              {{ content.hero_title }}
-            </h1>
-            <p v-if="content.hero_subtitle" class="mt-5 text-lg md:text-xl text-white/80 leading-relaxed">
-              {{ content.hero_subtitle }}
-            </p>
-          </template>
-          <div v-else-if="loading" class="mt-6 space-y-4" aria-hidden="true">
-            <div class="h-12 md:h-14 w-4/5 rounded-xl bg-white/10 animate-pulse"></div>
-            <div class="h-6 w-3/5 rounded-lg bg-white/10 animate-pulse"></div>
-          </div>
-
-          <div class="mt-9 flex flex-wrap items-center gap-3">
-            <a
-              href="#problems"
-              class="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-[15px] font-bold text-[var(--color-primary)] transition-colors hover:bg-[var(--color-sand)] focus:outline-none focus-visible:ring-4 focus-visible:ring-white/40"
-              @click.prevent="scrollToProblems"
-            >
-              ดูปัญหาทั้งหมด
-              <span class="material-symbols-rounded text-[20px]">arrow_downward</span>
-            </a>
-            <router-link
-              to="/goal"
-              class="inline-flex items-center gap-2 rounded-2xl border border-white/30 px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
-            >
-              เป้าหมายของเรา
-            </router-link>
-          </div>
-        </div>
-      </div>
-    </section>
+    <PageHero
+      image="/images/about.jpg"
+      badge="เรื่องที่เราตั้งใจแก้"
+      badge-icon="flag"
+      :title="content.hero_title"
+      :subtitle="content.hero_subtitle"
+      :loading="loading"
+    >
+      <template #actions>
+        <a href="#problems" class="hero-btn hero-btn--solid" @click.prevent="scrollToProblems">
+          ดูปัญหาทั้งหมด
+          <span class="material-symbols-rounded text-[20px]">arrow_downward</span>
+        </a>
+        <router-link to="/goal" class="hero-btn hero-btn--outline">เป้าหมายของเรา</router-link>
+      </template>
+    </PageHero>
 
     <!-- ══════════════════════════════════════════
          PROBLEMS SECTION
@@ -152,6 +116,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
+import PageHero from '../components/PageHero.vue';
 import { usePageContent } from '../lib/pageContent';
 
 const { content, loading } = usePageContent('problem', {
@@ -213,16 +178,6 @@ watch(content, () => nextTick(observeReveals))
 </script>
 
 <style scoped>
-/* Hero entrance */
-.hero-content {
-  animation: slideUpFade 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 /* Problem card — โทนสีของแต่ละปัญหามาจาก --tone */
 .problem-icon {
   color: var(--tone);
@@ -255,7 +210,6 @@ watch(content, () => nextTick(observeReveals))
 
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .hero-content { animation: none; }
   .reveal-section { opacity: 1; transform: none; transition: none; }
 }
 </style>

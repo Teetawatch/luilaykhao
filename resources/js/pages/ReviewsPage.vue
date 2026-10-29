@@ -4,45 +4,26 @@
     <!-- ══════════════════════════════════════════
          HEADER
     ══════════════════════════════════════════ -->
-    <!-- พื้นหลังและโทนสีชุดเดียวกับหน้า /problem -->
-    <section class="relative overflow-hidden bg-[var(--color-primary)]">
-      <div class="absolute inset-0">
-        <img src="/images/landscape.webp" alt="" class="w-full h-full object-cover opacity-45" />
-        <div class="absolute inset-0 bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-primary)]/85 to-[var(--color-primary)]/30"></div>
-      </div>
-
-      <div class="hero-content relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 md:pt-28 md:pb-24">
-        <div class="max-w-2xl">
-          <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[13px] font-bold text-white/90">
-            <span class="material-symbols-rounded text-[18px] text-[var(--color-gold)]" :style="FILLED">star</span>
-            <template v-if="stats && stats.total > 0">{{ stats.average.toFixed(1) }} จาก {{ stats.total.toLocaleString() }} รีวิว</template>
-            <template v-else>รีวิว</template>
-          </span>
-          <h1 class="mt-6 text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-[1.15] tracking-tight">
-            รีวิวจากนักเดินทาง
-          </h1>
-          <p class="mt-5 text-lg md:text-xl text-white/80 leading-relaxed">
-            คะแนนและความเห็นจากคนที่ไปทริปกับเรา ทั้งเรื่องที่ชอบและเรื่องที่อยากให้ปรับ
-          </p>
-          <div class="mt-9 flex flex-wrap items-center gap-3">
-            <a
-              href="#reviews"
-              class="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-[15px] font-bold text-[var(--color-primary)] transition-colors hover:bg-[var(--color-sand)] focus:outline-none focus-visible:ring-4 focus-visible:ring-white/40"
-              @click.prevent="scrollToList"
-            >
-              อ่านรีวิว
-              <span class="material-symbols-rounded text-[20px]">arrow_downward</span>
-            </a>
-            <router-link
-              to="/my-reviews"
-              class="inline-flex items-center gap-2 rounded-2xl border border-white/30 px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
-            >
-              เขียนรีวิวของฉัน
-            </router-link>
-          </div>
-        </div>
-      </div>
-    </section>
+    <PageHero
+      image="/images/landscape.webp"
+      badge-icon="star"
+      badge-icon-class="text-[var(--color-gold)]"
+      badge-icon-filled
+      title="รีวิวจากนักเดินทาง"
+      subtitle="คะแนนและความเห็นจากคนที่ไปทริปกับเรา ทั้งเรื่องที่ชอบและเรื่องที่อยากให้ปรับ"
+    >
+      <template #badge>
+        <template v-if="stats && stats.total > 0">{{ stats.average.toFixed(1) }} จาก {{ stats.total.toLocaleString() }} รีวิว</template>
+        <template v-else>รีวิว</template>
+      </template>
+      <template #actions>
+        <a href="#reviews" class="hero-btn hero-btn--solid" @click.prevent="scrollToList">
+          อ่านรีวิว
+          <span class="material-symbols-rounded text-[20px]">arrow_downward</span>
+        </a>
+        <router-link to="/my-reviews" class="hero-btn hero-btn--outline">เขียนรีวิวของฉัน</router-link>
+      </template>
+    </PageHero>
 
     <div id="reviews" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-10 scroll-mt-20">
 
@@ -377,6 +358,7 @@ import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, rea
 import { useRoute, useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { thaiShort } from '../lib/thaiDate';
+import PageHero from '../components/PageHero.vue';
 import TierBadge from '../components/TierBadge.vue';
 
 const route = useRoute();
@@ -658,20 +640,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Hero entrance — เหมือนหน้า /problem */
-.hero-content {
-  animation: slideUpFade 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-content { animation: none; }
-}
-
 .btn-primary {
   display: inline-flex;
   align-items: center;

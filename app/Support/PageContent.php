@@ -565,7 +565,7 @@ class PageContent
     {
         return [
             'label' => 'วิธีการจอง',
-            'route' => '/booking-guide',
+            'route' => '/how-to-book',
             'description' => 'ขั้นตอนการจองทีละสเต็ป และกล่องช่องทางขอความช่วยเหลือ',
             'fields' => [
                 ['key' => 'hero_title', 'type' => 'text', 'label' => 'หัวข้อใหญ่'],
