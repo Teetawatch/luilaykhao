@@ -1,869 +1,572 @@
 <template>
-  <div class="min-h-screen bg-[var(--color-sand)] pb-32 font-anuphan">
+  <div class="min-h-screen bg-[var(--color-sand)] pb-24 font-anuphan">
 
-    <!-- ─── Avatar Pending Banner ─── -->
-    <Transition name="banner-slide">
-      <div
-        v-if="avatarFile"
-        class="fixed top-0 left-0 right-0 z-[100] bg-[var(--color-primary)] text-white shadow-2xl/30"
-      >
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-              <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1">photo_camera</span>
-            </div>
-            <div class="min-w-0">
-              <p class="font-black text-sm leading-tight">รูปโปรไฟล์ใหม่รอบันทึก</p>
-              <p class="text-white/70 text-xs font-medium hidden sm:block">กด "บันทึกรูป" เพื่อใช้รูปนี้ หรือ "ยกเลิก" เพื่อเลือกรูปเดิม</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <button
-              @click="cancelAvatarUpload"
-              class="px-4 py-2 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/20 transition-colors active:scale-95"
-            >
-              ยกเลิก
-            </button>
-            <button
-              @click="uploadAvatar"
-              :disabled="uploadingAvatar"
-              class="px-5 py-2 rounded-xl font-black text-sm bg-white text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60"
-            >
-              <span v-if="uploadingAvatar" class="material-symbols-rounded animate-spin text-[16px]">refresh</span>
-              <span v-else class="material-symbols-rounded text-[16px]">save</span>
-              <span>{{ uploadingAvatar ? 'กำลังบันทึก…' : 'บันทึกรูป' }}</span>
-            </button>
-          </div>
-        </div>
+    <!-- ══════════════════════════════════════════
+         PROFILE HEADER
+    ══════════════════════════════════════════ -->
+    <section class="relative">
+      <div class="absolute inset-x-0 top-0 h-36 md:h-44 overflow-hidden bg-[var(--color-primary)]">
+        <img src="/images/khaochangphueak.webp" alt="" class="w-full h-full object-cover opacity-30" />
       </div>
-    </Transition>
 
-    <!-- Hero Banner Section -->
-    <section class="relative mb-8 overflow-hidden h-auto pt-24 sm:pt-0 sm:h-64 md:h-72 flex items-end bg-[#1a1a1a]">
-      <img
-        class="absolute inset-0 w-full h-full object-cover opacity-30"
-        src="/images/khaochangphueak.webp"
-        alt="banner"
-      />
-      <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-50"></div>
+      <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 md:pt-24">
+        <div class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-5 sm:p-6 md:p-8">
+          <div class="flex flex-col md:flex-row md:items-center gap-6">
 
-      <div class="relative w-full px-4 sm:px-6 md:px-8 pb-8 md:pb-10 flex flex-col sm:flex-row items-center sm:items-end gap-6 sm:gap-8 max-w-7xl mx-auto z-10">
-        <!-- Avatar -->
-        <div class="relative group shrink-0">
-          <div class="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-[2.5rem] border-4 border-white overflow-hidden bg-white transition-transform duration-500" :class="{'scale-[1.02]': !avatarFile && !uploadingAvatar}">
-            <img
-              :src="avatarPreview || auth.user?.avatar_url || '/images/default-avatar.png'"
-              alt="Profile"
-              class="w-full h-full object-cover"
-              :class="{'opacity-60': avatarFile || uploadingAvatar}"
-            />
-            <!-- Pending / uploading overlay -->
-            <div
-              v-if="avatarFile || uploadingAvatar"
-              class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/20"
-            >
-              <span v-if="uploadingAvatar" class="material-symbols-rounded text-white animate-spin text-[28px]">refresh</span>
-              <template v-else>
-                <span class="material-symbols-rounded text-white text-[24px]" style="font-variation-settings:'FILL' 1">pending</span>
-                <span class="text-white text-[10px] font-black uppercase tracking-widest">รอบันทึก</span>
-              </template>
-            </div>
-          </div>
-
-          <label
-            for="avatar-upload"
-            class="absolute -bottom-2 -right-2 p-2.5 md:p-3 rounded-2xl ring-4 ring-white transition-all cursor-pointer hover:rotate-12 active:scale-90"
-            :class="avatarFile
-              ? 'bg-amber-500 hover:bg-amber-600'
-              : 'bg-[var(--color-accent)] hover:bg-[var(--color-primary)]'"
-            :title="avatarFile ? 'เลือกรูปอื่น' : 'เปลี่ยนรูปโปรไฟล์'"
-          >
-            <span class="material-symbols-rounded text-white text-[20px] md:text-[22px]">{{ avatarFile ? 'edit' : 'photo_camera' }}</span>
-          </label>
-          <input id="avatar-upload" type="file" class="hidden" @change="handleAvatarChange" accept="image/*" />
-        </div>
-
-        <!-- Name & Identity -->
-        <div class="text-center sm:text-left text-white mb-2 min-w-0 flex-1">
-          <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
-            <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight truncate leading-tight">
-              {{ auth.user?.title ? auth.user.title + ' ' : '' }}{{ auth.user?.name }}
-            </h1>
-            <div class="flex items-center justify-center sm:justify-start gap-2">
-              <span
-                v-if="loyaltyTierLabel"
-                class="bg-[var(--color-accent)] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg/20"
-              >
-                {{ loyaltyTierLabel }}
-              </span>
-              <span v-if="loyaltyTierLabel" class="material-symbols-rounded text-[var(--color-accent-light)] text-[24px]" style="font-variation-settings:'FILL' 1">verified</span>
-            </div>
-          </div>
-
-          <!-- Secondary Info -->
-          <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-white/90 text-sm font-medium mb-6">
-            <div class="flex items-center justify-center sm:justify-start gap-2 group cursor-default">
-              <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                <span class="material-symbols-rounded text-[18px]">mail</span>
+            <!-- Avatar -->
+            <div class="flex flex-col items-center md:items-start gap-3 shrink-0 -mt-14 md:-mt-20">
+              <div class="relative">
+                <div class="w-28 h-28 md:w-32 md:h-32 rounded-full ring-4 ring-white overflow-hidden bg-[var(--color-sand)] flex items-center justify-center">
+                  <img
+                    v-if="avatarPreview || auth.user?.avatar_url"
+                    :src="avatarPreview || auth.user.avatar_url"
+                    alt="รูปโปรไฟล์"
+                    class="w-full h-full object-cover"
+                    :class="{ 'opacity-60': uploadingAvatar }"
+                  />
+                  <span v-else class="text-4xl font-extrabold text-[var(--color-primary)]">{{ initial }}</span>
+                  <span v-if="uploadingAvatar" class="absolute inset-0 flex items-center justify-center">
+                    <span class="material-symbols-rounded text-white text-[28px] animate-spin">progress_activity</span>
+                  </span>
+                </div>
+                <label
+                  for="avatar-upload"
+                  class="absolute bottom-0.5 right-0.5 w-10 h-10 rounded-full ring-4 ring-white bg-[var(--color-accent)] hover:bg-[var(--color-primary)] text-white flex items-center justify-center cursor-pointer transition-colors"
+                  :title="avatarFile ? 'เลือกรูปอื่น' : 'เปลี่ยนรูปโปรไฟล์'"
+                >
+                  <span class="material-symbols-rounded text-[20px]">photo_camera</span>
+                  <span class="sr-only">เปลี่ยนรูปโปรไฟล์</span>
+                </label>
+                <input id="avatar-upload" type="file" class="hidden" accept="image/*" @change="handleAvatarChange" />
               </div>
-              <span class="truncate">{{ auth.user?.email }}</span>
-            </div>
-            <div v-if="auth.user?.phone" class="flex items-center justify-center sm:justify-start gap-2 group cursor-default">
-              <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                <span class="material-symbols-rounded text-[18px]">call</span>
-              </div>
-              <span>{{ auth.user?.phone }}</span>
-            </div>
-          </div>
 
-          <!-- Meta Info Badges -->
-          <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-            <div class="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-2xl flex items-center gap-3 group hover:bg-white/15 transition-colors">
-              <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">calendar_today</span>
-              <div class="text-left">
-                <p class="text-[9px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">สมาชิกตั้งแต่</p>
-                <p class="text-xs font-bold">{{ formatJoinDate(auth.user?.created_at) }}</p>
+              <!-- รูปที่เลือกแล้วยังไม่บันทึก — ปุ่มอยู่ใต้รูปเลย ไม่ต้องไปหาแถบด้านบน -->
+              <div v-if="avatarFile" class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="btn-primary !px-4 !py-2 !text-[13px]"
+                  :disabled="uploadingAvatar"
+                  @click="uploadAvatar"
+                >
+                  {{ uploadingAvatar ? 'กำลังบันทึก…' : 'บันทึกรูป' }}
+                </button>
+                <button type="button" class="btn-ghost !px-3 !py-2 !text-[13px]" :disabled="uploadingAvatar" @click="cancelAvatarUpload">
+                  ยกเลิก
+                </button>
               </div>
             </div>
-            <div class="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-2xl flex items-center gap-3 group hover:bg-white/15 transition-colors">
-              <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">confirmation_number</span>
-              <div class="text-left">
-                <p class="text-[9px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">จองแล้ว</p>
-                <p class="text-xs font-bold">{{ auth.user?.bookings_count || 0 }} ครั้ง</p>
+
+            <!-- Identity -->
+            <div class="flex-1 min-w-0 text-center md:text-left">
+              <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                <h1 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight truncate">
+                  {{ displayName }}
+                </h1>
+                <span
+                  v-if="loyaltyTierLabel"
+                  class="self-center md:self-auto inline-flex items-center gap-1 rounded-full bg-[var(--color-accent)]/10 px-3 py-1 text-[12px] font-bold text-[var(--color-accent)]"
+                >
+                  <span class="material-symbols-rounded text-[16px]" style="font-variation-settings:'FILL' 1">workspace_premium</span>
+                  {{ loyaltyTierLabel }}
+                </span>
               </div>
+              <p v-if="auth.user?.nickname" class="mt-1 text-sm font-semibold text-[var(--color-text-muted)]">ชื่อเล่น {{ auth.user.nickname }}</p>
+
+              <ul class="mt-4 flex flex-wrap justify-center md:justify-start gap-x-5 gap-y-2 text-[13px] font-medium text-[var(--color-text-mid)]">
+                <li v-if="realEmail" class="flex items-center gap-1.5 min-w-0">
+                  <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)]">mail</span>
+                  <span class="truncate">{{ realEmail }}</span>
+                </li>
+                <li v-if="auth.user?.phone" class="flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)]">call</span>
+                  {{ auth.user.phone }}
+                </li>
+                <li v-if="auth.user?.created_at" class="flex items-center gap-1.5">
+                  <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)]">calendar_today</span>
+                  สมาชิกตั้งแต่ {{ formatJoinDate(auth.user.created_at) }}
+                </li>
+              </ul>
             </div>
-            <div :class="providerBadge.class" class="px-4 py-2 rounded-2xl flex items-center gap-2 border opacity-90">
-              <span class="scale-90" v-html="providerBadge.icon"></span>
-              <span class="text-[10px] font-black uppercase tracking-widest">{{ providerBadge.label }}</span>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-3 md:w-[22rem] shrink-0 rounded-2xl border border-[var(--color-sand-dark)] divide-x divide-[var(--color-sand-dark)]">
+              <router-link to="/loyalty" class="stat-cell">
+                <span class="stat-label">แต้มสะสม</span>
+                <span class="stat-value">{{ loyaltyPoints === null ? '–' : loyaltyPoints.toLocaleString() }}</span>
+              </router-link>
+              <router-link to="/my-bookings" class="stat-cell">
+                <span class="stat-label">ไปแล้ว</span>
+                <span class="stat-value">{{ loyaltyPoints === null ? '–' : loyaltyTrips.toLocaleString() }}<span class="stat-unit">ทริป</span></span>
+              </router-link>
+              <button type="button" class="stat-cell" @click="openTab('info')">
+                <span class="stat-label">โปรไฟล์</span>
+                <span class="stat-value" :class="profileCompletion === 100 ? 'text-[var(--color-accent)]' : ''">{{ profileCompletion }}<span class="stat-unit">%</span></span>
+              </button>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Main Layout -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+    <!-- ══════════════════════════════════════════
+         BODY
+    ══════════════════════════════════════════ -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
 
-      <!-- ─── Email verification ─── -->
-      <div
-        v-if="showVerifyBanner"
-        class="mb-6 bg-white border border-amber-200 rounded-[1.5rem] p-5 flex flex-col sm:flex-row sm:items-center gap-4"
-      >
-        <div class="w-11 h-11 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
-          <span class="material-symbols-rounded text-amber-600 text-[22px]">mark_email_unread</span>
-        </div>
+      <!-- Email verification -->
+      <div v-if="showVerifyBanner" class="notice notice--warn mb-4">
+        <span class="material-symbols-rounded text-[22px] text-amber-600 shrink-0">mark_email_unread</span>
         <div class="flex-1 min-w-0">
-          <p class="font-black text-sm text-[var(--color-text-dark)] mb-0.5">ยังไม่ได้ยืนยันอีเมล</p>
-          <p class="text-xs text-[var(--color-text-muted)] leading-relaxed">
+          <p class="font-bold text-sm text-[var(--color-text-dark)]">ยังไม่ได้ยืนยันอีเมล</p>
+          <p class="text-[13px] text-[var(--color-text-mid)] leading-relaxed mt-0.5">
             ยืนยัน <strong class="font-bold">{{ auth.user?.email }}</strong> ไว้สักครั้ง
             เผื่อวันไหนลืมรหัสผ่าน เราจะช่วยกู้บัญชีคืนให้ได้ทันทีครับ
           </p>
         </div>
-        <button
-          @click="resendVerification"
-          :disabled="resendingVerification"
-          class="px-5 py-2.5 rounded-xl font-bold text-sm bg-[var(--color-primary)] text-white hover:opacity-90 transition-all active:scale-95 disabled:opacity-60 shrink-0 flex items-center gap-2"
-        >
-          <span v-if="resendingVerification" class="material-symbols-rounded animate-spin text-[16px]">refresh</span>
-          <span>{{ resendingVerification ? 'กำลังส่ง…' : 'ส่งลิงก์ยืนยัน' }}</span>
+        <button type="button" class="btn-primary shrink-0" :disabled="resendingVerification" @click="resendVerification">
+          {{ resendingVerification ? 'กำลังส่ง…' : 'ส่งลิงก์ยืนยัน' }}
         </button>
       </div>
 
-      <div
-        v-if="verifyNotice"
-        class="mb-6 rounded-[1.5rem] p-5 flex items-center gap-4 border"
-        :class="verifyNotice.tone === 'good'
-          ? 'bg-white border-green-200'
-          : 'bg-white border-amber-200'"
-      >
+      <div v-if="verifyNotice" class="notice mb-4" :class="verifyNotice.tone === 'good' ? 'notice--good' : 'notice--warn'">
         <span
           class="material-symbols-rounded text-[22px] shrink-0"
-          :class="verifyNotice.tone === 'good' ? 'text-green-600' : 'text-amber-600'"
+          :class="verifyNotice.tone === 'good' ? 'text-[var(--color-accent)]' : 'text-amber-600'"
         >{{ verifyNotice.tone === 'good' ? 'verified' : 'link_off' }}</span>
         <p class="text-sm font-bold text-[var(--color-text-dark)] flex-1">{{ verifyNotice.message }}</p>
-        <button @click="verifyNotice = null" class="text-[var(--color-text-muted)] shrink-0">
+        <button type="button" class="text-[var(--color-text-muted)] hover:text-[var(--color-text-dark)] shrink-0" aria-label="ปิด" @click="verifyNotice = null">
           <span class="material-symbols-rounded text-[20px]">close</span>
         </button>
       </div>
 
-      <!-- Mobile Tab Bar -->
-      <div class="flex lg:hidden overflow-x-auto gap-2 pb-2 mb-6 scrollbar-none">
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          @click="activeTab = tab.key"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-full font-bold transition-all whitespace-nowrap text-sm shrink-0"
-          :class="activeTab === tab.key
-            ? 'bg-[var(--color-primary)] text-white'
-            : 'bg-white text-[var(--color-text-mid)] border border-gray-200'"
-        >
-          <span class="material-symbols-rounded text-[18px]" :style="activeTab === tab.key ? 'font-variation-settings:\'FILL\' 1' : ''">{{ tab.icon }}</span>
-          <span>{{ tab.label }}</span>
-        </button>
+      <!-- Mobile tabs -->
+      <div class="lg:hidden -mx-4 px-4 mb-4 overflow-x-auto scrollbar-none">
+        <div class="inline-flex gap-1 p-1 rounded-2xl bg-white border border-[var(--color-sand-dark)]" role="tablist">
+          <button
+            v-for="tab in tabs"
+            :key="tab.key"
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === tab.key"
+            class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors"
+            :class="activeTab === tab.key ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-mid)]'"
+            @click="openTab(tab.key)"
+          >
+            <span class="material-symbols-rounded text-[18px]">{{ tab.icon }}</span>
+            {{ tab.label }}
+          </button>
+        </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
-        <!-- Sidebar (desktop only) -->
-        <aside class="hidden lg:block lg:col-span-3 space-y-8">
-          <nav class="sticky top-28 bg-white p-4 rounded-[2rem] border border-gray-100 overflow-hidden">
-            <button
-              v-for="tab in tabs"
-              :key="tab.key"
-              @click="activeTab = tab.key"
-              class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all text-left mb-1.5 last:mb-0 relative group overflow-hidden"
-              :class="activeTab === tab.key
-                ? 'bg-[var(--color-primary)] text-white shadow-lg/20'
-                : 'text-[var(--color-text-mid)] hover:bg-[var(--color-sand)] hover:text-[var(--color-primary)]'"
-            >
-              <div
-                v-if="activeTab === tab.key"
-                class="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-[var(--color-accent)] rounded-r-full animate-in slide-in-from-left duration-300"
-              ></div>
-              <span class="material-symbols-rounded text-[24px] relative z-10" :style="activeTab === tab.key ? 'font-variation-settings:\'FILL\' 1' : ''">{{ tab.icon }}</span>
-              <span class="relative z-10">{{ tab.label }}</span>
-              <div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            </button>
-          </nav>
+        <!-- Sidebar (desktop) -->
+        <aside class="hidden lg:block lg:col-span-3">
+          <div class="sticky top-24 space-y-4">
+            <nav class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-2" role="tablist" aria-label="หมวดการตั้งค่า">
+              <button
+                v-for="tab in tabs"
+                :key="tab.key"
+                type="button"
+                role="tab"
+                :aria-selected="activeTab === tab.key"
+                class="side-tab"
+                :class="{ 'side-tab--active': activeTab === tab.key }"
+                @click="openTab(tab.key)"
+              >
+                <span class="material-symbols-rounded text-[22px]" :style="activeTab === tab.key ? FILLED : ''">{{ tab.icon }}</span>
+                <span class="flex-1 text-left">
+                  <span class="block">{{ tab.label }}</span>
+                  <span class="block text-[12px] font-medium" :class="activeTab === tab.key ? 'text-white/70' : 'text-[var(--color-text-muted)]'">{{ tab.hint }}</span>
+                </span>
+              </button>
+            </nav>
 
-          <!-- Quick Links -->
-          <div class="pt-2 space-y-5">
-            <h3 class="px-6 text-[11px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] opacity-70">เมนูทางลัด</h3>
-
-            <router-link
-              to="/my-bookings"
-              class="block bg-white p-7 rounded-[2rem] border border-gray-100 hover:border-[var(--color-primary)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
-            >
-              <div class="flex items-center justify-between mb-5">
-                <div class="w-14 h-14 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white transition-all duration-500 group-hover:rotate-6">
-                  <span class="material-symbols-rounded text-[28px]">confirmation_number</span>
-                </div>
-                <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-[var(--color-primary)]/10 transition-colors">
-                  <span class="material-symbols-rounded text-gray-300 group-hover:text-[var(--color-primary)] transition-colors text-[20px]">arrow_forward</span>
-                </div>
-              </div>
-              <p class="font-black text-[var(--color-text-dark)] text-xl mb-1.5 tracking-tight">การจองของฉัน</p>
-              <p class="text-xs font-bold text-[var(--color-text-muted)] opacity-80">ดูประวัติและแผนการเดินทาง</p>
-            </router-link>
-
-            <router-link
-              to="/loyalty"
-              class="block bg-white p-7 rounded-[2rem] border border-gray-100 hover:border-[var(--color-gold)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
-            >
-              <div class="flex items-center justify-between mb-5">
-                <div class="w-14 h-14 rounded-2xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-gold)] group-hover:bg-[var(--color-gold)] group-hover:text-white transition-all duration-500 group-hover:-rotate-6">
-                  <span class="material-symbols-rounded text-[28px]">card_membership</span>
-                </div>
-                <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-[var(--color-gold)]/10 transition-colors">
-                  <span class="material-symbols-rounded text-gray-300 group-hover:text-[var(--color-gold)] transition-colors text-[20px]">arrow_forward</span>
-                </div>
-              </div>
-              <p class="font-black text-[var(--color-text-dark)] text-xl mb-1.5 tracking-tight">แต้มสะสม</p>
-              <p class="text-xs font-bold text-[var(--color-text-muted)] opacity-80">{{ loyaltyPoints !== null ? loyaltyPoints.toLocaleString() + ' แต้ม' : 'ดูคะแนนสะสม' }}</p>
-            </router-link>
+            <div class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-2">
+              <router-link v-for="link in quickLinks" :key="link.to" :to="link.to" class="side-link">
+                <span class="material-symbols-rounded text-[20px] text-[var(--color-text-muted)]">{{ link.icon }}</span>
+                <span class="flex-1">{{ link.label }}</span>
+                <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)]">chevron_right</span>
+              </router-link>
+              <div class="h-px bg-[var(--color-sand-dark)] my-1.5 mx-3"></div>
+              <button type="button" class="side-link !text-red-600 hover:!bg-red-50 w-full" @click="handleLogout">
+                <span class="material-symbols-rounded text-[20px]">logout</span>
+                <span class="flex-1 text-left">ออกจากระบบ</span>
+              </button>
+            </div>
           </div>
         </aside>
 
-        <!-- Main Content -->
-        <div class="lg:col-span-9 min-w-0">
-
-          <!-- Alerts -->
-          <div v-if="error" class="mb-6 p-4 bg-red-50 border border-red-100 rounded-[1rem] flex items-center gap-3 animate-fade-in">
-            <span class="material-symbols-rounded text-red-500 text-[24px]" style="font-variation-settings:'FILL' 1">error</span>
-            <p class="text-red-700 text-sm font-bold">{{ error }}</p>
-          </div>
-          <div v-if="success" class="mb-6 p-4 bg-green-50 border border-green-100 rounded-[1rem] flex items-center gap-3 animate-fade-in">
-            <span class="material-symbols-rounded text-green-500 text-[24px]" style="font-variation-settings:'FILL' 1">check_circle</span>
-            <p class="text-green-700 text-sm font-bold">{{ success }}</p>
-          </div>
+        <!-- Main -->
+        <div class="lg:col-span-9 min-w-0 space-y-6">
 
           <!-- ─── TAB: ข้อมูลส่วนตัว ─── -->
-          <div v-if="activeTab === 'info'" class="bg-white p-6 md:p-10 rounded-[2.5rem] border border-gray-100 relative overflow-hidden">
+          <template v-if="activeTab === 'info'">
 
-            <!-- Tab Header -->
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 pb-8 border-b border-gray-100">
-              <div class="flex-1">
-                <div class="flex items-center gap-3 mb-2">
-                  <div class="w-10 h-10 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)]">
-                    <span class="material-symbols-rounded text-[24px]">person_celebrate</span>
-                  </div>
-                  <h2 class="text-3xl font-black text-[var(--color-text-dark)] tracking-tight">ข้อมูลส่วนตัว</h2>
+            <!-- Completion -->
+            <div v-if="missingFields.length" class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-5 md:p-6">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <p class="font-bold text-[var(--color-text-dark)]">กรอกโปรไฟล์ให้ครบ {{ profileCompletion }}%</p>
+                  <p class="text-[13px] text-[var(--color-text-muted)] mt-0.5">ข้อมูลเหล่านี้ถูกเติมให้อัตโนมัติตอนจอง และช่วยให้ทีมงานดูแลคุณระหว่างทริปได้</p>
                 </div>
-                <p class="text-[var(--color-text-muted)] font-medium ml-13">จัดการข้อมูลพื้นฐานและการตั้งค่าบัญชีของคุณ</p>
+                <button v-if="!editMode" type="button" class="btn-primary shrink-0 hidden sm:inline-flex" @click="startEdit">กรอกเลย</button>
+              </div>
+              <div class="mt-4 h-2 rounded-full bg-[var(--color-sand)] overflow-hidden">
+                <div class="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-700" :style="{ width: profileCompletion + '%' }"></div>
+              </div>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <button
+                  v-for="field in missingFields"
+                  :key="field.key"
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--color-sand-dark)] px-3 py-1.5 text-[12px] font-bold text-[var(--color-text-mid)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+                  @click="startEdit(field.key)"
+                >
+                  <span class="material-symbols-rounded text-[16px]">add</span>
+                  {{ field.label }}
+                </button>
+              </div>
+            </div>
 
-                <!-- Profile Completion Bar -->
-                <div class="mt-5 p-4 bg-[var(--color-sand)]/60 rounded-2xl border border-gray-100">
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest">ความสมบูรณ์ของโปรไฟล์</span>
-                    <span class="text-sm font-black" :class="profileCompletion === 100 ? 'text-green-600' : 'text-[var(--color-primary)]'">{{ profileCompletion }}%</span>
+            <!-- Field sections -->
+            <section
+              v-for="section in infoSections"
+              :key="section.key"
+              class="bg-white rounded-3xl border border-[var(--color-sand-dark)]"
+            >
+              <header class="flex items-center justify-between gap-4 px-5 md:px-7 pt-5 md:pt-6">
+                <div class="flex items-center gap-3 min-w-0">
+                  <span class="w-10 h-10 rounded-xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-primary)] shrink-0">
+                    <span class="material-symbols-rounded text-[22px]">{{ section.icon }}</span>
+                  </span>
+                  <div class="min-w-0">
+                    <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">{{ section.title }}</h2>
+                    <p class="text-[13px] text-[var(--color-text-muted)] truncate">{{ section.desc }}</p>
                   </div>
-                  <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      class="h-full rounded-full transition-all duration-700"
-                      :class="profileCompletion === 100 ? 'bg-green-500' : profileCompletion >= 60 ? 'bg-[var(--color-primary)]' : 'bg-amber-400'"
-                      :style="{ width: profileCompletion + '%' }"
-                    ></div>
+                </div>
+                <button
+                  v-if="!editMode && section.key === 'basic'"
+                  type="button"
+                  class="btn-ghost shrink-0"
+                  @click="startEdit()"
+                >
+                  <span class="material-symbols-rounded text-[18px]">edit</span>
+                  แก้ไข
+                </button>
+              </header>
+
+              <!-- View mode -->
+              <dl v-if="!editMode" class="mt-3 px-5 md:px-7 pb-3 divide-y divide-[var(--color-sand-dark)]">
+                <div v-for="field in section.fields" :key="field.key" class="py-3.5 grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4">
+                  <dt class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ field.label }}</dt>
+                  <dd class="sm:col-span-2 text-sm min-w-0 break-words" :class="field.multiline ? 'whitespace-pre-line leading-relaxed' : ''">
+                    <span v-if="displayValue(field)" class="font-semibold text-[var(--color-text-dark)]">{{ displayValue(field) }}</span>
+                    <span v-else class="text-[var(--color-text-muted)]/70">{{ field.emptyText || 'ยังไม่ได้ระบุ' }}</span>
+                    <span v-if="field.locked && displayValue(field)" class="ml-2 inline-flex items-center gap-1 align-middle text-[11px] font-bold text-[var(--color-text-muted)]">
+                      <span class="material-symbols-rounded text-[14px]">lock</span>เข้ารหัส
+                    </span>
+                  </dd>
+                </div>
+              </dl>
+
+              <!-- Edit mode -->
+              <div v-else class="px-5 md:px-7 pt-5 pb-6">
+                <p v-if="section.note" class="mb-5 flex gap-2 rounded-2xl bg-[var(--color-sand)] p-3.5 text-[13px] text-[var(--color-text-mid)] leading-relaxed">
+                  <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)] shrink-0">shield</span>
+                  {{ section.note }}
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-5">
+                  <div v-for="field in section.fields" :key="field.key" :class="field.wide ? 'md:col-span-2' : ''">
+                    <label :for="`f-${field.key}`" class="field-label">
+                      {{ field.label }}
+                      <span v-if="field.required" class="text-red-500">*</span>
+                      <span v-if="field.recommend" class="ml-1 font-semibold text-amber-600">แนะนำให้กรอก</span>
+                    </label>
+
+                    <div v-if="field.key === 'email'" class="field-input field-input--readonly">
+                      <span class="truncate">{{ realEmail || '—' }}</span>
+                      <span class="material-symbols-rounded text-[16px] ml-auto shrink-0">lock</span>
+                    </div>
+                    <select v-else-if="field.options" :id="`f-${field.key}`" v-model="form[field.key]" class="field-input">
+                      <option value="">ไม่ระบุ</option>
+                      <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
+                    </select>
+                    <textarea
+                      v-else-if="field.multiline"
+                      :id="`f-${field.key}`"
+                      v-model="form[field.key]"
+                      rows="3"
+                      class="field-input resize-y"
+                      :placeholder="field.placeholder"
+                    ></textarea>
+                    <input
+                      v-else
+                      :id="`f-${field.key}`"
+                      v-model="form[field.key]"
+                      :type="field.type || 'text'"
+                      :inputmode="field.key === 'id_card' ? 'numeric' : undefined"
+                      :maxlength="field.maxlength"
+                      :autocomplete="field.autocomplete || 'off'"
+                      class="field-input"
+                      :class="{ 'field-input--error': fieldErrors[field.key] }"
+                      :placeholder="field.placeholder"
+                      @input="field.key === 'id_card' && (form.id_card = form.id_card.replace(/\D/g, ''))"
+                    />
+
+                    <p v-if="fieldErrors[field.key]" class="field-help !text-red-600">{{ fieldErrors[field.key] }}</p>
+                    <p v-else-if="field.help" class="field-help">{{ field.help }}</p>
                   </div>
-                  <p v-if="profileCompletion < 100" class="text-[11px] text-[var(--color-text-muted)] font-medium mt-2 flex items-center gap-1">
-                    <span class="material-symbols-rounded text-[14px]">info</span>
-                    กรอกข้อมูลให้ครบถ้วนเพื่อให้ทีมงานดูแลคุณได้อย่างเต็มที่
-                  </p>
-                  <p v-else class="text-[11px] text-green-600 font-bold mt-2 flex items-center gap-1">
-                    <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">check_circle</span>
-                    โปรไฟล์สมบูรณ์ครบถ้วนแล้ว
-                  </p>
                 </div>
               </div>
+            </section>
 
-              <div class="flex items-center gap-3 shrink-0">
-                <button
-                  v-if="!editMode"
-                  @click="editMode = true"
-                  class="bg-[var(--color-primary)] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[var(--color-accent)] transition-all flex items-center gap-2 shadow-lg/20 hover:-translate-y-1 active:scale-95"
-                >
-                  <span class="material-symbols-rounded text-[20px]">edit</span>
-                  แก้ไขข้อมูล
-                </button>
-                <template v-else>
-                  <button
-                    @click="handleSave"
-                    :disabled="saving"
-                    class="bg-[var(--color-primary)] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[var(--color-accent)] transition-all flex items-center gap-2 shadow-lg/20 hover:-translate-y-1 active:scale-95 disabled:opacity-50"
-                  >
-                    <span v-if="saving" class="material-symbols-rounded animate-spin text-[20px]">refresh</span>
-                    <span v-else class="material-symbols-rounded text-[20px]">save</span>
-                    {{ saving ? 'กำลังบันทึก…' : 'บันทึก' }}
-                  </button>
-                  <button
-                    @click="cancelEdit"
-                    class="bg-[var(--color-sand)] text-[var(--color-text-dark)] px-6 py-4 rounded-2xl font-bold hover:bg-gray-200 transition-all flex items-center gap-2 hover:-translate-y-1 active:scale-95"
-                  >
+            <!-- Sticky save bar -->
+            <div v-if="editMode" class="sticky bottom-4 z-20">
+              <div class="flex items-center justify-between gap-3 rounded-2xl bg-[var(--color-primary)] px-4 py-3 sm:px-5">
+                <p class="text-sm font-bold text-white/85 hidden sm:block">{{ formDirty ? 'มีการแก้ไขที่ยังไม่บันทึก' : 'ยังไม่มีการเปลี่ยนแปลง' }}</p>
+                <div class="flex items-center gap-2 ml-auto">
+                  <button type="button" class="px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:bg-white/10 transition-colors" :disabled="saving" @click="cancelEdit">
                     ยกเลิก
                   </button>
-                </template>
-              </div>
-            </div>
-
-            <div class="space-y-12">
-              <!-- Section: ข้อมูลพื้นฐาน -->
-              <div class="space-y-8">
-                <div class="flex items-center gap-4">
-                  <div class="h-px flex-1 bg-gray-100"></div>
-                  <h3 class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-[0.2em] px-4 py-1.5 bg-[var(--color-sand)] rounded-full border border-gray-100">ข้อมูลพื้นฐาน</h3>
-                  <div class="h-px flex-1 bg-gray-100"></div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-                  <!-- Title & Name -->
-                  <div class="md:col-span-3 space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">คำนำหน้า</label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-[var(--color-text-dark)] font-bold text-sm border border-transparent flex items-center gap-2">
-                        <span v-if="!auth.user?.title" class="text-[var(--color-text-muted)] opacity-50">ไม่ได้ระบุ</span>
-                        <span v-else>{{ auth.user.title }}</span>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <select
-                        v-model="form.title"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none appearance-none"
-                      >
-                        <option value="">ไม่ระบุ</option>
-                        <option value="นาย">นาย</option>
-                        <option value="นาง">นาง</option>
-                        <option value="นางสาว">นางสาว</option>
-                      </select>
-                    </template>
-                  </div>
-                  <div class="md:col-span-9 space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">ชื่อ-นามสกุล <span class="text-red-400">*</span></label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-[var(--color-text-dark)] font-bold text-sm border border-transparent">
-                        {{ auth.user?.name || '—' }}
-                      </div>
-                    </template>
-                    <template v-else>
-                      <input
-                        v-model="form.name"
-                        type="text"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none"
-                        placeholder="ชื่อ-นามสกุลจริง"
-                      />
-                    </template>
-                  </div>
-
-                  <!-- Nickname & Blood Group -->
-                  <div class="md:col-span-6 space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">ชื่อเล่น</label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-sm border border-transparent flex items-center gap-2">
-                        <span v-if="!auth.user?.nickname" class="text-[var(--color-text-muted)] opacity-50 font-medium">ไม่ได้ระบุ</span>
-                        <span v-else class="text-[var(--color-text-dark)] font-bold">{{ auth.user.nickname }}</span>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <input
-                        v-model="form.nickname"
-                        type="text"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none"
-                        placeholder="ระบุชื่อเล่น"
-                      />
-                    </template>
-                  </div>
-                  <div class="md:col-span-6 space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">กรุ๊ปเลือด</label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-sm border border-transparent flex items-center gap-2">
-                        <span v-if="!auth.user?.blood_group" class="text-[var(--color-text-muted)] opacity-50 font-medium">ไม่ได้ระบุ</span>
-                        <template v-else>
-                          <span class="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
-                            <span class="material-symbols-rounded text-red-500 text-[14px]" style="font-variation-settings:'FILL' 1">water_drop</span>
-                          </span>
-                          <span class="text-[var(--color-text-dark)] font-bold">{{ auth.user.blood_group }}</span>
-                        </template>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <select
-                        v-model="form.blood_group"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none"
-                      >
-                        <option value="">ไม่ระบุ</option>
-                        <optgroup label="กรุ๊ป A">
-                          <option value="A+">A+</option>
-                          <option value="A-">A-</option>
-                        </optgroup>
-                        <optgroup label="กรุ๊ป B">
-                          <option value="B+">B+</option>
-                          <option value="B-">B-</option>
-                        </optgroup>
-                        <optgroup label="กรุ๊ป O">
-                          <option value="O+">O+</option>
-                          <option value="O-">O-</option>
-                        </optgroup>
-                        <optgroup label="กรุ๊ป AB">
-                          <option value="AB+">AB+</option>
-                          <option value="AB-">AB-</option>
-                        </optgroup>
-                      </select>
-                    </template>
-                  </div>
-
-                  <!-- ID Card -->
-                  <div class="md:col-span-12 space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">เลขบัตรประชาชน</label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-[var(--color-text-dark)] font-bold text-sm border border-transparent flex items-center justify-between">
-                        <span v-if="!maskedIdCard" class="text-[var(--color-text-muted)] opacity-50 font-medium">ไม่ได้ระบุ</span>
-                        <span v-else>{{ maskedIdCard }}</span>
-                        <div class="flex items-center gap-1.5 shrink-0 ml-2">
-                          <span class="material-symbols-rounded text-gray-300 text-[16px]">lock</span>
-                          <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest hidden sm:inline">เข้ารหัสแล้ว</span>
-                        </div>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <input
-                        v-model="form.id_card"
-                        type="text"
-                        maxlength="13"
-                        @input="form.id_card = form.id_card.replace(/\D/g, '')"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none tracking-widest"
-                        placeholder="ตัวเลข 13 หลัก ไม่ต้องใส่ขีด"
-                      />
-                      <p class="text-[11px] text-[var(--color-text-muted)] ml-1 flex items-center gap-1">
-                        <span class="material-symbols-rounded text-[13px]">shield</span>
-                        ข้อมูลนี้จะถูกเข้ารหัสก่อนบันทึก ใช้สำหรับการจองทริปเท่านั้น
-                      </p>
-                    </template>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Section: ข้อมูลติดต่อ -->
-              <div class="space-y-8">
-                <div class="flex items-center gap-4">
-                  <div class="h-px flex-1 bg-gray-100"></div>
-                  <h3 class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-[0.2em] px-4 py-1.5 bg-[var(--color-sand)] rounded-full border border-gray-100">ข้อมูลติดต่อ</h3>
-                  <div class="h-px flex-1 bg-gray-100"></div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div class="space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">เบอร์โทรศัพท์</label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-sm border border-transparent flex items-center gap-2">
-                        <span v-if="!auth.user?.phone" class="text-[var(--color-text-muted)] opacity-50 font-medium">ไม่ได้ระบุ</span>
-                        <span v-else class="text-[var(--color-text-dark)] font-bold">{{ auth.user.phone }}</span>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <input
-                        v-model="form.phone"
-                        type="tel"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none"
-                        placeholder="08X-XXX-XXXX"
-                      />
-                    </template>
-                  </div>
-                  <div class="space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">อีเมล</label>
-                    <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-[var(--color-text-dark)] font-bold text-sm border border-transparent flex items-center justify-between opacity-70">
-                      <span class="truncate">{{ auth.user?.email || '—' }}</span>
-                      <div class="flex items-center gap-1.5 shrink-0 ml-2">
-                        <span class="material-symbols-rounded text-[var(--color-primary)] text-[16px]" style="font-variation-settings:'FILL' 1">verified_user</span>
-                        <span class="text-[10px] font-black text-[var(--color-text-muted)] hidden sm:inline">ใช้ล็อกอิน</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Emergency Contact -->
-                  <div class="space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">
-                      ผู้ติดต่อฉุกเฉิน
-                      <span class="ml-1 text-amber-500 normal-case font-bold tracking-normal">แนะนำให้กรอก</span>
-                    </label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-sm border border-transparent flex items-center gap-2">
-                        <span v-if="!auth.user?.emergency_contact" class="text-[var(--color-text-muted)] opacity-50 font-medium">ไม่ได้ระบุ</span>
-                        <span v-else class="text-[var(--color-text-dark)] font-bold">{{ auth.user.emergency_contact }}</span>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <input
-                        v-model="form.emergency_contact"
-                        type="text"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none"
-                        placeholder="ชื่อผู้ติดต่อฉุกเฉิน เช่น คุณแม่, พ่อ"
-                      />
-                    </template>
-                  </div>
-                  <div class="space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">เบอร์ผู้ติดต่อฉุกเฉิน</label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-sm border border-transparent flex items-center gap-2">
-                        <span v-if="!auth.user?.emergency_phone" class="text-[var(--color-text-muted)] opacity-50 font-medium">ไม่ได้ระบุ</span>
-                        <span v-else class="text-[var(--color-text-dark)] font-bold">{{ auth.user.emergency_phone }}</span>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <input
-                        v-model="form.emergency_phone"
-                        type="tel"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none"
-                        placeholder="08X-XXX-XXXX"
-                      />
-                    </template>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Section: ข้อมูลสุขภาพ -->
-              <div class="space-y-8">
-                <div class="flex items-center gap-4">
-                  <div class="h-px flex-1 bg-gray-100"></div>
-                  <h3 class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-[0.2em] px-4 py-1.5 bg-[var(--color-sand)] rounded-full border border-gray-100">ข้อมูลสุขภาพ</h3>
-                  <div class="h-px flex-1 bg-gray-100"></div>
-                </div>
-
-                <div v-if="editMode" class="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex gap-3">
-                  <span class="material-symbols-rounded text-amber-500 text-[20px] shrink-0 mt-0.5" style="font-variation-settings:'FILL' 1">health_and_safety</span>
-                  <p class="text-xs font-bold text-amber-700 leading-relaxed">ข้อมูลสุขภาพจะถูกเข้ารหัสก่อนบันทึก และใช้เพื่อความปลอดภัยของคุณในระหว่างทริปเท่านั้น</p>
-                </div>
-
-                <div class="space-y-6">
-                  <div class="space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">การแพ้อาหาร / สิ่งที่ควรระวัง</label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-4 rounded-2xl text-sm border border-transparent">
-                        <span v-if="!auth.user?.allergies" class="text-[var(--color-text-muted)] opacity-50 font-medium">ไม่มี / ไม่ได้ระบุ</span>
-                        <span v-else class="text-[var(--color-text-dark)] font-bold">{{ auth.user.allergies }}</span>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <input
-                        v-model="form.allergies"
-                        type="text"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none"
-                        placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อหมู, แพ้ถั่ว"
-                      />
-                    </template>
-                  </div>
-
-                  <div class="space-y-2.5">
-                    <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">โรคประจำตัว / หมายเหตุสุขภาพ</label>
-                    <template v-if="!editMode">
-                      <div class="bg-[var(--color-sand)]/50 px-5 py-5 rounded-2xl text-sm leading-relaxed border border-transparent">
-                        <span v-if="!auth.user?.health_notes" class="text-[var(--color-text-muted)] opacity-50 font-medium">ไม่มี / ไม่ได้ระบุ</span>
-                        <span v-else class="text-[var(--color-text-dark)] font-medium">{{ auth.user.health_notes }}</span>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <textarea
-                        v-model="form.health_notes"
-                        rows="3"
-                        class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none resize-none"
-                        placeholder="ระบุโรคประจำตัว หรือประวัติการแพ้ยาที่ทีมงานควรทราบ (ถ้ามี)"
-                      ></textarea>
-                    </template>
-                  </div>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-white text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-colors disabled:opacity-60"
+                    :disabled="saving || !formDirty"
+                    @click="saveProfile"
+                  >
+                    <span v-if="saving" class="material-symbols-rounded animate-spin text-[18px]">progress_activity</span>
+                    {{ saving ? 'กำลังบันทึก…' : 'บันทึกข้อมูล' }}
+                  </button>
                 </div>
               </div>
             </div>
 
-            <!-- Rewards Section -->
-            <div class="mt-16 p-1 bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary)]/80 rounded-[2.5rem] shadow-2xl/20 overflow-hidden relative group">
-              <div class="bg-white/5 backdrop-blur-sm p-8 md:p-12 rounded-[2.4rem] relative z-10 flex flex-col md:flex-row items-center gap-10">
-                <div class="shrink-0 relative">
-                  <div class="w-24 h-24 rounded-3xl bg-white flex flex-col items-center justify-center rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                    <span class="text-3xl font-black text-[var(--color-primary)] leading-tight">{{ loyaltyPoints?.toLocaleString() || 0 }}</span>
-                    <span class="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-widest">แต้ม</span>
-                  </div>
-                  <div class="absolute -bottom-3 -right-3 w-10 h-10 rounded-full bg-[var(--color-gold)] border-4 border-white flex items-center justify-center text-white">
-                    <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">stars</span>
+            <!-- Loyalty -->
+            <router-link
+              v-if="!editMode"
+              to="/loyalty"
+              class="group block rounded-3xl bg-[var(--color-primary)] p-6 md:p-7 text-white"
+            >
+              <div class="flex flex-col sm:flex-row sm:items-center gap-5">
+                <div class="flex items-center gap-4 shrink-0">
+                  <span class="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center">
+                    <span class="material-symbols-rounded text-[30px] text-[var(--color-gold)]" style="font-variation-settings:'FILL' 1">stars</span>
+                  </span>
+                  <div>
+                    <p class="text-[13px] font-bold text-white/60">แต้มสะสม</p>
+                    <p class="text-3xl font-extrabold tabular-nums leading-tight">{{ (loyaltyPoints ?? 0).toLocaleString() }}</p>
                   </div>
                 </div>
 
-                <div class="flex-1 text-center md:text-left w-full">
-                  <h3 class="text-2xl font-black text-white mb-3 tracking-tight">สะสมแต้มพรีเมียม</h3>
-
-                  <template v-if="loyaltyPoints !== null && loyaltyNextTier">
-                    <p class="text-white/80 text-sm font-bold mb-5">
-                      ไปด้วยกันอีก <span class="text-white text-lg px-1">{{ loyaltyNextTier.trips_needed.toLocaleString() }}</span> ทริป เพื่อเลื่อนระดับเป็น
-                      <strong class="text-[var(--color-accent-light)] font-black ml-1">{{ loyaltyNextTier.label }}</strong>
+                <div class="flex-1 min-w-0">
+                  <template v-if="loyaltyNextTier">
+                    <p class="text-sm font-semibold text-white/85">
+                      อีก <strong class="text-white">{{ loyaltyNextTier.trips_needed.toLocaleString() }} ทริป</strong>
+                      เลื่อนเป็น <strong class="text-[var(--color-accent-light)]">{{ loyaltyNextTier.label }}</strong>
                     </p>
-                    <div class="relative w-full h-3 bg-white/20 rounded-full overflow-hidden mb-2">
-                      <div
-                        class="absolute top-0 left-0 h-full bg-gradient-to-r from-[var(--color-accent-light)] to-white rounded-full transition-all duration-1000"
-                        :style="{ width: Math.min(100, (loyaltyTrips / (loyaltyTrips + loyaltyNextTier.trips_needed)) * 100) + '%' }"
-                      ></div>
+                    <div class="mt-2.5 h-2 rounded-full bg-white/15 overflow-hidden">
+                      <div class="h-full rounded-full bg-[var(--color-accent-light)] transition-[width] duration-700" :style="{ width: tierProgress + '%' }"></div>
                     </div>
-                    <div class="flex justify-between text-[10px] font-black text-white/60 uppercase tracking-widest">
-                      <span>ไปด้วยกันมาแล้ว {{ loyaltyTrips.toLocaleString() }} ทริป</span>
-                      <span>ระดับถัดไป</span>
-                    </div>
+                    <p class="mt-1.5 text-[12px] font-semibold text-white/55">ไปด้วยกันมาแล้ว {{ loyaltyTrips.toLocaleString() }} จาก {{ loyaltyNextTier.at.toLocaleString() }} ทริป</p>
                   </template>
-                  <template v-else>
-                    <p class="text-white/80 text-sm font-bold leading-relaxed max-w-md">
-                      สะสมแต้มจากทุกการจองเดินทาง เพื่อรับสิทธิพิเศษมากมายและส่วนลดสำหรับทริปถัดไปของคุณ
-                    </p>
-                  </template>
+                  <p v-else class="text-sm font-semibold text-white/80 leading-relaxed">
+                    ได้แต้มจากทุกทริปที่เดินทางจริง ใช้เป็นส่วนลดทริปถัดไปได้
+                  </p>
                 </div>
 
-                <router-link
-                  to="/loyalty"
-                  class="bg-white text-[var(--color-primary)] px-10 py-4 rounded-2xl font-black hover:bg-[var(--color-sand)] transition-all shrink-0 hover:-translate-y-1 active:scale-95 flex items-center gap-3"
-                >
-                  <span>รายละเอียดแต้ม</span>
-                  <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
-                </router-link>
+                <span class="inline-flex items-center gap-1 text-sm font-bold text-white/85 group-hover:text-white shrink-0">
+                  ดูรายละเอียด
+                  <span class="material-symbols-rounded text-[18px] transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+                </span>
               </div>
-
-              <div class="absolute -right-20 -top-20 w-64 h-64 border-[40px] border-white/5 rounded-full pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
-              <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
-            </div>
-          </div>
+            </router-link>
+          </template>
 
           <!-- ─── TAB: โปรไฟล์สาธารณะ ─── -->
-          <div v-if="activeTab === 'public'" class="bg-white p-8 md:p-12 rounded-[2.5rem] border border-gray-100">
-            <div class="mb-10 pb-8 border-b border-gray-100">
-              <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 rounded-xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-primary)]">
-                  <span class="material-symbols-rounded text-[24px]">public</span>
-                </div>
-                <h2 class="text-3xl font-black text-[var(--color-text-dark)] tracking-tight">โปรไฟล์สาธารณะ</h2>
+          <section v-if="activeTab === 'public'" class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-5 md:p-7">
+            <div class="flex items-start gap-3 pb-5 border-b border-[var(--color-sand-dark)]">
+              <span class="w-10 h-10 rounded-xl bg-[var(--color-sand)] flex items-center justify-center text-[var(--color-primary)] shrink-0">
+                <span class="material-symbols-rounded text-[22px]">public</span>
+              </span>
+              <div>
+                <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">โปรไฟล์สาธารณะ</h2>
+                <p class="text-[13px] text-[var(--color-text-muted)] leading-relaxed mt-0.5">
+                  หน้าเว็บที่แชร์ให้เพื่อนดูได้ — ทริปที่เดินจบ ระยะทางสะสม ตราที่ปลดล็อก และรูปจากรีวิวของคุณ
+                </p>
               </div>
-              <p class="text-[var(--color-text-muted)] font-medium ml-13">
-                เปลี่ยนสถิติการเดินทางของคุณให้เป็นหน้าเว็บที่แชร์ให้เพื่อนดูได้ — ทริปที่เดินจบ ระยะทางสะสม ตราที่ปลดล็อก และรูปจากรีวิวของคุณ
-              </p>
             </div>
 
-            <div class="max-w-xl space-y-6">
-              <label class="flex items-start gap-4 p-5 rounded-2xl border cursor-pointer transition-colors"
-                     :class="publicProfile.enabled ? 'border-[var(--color-primary)] bg-[var(--color-sand)]' : 'border-gray-200'">
-                <input type="checkbox" v-model="publicProfile.enabled" class="mt-1 w-5 h-5 accent-[var(--color-primary)]">
-                <span>
-                  <span class="block font-bold text-[var(--color-text-dark)]">เปิดให้คนอื่นดูโปรไฟล์ได้</span>
-                  <span class="block text-sm text-[var(--color-text-muted)] mt-1">
-                    ปิดอยู่ = ไม่มีใครเปิดลิงก์ได้เลย ข้อมูลส่วนตัวอย่างอีเมล เบอร์โทร และการจองจะไม่ถูกแสดงไม่ว่ากรณีใด
-                  </span>
-                </span>
-              </label>
+            <div class="max-w-2xl pt-6 space-y-6">
+              <div class="flex items-start justify-between gap-4 rounded-2xl border p-4 md:p-5 transition-colors"
+                   :class="publicProfile.enabled ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5' : 'border-[var(--color-sand-dark)]'">
+                <div>
+                  <p id="public-toggle-label" class="font-bold text-[var(--color-text-dark)]">เปิดให้คนอื่นดูโปรไฟล์ได้</p>
+                  <p class="text-[13px] text-[var(--color-text-muted)] mt-1 leading-relaxed">
+                    ปิดอยู่ = ไม่มีใครเปิดลิงก์ได้เลย อีเมล เบอร์โทร และการจองจะไม่ถูกแสดงไม่ว่ากรณีใด
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  :aria-checked="publicProfile.enabled"
+                  aria-labelledby="public-toggle-label"
+                  class="switch shrink-0"
+                  :class="{ 'switch--on': publicProfile.enabled }"
+                  @click="publicProfile.enabled = !publicProfile.enabled"
+                >
+                  <span class="switch-thumb"></span>
+                </button>
+              </div>
 
               <div>
-                <label class="block text-sm font-bold text-[var(--color-text-dark)] mb-2">แนะนำตัวสั้น ๆ</label>
+                <label for="public-bio" class="field-label">แนะนำตัวสั้น ๆ</label>
                 <input
+                  id="public-bio"
                   v-model="publicProfile.bio"
                   type="text"
                   maxlength="160"
                   placeholder="เช่น เดินป่ามา 3 ปี ยังไม่เข็ด"
-                  class="w-full px-5 py-3.5 rounded-2xl border border-gray-200 focus:border-[var(--color-primary)] outline-none font-medium"
-                >
-                <p class="text-xs text-[var(--color-text-muted)] mt-2">{{ (publicProfile.bio || '').length }}/160</p>
+                  class="field-input"
+                />
+                <p class="field-help text-right tabular-nums">{{ (publicProfile.bio || '').length }}/160</p>
               </div>
 
-              <div v-if="publicProfile.url" class="p-5 rounded-2xl bg-gray-50 border border-gray-100">
-                <p class="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)] mb-2">ลิงก์โปรไฟล์ของคุณ</p>
-                <div class="flex items-center gap-3 flex-wrap">
-                  <a :href="publicProfile.url" target="_blank" rel="noopener"
-                     class="font-bold text-[var(--color-primary)] break-all">{{ publicProfile.url }}</a>
-                  <button type="button" @click="copyPublicUrl"
-                          class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-bold shrink-0">
-                    {{ copiedPublicUrl ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์' }}
-                  </button>
+              <div v-if="publicProfile.url && publicProfile.enabled" class="rounded-2xl bg-[var(--color-sand)] p-4">
+                <p class="text-[12px] font-bold text-[var(--color-text-muted)] mb-2">ลิงก์โปรไฟล์ของคุณ</p>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <a :href="publicProfile.url" target="_blank" rel="noopener" class="flex-1 min-w-0 truncate font-bold text-[var(--color-accent)] hover:underline">
+                    {{ publicProfile.url }}
+                  </a>
+                  <div class="flex gap-2 shrink-0">
+                    <button type="button" class="btn-ghost !bg-white" @click="copyPublicUrl">
+                      <span class="material-symbols-rounded text-[18px]">{{ copiedPublicUrl ? 'check' : 'content_copy' }}</span>
+                      {{ copiedPublicUrl ? 'คัดลอกแล้ว' : 'คัดลอก' }}
+                    </button>
+                    <a :href="publicProfile.url" target="_blank" rel="noopener" class="btn-ghost !bg-white">
+                      <span class="material-symbols-rounded text-[18px]">open_in_new</span>
+                      เปิดดู
+                    </a>
+                  </div>
                 </div>
               </div>
 
-              <button
-                type="button"
-                @click="savePublicProfile"
-                :disabled="savingPublicProfile"
-                class="px-8 py-3.5 rounded-2xl bg-[var(--color-primary)] text-white font-bold disabled:opacity-60"
-              >
-                {{ savingPublicProfile ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}
+              <button type="button" class="btn-primary" :disabled="savingPublicProfile || !publicDirty" @click="savePublicProfile">
+                {{ savingPublicProfile ? 'กำลังบันทึก…' : 'บันทึกการตั้งค่า' }}
               </button>
             </div>
-          </div>
+          </section>
 
           <!-- ─── TAB: ความปลอดภัย ─── -->
-          <div v-if="activeTab === 'security'" class="bg-white p-8 md:p-12 rounded-[2.5rem] border border-gray-100">
-            <div class="mb-12 pb-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <div class="flex items-center gap-3 mb-2">
-                  <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                    <span class="material-symbols-rounded text-[24px]">security</span>
-                  </div>
-                  <h2 class="text-3xl font-black text-[var(--color-text-dark)] tracking-tight">ความปลอดภัย</h2>
+          <template v-if="activeTab === 'security'">
+            <section class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-5 md:p-7">
+              <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">การเข้าสู่ระบบ</h2>
+              <dl class="mt-3 divide-y divide-[var(--color-sand-dark)]">
+                <div class="py-3.5 flex items-center justify-between gap-4">
+                  <dt class="text-[13px] font-semibold text-[var(--color-text-muted)]">วิธีที่ใช้สมัคร</dt>
+                  <dd class="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-text-dark)]">
+                    <span class="w-4 h-4 inline-flex items-center justify-center" v-html="providerBadge.icon"></span>
+                    {{ providerBadge.label }}
+                  </dd>
                 </div>
-                <p class="text-[var(--color-text-muted)] font-medium ml-13">เปลี่ยนรหัสผ่านและตรวจสอบสถานะความปลอดภัยของบัญชี</p>
-              </div>
-
-              <div class="flex items-center gap-3 px-5 py-3 bg-green-50 rounded-2xl border border-green-100 self-start md:self-center">
-                <div class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></div>
-                <span class="text-xs font-black text-green-700 uppercase tracking-widest">บัญชีปลอดภัย</span>
-                <span class="material-symbols-rounded text-green-600 text-[18px]">verified</span>
-              </div>
-            </div>
-
-            <div class="max-w-xl space-y-8">
-              <div class="p-5 bg-blue-50/70 rounded-2xl border border-blue-100 flex gap-4">
-                <span class="material-symbols-rounded text-blue-500 mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1">info</span>
-                <div class="space-y-1">
-                  <p class="text-sm font-black text-blue-800">คำแนะนำสำหรับรหัสผ่านที่ปลอดภัย</p>
-                  <ul class="text-xs font-medium text-blue-700/80 space-y-0.5 list-disc list-inside">
-                    <li>ความยาวอย่างน้อย 8 ตัวอักษร</li>
-                    <li>ผสมตัวพิมพ์เล็ก พิมพ์ใหญ่ และตัวเลข</li>
-                    <li>ไม่ใช้ข้อมูลส่วนตัว เช่น วันเกิด ชื่อ</li>
-                  </ul>
+                <div v-if="realEmail" class="py-3.5 flex items-center justify-between gap-4">
+                  <dt class="text-[13px] font-semibold text-[var(--color-text-muted)] shrink-0">อีเมล</dt>
+                  <dd class="flex items-center gap-2 text-sm font-semibold text-[var(--color-text-dark)] min-w-0">
+                    <span class="truncate">{{ realEmail }}</span>
+                    <span
+                      class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                      :class="auth.user?.email_verified === false ? 'bg-amber-50 text-amber-700' : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'"
+                    >{{ auth.user?.email_verified === false ? 'ยังไม่ยืนยัน' : 'ยืนยันแล้ว' }}</span>
+                  </dd>
                 </div>
-              </div>
+              </dl>
+            </section>
 
-              <div class="space-y-6">
-                <!-- New Password -->
-                <div class="space-y-2.5">
-                  <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">รหัสผ่านใหม่</label>
+            <section class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-5 md:p-7">
+              <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">{{ hasPassword ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่าน' }}</h2>
+              <p class="text-[13px] text-[var(--color-text-muted)] mt-1 leading-relaxed">
+                {{ hasPassword
+                  ? 'ใช้อย่างน้อย 8 ตัว ผสมตัวพิมพ์ใหญ่ ตัวเลข หรือสัญลักษณ์ และไม่ใช้ข้อมูลที่เดาง่ายอย่างวันเกิด'
+                  : `ตอนนี้คุณเข้าระบบด้วย ${providerName} อย่างเดียว ตั้งรหัสผ่านไว้เพื่อเข้าด้วยอีเมลได้อีกทาง` }}
+              </p>
+
+              <form class="max-w-md mt-6 space-y-5" @submit.prevent="savePassword">
+                <!-- ช่องชื่อผู้ใช้ซ่อนไว้ให้ตัวจัดการรหัสผ่านของเบราว์เซอร์รู้ว่ารหัสนี้ของบัญชีไหน -->
+                <input type="email" :value="auth.user?.email" autocomplete="username" class="hidden" readonly tabindex="-1" aria-hidden="true" />
+                <div>
+                  <label for="new-password" class="field-label">รหัสผ่านใหม่</label>
                   <div class="relative">
                     <input
-                      v-model="form.password"
+                      id="new-password"
+                      v-model="passwordForm.password"
                       :type="showPassword ? 'text' : 'password'"
-                      class="w-full bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 pr-14 text-sm font-bold focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all outline-none"
-                      placeholder="••••••••"
+                      autocomplete="new-password"
+                      class="field-input !pr-12"
+                      placeholder="อย่างน้อย 6 ตัวอักษร"
                     />
                     <button
                       type="button"
+                      class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-dark)]"
+                      :aria-label="showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'"
                       @click="showPassword = !showPassword"
-                      class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[var(--color-primary)] transition-colors"
                     >
                       <span class="material-symbols-rounded text-[22px]">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
                     </button>
                   </div>
-
-                  <!-- Password Strength -->
-                  <div v-if="form.password" class="space-y-1.5">
+                  <div v-if="passwordForm.password" class="mt-2.5">
                     <div class="flex gap-1">
                       <div
                         v-for="i in 5"
                         :key="i"
-                        class="flex-1 h-1.5 rounded-full transition-all duration-300"
-                        :class="i <= passwordStrength.level ? passwordStrength.barColor : 'bg-gray-100'"
+                        class="flex-1 h-1.5 rounded-full transition-colors duration-300"
+                        :class="i <= passwordStrength.level ? passwordStrength.barColor : 'bg-[var(--color-sand-dark)]'"
                       ></div>
                     </div>
-                    <p class="text-[11px] font-black ml-0.5" :class="passwordStrength.textColor">
-                      ความแข็งแกร่ง: {{ passwordStrength.label }}
+                    <p class="field-help font-bold" :class="passwordStrength.textColor">
+                      {{ passwordTooShort ? `สั้นไป ต้องมีอย่างน้อย ${PASSWORD_MIN} ตัว` : `ความแข็งแรง: ${passwordStrength.label}` }}
                     </p>
                   </div>
                 </div>
 
-                <!-- Confirm Password -->
-                <div class="space-y-2.5">
-                  <label class="block text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest ml-1 opacity-70">ยืนยันรหัสผ่านใหม่</label>
+                <div>
+                  <label for="confirm-password" class="field-label">ยืนยันรหัสผ่านใหม่</label>
                   <div class="relative">
                     <input
-                      v-model="form.password_confirmation"
-                      :type="showPasswordConfirm ? 'text' : 'password'"
-                      class="w-full bg-white border-2 rounded-2xl px-5 py-4 pr-14 text-sm font-bold focus:ring-4 transition-all outline-none"
-                      :class="form.password_confirmation
-                        ? form.password === form.password_confirmation
-                          ? 'border-green-300 focus:border-green-400 focus:ring-green-100'
-                          : 'border-red-300 focus:border-red-400 focus:ring-red-100'
-                        : 'border-gray-100 focus:border-[var(--color-primary)] focus:ring-[var(--color-primary)]/10'"
-                      placeholder="••••••••"
+                      id="confirm-password"
+                      v-model="passwordForm.password_confirmation"
+                      :type="showPassword ? 'text' : 'password'"
+                      autocomplete="new-password"
+                      class="field-input !pr-12"
+                      :class="{ 'field-input--error': passwordMismatch }"
+                      placeholder="พิมพ์ซ้ำอีกครั้ง"
                     />
-                    <button
-                      type="button"
-                      @click="showPasswordConfirm = !showPasswordConfirm"
-                      class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[var(--color-primary)] transition-colors"
-                    >
-                      <span class="material-symbols-rounded text-[22px]">{{ showPasswordConfirm ? 'visibility_off' : 'visibility' }}</span>
-                    </button>
-                    <!-- Match indicator -->
                     <span
-                      v-if="form.password_confirmation"
-                      class="absolute right-12 top-1/2 -translate-y-1/2 material-symbols-rounded text-[20px]"
-                      :class="form.password === form.password_confirmation ? 'text-green-500' : 'text-red-400'"
+                      v-if="passwordForm.password_confirmation"
+                      class="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-rounded text-[20px]"
+                      :class="passwordMismatch ? 'text-red-500' : 'text-[var(--color-accent)]'"
                       style="font-variation-settings:'FILL' 1"
-                    >
-                      {{ form.password === form.password_confirmation ? 'check_circle' : 'cancel' }}
-                    </span>
+                    >{{ passwordMismatch ? 'cancel' : 'check_circle' }}</span>
                   </div>
-                  <p v-if="form.password_confirmation && form.password !== form.password_confirmation" class="text-[11px] font-bold text-red-500 ml-1">
-                    รหัสผ่านไม่ตรงกัน
-                  </p>
+                  <p v-if="passwordMismatch" class="field-help !text-red-600">รหัสผ่านไม่ตรงกัน</p>
                 </div>
-              </div>
 
-              <div class="pt-4">
-                <button
-                  @click="handleSave"
-                  :disabled="saving || (form.password && form.password !== form.password_confirmation)"
-                  class="w-full md:w-auto bg-[var(--color-primary)] text-white px-12 py-4 rounded-2xl font-black shadow-lg/20 hover:bg-[var(--color-accent)] hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span v-if="saving" class="material-symbols-rounded animate-spin text-[20px]">refresh</span>
-                  <span v-else class="material-symbols-rounded text-[20px]">key</span>
-                  <span>{{ saving ? 'กำลังอัปเดต…' : 'อัปเดตรหัสผ่าน' }}</span>
+                <button type="submit" class="btn-primary" :disabled="!canSavePassword || savingPassword">
+                  <span v-if="savingPassword" class="material-symbols-rounded animate-spin text-[18px]">progress_activity</span>
+                  {{ savingPassword ? 'กำลังบันทึก…' : hasPassword ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่าน' }}
                 </button>
-              </div>
-            </div>
-          </div>
+              </form>
+            </section>
+          </template>
 
-          <!-- ─── TAB: ออกจากระบบ ─── -->
-          <div v-if="activeTab === 'logout'" class="bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
-            <div class="mb-10 pb-8 border-b border-gray-100">
-              <h2 class="text-3xl font-black text-[var(--color-text-dark)] mb-2">ออกจากระบบ</h2>
-              <p class="text-[var(--color-text-muted)] font-medium">คุณกำลังล็อกอินอยู่ในบัญชี <strong class="text-[var(--color-primary)]">{{ auth.user?.email }}</strong></p>
-            </div>
-            <div class="space-y-4 max-w-sm">
-              <p class="text-sm font-medium text-[var(--color-text-muted)]">คุณจะถูกนำออกจากระบบและต้องล็อกอินใหม่เพื่อดูข้อมูลการจองของคุณ</p>
-              <button
-                @click="handleLogout"
-                class="bg-white text-red-500 border-2 border-red-100 px-8 py-4 rounded-[1rem] font-black hover:bg-red-50 hover:border-red-400 transition-all flex items-center gap-3 w-full md:w-auto active:scale-95"
-              >
-                <span class="material-symbols-rounded text-[24px]">logout</span>
-                ลงชื่อออกจากระบบ
-              </button>
-            </div>
-          </div>
-
+          <!-- Logout (mobile — desktop has it in the sidebar) -->
+          <button
+            type="button"
+            class="lg:hidden w-full flex items-center justify-center gap-2 rounded-2xl border border-red-100 bg-white py-3.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
+            @click="handleLogout"
+          >
+            <span class="material-symbols-rounded text-[20px]">logout</span>
+            ออกจากระบบ
+          </button>
         </div>
       </div>
     </div>
@@ -871,28 +574,297 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToast } from '../lib/toast';
 import api from '../lib/axios';
 
 const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
+const toast = useToast();
 
-const saving = ref(false);
-const editMode = ref(false);
-const activeTab = ref('info');
-const uploadingAvatar = ref(false);
-const showPassword = ref(false);
-const showPasswordConfirm = ref(false);
+const FILLED = "font-variation-settings:'FILL' 1";
+const PASSWORD_MIN = 6; // ตรงกับ validation ฝั่ง AuthController::updateProfile
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024; // ตรงกับ max:5120 ฝั่งหลังบ้าน
 
 const tabs = [
-  { key: 'info',     label: 'ข้อมูลส่วนตัว', icon: 'person'   },
-  { key: 'public',   label: 'โปรไฟล์สาธารณะ', icon: 'public'   },
-  { key: 'security', label: 'ความปลอดภัย',   icon: 'security' },
-  { key: 'logout',   label: 'ออกจากระบบ',    icon: 'logout'   },
+  { key: 'info',     label: 'ข้อมูลส่วนตัว',  icon: 'person',   hint: 'ชื่อ ติดต่อ สุขภาพ' },
+  { key: 'public',   label: 'โปรไฟล์สาธารณะ', icon: 'public',   hint: 'หน้าที่แชร์ให้เพื่อนดู' },
+  { key: 'security', label: 'ความปลอดภัย',    icon: 'lock',     hint: 'รหัสผ่านและการเข้าระบบ' },
 ];
+
+const quickLinks = [
+  { to: '/my-bookings', icon: 'confirmation_number', label: 'การจองของฉัน' },
+  { to: '/loyalty',     icon: 'stars',               label: 'แต้มสะสม' },
+  { to: '/passport',    icon: 'hiking',              label: 'สมุดสะสมการเดินทาง' },
+];
+
+// แท็บอยู่ใน ?tab= เพื่อให้ลิงก์ตรงเข้าแท็บได้ และกดย้อนกลับไม่หลุดออกจากหน้า
+const activeTab = computed(() => (tabs.some((t) => t.key === route.query.tab) ? route.query.tab : 'info'));
+
+function openTab(key) {
+  if (key === activeTab.value) return;
+  router.replace({ query: { ...route.query, tab: key === 'info' ? undefined : key } });
+}
+
+// ─── Info fields ───
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+
+const infoSections = [
+  {
+    key: 'basic',
+    title: 'ข้อมูลพื้นฐาน',
+    desc: 'ใช้กรอกชื่อผู้เดินทางและทำประกันให้อัตโนมัติ',
+    icon: 'badge',
+    note: 'เลขบัตรประชาชนถูกเข้ารหัสก่อนบันทึก และใช้สำหรับการจองทริปเท่านั้น',
+    fields: [
+      { key: 'title', label: 'คำนำหน้า', options: ['นาย', 'นาง', 'นางสาว'] },
+      { key: 'name', label: 'ชื่อ-นามสกุล', required: true, placeholder: 'ชื่อ-นามสกุลจริง', autocomplete: 'name' },
+      { key: 'nickname', label: 'ชื่อเล่น', placeholder: 'ระบุชื่อเล่น', autocomplete: 'nickname' },
+      { key: 'blood_group', label: 'กรุ๊ปเลือด', options: BLOOD_GROUPS },
+      { key: 'id_card', label: 'เลขบัตรประชาชน', placeholder: 'ตัวเลข 13 หลัก ไม่ต้องใส่ขีด', maxlength: 13, locked: true, wide: true },
+    ],
+  },
+  {
+    key: 'contact',
+    title: 'ข้อมูลติดต่อ',
+    desc: 'ทีมงานใช้ติดต่อคุณและคนใกล้ชิดเมื่อมีเหตุจำเป็น',
+    icon: 'contact_phone',
+    fields: [
+      { key: 'phone', label: 'เบอร์โทรศัพท์', type: 'tel', placeholder: '08X-XXX-XXXX', autocomplete: 'tel' },
+      { key: 'email', label: 'อีเมล', readonly: true },
+      { key: 'emergency_contact', label: 'ผู้ติดต่อฉุกเฉิน', recommend: true, placeholder: 'เช่น คุณแม่, พี่สาว' },
+      { key: 'emergency_phone', label: 'เบอร์ผู้ติดต่อฉุกเฉิน', type: 'tel', placeholder: '08X-XXX-XXXX' },
+    ],
+  },
+  {
+    key: 'health',
+    title: 'ข้อมูลสุขภาพ',
+    desc: 'ให้ทีมงานเตรียมอาหารและดูแลได้ถูกต้องระหว่างทริป',
+    icon: 'health_and_safety',
+    note: 'ข้อมูลสุขภาพถูกเข้ารหัสก่อนบันทึก และใช้เพื่อความปลอดภัยของคุณระหว่างทริปเท่านั้น',
+    fields: [
+      { key: 'allergies', label: 'การแพ้อาหาร / สิ่งที่ควรระวัง', placeholder: 'เช่น แพ้อาหารทะเล, ไม่ทานเนื้อหมู, แพ้ถั่ว', wide: true, emptyText: 'ไม่มี / ยังไม่ได้ระบุ' },
+      { key: 'health_notes', label: 'โรคประจำตัว / หมายเหตุสุขภาพ', placeholder: 'โรคประจำตัว หรือประวัติการแพ้ยาที่ทีมงานควรทราบ (ถ้ามี)', multiline: true, wide: true, emptyText: 'ไม่มี / ยังไม่ได้ระบุ' },
+    ],
+  },
+];
+
+const EDITABLE_KEYS = ['title', 'name', 'phone', 'nickname', 'id_card', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes'];
+
+// ช่องที่นับเป็นความครบของโปรไฟล์
+const COMPLETION_FIELDS = [
+  { key: 'name', label: 'ชื่อ-นามสกุล' },
+  { key: 'phone', label: 'เบอร์โทรศัพท์' },
+  { key: 'nickname', label: 'ชื่อเล่น' },
+  { key: 'id_card', label: 'เลขบัตรประชาชน' },
+  { key: 'blood_group', label: 'กรุ๊ปเลือด' },
+  { key: 'emergency_contact', label: 'ผู้ติดต่อฉุกเฉิน' },
+  { key: 'emergency_phone', label: 'เบอร์ผู้ติดต่อฉุกเฉิน' },
+  { key: 'allergies', label: 'การแพ้อาหาร' },
+];
+
+const editMode = ref(false);
+const saving = ref(false);
+const fieldErrors = ref({});
+const form = ref(snapshotUser());
+
+function snapshotUser() {
+  const user = auth.user || {};
+  return Object.fromEntries(EDITABLE_KEYS.map((key) => [key, user[key] ?? '']));
+}
+
+const formDirty = computed(() => {
+  const original = snapshotUser();
+  return EDITABLE_KEYS.some((key) => String(form.value[key] ?? '').trim() !== String(original[key] ?? '').trim());
+});
+
+const missingFields = computed(() => COMPLETION_FIELDS.filter((f) => !String(auth.user?.[f.key] ?? '').trim()));
+
+const profileCompletion = computed(() => {
+  if (!auth.user) return 0;
+  return Math.round(((COMPLETION_FIELDS.length - missingFields.value.length) / COMPLETION_FIELDS.length) * 100);
+});
+
+const displayName = computed(() => [auth.user?.title, auth.user?.name].filter(Boolean).join(' ') || 'สมาชิก');
+const initial = computed(() => (auth.user?.name || '?').trim().charAt(0).toUpperCase());
+
+// บัญชีที่สมัครผ่านโซเชียลโดยไม่มีอีเมลจริงได้อีเมลสังเคราะห์ …@social.local — ไม่ควรโชว์ให้ลูกค้าเห็น
+const realEmail = computed(() => {
+  const email = String(auth.user?.email || '');
+  return email.toLowerCase().endsWith('@social.local') ? '' : email;
+});
+
+const maskedIdCard = computed(() => {
+  const id = auth.user?.id_card || '';
+  if (id.length !== 13) return id;
+  return `${id[0]}-XXXX-XXXXX-${id[11]}-${id[12]}`;
+});
+
+function displayValue(field) {
+  if (field.key === 'email') return realEmail.value;
+  if (field.key === 'id_card') return maskedIdCard.value;
+  return String(auth.user?.[field.key] ?? '').trim();
+}
+
+// ดึงค่าจาก auth.user ทุกครั้งที่เริ่มแก้ — ค่าตอนเปิดหน้ามาจาก localStorage ซึ่งอาจเก่ากว่าที่ /auth/me เพิ่งส่งมา
+// ถ้าไม่ sync ตรงนี้ การกดบันทึกจะเขียนค่าเก่าทับของจริง
+async function startEdit(focusKey) {
+  form.value = snapshotUser();
+  fieldErrors.value = {};
+  editMode.value = true;
+  if (typeof focusKey === 'string') {
+    await nextTick();
+    const el = document.getElementById(`f-${focusKey}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.focus({ preventScroll: true });
+  }
+}
+
+function cancelEdit() {
+  editMode.value = false;
+  fieldErrors.value = {};
+  form.value = snapshotUser();
+}
+
+function validateProfile() {
+  const errors = {};
+  if (!String(form.value.name || '').trim()) errors.name = 'กรุณากรอกชื่อ-นามสกุล';
+  if (form.value.id_card && form.value.id_card.length !== 13) errors.id_card = 'เลขบัตรประชาชนต้องมี 13 หลัก';
+  fieldErrors.value = errors;
+  const first = Object.keys(errors)[0];
+  if (first) document.getElementById(`f-${first}`)?.focus();
+  return !first;
+}
+
+async function saveProfile() {
+  if (!validateProfile()) return;
+  saving.value = true;
+  try {
+    // ส่งทุกช่องเสมอ รวมช่องที่ลบจนว่าง — หลังบ้านแปลงสตริงว่างเป็น null แล้วล้างค่าให้
+    // (เดิมข้ามช่องว่างไป ทำให้ลบชื่อเล่น/ข้อมูลสุขภาพที่เคยกรอกออกไม่ได้)
+    const payload = Object.fromEntries(EDITABLE_KEYS.map((key) => [key, String(form.value[key] ?? '').trim()]));
+    const res = await api.post('/auth/profile', payload);
+    storeUser(res.data?.data);
+    editMode.value = false;
+    toast.success('บันทึกข้อมูลเรียบร้อยแล้ว');
+  } catch (e) {
+    applyServerErrors(e, 'บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่');
+  } finally {
+    saving.value = false;
+  }
+}
+
+function applyServerErrors(e, fallback) {
+  const data = e?.response?.data;
+  if (data?.errors) {
+    fieldErrors.value = Object.fromEntries(Object.entries(data.errors).map(([k, v]) => [k, v[0]]));
+    toast.error(Object.values(data.errors)[0][0]);
+  } else {
+    toast.error(data?.message || fallback);
+  }
+}
+
+function storeUser(user) {
+  if (!user) return;
+  auth.user = user;
+  localStorage.setItem('auth_user', JSON.stringify(user));
+}
+
+// ─── Avatar ───
+const avatarFile = ref(null);
+const avatarPreview = ref(null);
+const uploadingAvatar = ref(false);
+
+function handleAvatarChange(e) {
+  const file = e.target.files?.[0];
+  // Reset input so the same file can be re-selected if cancelled
+  e.target.value = '';
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    toast.error('กรุณาเลือกไฟล์รูปภาพ');
+    return;
+  }
+  if (file.size > AVATAR_MAX_BYTES) {
+    toast.error('รูปต้องมีขนาดไม่เกิน 5MB');
+    return;
+  }
+  if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
+  avatarFile.value = file;
+  avatarPreview.value = URL.createObjectURL(file);
+}
+
+function cancelAvatarUpload() {
+  if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
+  avatarFile.value = null;
+  avatarPreview.value = null;
+}
+
+async function uploadAvatar() {
+  if (!avatarFile.value) return;
+  uploadingAvatar.value = true;
+  try {
+    const fd = new FormData();
+    fd.append('avatar', avatarFile.value);
+    const res = await api.post('/auth/profile', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    storeUser(res.data?.data);
+    cancelAvatarUpload();
+    toast.success('เปลี่ยนรูปโปรไฟล์แล้ว');
+  } catch (e) {
+    toast.error(e?.response?.data?.errors?.avatar?.[0] || 'อัปโหลดรูปไม่สำเร็จ กรุณาลองอีกครั้ง');
+  } finally {
+    uploadingAvatar.value = false;
+  }
+}
+
+// ─── Password ───
+const passwordForm = ref({ password: '', password_confirmation: '' });
+const savingPassword = ref(false);
+const showPassword = ref(false);
+
+const hasPassword = computed(() => auth.user?.has_password !== false);
+const passwordTooShort = computed(() => passwordForm.value.password.length > 0 && passwordForm.value.password.length < PASSWORD_MIN);
+const passwordMismatch = computed(() => !!passwordForm.value.password_confirmation && passwordForm.value.password !== passwordForm.value.password_confirmation);
+const canSavePassword = computed(() =>
+  passwordForm.value.password.length >= PASSWORD_MIN && passwordForm.value.password === passwordForm.value.password_confirmation,
+);
+
+const passwordStrength = computed(() => {
+  const p = passwordForm.value.password;
+  if (!p) return { level: 0, label: '', barColor: '', textColor: '' };
+  let score = 0;
+  if (p.length >= 8) score++;
+  if (p.length >= 12) score++;
+  if (/[A-Z]/.test(p)) score++;
+  if (/[0-9]/.test(p)) score++;
+  if (/[^A-Za-z0-9]/.test(p)) score++;
+  if (score <= 1) return { level: Math.max(score, 1), label: 'อ่อนมาก', barColor: 'bg-red-500', textColor: 'text-red-600' };
+  if (score === 2) return { level: score, label: 'อ่อน', barColor: 'bg-orange-400', textColor: 'text-orange-600' };
+  if (score === 3) return { level: score, label: 'ปานกลาง', barColor: 'bg-amber-400', textColor: 'text-amber-700' };
+  if (score === 4) return { level: score, label: 'แข็งแรง', barColor: 'bg-[var(--color-accent-light)]', textColor: 'text-[var(--color-accent)]' };
+  return { level: score, label: 'แข็งแรงมาก', barColor: 'bg-[var(--color-accent)]', textColor: 'text-[var(--color-accent)]' };
+});
+
+// ส่งเฉพาะรหัสผ่าน — เดิมปุ่มนี้ส่งฟอร์มข้อมูลส่วนตัวไปด้วย ทำให้สิ่งที่พิมพ์ค้างไว้ในแท็บแรกถูกบันทึกโดยไม่ตั้งใจ
+// และกดได้แม้ช่องรหัสผ่านว่าง แล้วขึ้นว่า "บันทึกเรียบร้อย" ทั้งที่ไม่ได้เปลี่ยนอะไร
+async function savePassword() {
+  if (!canSavePassword.value) return;
+  savingPassword.value = true;
+  try {
+    const res = await api.post('/auth/profile', { ...passwordForm.value });
+    storeUser(res.data?.data);
+    toast.success(hasPassword.value ? 'เปลี่ยนรหัสผ่านแล้ว' : 'ตั้งรหัสผ่านแล้ว');
+    passwordForm.value = { password: '', password_confirmation: '' };
+    showPassword.value = false;
+  } catch (e) {
+    const data = e?.response?.data;
+    toast.error(data?.errors?.password?.[0] || data?.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาลองใหม่');
+  } finally {
+    savingPassword.value = false;
+  }
+}
 
 // ─── Email verification ───
 const resendingVerification = ref(false);
@@ -908,7 +880,7 @@ const verifyNotice = ref(null);
 const showVerifyBanner = computed(() => {
   const user = auth.user;
   if (!user || user.email_verified !== false) return false;
-  return !String(user.email || '').toLowerCase().endsWith('@social.local');
+  return !!realEmail.value;
 });
 
 const VERIFY_MESSAGES = {
@@ -950,236 +922,41 @@ async function resendVerification() {
   }
 }
 
+// ─── Public profile ───
 const publicProfile = ref({ enabled: false, handle: null, bio: '', url: null });
+const savedPublicProfile = ref({ enabled: false, bio: '' });
 const savingPublicProfile = ref(false);
 const copiedPublicUrl = ref(false);
 
-const loyaltyPoints   = ref(null);
-const loyaltyTrips    = ref(0);
-const loyaltyTierLabel = ref('');
-const loyaltyNextTier  = ref(null);
+const publicDirty = computed(() =>
+  publicProfile.value.enabled !== savedPublicProfile.value.enabled
+  || (publicProfile.value.bio || '') !== (savedPublicProfile.value.bio || ''),
+);
 
-const maskedIdCard = computed(() => {
-  const id = auth.user?.id_card || '';
-  if (!id) return '';
-  if (id.length < 4) return id;
-  return id.slice(0, 1) + '-XXXX-XXXXX-' + id.slice(-2, -1) + '-' + id.slice(-1);
-});
-
-const profileCompletion = computed(() => {
-  const user = auth.user;
-  if (!user) return 0;
-  const fields = ['name', 'phone', 'nickname', 'id_card', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies'];
-  const filled = fields.filter(f => user[f] && user[f].toString().trim().length > 0).length;
-  return Math.round((filled / fields.length) * 100);
-});
-
-const passwordStrength = computed(() => {
-  const p = form.value.password;
-  if (!p) return { level: 0, label: '', barColor: '', textColor: '' };
-  let score = 0;
-  if (p.length >= 8) score++;
-  if (p.length >= 12) score++;
-  if (/[A-Z]/.test(p)) score++;
-  if (/[0-9]/.test(p)) score++;
-  if (/[^A-Za-z0-9]/.test(p)) score++;
-  if (score <= 1) return { level: score, label: 'อ่อนแอมาก', barColor: 'bg-red-500', textColor: 'text-red-500' };
-  if (score === 2) return { level: score, label: 'อ่อนแอ', barColor: 'bg-orange-400', textColor: 'text-orange-500' };
-  if (score === 3) return { level: score, label: 'ปานกลาง', barColor: 'bg-yellow-400', textColor: 'text-yellow-600' };
-  if (score === 4) return { level: score, label: 'แข็งแกร่ง', barColor: 'bg-green-400', textColor: 'text-green-600' };
-  return { level: score, label: 'แข็งแกร่งมาก', barColor: 'bg-green-600', textColor: 'text-green-700' };
-});
-
-const providerMap = {
-  google:   { label: 'สมัครด้วย Google',   class: 'bg-red-50 text-red-600 border border-red-200',     icon: '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>' },
-  facebook: { label: 'สมัครด้วย Facebook', class: 'bg-blue-50 text-blue-700 border border-blue-200',   icon: '<svg class="w-3.5 h-3.5" fill="#1877F2" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>' },
-  line:     { label: 'สมัครด้วย LINE',     class: 'bg-green-50 text-green-700 border border-green-200', icon: '<svg class="w-3.5 h-3.5" fill="#06C755" viewBox="0 0 24 24"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.630 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.070 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>' },
-};
-
-const providerBadge = computed(() => {
-  const p = auth.user?.social_provider;
-  return providerMap[p] || { label: 'สมัครด้วยอีเมล', class: 'bg-gray-100 text-gray-700 border border-gray-200', icon: '<span class="material-symbols-rounded text-[14px]">mail</span>' };
-});
-
-function formatJoinDate(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-const error = ref('');
-const success = ref('');
-const avatarFile = ref(null);
-const avatarPreview = ref(null);
-
-const form = ref({
-  title: auth.user?.title || '',
-  name: auth.user?.name || '',
-  phone: auth.user?.phone || '',
-  nickname: auth.user?.nickname || '',
-  id_card: auth.user?.id_card || '',
-  blood_group: auth.user?.blood_group || '',
-  emergency_contact: auth.user?.emergency_contact || '',
-  emergency_phone: auth.user?.emergency_phone || '',
-  allergies: auth.user?.allergies || '',
-  health_notes: auth.user?.health_notes || '',
-  password: '',
-  password_confirmation: '',
-});
-
-function cancelEdit() {
-  editMode.value = false;
-  form.value.title             = auth.user?.title             || '';
-  form.value.name              = auth.user?.name              || '';
-  form.value.phone             = auth.user?.phone             || '';
-  form.value.nickname          = auth.user?.nickname          || '';
-  form.value.id_card           = auth.user?.id_card           || '';
-  form.value.blood_group       = auth.user?.blood_group       || '';
-  form.value.emergency_contact = auth.user?.emergency_contact || '';
-  form.value.emergency_phone   = auth.user?.emergency_phone   || '';
-  form.value.allergies         = auth.user?.allergies         || '';
-  form.value.health_notes      = auth.user?.health_notes      || '';
-}
-
-function handleAvatarChange(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  avatarFile.value = file;
-  const reader = new FileReader();
-  reader.onload = (ev) => { avatarPreview.value = ev.target.result; };
-  reader.readAsDataURL(file);
-  // Reset input so the same file can be re-selected if cancelled
-  e.target.value = '';
-}
-
-function cancelAvatarUpload() {
-  avatarFile.value = null;
-  avatarPreview.value = null;
-}
-
-async function uploadAvatar() {
-  if (!avatarFile.value) return;
-  uploadingAvatar.value = true;
-  error.value = '';
-  try {
-    const fd = new FormData();
-    fd.append('avatar', avatarFile.value);
-    fd.append('name', auth.user?.name || form.value.name);
-    const res = await api.post('/auth/profile', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    if (res.data.data) {
-      auth.user = res.data.data;
-      localStorage.setItem('auth_user', JSON.stringify(auth.user));
-    }
-    avatarFile.value = null;
-    avatarPreview.value = null;
-    success.value = 'อัปโหลดรูปโปรไฟล์สำเร็จแล้ว';
-    setTimeout(() => { success.value = ''; }, 3000);
-  } catch (e) {
-    error.value = 'อัปโหลดรูปไม่สำเร็จ กรุณาลองอีกครั้ง';
-  } finally {
-    uploadingAvatar.value = false;
-  }
-}
-
-async function handleSave() {
-  error.value = '';
-  success.value = '';
-  saving.value = true;
-
-  try {
-    const formData = new FormData();
-    formData.append('name', form.value.name);
-    if (form.value.title)             formData.append('title', form.value.title);
-    if (form.value.phone)             formData.append('phone', form.value.phone);
-    if (form.value.nickname)          formData.append('nickname', form.value.nickname);
-    if (form.value.id_card)           formData.append('id_card', form.value.id_card);
-    if (form.value.blood_group)       formData.append('blood_group', form.value.blood_group);
-    if (form.value.emergency_contact) formData.append('emergency_contact', form.value.emergency_contact);
-    if (form.value.emergency_phone)   formData.append('emergency_phone', form.value.emergency_phone);
-    if (form.value.allergies)         formData.append('allergies', form.value.allergies);
-    if (form.value.health_notes)      formData.append('health_notes', form.value.health_notes);
-    if (form.value.password) {
-      formData.append('password', form.value.password);
-      formData.append('password_confirmation', form.value.password_confirmation);
-    }
-    if (avatarFile.value) {
-      formData.append('avatar', avatarFile.value);
-    }
-
-    const res = await api.post('/auth/profile', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-
-    if (res.data.data) {
-      auth.user = res.data.data;
-      localStorage.setItem('auth_user', JSON.stringify(auth.user));
-    }
-
-    success.value = 'บันทึกข้อมูลเรียบร้อยแล้ว';
-    form.value.password = '';
-    form.value.password_confirmation = '';
-    avatarFile.value = null;
-    avatarPreview.value = null;
-    editMode.value = false;
-    showPassword.value = false;
-    showPasswordConfirm.value = false;
-
-    setTimeout(() => { success.value = ''; }, 3000);
-  } catch (e) {
-    const data = e?.response?.data;
-    if (data?.errors) {
-      const firstKey = Object.keys(data.errors)[0];
-      error.value = data.errors[firstKey][0];
-    } else {
-      error.value = data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
-    }
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function handleLogout() {
-  if (confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
-    await auth.logout();
-    router.push('/login');
-  }
-}
-
-async function fetchLoyalty() {
-  try {
-    const res = await api.get('/loyalty/account');
-    const account = res.data?.data;
-    if (account) {
-      loyaltyPoints.value    = account.points   ?? null;
-      loyaltyTrips.value     = account.lifetime_trips ?? 0;
-      loyaltyTierLabel.value = account.tier_label || '';
-      loyaltyNextTier.value  = account.next_tier  || null;
-    }
-  } catch {}
+function applyPublicProfile(data) {
+  if (!data) return;
+  publicProfile.value = { ...publicProfile.value, ...data, bio: data.bio || '' };
+  savedPublicProfile.value = { enabled: !!data.enabled, bio: data.bio || '' };
 }
 
 async function fetchPublicProfile() {
   try {
     const res = await api.get('/me/public-profile');
-    const data = res.data?.data;
-    if (data) publicProfile.value = { ...publicProfile.value, ...data };
+    applyPublicProfile(res.data?.data);
   } catch {}
 }
 
 async function savePublicProfile() {
   savingPublicProfile.value = true;
-  error.value = '';
-  success.value = '';
   try {
     const res = await api.put('/me/public-profile', {
       enabled: publicProfile.value.enabled,
-      bio: publicProfile.value.bio || null,
+      bio: publicProfile.value.bio?.trim() || null,
     });
-    publicProfile.value = { ...publicProfile.value, ...(res.data?.data || {}) };
-    success.value = res.data?.message || 'บันทึกแล้ว';
+    applyPublicProfile(res.data?.data);
+    toast.success(res.data?.message || 'บันทึกแล้ว');
   } catch (e) {
-    error.value = e?.response?.data?.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่';
+    toast.error(e?.response?.data?.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
   } finally {
     savingPublicProfile.value = false;
   }
@@ -1190,8 +967,64 @@ async function copyPublicUrl() {
     await navigator.clipboard.writeText(publicProfile.value.url);
     copiedPublicUrl.value = true;
     setTimeout(() => { copiedPublicUrl.value = false; }, 2000);
+  } catch {
+    toast.error('คัดลอกไม่สำเร็จ ลองกดค้างที่ลิงก์แล้วคัดลอกเองได้ครับ');
+  }
+}
+
+// ─── Loyalty ───
+const loyaltyPoints    = ref(null);
+const loyaltyTrips     = ref(0);
+const loyaltyTierLabel = ref('');
+const loyaltyNextTier  = ref(null);
+
+const tierProgress = computed(() => {
+  const at = loyaltyNextTier.value?.at;
+  if (!at) return 0;
+  return Math.min(100, Math.round((loyaltyTrips.value / at) * 100));
+});
+
+async function fetchLoyalty() {
+  try {
+    const res = await api.get('/loyalty/account');
+    const account = res.data?.data;
+    if (account) {
+      loyaltyPoints.value    = account.points ?? 0;
+      loyaltyTrips.value     = account.lifetime_trips ?? 0;
+      loyaltyTierLabel.value = account.tier_label || '';
+      loyaltyNextTier.value  = account.next_tier || null;
+    }
   } catch {}
 }
+
+// ─── Misc ───
+const providerMap = {
+  google:   { label: 'Google',   icon: '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>' },
+  facebook: { label: 'Facebook', icon: '<svg class="w-4 h-4" fill="#1877F2" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>' },
+  line:     { label: 'LINE',     icon: '<svg class="w-4 h-4" fill="#06C755" viewBox="0 0 24 24"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.630 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.070 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>' },
+};
+
+const providerBadge = computed(() =>
+  providerMap[auth.user?.social_provider]
+  || { label: 'อีเมลและรหัสผ่าน', icon: '<span class="material-symbols-rounded text-[16px] text-[var(--color-text-muted)]">mail</span>' },
+);
+const providerName = computed(() => providerMap[auth.user?.social_provider]?.label || 'บัญชีโซเชียล');
+
+function formatJoinDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+}
+
+async function handleLogout() {
+  if (!confirm('ต้องการออกจากระบบใช่ไหม?')) return;
+  await auth.logout();
+  router.push('/login');
+}
+
+// ออกจากแท็บข้อมูลโดยยังไม่ได้แก้อะไร = ปิดโหมดแก้ไม่ให้ค้าง ถ้าพิมพ์ค้างไว้จะคงไว้ให้กลับมาบันทึกต่อได้
+watch(activeTab, () => {
+  if (editMode.value && !formDirty.value) cancelEdit();
+});
 
 onMounted(() => {
   if (!auth.isLoggedIn) {
@@ -1208,36 +1041,164 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+  background-color: var(--color-primary);
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+.btn-primary:hover:not(:disabled) { background-color: var(--color-accent); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  background-color: var(--color-sand);
+  border: 1px solid var(--color-sand-dark);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.btn-ghost:hover:not(:disabled) { border-color: var(--color-accent); color: var(--color-accent); }
+
+.field-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-text-mid);
+}
+.field-input {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.8125rem 1rem;
+  border-radius: 0.875rem;
+  border: 1.5px solid var(--color-sand-dark);
+  background-color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-dark);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.field-input::placeholder { color: var(--color-text-muted); opacity: 0.6; font-weight: 500; }
+.field-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+.field-input--error { border-color: #ef4444; }
+.field-input--readonly {
+  gap: 0.5rem;
+  background-color: var(--color-sand);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+.field-help {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
-.animate-in {
-  animation: fadeIn 0.4s ease-out forwards;
+.side-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text-mid);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
+.side-tab:hover { background-color: var(--color-sand); }
+.side-tab--active,
+.side-tab--active:hover { background-color: var(--color-primary); color: #fff; }
 
-.slide-in-from-left {
-  animation: slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.side-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-mid);
+  transition: background-color 0.2s ease;
 }
+.side-link:hover { background-color: var(--color-sand); }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+.stat-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.875rem 0.5rem;
+  transition: background-color 0.2s ease;
 }
+.stat-cell:hover { background-color: var(--color-sand); }
+.stat-cell:first-child { border-radius: 1rem 0 0 1rem; }
+.stat-cell:last-child { border-radius: 0 1rem 1rem 0; }
+.stat-label { font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted); }
+.stat-value {
+  margin-top: 0.125rem;
+  font-size: 1.375rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-text-dark);
+  font-variant-numeric: tabular-nums;
+}
+.stat-unit { margin-left: 0.125rem; font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted); }
 
-@keyframes slideInLeft {
-  from { opacity: 0; transform: translate(-20px, -50%); }
-  to { opacity: 1; transform: translate(0, -50%); }
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+  border-radius: 1.25rem;
+  border: 1px solid;
+  background-color: #fff;
 }
+.notice--warn { border-color: #fde68a; }
+.notice--good { border-color: color-mix(in srgb, var(--color-accent) 35%, white); }
 
-.banner-slide-enter-active,
-.banner-slide-leave-active {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+.switch {
+  position: relative;
+  width: 2.75rem;
+  height: 1.625rem;
+  border-radius: 9999px;
+  background-color: var(--color-sand-dark);
+  transition: background-color 0.2s ease;
 }
-.banner-slide-enter-from,
-.banner-slide-leave-to {
-  transform: translateY(-100%);
-  opacity: 0;
+.switch--on { background-color: var(--color-accent); }
+.switch-thumb {
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background-color: #fff;
+  transition: transform 0.2s ease;
+}
+.switch--on .switch-thumb { transform: translateX(1.125rem); }
+.switch:focus-visible,
+.side-tab:focus-visible,
+.stat-cell:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .scrollbar-none {
@@ -1246,18 +1207,5 @@ onMounted(() => {
 }
 .scrollbar-none::-webkit-scrollbar {
   display: none;
-}
-
-input:focus, select:focus, textarea:focus {
-  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.1);
-}
-
-.transition-all {
-  transition-duration: 200ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.ml-13 {
-  margin-left: 3.25rem;
 }
 </style>
