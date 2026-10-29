@@ -3,8 +3,6 @@
 
     <PageHero
       image="/images/landscape.webp"
-      badge="วิธีการจอง"
-      badge-icon="menu_book"
       :title="content.hero_title"
       :subtitle="content.hero_subtitle"
       :loading="loading"

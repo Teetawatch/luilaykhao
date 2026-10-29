@@ -2,8 +2,6 @@
   <div class="terms-page font-anuphan bg-[var(--color-sand)] min-h-screen">
     <PageHero
       image="/images/landscape.webp"
-      badge="เอกสารทางกฎหมาย"
-      badge-icon="gavel"
       title="เงื่อนไขการให้บริการ"
       subtitle="เงื่อนไขฉบับนี้คือข้อตกลงระหว่างท่านกับลุยเลเขา และเป็นชุดเดียวกับที่แสดงในขั้นตอนยืนยันการจอง"
       compact

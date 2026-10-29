@@ -3,8 +3,6 @@
 
     <PageHero
       image="/images/landscape.webp"
-      badge="FAQ"
-      badge-icon="quiz"
       :title="content.hero_title"
       :subtitle="content.hero_subtitle"
       :loading="loading"

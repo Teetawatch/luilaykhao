@@ -6,16 +6,9 @@
     ══════════════════════════════════════════ -->
     <PageHero
       image="/images/landscape.webp"
-      badge-icon="star"
-      badge-icon-class="text-[var(--color-gold)]"
-      badge-icon-filled
       title="รีวิวจากนักเดินทาง"
       subtitle="คะแนนและความเห็นจากคนที่ไปทริปกับเรา ทั้งเรื่องที่ชอบและเรื่องที่อยากให้ปรับ"
     >
-      <template #badge>
-        <template v-if="stats && stats.total > 0">{{ stats.average.toFixed(1) }} จาก {{ stats.total.toLocaleString() }} รีวิว</template>
-        <template v-else>รีวิว</template>
-      </template>
       <template #actions>
         <a href="#reviews" class="hero-btn hero-btn--solid" @click.prevent="scrollToList">
           อ่านรีวิว

@@ -2,8 +2,6 @@
   <div class="privacy-page font-anuphan bg-[var(--color-sand)] min-h-screen">
     <PageHero
       image="/images/phusoidao.webp"
-      badge="เอกสารทางกฎหมาย"
-      badge-icon="policy"
       title="นโยบายความเป็นส่วนตัว"
       subtitle="นโยบายนี้อธิบายว่าเราเก็บข้อมูลอะไร เก็บไปทำอะไร ส่งต่อให้ใคร เก็บไว้นานเท่าไร และท่านสั่งให้เราทำอะไรกับข้อมูลได้บ้าง"
       compact

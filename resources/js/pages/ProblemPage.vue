@@ -3,8 +3,6 @@
 
     <PageHero
       image="/images/about.jpg"
-      badge="เรื่องที่เราตั้งใจแก้"
-      badge-icon="flag"
       :title="content.hero_title"
       :subtitle="content.hero_subtitle"
       :loading="loading"
