@@ -4,39 +4,68 @@
     <!-- ══════════════════════════════════════════
          HEADER
     ══════════════════════════════════════════ -->
-    <section class="bg-white border-b border-[var(--color-sand-dark)]">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
-        <p class="inline-flex items-center gap-2 text-[13px] font-bold text-[var(--color-accent)]">
-          <span class="w-6 h-[2px] rounded-full bg-[var(--color-accent)]"></span>
-          รีวิว
-        </p>
-        <h1 class="mt-3 text-3xl md:text-5xl font-extrabold text-[var(--color-text-dark)] tracking-tight">
-          รีวิวจากนักเดินทาง
-        </h1>
-        <p class="mt-3 max-w-2xl text-base md:text-lg text-[var(--color-text-mid)] leading-relaxed">
-          คะแนนและความเห็นจากคนที่ไปทริปกับเรา ทั้งเรื่องที่ชอบและเรื่องที่อยากให้ปรับ
-        </p>
+    <!-- พื้นหลังและโทนสีชุดเดียวกับหน้า /problem -->
+    <section class="relative overflow-hidden bg-[var(--color-primary)]">
+      <div class="absolute inset-0">
+        <img src="/images/landscape.webp" alt="" class="w-full h-full object-cover opacity-45" />
+        <div class="absolute inset-0 bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-primary)]/85 to-[var(--color-primary)]/30"></div>
+      </div>
+
+      <div class="hero-content relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 md:pt-28 md:pb-24">
+        <div class="max-w-2xl">
+          <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[13px] font-bold text-white/90">
+            <span class="material-symbols-rounded text-[18px] text-[var(--color-gold)]" :style="FILLED">star</span>
+            <template v-if="stats && stats.total > 0">{{ stats.average.toFixed(1) }} จาก {{ stats.total.toLocaleString() }} รีวิว</template>
+            <template v-else>รีวิว</template>
+          </span>
+          <h1 class="mt-6 text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-[1.15] tracking-tight">
+            รีวิวจากนักเดินทาง
+          </h1>
+          <p class="mt-5 text-lg md:text-xl text-white/80 leading-relaxed">
+            คะแนนและความเห็นจากคนที่ไปทริปกับเรา ทั้งเรื่องที่ชอบและเรื่องที่อยากให้ปรับ
+          </p>
+          <div class="mt-9 flex flex-wrap items-center gap-3">
+            <a
+              href="#reviews"
+              class="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-[15px] font-bold text-[var(--color-primary)] transition-colors hover:bg-[var(--color-sand)] focus:outline-none focus-visible:ring-4 focus-visible:ring-white/40"
+              @click.prevent="scrollToList"
+            >
+              อ่านรีวิว
+              <span class="material-symbols-rounded text-[20px]">arrow_downward</span>
+            </a>
+            <router-link
+              to="/my-reviews"
+              class="inline-flex items-center gap-2 rounded-2xl border border-white/30 px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
+            >
+              เขียนรีวิวของฉัน
+            </router-link>
+          </div>
+        </div>
       </div>
     </section>
 
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-10">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+    <div id="reviews" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-10 scroll-mt-20">
 
-        <!-- ══════════════════════════════════════════
-             OVERVIEW (sticky on desktop)
-        ══════════════════════════════════════════ -->
-        <aside class="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
-          <div v-if="stats && stats.total > 0" class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-6">
-            <div class="flex items-center gap-4">
-              <span class="text-5xl font-extrabold leading-none tracking-tight text-[var(--color-text-dark)] tabular-nums">{{ stats.average.toFixed(1) }}</span>
-              <div>
-                <StarRow :value="stats.average" size="20" />
-                <p class="mt-1 text-[13px] font-semibold text-[var(--color-text-muted)]">จาก {{ stats.total.toLocaleString() }} รีวิว</p>
-              </div>
+      <!-- ══════════════════════════════════════════
+           OVERVIEW
+      ══════════════════════════════════════════ -->
+      <div v-if="stats && stats.total > 0" class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-6 md:p-8">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8">
+          <!-- Average -->
+          <div class="md:col-span-3 flex md:flex-col items-center md:items-start gap-4 md:gap-2 md:border-r md:border-[var(--color-sand-dark)] md:pr-6">
+            <span class="text-5xl md:text-6xl font-extrabold leading-none tracking-tight text-[var(--color-text-dark)] tabular-nums">{{ stats.average.toFixed(1) }}</span>
+            <div>
+              <StarRow :value="stats.average" size="20" />
+              <p class="mt-1 text-[13px] font-semibold text-[var(--color-text-muted)]">จาก {{ stats.total.toLocaleString() }} รีวิว</p>
+              <p v-if="stats.with_reply" class="mt-2 hidden md:flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-text-muted)]">
+                <span class="material-symbols-rounded text-[16px]">forum</span>
+                ทีมงานตอบแล้ว {{ stats.with_reply.toLocaleString() }}
+              </p>
             </div>
+          </div>
 
-            <!-- Distribution — กดแถวเพื่อกรอง -->
-            <div class="mt-6 space-y-1">
+          <!-- Distribution — กดแถวเพื่อกรอง -->
+          <div class="space-y-1" :class="activeCategories.length ? 'md:col-span-5' : 'md:col-span-9'">
               <button
                 v-for="level in LEVELS"
                 :key="level"
@@ -55,44 +84,29 @@
                 </span>
                 <span class="w-10 text-right text-[12px] font-bold text-[var(--color-text-muted)] tabular-nums">{{ (stats.distribution[level] || 0).toLocaleString() }}</span>
               </button>
-            </div>
+          </div>
 
-            <!-- Category averages -->
-            <div v-if="activeCategories.length" class="mt-6 pt-5 border-t border-[var(--color-sand-dark)] grid grid-cols-2 gap-3">
-              <div v-for="cat in activeCategories" :key="cat.key" class="rounded-2xl bg-[var(--color-sand)] p-3">
-                <div class="flex items-center gap-1.5 text-[12px] font-bold text-[var(--color-text-muted)]">
-                  <span class="material-symbols-rounded text-[16px] text-[var(--color-accent)]">{{ cat.icon }}</span>
-                  {{ cat.label }}
-                </div>
-                <p class="mt-1 text-lg font-extrabold text-[var(--color-text-dark)] tabular-nums">
-                  {{ cat.average.toFixed(1) }}<span class="text-[12px] font-bold text-[var(--color-text-muted)]">/5</span>
-                </p>
+          <!-- Category averages -->
+          <div v-if="activeCategories.length" class="md:col-span-4 grid grid-cols-2 gap-3 content-start">
+            <div v-for="cat in activeCategories" :key="cat.key" class="rounded-2xl bg-[var(--color-sand)] p-3">
+              <div class="flex items-center gap-1.5 text-[12px] font-bold text-[var(--color-text-muted)]">
+                <span class="material-symbols-rounded text-[16px] text-[var(--color-accent)]">{{ cat.icon }}</span>
+                {{ cat.label }}
               </div>
+              <p class="mt-1 text-lg font-extrabold text-[var(--color-text-dark)] tabular-nums">
+                {{ cat.average.toFixed(1) }}<span class="text-[12px] font-bold text-[var(--color-text-muted)]">/5</span>
+              </p>
             </div>
-
-            <p v-if="stats.with_reply" class="mt-5 flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-text-muted)]">
-              <span class="material-symbols-rounded text-[16px]">forum</span>
-              ทีมงานตอบกลับแล้ว {{ stats.with_reply.toLocaleString() }} รีวิว
-            </p>
           </div>
+        </div>
+      </div>
 
-          <div v-else-if="statsLoading" class="h-72 rounded-3xl border border-[var(--color-sand-dark)] bg-white animate-pulse" aria-hidden="true"></div>
+      <div v-else-if="statsLoading" class="h-48 rounded-3xl border border-[var(--color-sand-dark)] bg-white animate-pulse" aria-hidden="true"></div>
 
-          <!-- CTA (desktop) -->
-          <div class="hidden lg:block rounded-3xl bg-[var(--color-primary)] p-6 text-white">
-            <p class="font-extrabold text-lg">เคยไปทริปกับเราแล้ว?</p>
-            <p class="mt-1 text-sm text-white/70 leading-relaxed">เล่าให้คนที่กำลังตัดสินใจฟังหน่อย รีวิวของคุณช่วยเขาได้มาก</p>
-            <router-link to="/my-reviews" class="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-colors">
-              <span class="material-symbols-rounded text-[18px]">rate_review</span>
-              เขียนรีวิวของฉัน
-            </router-link>
-          </div>
-        </aside>
-
-        <!-- ══════════════════════════════════════════
-             LIST
-        ══════════════════════════════════════════ -->
-        <main ref="listTop" class="lg:col-span-8 min-w-0 scroll-mt-24">
+      <!-- ══════════════════════════════════════════
+           LIST
+      ══════════════════════════════════════════ -->
+      <main ref="listTop" class="mt-6 min-w-0 scroll-mt-24">
 
           <!-- Filter chips -->
           <div class="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-none">
@@ -137,8 +151,8 @@
           </p>
 
           <!-- First load -->
-          <div v-if="loading && !reviews.length" class="mt-4 space-y-4" aria-hidden="true">
-            <div v-for="n in 3" :key="n" class="rounded-3xl border border-[var(--color-sand-dark)] bg-white p-6 animate-pulse">
+          <div v-if="loading && !reviews.length" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" aria-hidden="true">
+            <div v-for="n in 4" :key="n" class="rounded-3xl border border-[var(--color-sand-dark)] bg-white p-6 animate-pulse">
               <div class="flex items-center gap-3">
                 <div class="w-11 h-11 rounded-full bg-[var(--color-sand)]"></div>
                 <div class="space-y-2 flex-1">
@@ -173,11 +187,11 @@
           </div>
 
           <!-- Reviews -->
-          <div v-else class="mt-4 space-y-4 transition-opacity duration-200" :class="{ 'opacity-50 pointer-events-none': loading }" :aria-busy="loading">
+          <div v-else class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity duration-200" :class="{ 'opacity-50 pointer-events-none': loading }" :aria-busy="loading">
             <article
               v-for="review in reviews"
               :key="review.id"
-              class="rounded-3xl border border-[var(--color-sand-dark)] bg-white p-5 md:p-6"
+              class="flex flex-col rounded-3xl border border-[var(--color-sand-dark)] bg-white p-5 md:p-6"
             >
               <header class="flex items-start gap-3">
                 <div class="w-11 h-11 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
@@ -298,22 +312,23 @@
             </button>
           </nav>
 
-          <!-- CTA (mobile) -->
-          <div class="lg:hidden mt-8 rounded-3xl bg-[var(--color-primary)] p-6 text-white">
-            <p class="font-extrabold text-lg">เคยไปทริปกับเราแล้ว?</p>
-            <p class="mt-1 text-sm text-white/70 leading-relaxed">เล่าให้คนที่กำลังตัดสินใจฟังหน่อย รีวิวของคุณช่วยเขาได้มาก</p>
-            <div class="mt-4 flex flex-wrap gap-2">
-              <router-link to="/my-reviews" class="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[var(--color-primary)]">
+          <!-- CTA -->
+          <div class="mt-10 rounded-3xl bg-[var(--color-primary)] p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center gap-5">
+            <div class="flex-1">
+              <p class="font-extrabold text-xl">เคยไปทริปกับเราแล้ว?</p>
+              <p class="mt-1 text-sm md:text-base text-white/70 leading-relaxed">เล่าให้คนที่กำลังตัดสินใจฟังหน่อย รีวิวของคุณช่วยเขาได้มาก</p>
+            </div>
+            <div class="flex flex-wrap gap-2 shrink-0">
+              <router-link to="/my-reviews" class="inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-colors">
                 <span class="material-symbols-rounded text-[18px]">rate_review</span>
                 เขียนรีวิวของฉัน
               </router-link>
-              <router-link to="/trips" class="inline-flex items-center rounded-xl border border-white/25 px-4 py-2.5 text-sm font-bold text-white">
+              <router-link to="/trips" class="inline-flex items-center rounded-xl border border-white/25 px-5 py-3 text-sm font-bold text-white hover:bg-white/10 transition-colors">
                 ดูทริปที่เปิดรับ
               </router-link>
             </div>
           </div>
-        </main>
-      </div>
+      </main>
     </div>
 
     <!-- ══════════════════════════════════════════
@@ -609,6 +624,11 @@ function mediaUrl(value) {
   return `${window.location.origin}/${raw.replace(/^\/+/, '')}`;
 }
 
+function scrollToList() {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.getElementById('reviews')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+}
+
 function avatarInitial(review) {
   return (review.user_name || '?').trim().charAt(0).toUpperCase();
 }
@@ -638,6 +658,20 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* Hero entrance — เหมือนหน้า /problem */
+.hero-content {
+  animation: slideUpFade 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-content { animation: none; }
+}
+
 .btn-primary {
   display: inline-flex;
   align-items: center;
