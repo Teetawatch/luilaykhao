@@ -312,10 +312,101 @@ class LoyaltyService
         ];
     }
 
-    /** ตัดแต้มออกจากล็อตที่ใกล้หมดอายุที่สุดก่อน (ล็อตไม่มีวันหมดอายุถูกตัดท้ายสุด). */
-    private function consumeLots(int $userId, int $points): void
+    /**
+     * ย้ายแต้มจากบัญชีหนึ่งไปอีกบัญชี (โอนแต้มให้เพื่อน) — ทั้งสองฝั่งในธุรกรรมเดียว
+     *
+     * แต้มที่ย้ายไป "พกวันหมดอายุเดิมไปด้วย": ล็อตที่ถูกตัดจากผู้โอนกลายเป็นล็อต
+     * ใหม่ของผู้รับที่หมดอายุวันเดียวกัน ไม่งั้นการโอนไปกลับระหว่างสองบัญชีจะต่ออายุ
+     * แต้มได้ไม่รู้จบ แต้มยุคก่อนมีล็อต (ยอดในบัญชีเกินผลรวมล็อต) ได้อายุเต็มนับจากวันนี้
+     *
+     * ผู้รับไม่ได้ lifetime_points เพิ่ม — ตัวเลขนั้นคือแต้มที่ "ได้จากการเดินทาง"
+     */
+    public function transfer(int $fromUserId, int $toUserId, int $points, Model $reference, string $senderDescription, string $recipientDescription): void
+    {
+        if ($points <= 0) {
+            throw new \Exception('จำนวนแต้มที่โอนต้องมากกว่า 0');
+        }
+
+        if ($fromUserId === $toUserId) {
+            throw new \Exception('โอนแต้มให้ตัวเองไม่ได้');
+        }
+
+        DB::transaction(function () use ($fromUserId, $toUserId, $points, $reference, $senderDescription, $recipientDescription) {
+            LoyaltyAccount::forUser($fromUserId);
+            LoyaltyAccount::forUser($toUserId);
+
+            // ล็อกสองบัญชีตามลำดับ id เสมอ — สองคนโอนหากันพร้อมกันจะได้ไม่ deadlock
+            $accounts = LoyaltyAccount::whereIn('user_id', [$fromUserId, $toUserId])
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('user_id');
+
+            $sender = $accounts[$fromUserId];
+            $recipient = $accounts[$toUserId];
+
+            if ((int) $sender->points < $points) {
+                throw new \Exception('แต้มไม่เพียงพอ (มีอยู่ '.number_format((int) $sender->points).' แต้ม)');
+            }
+
+            $taken = $this->consumeLots($fromUserId, $points);
+
+            $sender->points -= $points;
+            $sender->save();
+
+            LoyaltyTransaction::create([
+                'user_id' => $fromUserId,
+                'type' => 'transfer',
+                'points' => -$points,
+                'points_remaining' => 0,
+                'description' => $senderDescription,
+                'reference_type' => $reference::class,
+                'reference_id' => $reference->getKey(),
+                'balance_after' => $sender->points,
+            ]);
+
+            $untracked = $points - array_sum(array_column($taken, 'points'));
+            if ($untracked > 0) {
+                $taken[] = ['points' => $untracked, 'expires_at' => now()->addMonths(self::POINTS_VALID_MONTHS)];
+            }
+
+            // รวมล็อตที่หมดอายุวันเดียวกันเป็นก้อนเดียว ประวัติของผู้รับจะได้ไม่ยาวเกินจำเป็น
+            $byExpiry = [];
+            foreach ($taken as $lot) {
+                $key = $lot['expires_at']?->toDateTimeString() ?? 'never';
+                $byExpiry[$key] ??= ['points' => 0, 'expires_at' => $lot['expires_at']];
+                $byExpiry[$key]['points'] += $lot['points'];
+            }
+
+            foreach ($byExpiry as $lot) {
+                $recipient->points += $lot['points'];
+
+                LoyaltyTransaction::create([
+                    'user_id' => $toUserId,
+                    'type' => 'earn',
+                    'points' => $lot['points'],
+                    'points_remaining' => $lot['points'],
+                    'description' => $recipientDescription,
+                    'reference_type' => $reference::class,
+                    'reference_id' => $reference->getKey(),
+                    'balance_after' => $recipient->points,
+                    'expires_at' => $lot['expires_at'],
+                ]);
+            }
+
+            $recipient->save();
+        });
+    }
+
+    /**
+     * ตัดแต้มออกจากล็อตที่ใกล้หมดอายุที่สุดก่อน (ล็อตไม่มีวันหมดอายุถูกตัดท้ายสุด)
+     *
+     * @return array<int, array{points: int, expires_at: ?Carbon}> ส่วนที่ตัดได้จริงจากแต่ละล็อต
+     */
+    private function consumeLots(int $userId, int $points): array
     {
         $remaining = $points;
+        $taken = [];
 
         $lots = LoyaltyTransaction::where('user_id', $userId)
             ->where('type', 'earn')
@@ -335,9 +426,11 @@ class LoyaltyService
             $lot->points_remaining = (int) $lot->points_remaining - $take;
             $lot->save();
             $remaining -= $take;
+            $taken[] = ['points' => $take, 'expires_at' => $lot->expires_at];
         }
 
         // แต้มในบัญชีมากกว่าผลรวมของล็อต (ข้อมูลยุคก่อนมีระบบล็อตที่ยังไม่ได้เกลี่ย)
         // ไม่ถือเป็นข้อผิดพลาด — ยอดคงเหลือในบัญชีเป็นตัวตัดสินว่าแลกได้หรือไม่
+        return $taken;
     }
 }

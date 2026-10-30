@@ -8,6 +8,7 @@ use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\LoyaltyTransaction;
 use App\Services\LoyaltyService;
+use App\Services\LoyaltyTransferService;
 use App\Support\LoyaltyTier;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +19,10 @@ class LoyaltyController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private LoyaltyService $loyaltyService) {}
+    public function __construct(
+        private LoyaltyService $loyaltyService,
+        private LoyaltyTransferService $transfers,
+    ) {}
 
     public function account(Request $request): JsonResponse
     {
@@ -160,6 +164,82 @@ class LoyaltyController extends Controller
             ]);
 
         return $this->success($redemptions);
+    }
+
+    /**
+     * GET /loyalty/transfers — หน้าโอนแต้ม: รหัสสมาชิกของฉัน เพดานวันนี้ และประวัติโอนเข้า-ออก
+     */
+    public function transfers(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return $this->success([
+            'points' => (int) LoyaltyAccount::forUser($user->id)->points,
+            'member_code' => $this->transfers->memberCodeFor($user),
+            'limits' => $this->transfers->limitsFor($user),
+            'history' => $this->transfers->historyFor($user),
+        ]);
+    }
+
+    /**
+     * POST /loyalty/transfers/lookup — ตรวจผู้รับก่อนโอน คืนชื่อแบบปิดบางส่วนให้ยืนยัน
+     */
+    public function lookupRecipient(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'recipient' => ['required', 'string', 'max:120'],
+        ]);
+
+        $recipient = $this->transfers->findRecipient($validated['recipient']);
+
+        if (! $recipient) {
+            return $this->error('ไม่พบสมาชิกจากข้อมูลนี้ ลองใช้รหัสสมาชิกของเพื่อนแทน', 404);
+        }
+
+        if ($recipient->id === $request->user()->id) {
+            return $this->error('นี่คือบัญชีของคุณเอง', 422);
+        }
+
+        return $this->success($this->transfers->preview($recipient));
+    }
+
+    /**
+     * POST /loyalty/transfers — โอนแต้มให้เพื่อน
+     */
+    public function transfer(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'recipient' => ['required', 'string', 'max:120'],
+            'points' => ['required', 'integer', 'min:1'],
+            'message' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $recipient = $this->transfers->findRecipient($validated['recipient']);
+
+        if (! $recipient) {
+            return $this->error('ไม่พบสมาชิกจากข้อมูลนี้ ลองใช้รหัสสมาชิกของเพื่อนแทน', 404);
+        }
+
+        try {
+            $transfer = $this->transfers->transfer(
+                $request->user(),
+                $recipient,
+                (int) $validated['points'],
+                $validated['message'] ?? null,
+            );
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        $this->transfers->notifyRecipient($transfer);
+
+        return $this->success([
+            'id' => $transfer->id,
+            'points' => $transfer->points,
+            'recipient_name' => $this->transfers->maskedName($recipient),
+            'points_remaining' => (int) LoyaltyAccount::forUser($request->user()->id)->points,
+            'limits' => $this->transfers->limitsFor($request->user()),
+        ], 'โอนแต้มสำเร็จ', 201);
     }
 
     /**

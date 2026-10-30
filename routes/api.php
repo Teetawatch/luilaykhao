@@ -716,6 +716,10 @@ Route::prefix('v1')->group(function () {
         Route::get('loyalty/rewards', [LoyaltyController::class, 'rewards']);
         Route::post('loyalty/redeem', [LoyaltyController::class, 'redeem']);
         Route::get('loyalty/coupons', [LoyaltyController::class, 'myCoupons']);
+        // โอนแต้มให้เพื่อน — lookup คุมเข้มเพราะใช้ไล่เดาว่าเบอร์ไหนเป็นสมาชิกได้
+        Route::get('loyalty/transfers', [LoyaltyController::class, 'transfers']);
+        Route::post('loyalty/transfers/lookup', [LoyaltyController::class, 'lookupRecipient'])->middleware('throttle:promotion');
+        Route::post('loyalty/transfers', [LoyaltyController::class, 'transfer'])->middleware('throttle:promotion');
 
         // Referral program (invite friends → both earn loyalty points)
         Route::get('referral', [ReferralController::class, 'show']);

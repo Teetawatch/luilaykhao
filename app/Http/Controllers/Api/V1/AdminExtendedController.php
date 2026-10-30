@@ -9,6 +9,7 @@ use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\InstallmentPayment;
 use App\Models\LoyaltyAccount;
+use App\Models\LoyaltyPointTransfer;
 use App\Models\LoyaltyReward;
 use App\Models\LoyaltyTransaction;
 use App\Models\Review;
@@ -1252,7 +1253,10 @@ class AdminExtendedController extends Controller
             ->pluck('count', 'tier')
             ->toArray();
 
-        $totalPointsIssued = LoyaltyTransaction::where('type', 'earn')->sum('points');
+        // แต้มที่เพื่อนโอนให้เป็นล็อต earn ฝั่งผู้รับ แต่ไม่ใช่แต้มที่ออกใหม่ — นับซ้ำไม่ได้
+        $totalPointsIssued = LoyaltyTransaction::where('type', 'earn')
+            ->where(fn ($q) => $q->whereNull('reference_type')->orWhere('reference_type', '!=', LoyaltyPointTransfer::class))
+            ->sum('points');
         $totalPointsRedeemed = abs(LoyaltyTransaction::where('type', 'redeem')->sum('points'));
 
         return $this->success([

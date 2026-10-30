@@ -109,16 +109,16 @@
         </section>
 
         <!-- Tabs -->
-        <div class="flex gap-2 mb-8 bg-[#E8EEEF] p-1.5 rounded-[16px] w-fit">
+        <div class="flex gap-2 mb-8 bg-[#E8EEEF] p-1.5 rounded-[16px] w-fit max-w-full overflow-x-auto">
           <button
             v-for="tab in tabs"
             :key="tab.key"
             @click="activeTab = tab.key"
-            class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
+            class="px-4 sm:px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2 shrink-0 whitespace-nowrap"
             :class="activeTab === tab.key ? 'bg-white text-[#006565]' : 'text-[#505E5E] hover:text-[#006565] hover:bg-white/40'"
             style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             <span class="material-symbols-rounded text-[20px]" :style="activeTab === tab.key ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">
-              {{ tab.key === 'rewards' ? 'card_giftcard' : (tab.key === 'coupons' ? 'local_play' : 'history') }}
+              {{ tab.icon }}
             </span>
             {{ tab.label }}
           </button>
@@ -205,6 +205,9 @@
           </div>
         </div>
 
+        <!-- Transfer Tab -->
+        <PointTransferPanel v-else-if="activeTab === 'transfer'" @transferred="loadData(true)" />
+
         <!-- History Tab -->
         <div v-else-if="activeTab === 'history'">
           <div v-if="!account?.transactions?.length" class="text-center py-20 bg-white rounded-[24px] border border-[#E8EEEF] flex flex-col items-center">
@@ -235,7 +238,7 @@
                   class="font-bold text-lg"
                   :class="t.type === 'earn' ? 'text-[#006565]' : 'text-[#D97706]'"
                   style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                  {{ t.type === 'earn' ? '+' : '-' }}{{ t.points }}
+                  {{ t.type === 'earn' ? '+' : '-' }}{{ Math.abs(t.points) }}
                 </p>
                 <p class="text-[12px] text-[#889696] font-medium mt-0.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">คงเหลือ {{ t.balance_after }}</p>
               </div>
@@ -279,7 +282,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import TierBadge from '../components/TierBadge.vue';
+import PointTransferPanel from '../components/PointTransferPanel.vue';
 import api from '../lib/axios';
 import { thaiShort } from '../lib/thaiDate';
 
@@ -287,14 +292,17 @@ const loading = ref(true);
 const account = ref(null);
 const rewards = ref([]);
 const coupons = ref([]);
-const activeTab = ref('rewards');
+// ?tab=transfer — ลิงก์จากแจ้งเตือน "ได้รับแต้มจากเพื่อน" เปิดแท็บนี้ตรง ๆ
+const route = useRoute();
+const activeTab = ref(['rewards', 'coupons', 'transfer', 'history'].includes(route.query.tab) ? route.query.tab : 'rewards');
 const redeeming = ref(null);
 const redeemResult = ref(null);
 
 const tabs = [
-  { key: 'rewards', label: 'ของรางวัล' },
-  { key: 'coupons', label: 'คูปองของฉัน' },
-  { key: 'history', label: 'ประวัติแต้ม' },
+  { key: 'rewards', label: 'ของรางวัล', icon: 'card_giftcard' },
+  { key: 'coupons', label: 'คูปองของฉัน', icon: 'local_play' },
+  { key: 'transfer', label: 'โอนแต้ม', icon: 'send' },
+  { key: 'history', label: 'ประวัติแต้ม', icon: 'history' },
 ];
 
 const tierBg = computed(() => ({
@@ -321,8 +329,9 @@ const tierProgress = computed(() => {
   return Math.min(100, Math.max(0, (travelled / span) * 100));
 });
 
-async function loadData() {
-  loading.value = true;
+// silent — รีเฟรชยอดหลังโอนแต้มโดยไม่ถอดทั้งหน้าออก (แท็บโอนจะได้ไม่โหลดใหม่ทั้งแท็บ)
+async function loadData(silent = false) {
+  if (!silent) loading.value = true;
   try {
     const [accRes, rewardsRes, couponsRes] = await Promise.all([
       api.get('/loyalty/account'),

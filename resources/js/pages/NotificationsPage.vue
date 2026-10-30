@@ -111,6 +111,8 @@ async function handleNotificationClick(n) {
     router.push(`/confirmation/${n.data.booking_ref}`);
   } else if (n.data?.trip_slug) {
     router.push(`/trips/${n.data.trip_slug}`);
+  } else if (n.type === 'loyalty_points_received') {
+    router.push('/loyalty?tab=transfer');
   }
 }
 
@@ -131,6 +133,7 @@ function notifIcon(type) {
     promo: 'featured_seasonal_and_gifts',
     system: 'info',
     loyalty: 'star',
+    loyalty_points_received: 'redeem',
   };
   return map[type] || 'notifications';
 }
@@ -142,6 +145,7 @@ function notifStyle(type) {
     promo: { bg: 'bg-[#FFFBEB]', text: 'text-[#D97706]' },
     system: { bg: 'bg-[#F4F7F6]', text: 'text-[#505E5E]' },
     loyalty: { bg: 'bg-[#FFF7ED]', text: 'text-[#EA580C]' },
+    loyalty_points_received: { bg: 'bg-[#FFF7ED]', text: 'text-[#EA580C]' },
   };
   return map[type] || { bg: 'bg-[#E3F2F2]', text: 'text-[#006565]' };
 }
