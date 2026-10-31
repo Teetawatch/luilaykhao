@@ -381,6 +381,13 @@
               <label>สีรถ</label>
               <input v-model="form.color" placeholder="เช่น ขาว, เทา, น้ำเงิน" class="form-input" />
             </div>
+            <div class="form-group">
+              <label>ยี่ห้อ / รุ่น</label>
+              <input v-model="form.model" maxlength="100" placeholder="เช่น Toyota Commuter" class="form-input" />
+              <small class="field-hint">
+                ลูกค้าใช้มองหารถตอนรอรับ — ขึ้นบนการ์ดหน้าจอล็อกต่อจากทะเบียนและสี
+              </small>
+            </div>
           </div>
           <div class="form-section-title">
             <span class="material-symbols-rounded">person</span> ข้อมูลคนขับ
@@ -530,6 +537,30 @@
             <span class="material-symbols-rounded">photo_library</span> รูปภาพและวิดีโอ
           </div>
           <div class="form-grid">
+            <div class="form-group full-width">
+              <label>รูปรถพื้นใส (การ์ดหน้าจอล็อก)</label>
+              <div class="media-upload-row">
+                <div class="media-preview-sm cutout-preview" v-if="form.cutout_image">
+                  <img :src="form.cutout_image" />
+                  <button type="button" class="remove-btn" @click="form.cutout_image = ''">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
+                </div>
+                <div class="upload-placeholder" v-else @click="triggerUpload(cutoutInput)">
+                  <span class="material-symbols-rounded animate-spin" v-if="uploadState.cutout">sync</span>
+                  <span class="material-symbols-rounded" v-else>airport_shuttle</span>
+                  <span>อัปโหลดรูปรถ</span>
+                </div>
+                <input ref="cutoutInput" type="file" hidden accept="image/png,image/webp" @change="handleMediaUpload($event, 'cutout')" />
+              </div>
+              <small class="field-hint">
+                PNG พื้นหลังโปร่งใส มุมเฉียงหน้ารถ — วางข้างรูปคนขับตอนรถกำลังมารับ
+                ถ้าไม่ใส่ การ์ดจะแสดงไอคอนรถแทน
+              </small>
+              <button type="button" class="media-library-btn" @click="openVehicleMedia('cutout')">
+                <span class="material-symbols-rounded">photo_library</span> เลือกจากคลังสื่อ
+              </button>
+            </div>
             <div class="form-group full-width">
               <label>รูปภาพภายในรถ (สูงสุด 10 รูป)</label>
               <div class="gallery-grid-editor">
@@ -859,8 +890,8 @@ const upcomingSchedules = ref([]);
 
 const form = reactive({
   name: '', type: 'van', capacity: 10,
-  license_plate: '', color: '', driver_id: '', driver_name: '', driver_phone: '',
-  driver_photo: '', interior_video: '', images: [], driver_pin: '',
+  license_plate: '', color: '', model: '', driver_id: '', driver_name: '', driver_phone: '',
+  driver_photo: '', interior_video: '', images: [], cutout_image: '', driver_pin: '',
 });
 const pinBusy = ref(false);
 const registryDrivers = ref([]);
@@ -868,14 +899,16 @@ const registryDrivers = ref([]);
 const driverPhotoInput = ref(null);
 const galleryInput = ref(null);
 const videoInput = ref(null);
-const uploadState = reactive({ driver: false, gallery: false, video: false });
+const cutoutInput = ref(null);
+const uploadState = reactive({ driver: false, gallery: false, video: false, cutout: false });
 
 // ── Media library picker ─────────────────────────────
 const showMediaLibrary = ref(false);
-const mediaTarget = ref('driver'); // 'driver' | 'gallery' | 'video'
+const mediaTarget = ref('driver'); // 'driver' | 'gallery' | 'video' | 'cutout'
 const mediaInitialSelection = computed(() => {
   if (mediaTarget.value === 'gallery') return form.images;
   if (mediaTarget.value === 'video') return form.interior_video;
+  if (mediaTarget.value === 'cutout') return form.cutout_image;
   return form.driver_photo;
 });
 
@@ -889,6 +922,8 @@ const handleVehicleMediaSelect = (data) => {
     form.driver_photo = data || '';
   } else if (mediaTarget.value === 'video') {
     form.interior_video = data || '';
+  } else if (mediaTarget.value === 'cutout') {
+    form.cutout_image = data || '';
   } else if (mediaTarget.value === 'gallery' && Array.isArray(data)) {
     form.images = [...new Set(data.filter(Boolean))].slice(0, 10);
   }
@@ -1275,17 +1310,17 @@ const openForm = (v = null) => {
   if (v) {
     Object.assign(form, {
       name: v.name, type: v.type, capacity: v.capacity,
-      license_plate: v.license_plate || '', color: v.color || '',
+      license_plate: v.license_plate || '', color: v.color || '', model: v.model || '',
       driver_id: v.driver_id || '',
       driver_name: v.driver_name || '', driver_phone: v.driver_phone || '',
       driver_photo: v.driver_photo || '', interior_video: v.interior_video || '',
-      images: v.images || [], driver_pin: '',
+      images: v.images || [], cutout_image: v.cutout_image || '', driver_pin: '',
     });
   } else {
     Object.assign(form, {
-      name: '', type: 'van', capacity: 10, license_plate: '', color: '',
+      name: '', type: 'van', capacity: 10, license_plate: '', color: '', model: '',
       driver_id: '', driver_name: '', driver_phone: '', driver_photo: '', interior_video: '',
-      images: [], driver_pin: '',
+      images: [], cutout_image: '', driver_pin: '',
     });
   }
   showForm.value = true;
@@ -1391,6 +1426,7 @@ const handleMediaUpload = async (event, type) => {
     const res = await api.post('/admin/upload-image', formData);
     if (type === 'driver') form.driver_photo = res.data.data.url;
     else if (type === 'video') form.interior_video = res.data.data.url;
+    else if (type === 'cutout') form.cutout_image = res.data.data.url;
   } catch (e) {
     alert('อัปโหลดล้มเหลว');
   } finally {
@@ -2313,6 +2349,9 @@ onMounted(() => fetchData());
 .media-upload-row { display: flex; gap: 12px; margin-top: 8px; }
 .media-preview-sm { position: relative; width: 120px; height: 120px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .media-preview-sm img { width: 100%; height: 100%; object-fit: cover; }
+/* พื้นเข้มเท่าการ์ดหน้าจอล็อก — เห็นทันทีว่ารูปตัดพื้นหลังออกแล้วหรือยังเป็นกรอบขาว */
+.cutout-preview { width: 200px; background: #1b1f1e; }
+.cutout-preview img { object-fit: contain; padding: 8px; }
 .video-preview { position: relative; width: 100%; max-width: 320px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .video-preview video { width: 100%; display: block; }
 .upload-placeholder {

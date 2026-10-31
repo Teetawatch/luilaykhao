@@ -106,6 +106,107 @@ class TripLiveActivityTest extends TestCase
         $this->assertGreaterThan(0.5, $state['progress']);
     }
 
+    public function test_the_card_shows_which_van_and_who_is_driving_while_it_comes(): void
+    {
+        $point = SchedulePickupPoint::create([
+            'schedule_id' => $this->schedule->id,
+            'region' => 'central',
+            'region_label' => 'ภาคกลาง',
+            'price' => 2500,
+            'pickup_location' => 'ปั๊ม ปตท. รังสิต',
+            'latitude' => 13.9500,
+            'longitude' => 100.6200,
+        ]);
+        $this->booking->update(['pickup_point_id' => $point->id]);
+        $vehicleId = $this->vehicleId();
+        Vehicle::whereKey($vehicleId)->update([
+            'color' => 'ขาว',
+            'model' => 'Toyota Commuter',
+            'cutout_image' => 'https://cdn.example.com/media/commuter.png',
+            'driver_name' => 'ลุงสมชาย',
+            'driver_photo' => 'https://cdn.example.com/media/somchai.jpg',
+        ]);
+        $this->schedule->update(['vehicle_id' => $vehicleId]);
+        $this->fakeVehicleLocation(13.9230, 100.6200, speed: 40);
+
+        $state = app(TripActivityService::class)
+            ->stateFor($this->booking->fresh(['schedule', 'pickupPoint']));
+
+        // แบบการ์ดเรียกรถ: "รถจะถึงจุดรับภายใน / 4 นาที" แล้วบอกว่าคันไหน
+        $this->assertSame('arriving', $state['stage']);
+        $this->assertSame('รถจะถึงจุดรับภายใน', $state['kicker']);
+        $this->assertSame('กข-1234 · สีขาว · Toyota Commuter', $state['vehicle_summary']);
+        $this->assertSame('https://cdn.example.com/media/commuter.png', $state['vehicle_image_url']);
+        $this->assertSame('https://cdn.example.com/media/somchai.jpg', $state['driver_photo_url']);
+        $this->assertSame('ลุงสมชาย', $state['driver_name']);
+
+        // ส่งถึง ActivityKit เป็น camelCase ตามที่ ContentState ฝั่ง Swift ประกาศไว้
+        $content = (fn (array $state) => $this->contentState($state))
+            ->call(app(TripActivityService::class), $state);
+        $this->assertSame('กข-1234 · สีขาว · Toyota Commuter', $content['vehicleSummary']);
+        $this->assertSame('https://cdn.example.com/media/somchai.jpg', $content['driverPhotoUrl']);
+        $this->assertSame('รถจะถึงจุดรับภายใน', $content['kicker']);
+    }
+
+    public function test_the_van_photos_arrive_before_the_van_layout_does(): void
+    {
+        $vehicleId = $this->vehicleId();
+        Vehicle::whereKey($vehicleId)->update([
+            'cutout_image' => 'https://cdn.example.com/media/commuter.png',
+            'driver_photo' => 'https://cdn.example.com/media/somchai.jpg',
+        ]);
+        $this->schedule->update([
+            'vehicle_id' => $vehicleId,
+            'departs_at' => now('Asia/Bangkok')->addHours(10),
+        ]);
+
+        $state = app(TripActivityService::class)->stateFor($this->booking->fresh(['schedule']));
+
+        // ยังนับถอยหลังอยู่ — การ์ดยังเป็นแบบข้อความ แต่ URL รูปต้องมาแล้ว เพราะการ์ด
+        // ดึงรูปจากเน็ตเองไม่ได้ แอปต้องโหลดเก็บไว้ในเครื่องตั้งแต่คืนก่อน
+        $this->assertSame('countdown', $state['stage']);
+        $this->assertNull($state['vehicle_summary']);
+        $this->assertNull($state['kicker']);
+        $this->assertSame('https://cdn.example.com/media/commuter.png', $state['vehicle_image_url']);
+        $this->assertSame('https://cdn.example.com/media/somchai.jpg', $state['driver_photo_url']);
+    }
+
+    public function test_waiting_for_the_van_shows_it_without_a_minute_count(): void
+    {
+        $this->schedule->update(['vehicle_id' => $this->vehicleId()]);
+
+        $state = app(TripActivityService::class)->stateFor($this->booking->fresh(['schedule']));
+
+        // ยังไม่มี GPS — โชว์คันที่จะมารับได้ แต่ห้ามมีหัว "ภายใน" ที่ไม่มีตัวเลขตาม
+        $this->assertSame('preparing', $state['stage']);
+        $this->assertSame('กข-1234', $state['vehicle_summary']);
+        $this->assertNull($state['kicker']);
+        $this->assertNull($state['vehicle_image_url']);
+    }
+
+    public function test_swapping_the_van_pushes_the_card_even_when_the_words_stay_the_same(): void
+    {
+        $this->schedule->update(['vehicle_id' => $this->vehicleId()]);
+        $state = app(TripActivityService::class)->stateFor($this->booking->fresh(['schedule']));
+
+        $activity = LiveActivity::create([
+            'user_id' => $this->owner->id,
+            'booking_id' => $this->booking->id,
+            'schedule_id' => $this->schedule->id,
+            'push_token' => 'tok',
+            'state' => $state,
+            'stage' => $state['stage'],
+            'started_at' => now(),
+            'last_pushed_at' => now(),
+        ]);
+
+        $shouldPush = fn (array $next) => (fn () => $this->shouldPush($activity, $next))
+            ->call(app(TripActivityService::class));
+
+        $this->assertFalse($shouldPush($state));
+        $this->assertTrue($shouldPush([...$state, 'vehicle_summary' => 'ฮก-9999']));
+    }
+
     public function test_a_pinned_pickup_gets_an_eta_just_like_a_listed_one(): void
     {
         // ลูกค้าที่ปักหมุดจุดรับเองก็ยืนรอรถอยู่ริมถนนเหมือนกัน พิกัดอยู่บนใบจอง

@@ -8,7 +8,9 @@ use App\Models\LiveActivity;
 use App\Models\ScheduleAnnouncement;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
+use App\Models\Vehicle;
 use App\Models\VehicleLocation;
+use App\Support\MediaDisk;
 use App\Support\ThaiDate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -254,6 +256,7 @@ class TripActivityService
             'booking_ref' => $booking->booking_ref,
             'schedule_id' => (int) $schedule->id,
             'vehicle_label' => $this->vehicleLabel($schedule),
+            ...$this->vehicleCard($schedule, $stage, $etaMinutes),
             'updated_at' => now()->toIso8601String(),
         ]);
     }
@@ -313,6 +316,7 @@ class TripActivityService
             'booking_ref' => $booking->booking_ref,
             'schedule_id' => (int) $schedule->id,
             'vehicle_label' => $flightLabel,
+            ...self::NO_VEHICLE_CARD,
             'updated_at' => now()->toIso8601String(),
         ]);
     }
@@ -699,6 +703,13 @@ class TripActivityService
         if (($previous['headline'] ?? null) !== $state['headline']) {
             return true;
         }
+        // แอดมินสลับรถ/คนขับกลางวันเดินทาง — ข้อความอาจเหมือนเดิมทุกตัว แต่รูปกับ
+        // ทะเบียนบนการ์ดผิดคันไปแล้ว รอ heartbeat คือให้ลูกค้ามองหารถผิดคัน
+        foreach (['vehicle_summary', 'vehicle_image_url', 'driver_photo_url'] as $key) {
+            if (($previous[$key] ?? null) !== ($state[$key] ?? null)) {
+                return true;
+            }
+        }
 
         return $activity->last_pushed_at === null
             || $activity->last_pushed_at->lt(now()->subMinutes(self::HEARTBEAT_MINUTES));
@@ -738,6 +749,11 @@ class TripActivityService
             'pickupName' => $state['pickup_name'],
             'vehicleLabel' => $state['vehicle_label'],
             'departsAt' => $state['departs_at'],
+            'kicker' => $state['kicker'] ?? null,
+            'vehicleSummary' => $state['vehicle_summary'] ?? null,
+            'vehicleImageUrl' => $state['vehicle_image_url'] ?? null,
+            'driverPhotoUrl' => $state['driver_photo_url'] ?? null,
+            'driverName' => $state['driver_name'] ?? null,
             'updatedAt' => $state['updated_at'],
         ];
     }
@@ -758,6 +774,12 @@ class TripActivityService
             'pickupName' => $last['pickup_name'] ?? null,
             'vehicleLabel' => $last['vehicle_label'] ?? null,
             'departsAt' => $last['departs_at'] ?? null,
+            // การ์ดที่ปิดแล้วไม่มีรถให้มองหา — กลับไปเป็นการ์ดข้อความธรรมดา
+            'kicker' => null,
+            'vehicleSummary' => null,
+            'vehicleImageUrl' => null,
+            'driverPhotoUrl' => null,
+            'driverName' => null,
             'updatedAt' => now()->toIso8601String(),
         ];
     }
@@ -1495,6 +1517,10 @@ class TripActivityService
             'stage' => 'announcement',
             'headline' => '📢 '.Str::limit($title !== '' ? $title : 'ประกาศจากทีมงาน', 60),
             'detail' => $body !== '' ? Str::limit($body, 110) : 'แตะเพื่ออ่านประกาศจากทีมงาน',
+            // ประกาศต้องอ่านได้เต็มความกว้าง ไม่ใช่เบียดอยู่ข้างรูปรถ — URL รูปคงไว้
+            // ให้แอปโหลดเก็บไว้ก่อนรถมาถึง
+            'kicker' => null,
+            'vehicle_summary' => null,
         ]);
     }
 
@@ -1604,6 +1630,68 @@ class TripActivityService
         }
 
         return trim(($vehicle->name ?? '').' '.($vehicle->license_plate ?? '')) ?: null;
+    }
+
+    /** ขั้นที่ลูกค้ากำลังมองหารถคันจริงข้างถนน — การ์ดวาดรูปรถคู่รูปคนขับ */
+    private const VEHICLE_CARD_STAGES = ['preparing', 'enroute', 'approaching', 'arriving', 'arrived'];
+
+    /** ขั้นที่นับนาทีถอยหลังจาก GPS — การ์ดขึ้นเลขนาทีตัวใหญ่ใต้ kicker */
+    private const VEHICLE_ETA_STAGES = ['enroute', 'approaching', 'arriving'];
+
+    private const NO_VEHICLE_CARD = [
+        'kicker' => null,
+        'vehicle_summary' => null,
+        'vehicle_image_url' => null,
+        'driver_photo_url' => null,
+        'driver_name' => null,
+    ];
+
+    /**
+     * ส่วน "รถคันไหน ใครขับ" ของการ์ด — แบบการ์ดเรียกรถ: "รถจะถึงจุดรับภายใน
+     * 10 นาที" แล้วตามด้วย "9กข4835 · สีขาว · Toyota Commuter" ข้างรูปรถกับรูปคนขับ
+     *
+     * vehicle_summary มีค่าเฉพาะขั้นที่กำลังรอรถ — การ์ดฝั่ง iOS ใช้ "มีหรือไม่มี"
+     * ตัดสินว่าจะวาดแบบมีรูปรถ ส่วน URL รูปส่งมาตลอดที่ผูกรถแล้ว (ตั้งแต่วันก่อน
+     * เดินทาง) เพราะการ์ดดึงรูปจากเน็ตเองไม่ได้ แอปต้องโหลดเก็บไว้ในเครื่องก่อน
+     * ถึงเวลาที่ต้องใช้จริง
+     *
+     * @return array{kicker: ?string, vehicle_summary: ?string, vehicle_image_url: ?string, driver_photo_url: ?string, driver_name: ?string}
+     */
+    private function vehicleCard(TripSchedule $schedule, string $stage, ?int $etaMinutes): array
+    {
+        $vehicle = $schedule->vehicle;
+        if (! $vehicle) {
+            return self::NO_VEHICLE_CARD;
+        }
+
+        $showing = in_array($stage, self::VEHICLE_CARD_STAGES, true);
+        $driverName = trim((string) $vehicle->driver_name);
+
+        return [
+            'kicker' => $showing && $etaMinutes !== null && in_array($stage, self::VEHICLE_ETA_STAGES, true)
+                ? 'รถจะถึงจุดรับภายใน'
+                : null,
+            'vehicle_summary' => $showing ? $this->vehicleSummary($vehicle) : null,
+            'vehicle_image_url' => MediaDisk::url($vehicle->cutout_image),
+            'driver_photo_url' => MediaDisk::url($vehicle->driver_photo),
+            'driver_name' => $driverName !== '' ? $driverName : null,
+        ];
+    }
+
+    /** "9กข4835 · สีขาว · Toyota Commuter" — สิ่งที่ใช้มองหารถคันจริง เรียงตามที่ตาเห็นก่อน */
+    private function vehicleSummary(Vehicle $vehicle): ?string
+    {
+        $color = trim((string) $vehicle->color);
+        if ($color !== '' && ! str_starts_with($color, 'สี')) {
+            $color = "สี{$color}";
+        }
+
+        $parts = array_filter(
+            [trim((string) $vehicle->license_plate), $color, trim((string) $vehicle->model)],
+            fn (string $part) => $part !== '',
+        );
+
+        return $parts ? implode(' · ', $parts) : null;
     }
 
     /**

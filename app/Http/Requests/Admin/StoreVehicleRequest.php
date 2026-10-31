@@ -22,11 +22,13 @@ class StoreVehicleRequest extends FormRequest
             'seat_layout' => ['nullable', 'array'],
             'license_plate' => ['nullable', 'string', 'max:20'],
             'color' => ['nullable', 'string', 'max:50'],
+            'model' => ['nullable', 'string', 'max:100'],
             'driver_id' => ['nullable', 'integer', 'exists:drivers,id'],
             'driver_name' => ['nullable', 'string', 'max:100'],
             'driver_phone' => ['nullable', 'string', 'max:20'],
             'images' => ['nullable', 'array'],
             'images.*' => ['string'],
+            'cutout_image' => ['nullable', 'string'],
             'driver_photo' => ['nullable', 'string'],
             'interior_video' => ['nullable', 'string'],
         ];

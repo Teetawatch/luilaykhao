@@ -17,6 +17,7 @@ class VehicleResource extends JsonResource
             'seat_layout' => $this->seat_layout,
             'license_plate' => $this->license_plate,
             'color' => $this->color,
+            'model' => $this->model,
             'driver_id' => $this->driver_id,
             // ข้อมูลคนขับทั้งใบจากทะเบียน — หน้ายานพาหนะจะได้แสดงครบโดยไม่ต้องยิงซ้ำ
             // และไม่ต้องให้แอดมินกรอกอะไรของ "คน" ซ้ำอีกเลย
@@ -32,6 +33,8 @@ class VehicleResource extends JsonResource
             'driver_photo' => $this->driver_photo,
             'interior_video' => $this->interior_video,
             'images' => $this->images ?? [],
+            // รูปรถพื้นใสสำหรับการ์ดวันเดินทางบนหน้าจอล็อก
+            'cutout_image' => $this->cutout_image,
             'pickup_points' => $this->whenLoaded('pickupPoints', fn () => $this->pickupPoints->map(fn ($p) => [
                 'id' => $p->id,
                 'region' => $p->region,
