@@ -16,7 +16,7 @@
   <!-- Main Content -->
   <div v-else class="font-['DB Heavent', 'Anuphan'] bg-[#f9f9f9] min-h-screen pt-8 pb-24 px-4 md:px-8 lg:px-12">
     <!-- Progress Stepper -->
-    <div class="flex items-center justify-center mb-12 max-w-7xl mx-auto">
+    <div class="flex items-center justify-center mb-12 max-w-7xl mx-auto pay-rise">
       <div class="flex items-center w-full max-w-2xl">
         <div class="flex flex-col items-center flex-1">
           <div class="w-10 h-10 rounded-full bg-[#b4eae9] text-[#376b6a] flex items-center justify-center mb-2 font-bold text-sm">1</div>
@@ -27,16 +27,16 @@
           <div class="w-10 h-10 rounded-full bg-[#b4eae9] text-[#376b6a] flex items-center justify-center mb-2 font-bold text-sm">2</div>
           <span class="text-xs font-medium text-[#6e7979]">รายละเอียด</span>
         </div>
-        <div class="h-[2px] flex-1 bg-[#006565]"></div>
+        <div class="h-[2px] flex-1 bg-[#b4eae9] overflow-hidden"><div class="h-full bg-[#006565] pay-line"></div></div>
         <div class="flex flex-col items-center flex-1">
-          <div class="w-10 h-10 rounded-full bg-[#006565] text-white flex items-center justify-center mb-2 font-bold text-sm ring-4 ring-[#93f2f2]/40">3</div>
+          <div class="w-10 h-10 rounded-full bg-[#006565] text-white flex items-center justify-center mb-2 font-bold text-sm ring-4 ring-[#93f2f2]/40 pay-current">3</div>
           <span class="text-xs font-bold text-[#006565]">ชำระเงิน</span>
         </div>
       </div>
     </div>
 
     <!-- ทีมงานกันที่นั่งไว้ให้ — ไม่ต้องนับถอยหลังสิบนาทีแบบจองเอง -->
-    <div v-if="isOnHold" class="max-w-7xl mx-auto mb-10">
+    <div v-if="isOnHold" class="max-w-7xl mx-auto mb-10 pay-rise" style="--d: 60ms">
       <div class="bg-teal-50 border border-teal-100 rounded-3xl p-5 md:p-6 flex items-center gap-4">
         <div class="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
           <span class="material-symbols-rounded text-[#006565] text-2xl">event_seat</span>
@@ -51,7 +51,7 @@
     </div>
 
     <!-- Urgency Message & Timer -->
-    <div v-if="seatsStore.countdownSeconds > 0" class="max-w-7xl mx-auto mb-10">
+    <div v-if="seatsStore.countdownSeconds > 0" class="max-w-7xl mx-auto mb-10 pay-rise" style="--d: 60ms">
       <div class="bg-red-50 border border-red-100 rounded-3xl p-5 md:p-6 mb-4 flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
@@ -75,7 +75,7 @@
       <div class="lg:col-span-8 space-y-8 pb-10">
 
         <!-- ── Step Instructions ── -->
-        <div class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100">
+        <div class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100 pay-rise" style="--d: 120ms">
            <h2 class="text-xl font-bold mb-8 text-gray-900 flex items-center gap-2">
             <span class="material-symbols-rounded text-teal-600">checklist</span>
             ขั้นตอนการชำระเงิน
@@ -103,7 +103,7 @@
         </div>
 
         <!-- ── Payment Type Selection (show only if installment or deposit available) ── -->
-        <section v-if="installmentAvailable || installmentNotAvailable || depositAvailable" class="bg-white rounded-3xl p-5 sm:p-8 border border-gray-100">
+        <section v-if="installmentAvailable || installmentNotAvailable || depositAvailable" class="bg-white rounded-3xl p-5 sm:p-8 border border-gray-100 pay-rise" style="--d: 180ms">
           <!-- Section Header -->
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
             <div class="flex items-center gap-3">
@@ -125,7 +125,7 @@
 
             <!-- Full Payment -->
             <button @click="paymentType = 'full'"
-              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
+              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden active:scale-[0.99]"
               :class="paymentType === 'full'
                 ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50/50 scale-[1.01]'
                 : 'border-gray-100 bg-white hover:border-emerald-200 hover:bg-emerald-50/30 hover:-translate-y-0.5'">
@@ -135,7 +135,7 @@
                 ⭐ แนะนำ
               </div>
               <!-- Selected check -->
-              <div v-if="paymentType === 'full'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center ring-4 ring-emerald-100">
+              <div v-if="paymentType === 'full'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center ring-4 ring-emerald-100 pay-pop">
                 <span class="material-symbols-rounded text-white text-[18px]">check</span>
               </div>
 
@@ -171,7 +171,7 @@
 
             <!-- Deposit Payment -->
             <button v-if="depositAvailable" @click="paymentType = 'deposit'"
-              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
+              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden active:scale-[0.99]"
               :class="paymentType === 'deposit'
                 ? 'border-teal-600 bg-gradient-to-br from-teal-50 to-cyan-50/50 scale-[1.01]'
                 : 'border-gray-100 bg-white hover:border-teal-200 hover:bg-teal-50/30 hover:-translate-y-0.5'">
@@ -179,7 +179,7 @@
               <div v-if="paymentType !== 'deposit'" class="absolute top-0 right-0 bg-teal-600 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
                 🔥 ยอดนิยม
               </div>
-              <div v-if="paymentType === 'deposit'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-teal-600 flex items-center justify-center ring-4 ring-teal-100">
+              <div v-if="paymentType === 'deposit'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-teal-600 flex items-center justify-center ring-4 ring-teal-100 pay-pop">
                 <span class="material-symbols-rounded text-white text-[18px]">check</span>
               </div>
 
@@ -218,7 +218,7 @@
 
             <!-- Installment Payment -->
             <button v-if="installmentAvailable || installmentNotAvailable" @click="!installmentNotAvailable && (paymentType = 'installment')"
-              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden"
+              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden active:scale-[0.99]"
               :class="installmentNotAvailable
                 ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
                 : paymentType === 'installment'
@@ -231,7 +231,7 @@
               <div v-else-if="paymentType !== 'installment'" class="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
                 💳 ผ่อน 0%
               </div>
-              <div v-if="paymentType === 'installment' && !installmentNotAvailable" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center ring-4 ring-amber-100">
+              <div v-if="paymentType === 'installment' && !installmentNotAvailable" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center ring-4 ring-amber-100 pay-pop">
                 <span class="material-symbols-rounded text-white text-[18px]">check</span>
               </div>
 
@@ -440,7 +440,7 @@
         </section>
 
         <!-- ── Payment Method ── -->
-        <section class="bg-white rounded-3xl p-8 border border-gray-100">
+        <section class="bg-white rounded-3xl p-8 border border-gray-100 pay-rise" style="--d: 240ms">
           <h2 class="text-xl font-extrabold mb-8 text-gray-900 flex items-center gap-2">
             <span class="material-symbols-rounded text-teal-600">account_balance_wallet</span>
             เลือกช่องทางชำระเงิน
@@ -448,7 +448,7 @@
 
           <div class="grid grid-cols-1 gap-4 mb-10" :class="checkoutAvailable ? 'sm:grid-cols-3' : 'sm:grid-cols-2'">
             <button @click="paymentMethod = 'promptpay'"
-              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full"
+              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all duration-300 h-full active:scale-[0.98]"
               :class="paymentMethod === 'promptpay'
                 ? 'border-teal-600 bg-teal-50/30'
                 : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
@@ -462,7 +462,7 @@
             </button>
             
             <button @click="paymentMethod = 'mobile_banking'"
-              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full"
+              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all duration-300 h-full active:scale-[0.98]"
               :class="paymentMethod === 'mobile_banking'
                 ? 'border-teal-600 bg-teal-50/30'
                 : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
@@ -477,7 +477,7 @@
 
             <!-- หน้าชำระเงินของ Beam — บัตร / Apple Pay / Google Pay / ผ่อน / e-Wallet -->
             <button v-if="checkoutAvailable" @click="paymentMethod = 'card'"
-              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all h-full"
+              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all duration-300 h-full active:scale-[0.98]"
               :class="paymentMethod === 'card'
                 ? 'border-teal-600 bg-teal-50/30'
                 : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
@@ -493,9 +493,9 @@
           </div>
 
           <!-- PromptPay QR -->
-          <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-5 py-10 bg-gray-50/50 rounded-3xl border border-gray-100">
+          <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-5 py-10 bg-gray-50/50 rounded-3xl border border-gray-100 pay-swap">
              <!-- Thai QR Logo Header -->
-             <div class="bg-white px-6 py-3 rounded-2xl border border-gray-100 flex items-center justify-center animate-in fade-in zoom-in-95 duration-500">
+             <div class="bg-white px-6 py-3 rounded-2xl border border-gray-100 flex items-center justify-center pay-pop">
                <img src="/images/Thai_QR_Payment_Logo-01.jpg" alt="Thai QR Payment" class="h-10 w-auto object-contain" />
              </div>
 
@@ -541,8 +541,9 @@
               <template v-else>
                 <div class="relative group">
                   <div class="relative p-2 bg-white rounded-3xl border border-teal-100 overflow-hidden min-h-[280px] min-w-[280px] flex items-center justify-center">
-                    <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" alt="QR พร้อมเพย์"
-                      class="block rounded-2xl w-full max-w-[280px] h-auto mx-auto" />
+                    <img v-if="beamQrSrc && !beamExpired" :key="`qr-${beamPayment?.payment_id}`" :src="beamQrSrc" alt="QR พร้อมเพย์"
+                      class="block rounded-2xl w-full max-w-[280px] h-auto mx-auto pay-qr" />
+                    <span v-if="beamQrSrc && !beamExpired" :key="`scan-${beamPayment?.payment_id}`" class="pay-scan" aria-hidden="true"></span>
 
                     <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-3xl">
                       <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
@@ -583,7 +584,8 @@
             <div v-else class="relative group">
                <div class="absolute -inset-4 bg-teal-600/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                <div class="relative p-2 bg-white rounded-3xl border border-teal-100 overflow-hidden">
-                <canvas ref="qrCanvas" class="block rounded-2xl w-full max-w-[320px] h-auto mx-auto"></canvas>
+                <canvas ref="qrCanvas" class="block rounded-2xl w-full max-w-[320px] h-auto mx-auto" :class="{ 'pay-qr': qrGenerated }"></canvas>
+                <span v-if="qrGenerated" class="pay-scan" aria-hidden="true"></span>
                 <div v-if="!qrGenerated" class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-3xl">
                   <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
                 </div>
@@ -622,7 +624,7 @@
             ไปจ่ายบนหน้าของ Beam แล้วกลับมาที่ /payment/return — ช่องทางที่ขึ้นจริงขึ้นกับ
             เครื่อง (Apple Pay เฉพาะ Safari, Google Pay เฉพาะ Chrome/Android)
           -->
-          <div v-else-if="useBeam && paymentMethod === 'card'" class="bg-gray-50/60 rounded-3xl p-5 sm:p-6 space-y-4 border border-gray-100">
+          <div v-else-if="useBeam && paymentMethod === 'card'" class="bg-gray-50/60 rounded-3xl p-5 sm:p-6 space-y-4 border border-gray-100 pay-swap">
             <div>
               <p class="text-base font-black text-gray-900 flex items-center gap-2">
                 <span class="material-symbols-rounded text-teal-600 text-[22px]">credit_card</span>
@@ -641,7 +643,7 @@
           </div>
 
           <!-- โหมดเกตเวย์: เด้งเข้าแอปธนาคารโดยตรง ไม่ต้องจดเลขบัญชีหรือแนบสลิป -->
-          <div v-else-if="useBeam" class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100">
+          <div v-else-if="useBeam" class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100 pay-swap">
             <p class="text-sm font-black text-teal-900 flex items-center gap-2">
               <span class="material-symbols-rounded text-teal-600 text-[20px]">smartphone</span>
               เลือกแอปธนาคารของคุณ
@@ -667,7 +669,7 @@
           </div>
 
           <!-- Bank Transfer info -->
-          <div v-else class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100">
+          <div v-else class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100 pay-swap">
             <p class="text-sm font-black text-teal-900 flex items-center gap-2">
               <span class="material-symbols-rounded text-teal-600 text-[20px]">account_balance</span>
               ข้อมูลบัญชีธนาคาร
@@ -759,7 +761,7 @@
 
               <template v-else>
                  <div class="relative w-full max-h-[400px] group/preview">
-                    <img :src="slipPreview" alt="slip" class="w-full h-full object-contain rounded-[2rem] bg-gray-100" />
+                    <img :src="slipPreview" alt="slip" class="w-full h-full object-contain rounded-[2rem] bg-gray-100 pay-swap" />
                     <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity rounded-[2rem] flex items-center justify-center">
                        <p class="text-white font-bold text-sm bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30">คลิกเพื่อเปลี่ยนรูป</p>
                     </div>
@@ -768,7 +770,7 @@
                       <span class="material-symbols-rounded text-[22px]">delete</span>
                     </button>
                     <!-- Success indicator -->
-                    <div class="absolute bottom-4 left-4 bg-teal-600 text-white px-4 py-2 rounded-full text-xs font-black flex items-center gap-2">
+                    <div class="absolute bottom-4 left-4 bg-teal-600 text-white px-4 py-2 rounded-full text-xs font-black flex items-center gap-2 pay-pop" style="--d: 200ms">
                        <span class="material-symbols-rounded text-[18px]">check_circle</span>
                        อัปโหลดสำเร็จ
                     </div>
@@ -814,7 +816,7 @@
         </section>
 
         <!-- Trust Badges & Support -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pay-rise" style="--d: 300ms">
            <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100">
              <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
                <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">verified</span>
@@ -840,7 +842,7 @@
       </div>
 
       <!-- RIGHT: Booking Summary Card -->
-      <aside class="lg:col-span-4 sticky top-24 pb-20">
+      <aside class="lg:col-span-4 sticky top-24 pb-20 pay-rise" style="--d: 160ms">
         <div class="bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 transition-all duration-300">
 
           <!-- Trip Premium Header -->
@@ -877,7 +879,7 @@
             <h2 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6">รายละเอียดการจอง</h2>
 
             <div class="space-y-4 mb-8">
-               <div v-if="booking.seats?.length" class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 animate-in fade-in slide-in-from-bottom-2">
+               <div v-if="booking.seats?.length" class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 pay-rise">
                  <div class="w-10 h-10 rounded-xl bg-white text-teal-600 flex items-center justify-center shrink-0">
                     <span class="material-symbols-rounded text-xl">airline_seat_recline_extra</span>
                  </div>
@@ -887,7 +889,7 @@
                  </div>
                </div>
                
-               <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-500">
+               <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 pay-rise">
                  <div class="w-10 h-10 rounded-xl bg-white text-amber-600 flex items-center justify-center shrink-0">
                     <span class="material-symbols-rounded text-xl">location_on</span>
                  </div>
@@ -902,7 +904,7 @@
                  </div>
                </div>
 
-               <div v-if="booking.selected_addons?.length" class="p-4 bg-amber-50/70 rounded-2xl border border-amber-100 animate-in fade-in slide-in-from-bottom-2 duration-500">
+               <div v-if="booking.selected_addons?.length" class="p-4 bg-amber-50/70 rounded-2xl border border-amber-100 pay-rise">
                  <div class="flex items-center gap-2 mb-3">
                    <span class="material-symbols-rounded text-amber-600 text-xl">add_task</span>
                    <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest leading-none">ตัวเลือกเสริม</p>
@@ -915,7 +917,7 @@
                  </div>
                </div>
 
-               <div v-if="booking.selected_rentals?.length" class="p-4 bg-sky-50/70 rounded-2xl border border-sky-100 animate-in fade-in slide-in-from-bottom-2 duration-500">
+               <div v-if="booking.selected_rentals?.length" class="p-4 bg-sky-50/70 rounded-2xl border border-sky-100 pay-rise">
                  <div class="flex items-center gap-2 mb-3">
                    <span class="material-symbols-rounded text-sky-600 text-xl">backpack</span>
                    <p class="text-[10px] font-black text-sky-700 uppercase tracking-widest leading-none">อุปกรณ์เช่า</p>
@@ -943,7 +945,7 @@
                  <div class="flex justify-between items-end bg-amber-50 rounded-2xl p-4 border border-amber-100">
                     <span class="text-xs font-bold text-amber-700">ชำระงวดแรกตอนนี้</span>
                     <div class="text-right">
-                       <span class="text-2xl font-black text-amber-600 leading-none">฿{{ perInstallment.toLocaleString() }}</span>
+                       <span class="text-2xl font-black text-amber-600 leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
                        <p class="text-[10px] font-bold text-amber-500 leading-none mt-1">จากทั้งหมด {{ selectedInstallmentCount }} งวด</p>
                     </div>
                  </div>
@@ -953,7 +955,7 @@
                  <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-4 border border-teal-200">
                     <span class="text-xs font-bold text-teal-700">ชำระมัดจำตอนนี้</span>
                     <div class="text-right">
-                       <span class="text-2xl font-black text-teal-700 leading-none">฿{{ depositAmount.toLocaleString() }}</span>
+                       <span class="text-2xl font-black text-teal-700 leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
                        <p class="text-[10px] font-bold text-teal-600 leading-none mt-1">ส่วนที่เหลือ ฿{{ balanceAmount.toLocaleString() }}</p>
                     </div>
                  </div>
@@ -962,7 +964,7 @@
                <template v-else>
                  <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-5 border border-teal-100">
                     <span class="text-sm font-black text-teal-900 uppercase tracking-tight">ยอดชำระสุทธิ</span>
-                    <span class="text-3xl font-black text-teal-600 leading-none">฿{{ Number(booking.total_amount).toLocaleString() }}</span>
+                    <span class="text-3xl font-black text-teal-600 leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
                  </div>
                </template>
             </div>
@@ -999,6 +1001,7 @@
                       ? 'bg-teal-600 text-white hover:bg-teal-700'
                       : 'bg-emerald-600 text-white hover:bg-emerald-700'
                 ]">
+                <span class="pay-shine" aria-hidden="true"></span>
                 <!-- Loading State overlay -->
                 <div v-if="paying || scanningSlip" class="absolute inset-0 bg-inherit flex items-center justify-center gap-3 z-10 text-sm">
                    <div class="w-6 h-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
@@ -1396,6 +1399,43 @@ const selectedInstallmentOption = computed(() =>
   ) || null
 );
 const perInstallment = computed(() => Number(selectedInstallmentOption.value?.per_amount || 0));
+
+// ยอดที่ต้องจ่ายตอนนี้ (กล่องสรุปด้านขวา) — สลับเต็ม/มัดจำ/ผ่อนแล้วตัวเลขเลื่อนไปหาค่าใหม่
+// ให้เห็นว่ายอดเปลี่ยนไปเท่าไหร่ แทนที่จะกระโดดเงียบ ๆ
+const payNowAmount = computed(() => {
+  if (paymentType.value === 'installment') return perInstallment.value;
+  if (paymentType.value === 'deposit') return depositAmount.value;
+  return Number(booking.value?.total_amount || 0);
+});
+const payNowShown = useTweenedNumber(payNowAmount);
+
+function useTweenedNumber(source, duration = 450) {
+  const shown = ref(source.value);
+  let frame = 0;
+  watch(source, (to) => {
+    cancelAnimationFrame(frame);
+    const from = shown.value;
+    if (from === to || prefersReducedMotion()) {
+      shown.value = to;
+      return;
+    }
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      // ระหว่างทางปัดเป็นบาท ปลายทางใช้ค่าจริง (ยอดผ่อนอาจมีสตางค์)
+      shown.value = t < 1 ? Math.round(from + (to - from) * eased) : to;
+      if (t < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+  });
+  onBeforeUnmount(() => cancelAnimationFrame(frame));
+  return shown;
+}
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
 const currentPayAmount = computed(() => {
   if (!booking.value) return 0;
   const total = Number(quote.value?.full?.amount ?? booking.value.total_amount);
@@ -1780,11 +1820,128 @@ onBeforeUnmount(() => {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.3s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(-6px);
+}
+
+/*
+ * การเคลื่อนไหวของหน้าชำระเงิน — สั้น นุ่ม และมีหน้าที่: บอกว่าอะไรเพิ่งเปลี่ยน (เลือกแล้ว,
+ * สลับช่องทาง, QR ใบใหม่, ยอดเปลี่ยน) ไม่วนซ้ำให้รบกวนตอนกำลังจ่ายเงิน
+ * ทุกตัวใช้เส้นโค้งเดียวกัน และปิดหมดเมื่อเครื่องตั้ง "ลดการเคลื่อนไหว"
+ */
+.pay-rise {
+  animation: pay-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes pay-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ส่วนที่สลับเข้ามาใหม่ (ช่องทางชำระเงิน, รูปสลิป) */
+.pay-swap {
+  animation: pay-swap 0.42s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes pay-swap {
+  from { opacity: 0; transform: translateY(10px) scale(0.995); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ติ๊กถูก/ป้ายสำเร็จ — เด้งเข้าเบา ๆ ครั้งเดียว */
+.pay-pop {
+  animation: pay-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes pay-pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+
+/* เส้นขั้นตอน "รายละเอียด → ชำระเงิน" วิ่งเติมตอนเข้าหน้า */
+.pay-line {
+  transform-origin: left center;
+  animation: pay-line 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.15s both;
+}
+@keyframes pay-line {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* วงขั้นปัจจุบันมีวงแสงแผ่ออกสองครั้งตอนเข้าหน้า แล้วนิ่ง */
+.pay-current {
+  position: relative;
+}
+.pay-current::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid #006565;
+  opacity: 0;
+  animation: pay-halo 1.4s ease-out 0.9s 2;
+}
+@keyframes pay-halo {
+  from { opacity: 0.45; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.55); }
+}
+
+/* QR ใบใหม่ปรากฏ + แถบแสงสแกนผ่านหนึ่งรอบ ให้รู้ว่าเป็นใบที่เพิ่งออก */
+.pay-qr {
+  animation: pay-qr 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes pay-qr {
+  from { opacity: 0; transform: scale(0.96); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+.pay-scan {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  height: 36%;
+  pointer-events: none;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(13, 148, 136, 0) 0%, rgba(13, 148, 136, 0.14) 85%, rgba(13, 148, 136, 0.55) 100%);
+  opacity: 0;
+  animation: pay-scan 1.5s cubic-bezier(0.45, 0, 0.55, 1) 0.35s both;
+}
+@keyframes pay-scan {
+  0% { opacity: 0; transform: translateY(-40%); }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(190%); }
+}
+
+/* ปุ่มยืนยัน — แสงวาบผ่านตอนชี้ เฉพาะตอนกดได้ */
+.pay-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.28) 50%, transparent 65%);
+  transform: translateX(-120%);
+}
+button:not(:disabled):hover > .pay-shine {
+  transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transform: translateX(120%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pay-rise,
+  .pay-swap,
+  .pay-pop,
+  .pay-line,
+  .pay-qr,
+  .pay-current::after,
+  .pay-scan {
+    animation: none !important;
+  }
+  .pay-scan,
+  .pay-shine {
+    display: none;
+  }
 }
 </style>
