@@ -5,7 +5,7 @@
 
     <!-- Global Active Booking Banner -->
     <Transition name="booking-banner">
-      <div v-if="seatsStore.hasActiveBooking && !isOnActiveBookingPage"
+      <div v-if="seatsStore.hasActiveBooking && !isOnActiveBookingPage && !checkingActiveBooking"
         class="sticky z-40 w-full transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
         :style="{ top: isScrolled ? '64px' : '80px' }">
         <div class="bg-white/80 backdrop-blur-md border-b border-gray-200/50">
@@ -124,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Navbar from './components/Navbar.vue';
 import Footer from './components/Footer.vue';
@@ -138,6 +138,7 @@ import { useWishlistStore } from './stores/wishlist';
 import { withLicence } from './lib/licence';
 import { useSwal } from './lib/swal';
 import { useHead } from '@unhead/vue';
+import api from './lib/axios';
 
 const route = useRoute();
 const router = useRouter();
@@ -227,10 +228,54 @@ async function cancelCurrentBooking() {
   }
 }
 
-function handleGlobalExpiry() {
+/*
+ * แถบ "รายการจองที่ค้างอยู่" อ่านสถานะจาก sessionStorage ซึ่งล้างได้เฉพาะในหน้าชำระเงินของ SPA
+ * แต่การจ่ายผ่านหน้าของ Beam (บัตร/e-Wallet/แอปธนาคาร) จบที่ /payment/return เป็นหน้า Blade
+ * แล้วลูกค้ากด "ดูรายละเอียดการจอง" กลับเข้า SPA — สถานะเก่ายังอยู่ แถบจึงขึ้นนับถอยหลังทั้งที่
+ * จ่ายแล้ว (และพอหมดเวลาก็ขึ้นว่า "หมดเวลาการจอง") ถามเซิร์ฟเวอร์ก่อนว่ายังรอจ่ายจริงไหม
+ */
+const checkingActiveBooking = ref(false);
+
+/** ใบจองในเครื่องจ่าย/จบไปแล้ว → ล้างทิ้ง คืน true ถ้าล้าง */
+async function dropSettledBooking() {
+  const bookingRef = seatsStore.activeBookingInfo?.bookingRef;
+  // ยังไม่ล็อกอิน = ถามไม่ได้ (401 จะพาไปหน้าล็อกอิน) ปล่อยไว้ตามเดิม
+  if (!bookingRef || !localStorage.getItem('auth_token')) return false;
+  try {
+    const res = await api.get(`/bookings/${bookingRef}`);
+    const booking = res.data?.data;
+    // กติกาเดียวกับเส้นตายของหน้าชำระเงิน — ส่งสลิปแล้วก็ไม่ต้องนับถอยหลังแล้ว
+    if (booking?.status === 'pending' && !booking.slip_ocr_status) return false;
+  } catch (e) {
+    // เน็ตสะดุด — ไม่รู้ผล อย่าเพิ่งทิ้ง (404/403 = ใบนี้ไม่ใช่ของเราแล้ว ทิ้งได้)
+    if (![403, 404].includes(e?.response?.status)) return false;
+  }
+  if (seatsStore.activeBookingInfo?.bookingRef === bookingRef) seatsStore.clearSelection();
+  return true;
+}
+
+async function checkActiveBooking() {
+  if (!seatsStore.activeBookingInfo?.bookingRef) return;
+  checkingActiveBooking.value = true;
+  try {
+    await dropSettledBooking();
+  } finally {
+    checkingActiveBooking.value = false;
+  }
+}
+
+// มาถึงหน้ายืนยันของใบนี้แล้ว = จบขั้นจ่ายเงิน (หน้านั้นบอกสถานะเอง) ไม่ต้องรอถามเซิร์ฟเวอร์
+watch(() => route.path, (path) => {
+  const bookingRef = seatsStore.activeBookingInfo?.bookingRef;
+  if (bookingRef && path === `/confirmation/${bookingRef}`) seatsStore.clearSelection();
+}, { immediate: true });
+
+async function handleGlobalExpiry() {
   const isOnBookingPage = route.path.startsWith('/booking/');
   const isOnPaymentPage = route.path.startsWith('/payment/');
   if (isOnBookingPage || isOnPaymentPage) return; // These pages handle their own expiry
+  // จ่ายผ่าน Beam แล้วแต่เครื่องยังไม่รู้ — เงียบ ๆ ล้างทิ้ง ไม่ขึ้นว่าหมดเวลา
+  if (await dropSettledBooking()) return;
   // Read the minutes BEFORE clearing — clearSelection wipes activeBookingInfo
   const minutes = seatsStore.bookingTotalMinutes;
   seatsStore.clearSelection();
@@ -260,6 +305,7 @@ const scrollToTop = () => {
 onMounted(() => {
   seatsStore.restoreCountdown();
   seatsStore.onExpire(handleGlobalExpiry);
+  checkActiveBooking();
   window.addEventListener('scroll', handleScroll);
 });
 
