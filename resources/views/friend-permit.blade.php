@@ -231,7 +231,7 @@
                 ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-                ctx.strokeStyle = '#000';
+                ctx.strokeStyle = '#1a3fa8'; // น้ำเงินปากกา — สีเดียวกับ PermitSignatureService::INK_RGB
                 ctx.lineWidth = 2.4;
                 drawn = false;
                 hint.hidden = false;
@@ -250,7 +250,7 @@
                 last = point(e);
                 ctx.beginPath();
                 ctx.arc(last.x, last.y, ctx.lineWidth / 2, 0, Math.PI * 2);
-                ctx.fillStyle = '#000';
+                ctx.fillStyle = '#1a3fa8';
                 ctx.fill();
             });
             canvas.addEventListener('pointermove', function (e) {

@@ -36,6 +36,13 @@ class PermitSignatureService
 {
     public const DISK = PermitFormService::DISK;
 
+    /**
+     * สีหมึกของลายเซ็น — น้ำเงินปากกาลูกลื่น ให้แบบฟอร์มที่ยื่นอุทยานดูเหมือนเซ็นด้วยปากกา
+     * จริง (และแยกออกจากตัวพิมพ์สีดำ) ช่องเซ็นทุกช่องทางวาดสีนี้ (#1A3FA8) และเซิร์ฟเวอร์ย้อม
+     * ซ้ำตอนเก็บ แอปเวอร์ชันเก่าที่ยังส่งสีดำมาก็ได้สีเดียวกัน
+     */
+    public const INK_RGB = [26, 63, 168];
+
     /** ภาพลายเซ็นใหญ่สุดที่รับ (ไบต์ของ PNG หลังถอด base64) */
     public const MAX_BYTES = 600 * 1024;
 
@@ -514,8 +521,37 @@ class PermitSignatureService
         imagefill($out, 0, 0, imagecolorallocatealpha($out, 0, 0, 0, 127));
         imagecopy($out, $image, $pad, $pad, $x0, $y0, $w, $h);
 
+        return self::encodeInked($out);
+    }
+
+    /**
+     * ย้อมลายเซ็น (PNG พื้นโปร่งใส) เป็นสีหมึก — ใช้กับไฟล์ที่เก็บไว้ก่อนเปลี่ยนเป็นสีน้ำเงินด้วย
+     */
+    public static function ink(string $png): string
+    {
+        $image = @imagecreatefromstring($png);
+
+        if (! $image) {
+            return $png;
+        }
+
+        imagesavealpha($image, true);
+        imagealphablending($image, false);
+
+        return self::encodeInked($image);
+    }
+
+    /** ทุกจุดเป็นสีหมึก คงความโปร่งใสเดิมไว้ — เส้นขอบที่ลบรอยหยักจึงยังเนียน */
+    private static function encodeInked(\GdImage $image): string
+    {
+        [$r, $g, $b] = self::INK_RGB;
+
+        // ดำสนิทก่อน แล้วค่อยบวกสี — ได้สีเดียวกันไม่ว่าช่องเซ็นจะส่งสีอะไรมา
+        imagefilter($image, IMG_FILTER_BRIGHTNESS, -255);
+        imagefilter($image, IMG_FILTER_COLORIZE, $r, $g, $b);
+
         ob_start();
-        imagepng($out, null, 9);
+        imagepng($image, null, 9);
 
         return (string) ob_get_clean();
     }

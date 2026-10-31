@@ -14,6 +14,7 @@ use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\PermitFormService;
+use App\Services\PermitSignatureService;
 use App\Support\PermitFormFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -173,6 +174,34 @@ class PermitSignatureTest extends TestCase
         $this->assertLessThan(120, $h);
 
         $this->assertFalse($b->fresh()->hasSignedPermitForm($form->id));
+    }
+
+    public function test_signature_is_stored_in_blue_pen_ink_whatever_colour_was_drawn(): void
+    {
+        $form = $this->form();
+        $booking = $this->booking($form);
+        $a = $booking->passengers->sortBy('id')->first();
+
+        // ช่องเซ็นของแอปเวอร์ชันเก่าส่งเส้นสีดำมา
+        $this->actingAs($this->owner, 'sanctum')
+            ->postJson($this->signUrl($booking, $a), ['signature' => $this->signature(), 'accept' => true])
+            ->assertOk();
+
+        $image = imagecreatefromstring(Storage::disk('local')->get($a->fresh()->permit_signature_path));
+        $ink = $corner = null;
+        for ($x = 0; $x < imagesx($image) && $ink === null; $x++) {
+            for ($y = 0; $y < imagesy($image); $y++) {
+                $c = imagecolorat($image, $x, $y);
+                if ((($c >> 24) & 127) === 0) {
+                    $ink = [($c >> 16) & 255, ($c >> 8) & 255, $c & 255];
+                    break;
+                }
+            }
+        }
+        $corner = (imagecolorat($image, 0, 0) >> 24) & 127;
+
+        $this->assertSame(PermitSignatureService::INK_RGB, $ink);
+        $this->assertSame(127, $corner, 'background stays transparent');
     }
 
     public function test_signing_needs_a_drawn_signature_and_consent(): void
