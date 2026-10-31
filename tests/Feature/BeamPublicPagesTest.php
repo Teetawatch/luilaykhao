@@ -379,6 +379,34 @@ class BeamPublicPagesTest extends TestCase
     }
 
     /**
+     * จ่ายจากเว็บแล้วกลับมาที่หน้านี้ — หน้านี้รู้ว่าเป็นแท็บที่เริ่มจ่ายจากเลขใบที่เว็บฝากไว้
+     * (useBeamCharge) แล้วพากลับเข้าเว็บเอง: จ่ายสำเร็จ → หน้ายืนยันการจอง, กดยกเลิก → หน้าชำระเงิน
+     */
+    public function test_the_return_page_sends_a_web_payer_straight_back_into_the_site(): void
+    {
+        $booking = $this->confirmedBooking();
+        $payment = Payment::create([
+            'booking_id' => $booking->id,
+            'purpose' => Payment::PURPOSE_FULL,
+            'provider' => 'beam',
+            'reference_id' => $booking->booking_ref.'-12',
+            'amount' => 3000,
+            'status' => Payment::STATUS_PENDING,
+            'payment_method_type' => Payment::METHOD_CHECKOUT,
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->get('/payment/return?payment='.$payment->id)
+            ->assertOk()
+            ->assertSee("sessionStorage.getItem('beam_return_payment') === \"{$payment->id}\"", false)
+            ->assertSee('window.webReturn('.json_encode(url('/confirmation/'.$booking->booking_ref)), false);
+
+        $this->get('/payment/return?payment='.$payment->id.'&cancelled=1')
+            ->assertOk()
+            ->assertSee('window.webReturn('.json_encode(url('/payment/'.$booking->booking_ref)), false);
+    }
+
+    /**
      * คนที่ poll หน้ารอผลคือคนที่เพิ่งกดจ่ายเสร็จและกำลังนั่งดูหน้าจอ — ถาม Beam ให้เลย
      * ไม่ใช่รอ webhook หรือรอ reconcile ที่แตะแถวนี้ตอนค้างครบ 10 นาที
      */

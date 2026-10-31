@@ -93,6 +93,31 @@
 @endsection
 
 @section('scripts')
+@if ($payment)
+<script>
+    // แท็บที่เริ่มจ่ายจากเว็บ (useBeamCharge ฝากเลขใบไว้ก่อนไปหน้า Beam) — กลับเข้าเว็บต่อเอง
+    // ไม่ต้องกดปุ่มอีกที ต้องเป็นใบเดียวกันและยังล็อกอินอยู่ ไม่งั้นหน้าเว็บเปิดการจองไม่ได้
+    // จ่ายจากแอป/เบราว์เซอร์อื่นไม่มีค่านี้ → อยู่หน้านี้ตามเดิม
+    window.webReturn = (function () {
+        try {
+            var mine = sessionStorage.getItem('beam_return_payment') === @json((string) $payment->id)
+                && !!localStorage.getItem('auth_token');
+            if (!mine) return null;
+            return function (url, note) {
+                if (!url) return;
+                sessionStorage.removeItem('beam_return_payment');
+                if (note) document.getElementById('hint').textContent = note;
+                setTimeout(function () { window.location.replace(url); }, note ? 1200 : 0);
+            };
+        } catch (e) {
+            return null;
+        }
+    })();
+    @if ($cancelled)
+        if (window.webReturn) window.webReturn(@json($backUrl));
+    @endif
+</script>
+@endif
 @if ($pollUrl && ! $cancelled)
 <script>
     // หน้านี้ไม่ตัดสินอะไรเอง — ถามเซิร์ฟเวอร์อย่างเดียว เพราะคนยืนยันจริงคือ webhook
@@ -119,7 +144,10 @@
 
         function stopClock() { clearInterval(elapsedTimer); }
 
-        var timer = setInterval(async function () {
+        var timer = setInterval(check, 3000);
+        check();
+
+        async function check() {
             tries++;
             // ~2 นาทีแล้วยังไม่มีผล = webhook มาช้ากว่าปกติ ปล่อยให้ลูกค้าไปดูในหน้าการจอง
             if (tries > 40) {
@@ -144,6 +172,7 @@
                     document.getElementById('pending-state').style.display = 'none';
                     document.getElementById('paid-state').style.display = '';
                     document.getElementById('hint').textContent = 'ถ้าจ่ายจากแอป ปิดหน้านี้แล้วกลับเข้าแอปได้เลย';
+                    if (window.webReturn) window.webReturn(@json($doneUrl), 'กำลังพากลับไปหน้าการจองของคุณ…');
                 } else if (data.status === 'failed' || data.status === 'expired') {
                     clearInterval(timer);
                     stopClock();
@@ -155,7 +184,7 @@
             } catch (e) {
                 // เน็ตสะดุดรอบเดียวไม่ต้องแจ้ง รอบหน้าอีก 3 วิค่อยถามใหม่
             }
-        }, 3000);
+        }
     })();
 </script>
 @endif

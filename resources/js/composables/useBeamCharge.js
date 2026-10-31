@@ -17,6 +17,9 @@ const SLOW_AFTER_SECONDS = 45;
  */
 const AWAY_LONG_ENOUGH_MS = 3000;
 
+/** ใบชำระเงินที่แท็บนี้ส่งไปจ่ายบนหน้าของ Beam — resources/views/payment/return.blade.php อ่านคีย์เดียวกัน */
+const BEAM_RETURN_KEY = 'beam_return_payment';
+
 /**
  * ออกใบชำระเงินผ่าน Beam แล้วเฝ้าดูจนกว่าเงินจะเข้า
  *
@@ -180,6 +183,14 @@ export function useBeamCharge(onPaid) {
       // แอปธนาคาร และหน้าชำระเงินของ Beam (บัตร/ผ่อน/e-Wallet) ตอบเป็นลิงก์ ไม่ใช่ QR —
       // พาไปเลย แล้วกลับมาผ่าน returnUrl
       if (payment.value?.redirect_url) {
+        // ฝากไว้ในแท็บนี้ว่าเป็นคนเริ่มจ่ายบนเว็บ — ขากลับ หน้า /payment/return (Blade) เห็นแล้ว
+        // พากลับเข้าเว็บต่อเองเมื่อเงินเข้า ไม่ต้องให้กด "ดูการจองของฉัน" อีกที แท็บอื่น/แอป
+        // (เช่นแอปธนาคารเปิดกลับมาในเบราว์เซอร์อื่น) ไม่มีค่านี้ จึงยังเห็นหน้าเดิม
+        try {
+          sessionStorage.setItem(BEAM_RETURN_KEY, String(payment.value.payment_id));
+        } catch {
+          // โหมดส่วนตัวบางตัวห้ามเขียน — แค่ไม่ได้กลับอัตโนมัติ
+        }
         window.location.href = payment.value.redirect_url;
       }
 
