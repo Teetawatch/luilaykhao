@@ -336,6 +336,11 @@
                       <span class="material-symbols-rounded">badge</span>
                       Border Pass {{ sch.border_pass_count }}
                     </button>
+                    <button v-if="hasRoundDocuments(sch)" class="btn-export-mini docs" @click="openRoundDocs(sch)">
+                      <span class="material-symbols-rounded">folder_open</span>
+                      เอกสาร
+                      <span v-if="sch.permit_unsigned_count" class="docs-badge">ยังไม่เซ็น {{ sch.permit_unsigned_count }}</span>
+                    </button>
                   </div>
                 </div>
 
@@ -759,6 +764,11 @@
                 <button v-if="selectedSchedule.border_pass_count" class="btn-secondary compact" @click="openBorderPass(selectedSchedule)">
                   <span class="material-symbols-rounded">badge</span>
                   รายชื่อทำ Border Pass ({{ selectedSchedule.border_pass_count }})
+                </button>
+                <button v-if="hasRoundDocuments(selectedSchedule)" class="btn-secondary compact" @click="openRoundDocs(selectedSchedule)">
+                  <span class="material-symbols-rounded">folder_open</span>
+                  เอกสารของรอบ
+                  <template v-if="selectedSchedule.permit_unsigned_count">(ยังไม่เซ็น {{ selectedSchedule.permit_unsigned_count }})</template>
                 </button>
               </div>
             </div>
@@ -1285,6 +1295,141 @@
                   </a>
                   <span v-else class="border-pass-file missing"><small>ยังไม่ส่ง{{ side[1] }}</small></span>
                 </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- เอกสารทั้งรอบ — แบบฟอร์มอุทยาน (ใครยังไม่เซ็น + ลิงก์ส่งให้เจ้าตัว) และไฟล์ที่ลูกค้าแนบ -->
+    <div class="modal-overlay" v-if="roundDocs.open" @click.self="roundDocs.open = false">
+      <div class="modal-card" style="max-width: 860px">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">
+              <span class="material-symbols-rounded" style="vertical-align:-4px;">folder_open</span>
+              เอกสารของรอบ
+            </h2>
+            <p class="modal-subtitle">
+              {{ roundDocs.data?.trip_title || roundDocs.schedule?.trip_title || '' }}
+              · {{ formatDate(roundDocs.data?.departure_date || roundDocs.schedule?.start) }}
+              <template v-if="roundDocs.data"> · {{ roundDocs.data.total }} คน</template>
+            </p>
+          </div>
+          <button class="modal-close" @click="roundDocs.open = false">
+            <span class="material-symbols-rounded">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p v-if="roundDocs.loading" class="export-note">กำลังโหลด…</p>
+          <template v-else-if="roundDocs.data">
+            <div class="docs-stats">
+              <div v-if="roundDocs.data.permit_form" class="docs-stat">
+                <span>แบบฟอร์มอุทยาน · {{ roundDocs.data.permit_form.name }}</span>
+                <strong v-if="roundDocs.data.permit_form.requires_signature" :class="{ 'text-low': roundDocs.data.unsigned_count }">
+                  เซ็นแล้ว {{ roundDocs.data.signed_count }}/{{ roundDocs.data.total }} คน
+                </strong>
+                <strong v-else>ไม่มีช่องลายเซ็น</strong>
+                <small v-if="roundDocs.data.permit_form.deadline_label">ควรเซ็นภายใน {{ roundDocs.data.permit_form.deadline_label }}</small>
+              </div>
+              <div v-else class="docs-stat muted">
+                <span>แบบฟอร์มอุทยาน</span>
+                <strong>ทริปนี้ไม่ได้ผูกแบบฟอร์ม</strong>
+              </div>
+              <div class="docs-stat">
+                <span>ไฟล์ที่ลูกค้าแนบ</span>
+                <strong>{{ roundDocs.data.file_count }} ไฟล์</strong>
+                <small v-if="roundDocs.data.missing_documents_count" class="text-low">
+                  ยังขาดเอกสารบังคับ {{ roundDocs.data.missing_documents_count }} คน
+                </small>
+              </div>
+            </div>
+
+            <div class="docs-actions">
+              <button class="btn-primary" :disabled="!!roundDocs.downloading" @click="downloadRoundDocs()">
+                <span class="material-symbols-rounded">{{ roundDocs.downloading === 'all' ? 'hourglass_top' : 'folder_zip' }}</span>
+                ดาวน์โหลดทั้งรอบ (ZIP โฟลเดอร์ละคน)
+              </button>
+              <button
+                v-if="roundDocs.data.permit_form"
+                class="btn-secondary"
+                :disabled="!!roundDocs.downloading"
+                @click="downloadRoundPermitPdf"
+              >
+                <span class="material-symbols-rounded">{{ roundDocs.downloading === 'permit' ? 'hourglass_top' : 'picture_as_pdf' }}</span>
+                แบบฟอร์มอุทยานรวมไฟล์เดียว
+              </button>
+              <button v-if="roundDocs.data.unsigned_count" class="btn-secondary" @click="copyAllSignLinks">
+                <span class="material-symbols-rounded">{{ roundDocs.copied === 'all' ? 'check' : 'content_copy' }}</span>
+                {{ roundDocs.copied === 'all' ? 'ก๊อปแล้ว' : `ก๊อปลิงก์ทุกคนที่ยังไม่เซ็น (${roundDocs.data.unsigned_count})` }}
+              </button>
+            </div>
+            <p class="export-note">
+              🔒 ไฟล์มีเลขบัตรและเอกสารส่วนตัว ใช้ยื่นอุทยาน/หน่วยงานเท่านั้น · ไฟล์แบบฟอร์มของคนที่ยังไม่เซ็นจะมีคำว่า
+              "(ยังไม่เซ็น)" ในชื่อ · ลิงก์เซ็นเปิดได้โดยไม่ต้องล็อกอิน ส่งให้เจ้าตัวทางไลน์ได้เลย
+            </p>
+
+            <div class="segmented docs-filter">
+              <button
+                v-for="option in roundDocsFilterOptions"
+                :key="option.value"
+                type="button"
+                class="segment"
+                :class="{ active: roundDocs.filter === option.value }"
+                @click="roundDocs.filter = option.value"
+              >
+                {{ option.label }}
+                <span class="tab-count">{{ option.count }}</span>
+              </button>
+            </div>
+
+            <p v-if="!filteredRoundDocs.length" class="export-note">ไม่มีรายชื่อในกลุ่มนี้</p>
+            <div v-for="person in filteredRoundDocs" :key="person.passenger_id" class="docs-row">
+              <div class="docs-person">
+                <strong>
+                  {{ person.index }}. {{ [person.title, person.name].filter(Boolean).join(' ') }}
+                  <em v-if="person.nickname" class="cell-nickname">({{ person.nickname }})</em>
+                </strong>
+                <div class="cell-chips">
+                  <span class="ref-chip">{{ person.booking_ref }}</span>
+                  <span v-if="person.permit_signed === true" class="tiny-chip check">เซ็นแบบฟอร์มแล้ว</span>
+                  <span v-else-if="person.permit_signed === false" class="tiny-chip unsigned">ยังไม่เซ็นแบบฟอร์ม</span>
+                </div>
+                <span v-if="person.customer_name" class="cell-owner">ผู้จอง: {{ person.customer_name }}</span>
+                <span v-if="person.missing_labels.length" class="docs-missing">ยังขาด: {{ person.missing_labels.join(', ') }}</span>
+              </div>
+              <div class="docs-files">
+                <template v-for="doc in person.documents" :key="doc.key">
+                  <a
+                    v-for="(file, n) in doc.files"
+                    :key="file.id"
+                    :href="file.url"
+                    target="_blank"
+                    rel="noopener"
+                    class="border-pass-file"
+                    :title="file.original_name"
+                  >
+                    <img v-if="file.is_image && file.url" :src="file.url" :alt="doc.label" />
+                    <span v-else class="material-symbols-rounded">description</span>
+                    <small>{{ doc.label }}<template v-if="doc.files.length > 1"> {{ n + 1 }}</template></small>
+                  </a>
+                  <span v-if="doc.is_missing" class="border-pass-file missing"><small>ยังไม่ส่ง{{ doc.label }}</small></span>
+                </template>
+              </div>
+              <div class="docs-row-actions">
+                <button v-if="person.sign_url" class="btn-export-mini docs" @click="copySignLink(person)">
+                  <span class="material-symbols-rounded">{{ roundDocs.copied === person.passenger_id ? 'check' : 'content_copy' }}</span>
+                  {{ roundDocs.copied === person.passenger_id ? 'ก๊อปแล้ว' : 'ก๊อปลิงก์เซ็น' }}
+                </button>
+                <button
+                  class="btn-export-mini docs"
+                  :disabled="!!roundDocs.downloading || (!roundDocs.data.permit_form && !person.file_count)"
+                  @click="downloadRoundDocs(person)"
+                >
+                  <span class="material-symbols-rounded">{{ roundDocs.downloading === person.passenger_id ? 'hourglass_top' : 'download' }}</span>
+                  ดาวน์โหลดของคนนี้
+                </button>
               </div>
             </div>
           </template>
@@ -2751,6 +2896,133 @@ async function openBorderPass(sch) {
   } finally {
     borderPass.loading = false;
   }
+}
+
+// เอกสารของรอบ — แบบฟอร์มอุทยาน + ไฟล์ที่ลูกค้าแนบ โหลดตอนกดเปิดเท่านั้นเหมือน Border Pass
+// (ลิงก์ไฟล์เป็น signed URL อายุสั้น) ZIP สร้างที่เซิร์ฟเวอร์ทุกครั้ง ไม่มีไฟล์ค้าง
+const roundDocs = reactive({ open: false, loading: false, data: null, schedule: null, filter: 'all', downloading: null, copied: null });
+
+function hasRoundDocuments(sch) {
+  return Boolean(sch?.permit_form_name || sch?.document_requirement_count || sch?.border_pass_count);
+}
+
+const roundDocsPeople = computed(() => (roundDocs.data?.passengers || []).map((p, i) => ({ ...p, index: i + 1 })));
+
+const roundDocsFilterOptions = computed(() => {
+  const people = roundDocsPeople.value;
+  const options = [{ value: 'all', label: 'ทั้งหมด', count: people.length }];
+  if (roundDocs.data?.permit_form?.requires_signature) {
+    options.push({ value: 'unsigned', label: 'ยังไม่เซ็น', count: people.filter((p) => p.permit_signed === false).length });
+  }
+  options.push({ value: 'missing', label: 'ขาดเอกสาร', count: people.filter((p) => p.missing_labels.length).length });
+  return options;
+});
+
+const filteredRoundDocs = computed(() => roundDocsPeople.value.filter((p) => {
+  if (roundDocs.filter === 'unsigned') return p.permit_signed === false;
+  if (roundDocs.filter === 'missing') return p.missing_labels.length > 0;
+  return true;
+}));
+
+async function openRoundDocs(sch) {
+  Object.assign(roundDocs, { open: true, loading: true, data: null, schedule: sch, filter: 'all', copied: null });
+  try {
+    const res = await api.get(`/admin/calendar/schedules/${sch.id}/documents`);
+    roundDocs.data = res.data.data;
+    // ตัวเลขบนการ์ดมาจากตอนโหลดปฏิทิน — ให้ตรงกับที่เพิ่งเห็นในโมดัล
+    if (roundDocs.data.permit_form?.requires_signature) sch.permit_unsigned_count = roundDocs.data.unsigned_count;
+  } catch (e) {
+    roundDocs.open = false;
+    alert(e.response?.data?.message || 'โหลดเอกสารของรอบไม่สำเร็จ');
+  } finally {
+    roundDocs.loading = false;
+  }
+}
+
+function saveBlob(data, type, filename) {
+  const url = URL.createObjectURL(new Blob([data], { type }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// คำตอบ error ของคำขอแบบ blob เป็น Blob — แกะข้อความภาษาไทยจาก JSON ข้างใน
+async function blobErrorMessage(e, fallback) {
+  try {
+    const body = JSON.parse(await e.response.data.text());
+    return body.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeFileName(name) {
+  return String(name || '').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'เอกสาร';
+}
+
+// ไม่ส่ง person = ทั้งรอบ (โฟลเดอร์ละคน) · ส่ง person = เฉพาะคนนั้น
+async function downloadRoundDocs(person = null) {
+  const data = roundDocs.data;
+  if (!data || roundDocs.downloading) return;
+  roundDocs.downloading = person ? person.passenger_id : 'all';
+  try {
+    const res = await api.get(`/admin/calendar/schedules/${data.schedule_id}/documents/download`, {
+      params: person ? { passenger_id: person.passenger_id } : {},
+      responseType: 'blob',
+    });
+    const who = person ? person.name : data.trip_title;
+    saveBlob(res.data, 'application/zip', `เอกสาร-${safeFileName(who)}-${data.departure_date || data.schedule_id}.zip`);
+  } catch (e) {
+    alert(await blobErrorMessage(e, 'ดาวน์โหลดเอกสารไม่สำเร็จ'));
+  } finally {
+    roundDocs.downloading = null;
+  }
+}
+
+async function downloadRoundPermitPdf() {
+  const data = roundDocs.data;
+  if (!data?.permit_form || roundDocs.downloading) return;
+  roundDocs.downloading = 'permit';
+  try {
+    const res = await api.get(`/admin/schedules/${data.schedule_id}/permit-forms`, { responseType: 'blob' });
+    saveBlob(res.data, 'application/pdf', `แบบฟอร์ม-${safeFileName(data.permit_form.name)}-${data.departure_date || data.schedule_id}.pdf`);
+  } catch (e) {
+    alert(await blobErrorMessage(e, 'สร้างแบบฟอร์มไม่สำเร็จ'));
+  } finally {
+    roundDocs.downloading = null;
+  }
+}
+
+async function copyRoundDocsText(text, key) {
+  try {
+    await navigator.clipboard.writeText(text);
+    roundDocs.copied = key;
+    setTimeout(() => {
+      if (roundDocs.copied === key) roundDocs.copied = null;
+    }, 2000);
+  } catch {
+    window.prompt('ก๊อปข้อความนี้', text);
+  }
+}
+
+function copySignLink(person) {
+  if (person.share_text) copyRoundDocsText(person.share_text, person.passenger_id);
+}
+
+function copyAllSignLinks() {
+  const people = roundDocsPeople.value.filter((p) => p.sign_url);
+  if (!people.length) return;
+  const data = roundDocs.data;
+  const text = [
+    `แบบฟอร์มอุทยาน ${data.trip_title || ''}${data.permit_form?.deadline_label ? ` (เซ็นภายใน ${data.permit_form.deadline_label})` : ''} — ใครยังไม่เซ็น กดลิงก์ของตัวเองได้เลยครับ (ไม่ต้องสมัครสมาชิก)`,
+    '',
+    ...people.map((p) => `• ${p.nickname || p.name}: ${p.sign_url}`),
+  ].join('\n');
+  copyRoundDocsText(text, 'all');
 }
 
 // Scope helpers — a round, a whole trip, or everything currently shown.
@@ -4663,6 +4935,59 @@ onUnmounted(() => {
 .border-pass-file.missing small { position: static; background: none; color: #b91c1c; }
 @media (max-width: 640px) {
   .border-pass-row { flex-direction: column; }
+}
+
+.btn-export-mini.docs {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+}
+.btn-export-mini.docs:hover { background: #e0e7ff; }
+.docs-badge {
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 10px;
+  padding: 1px 6px;
+}
+.docs-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+.docs-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #6b7280;
+}
+.docs-stat strong { font-size: 15px; color: #111827; }
+.docs-stat strong.text-low, .docs-stat small.text-low { color: #b45309; }
+.docs-stat.muted strong { color: #9ca3af; font-size: 13px; }
+.docs-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.docs-filter { margin: 12px 0 4px; }
+.docs-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+.docs-person { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 13px; }
+.docs-missing { color: #b45309; font-size: 12px; font-weight: 700; }
+.docs-files { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.docs-files .border-pass-file { width: 76px; height: 54px; }
+.docs-row-actions { display: flex; flex-direction: column; gap: 6px; }
+.tiny-chip.unsigned { background: #fef3c7; color: #92400e; }
+@media (max-width: 640px) {
+  .docs-row { grid-template-columns: minmax(0, 1fr); }
+  .docs-files { justify-content: flex-start; }
+  .docs-row-actions { flex-direction: row; flex-wrap: wrap; }
 }
 
 .tiny-chip.border-pass {

@@ -17,9 +17,9 @@ use App\Http\Controllers\Api\V1\AdminOnsiteMoneyController;
 use App\Http\Controllers\Api\V1\AdminPageContentController;
 use App\Http\Controllers\Api\V1\AdminPartnerController;
 use App\Http\Controllers\Api\V1\AdminPaymentController;
+use App\Http\Controllers\Api\V1\AdminPermitFormController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
 use App\Http\Controllers\Api\V1\AdminPriceSheetController;
-use App\Http\Controllers\Api\V1\AdminPermitFormController;
 use App\Http\Controllers\Api\V1\AdminRentalController;
 use App\Http\Controllers\Api\V1\AdminSeatHandoverController;
 use App\Http\Controllers\Api\V1\AdminSettingsController;
@@ -76,12 +76,11 @@ use App\Http\Controllers\Api\V1\PackingController;
 use App\Http\Controllers\Api\V1\PageContentController;
 use App\Http\Controllers\Api\V1\PartnerController;
 use App\Http\Controllers\Api\V1\PartyGameController;
-use App\Http\Controllers\Api\V1\PermitSignatureController;
-use App\Http\Controllers\Api\V1\ThaiAddressController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PermitSignatureController;
 use App\Http\Controllers\Api\V1\PhotoController;
 use App\Http\Controllers\Api\V1\PickupVehicleClassController;
 use App\Http\Controllers\Api\V1\PlaceController;
@@ -107,6 +106,7 @@ use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\StaffPhotoController;
 use App\Http\Controllers\Api\V1\StickerController;
 use App\Http\Controllers\Api\V1\SupportController;
+use App\Http\Controllers\Api\V1\ThaiAddressController;
 use App\Http\Controllers\Api\V1\TravelDocumentController;
 use App\Http\Controllers\Api\V1\TripAlertController;
 use App\Http\Controllers\Api\V1\TripAttendanceController;
@@ -1145,6 +1145,10 @@ Route::prefix('v1')->group(function () {
         Route::get('calendar/schedules/{id}/payments', [AdminExtendedController::class, 'schedulePayments'])->whereNumber('id');
         // รายชื่อ + รูปบัตรประชาชนหน้า/หลังของคนทำ Border Pass ทั้งรอบ — ใช้ยื่นด่าน
         Route::get('calendar/schedules/{id}/border-pass', [AdminExtendedController::class, 'borderPassList'])->whereNumber('id');
+        // เอกสารทั้งรอบ: แบบฟอร์มอุทยาน (ใครยังไม่เซ็น + ลิงก์) + ไฟล์ที่ลูกค้าแนบ, ZIP ทั้งรอบ/รายคน
+        Route::get('calendar/schedules/{id}/documents', [AdminExtendedController::class, 'scheduleDocuments'])->whereNumber('id');
+        Route::get('calendar/schedules/{id}/documents/download', [AdminExtendedController::class, 'downloadScheduleDocuments'])
+            ->whereNumber('id')->middleware('throttle:30,1');
 
         // Inline edit of a manifest passenger (e.g. backfill birth date)
         Route::patch('passengers/{id}', [AdminExtendedController::class, 'updatePassenger'])->whereNumber('id');

@@ -21,6 +21,7 @@ use App\Models\VehicleMaintenance;
 use App\Rules\ThaiName;
 use App\Services\BookingDocumentService;
 use App\Services\PassengerCheckInService;
+use App\Services\ScheduleDocumentService;
 use App\Support\Countries;
 use App\Support\MediaDisk;
 use App\Support\TripDocumentRequirements;
@@ -30,6 +31,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 class AdminExtendedController extends Controller
 {
@@ -43,7 +45,7 @@ class AdminExtendedController extends Controller
     public function calendarSchedules(Request $request): JsonResponse
     {
         $query = TripSchedule::with([
-            'trip',
+            'trip.permitForm',
             'vehicle',
             'bookings.passengers.pickupPoint',
             'bookings.seats',
@@ -219,6 +221,10 @@ class AdminExtendedController extends Controller
                 'travel_document_mode' => $s->trip->travelDocumentMode(),
                 // จำนวนคนที่ทีมงานต้องยื่นทำ Border Pass ให้ในรอบนี้
                 'border_pass_count' => collect($passengerManifest)->where('travel_document', 'border_pass')->count(),
+                // ปุ่ม "เอกสาร" ของรอบ — ขึ้นเมื่อทริปมีแบบฟอร์มอุทยานหรือขอเอกสารแนบ
+                'permit_form_name' => $s->trip->permitForm?->name,
+                'permit_unsigned_count' => self::permitUnsignedCount($s, $activeBookings),
+                'document_requirement_count' => count(TripDocumentRequirements::normalize($s->trip->document_requirements)),
                 'vehicle' => $s->vehicle?->name,
                 'transport_type' => $s->transport_type,
                 'total_seats' => $s->total_seats,
@@ -308,6 +314,21 @@ class AdminExtendedController extends Controller
      * modal rather than folded into calendarSchedules(), so the year-wide calendar
      * payload stays lean and slip URLs are always freshly signed when viewed.
      */
+    /** คนที่ยังต้องเซ็นแบบฟอร์มอุทยานของรอบ — null = ทริปนี้ไม่มีช่องลายเซ็น */
+    private static function permitUnsignedCount(TripSchedule $schedule, Collection $activeBookings): ?int
+    {
+        $form = $schedule->trip->permitForm;
+
+        if (! $form?->requiresSignature()) {
+            return null;
+        }
+
+        return $activeBookings
+            ->flatMap(fn (Booking $booking) => $booking->passengers)
+            ->filter(fn (BookingPassenger $p) => $p->not_going_at === null && ! $p->hasCompletedPermitForm($form))
+            ->count();
+    }
+
     public function schedulePayments(int $id): JsonResponse
     {
         $schedule = TripSchedule::findOrFail($id);
@@ -540,6 +561,41 @@ class AdminExtendedController extends Controller
             'passengers' => $rows,
             'missing_count' => $rows->filter(fn ($row) => ! $row['front'] || ! $row['back'])->count(),
         ]);
+    }
+
+    /**
+     * เอกสารทั้งรอบ — ใครเซ็นแบบฟอร์มอุทยานแล้ว/ยัง (พร้อมลิงก์ส่งให้เจ้าตัว) และไฟล์ที่
+     * แต่ละคนแนบมา โหลดตอนกดเปิดเท่านั้นเหมือนรายชื่อ Border Pass
+     */
+    public function scheduleDocuments(int $id, ScheduleDocumentService $documents): JsonResponse
+    {
+        return $this->success($documents->summary(TripSchedule::findOrFail($id)));
+    }
+
+    /** ZIP เอกสารทั้งรอบ (โฟลเดอร์ละคน) หรือ `?passenger_id=` เฉพาะคนเดียว */
+    public function downloadScheduleDocuments(Request $request, int $id, ScheduleDocumentService $documents): Response|JsonResponse
+    {
+        $schedule = TripSchedule::with('trip.permitForm')->findOrFail($id);
+        $passengerId = $request->filled('passenger_id') ? (int) $request->query('passenger_id') : null;
+        $passenger = null;
+
+        if ($passengerId !== null) {
+            $passenger = $documents->passengers($schedule)->firstWhere('id', $passengerId);
+            if (! $passenger) {
+                return $this->error('ไม่พบผู้เดินทางคนนี้ในรอบ', 404);
+            }
+        }
+
+        $path = $documents->zip($schedule, $passengerId);
+
+        if ($path === null) {
+            return $this->error('ยังไม่มีเอกสารให้ดาวน์โหลด', 422);
+        }
+
+        return response()->download($path, $documents->zipName($schedule, $passenger), [
+            'Content-Type' => 'application/zip',
+            'Cache-Control' => 'no-store',
+        ])->deleteFileAfterSend();
     }
 
     public function passportFollowup(Request $request, BookingDocumentService $documents): JsonResponse

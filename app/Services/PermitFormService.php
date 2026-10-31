@@ -149,7 +149,8 @@ class PermitFormService
         $passengers = $this->passengersFor($schedule);
         $needsSignature = $form->requiresSignature();
 
-        $path = tempnam(sys_get_temp_dir(), 'permit-').'.zip';
+        // ใช้ไฟล์ที่ tempnam สร้างตรง ๆ — ต่อ .zip เมื่อก่อนทิ้งไฟล์เปล่าค้างไว้ทุกครั้ง
+        $path = tempnam(sys_get_temp_dir(), 'permit-');
         $zip = new \ZipArchive;
         $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
@@ -176,6 +177,14 @@ class PermitFormService
         $schedule = $passenger->booking->schedule;
 
         return $this->renderPassengers($form, $schedule, collect([$passenger]), $this->passengersFor($schedule)->count());
+    }
+
+    /** PDF ของคนเดียวเมื่อผู้เรียกรู้ขนาดกลุ่มของรอบอยู่แล้ว — ไม่ต้องนับใหม่ทุกคน */
+    public function renderPassengerInRound(PermitForm $form, BookingPassenger $passenger, TripSchedule $schedule, int $groupSize): string
+    {
+        $schedule->loadMissing('trip');
+
+        return $this->render($form, [$this->rowFor($form, $passenger, $schedule, $groupSize)]);
     }
 
     /**
