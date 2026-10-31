@@ -502,6 +502,17 @@
               </div>
             </div>
 
+            <!-- แบบฟอร์มอุทยาน — บอกล่วงหน้าว่าหลังจองต้องเซ็น และอุทยานขอที่อยู่อะไร (ไม่ถามตอนจอง)
+                 คำมาจากเซิร์ฟเวอร์ (PermitForm::customerNotice) -->
+            <div v-if="schedule?.trip?.permit_notice"
+              class="mb-6 flex items-start gap-3 p-5 rounded-3xl bg-amber-50 border border-amber-100">
+              <span class="material-symbols-rounded text-amber-600 shrink-0">assignment</span>
+              <div>
+                <p class="font-bold text-amber-900">{{ schedule.trip.permit_notice.title }}</p>
+                <p class="text-sm text-amber-800 mt-0.5">{{ schedule.trip.permit_notice.body }}</p>
+              </div>
+            </div>
+
             <!-- Countdown -->
             <CountdownTimer v-if="seatsStore.countdownSeconds > 0"
               :seconds="seatsStore.countdownSeconds" class="mb-6" />

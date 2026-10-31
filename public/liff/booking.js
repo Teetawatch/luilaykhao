@@ -1094,6 +1094,12 @@ function renderPassengerStep() {
   });
   content.appendChild(forRow);
 
+  // แบบฟอร์มอุทยาน — บอกล่วงหน้าว่าหลังจองต้องเซ็น และอุทยานขอที่อยู่อะไร (ไม่ถามตอนจอง)
+  const permit = bk.trip?.permit_notice;
+  if (permit) {
+    content.appendChild(el(`<div class="banner warn"><b>📝 ${esc(permit.title)}</b><br>${esc(permit.body)}</div>`));
+  }
+
   bk.passengers.forEach((p, i) => content.appendChild(passengerCard(p, i)));
 
   node.appendChild(content);

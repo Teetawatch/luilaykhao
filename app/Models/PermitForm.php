@@ -37,4 +37,38 @@ class PermitForm extends Model
     {
         return collect($this->fields ?? [])->contains('source', PermitFormFields::SIGNATURE);
     }
+
+    /**
+     * ข้อความแจ้งในหน้าจอง (เว็บ/แอป/LIFF วาดตามนี้) — บอกล่วงหน้าว่าหลังจองต้องเซ็น
+     * แบบฟอร์ม และอุทยานขอที่อยู่อะไรบ้าง ที่อยู่ไม่ได้ถามตอนจอง (ดู
+     * PermitFormFields::ASK_INPUTS) แค่ให้รู้ตัวและเตรียมไว้
+     *
+     * null = ไม่มีอะไรให้ลูกค้าทำ (ฟอร์มไม่มีช่องลายเซ็น ทีมงานกรอกยื่นให้เอง)
+     *
+     * @return array{title: string, body: string}|null
+     */
+    public function customerNotice(): ?array
+    {
+        if (! $this->requiresSignature()) {
+            return null;
+        }
+
+        $labels = [];
+        foreach (PermitFormFields::askedInputs($this->fields ?? []) as $key) {
+            $labels[] = PermitFormFields::ASK_INPUTS[$key][0];
+            // รหัสไปรษณีย์ระบบหาให้จากตำบล — แต่อุทยานขอ ลูกค้าควรรู้ว่าอยู่ในชุดนี้
+            if ($key === 'province') {
+                $labels[] = 'รหัสไปรษณีย์';
+            }
+        }
+
+        $body = $labels === []
+            ? 'อุทยานกำหนดให้ผู้เดินทางทุกคนเซ็นแบบฟอร์มของอุทยาน ข้อมูลที่กรอกตอนจองจะถูกเติมลงแบบฟอร์มให้ '
+                .'หลังจองแล้วแต่ละคนจะได้ลิงก์ไปตรวจและเซ็นบนมือถือก่อนเดินทาง'
+            : 'อุทยานกำหนดให้ผู้เดินทางทุกคนเซ็นแบบฟอร์มของอุทยาน และต้องใช้ที่อยู่ตามทะเบียนบ้าน ('
+                .implode(' ', $labels).') ไม่ต้องกรอกตอนจอง หลังจองแล้วแต่ละคนจะได้ลิงก์ไปกรอกที่อยู่'
+                .'และเซ็นบนมือถือก่อนเดินทาง';
+
+        return ['title' => 'ทริปนี้มีแบบฟอร์มอุทยาน', 'body' => $body];
+    }
 }

@@ -193,6 +193,11 @@
               />
               <p class="pf-muted pf-help">ลูกค้าที่ยังไม่เซ็นจะได้แจ้งเตือนวันละครั้ง 2 วันก่อนถึงกำหนดจนถึงวันกำหนด</p>
             </template>
+            <p v-else-if="askedWithoutSignature" class="pf-warn">
+              <i class="fas fa-triangle-exclamation"></i>
+              ฟอร์มนี้มีช่องที่อยู่/โทรศัพท์บ้าน ซึ่งลูกค้ากรอกตอนเซ็นเท่านั้น แต่ยังไม่มีช่อง "ลายเซ็น"
+              — ลูกค้าจะไม่ถูกถาม และช่องเหล่านี้จะว่างในไฟล์ วางช่องลายเซ็นด้วยครับ
+            </p>
             <p v-else class="pf-muted pf-help">วางช่อง "ลายเซ็น" ถ้าอยากให้ลูกค้าเซ็นในแอป/เว็บ/ลิงก์ก่อนเดินทาง</p>
             <label class="pf-label">หมายเหตุ</label>
             <input v-model="editing.note" maxlength="500" placeholder="เช่น ปีงบ 2570 ส่งทางอีเมลอุทยาน" @input="dirty = true" />
@@ -299,6 +304,9 @@ function labelOf(key) { return catalogByKey.value[key]?.label || key; }
 function isCheck(key) { return catalogByKey.value[key]?.type === 'check'; }
 function isSignature(key) { return catalogByKey.value[key]?.type === 'signature'; }
 const hasSignatureField = computed(() => (editing.value?.fields || []).some((f) => isSignature(f.source)));
+// ช่องที่อยู่ถามลูกค้าตอนเซ็นเท่านั้น — ไม่มีช่องลายเซ็น = ไม่มีใครถาม ช่องจะว่างในฟอร์ม
+const askedWithoutSignature = computed(() => !hasSignatureField.value
+  && (editing.value?.fields || []).some((f) => catalogByKey.value[f.source]?.asks_customer));
 function sampleOf(field) {
   if (isCheck(field.source)) return '✓';
   if (isSignature(field.source)) return '( ลายเซ็น )';
@@ -812,6 +820,15 @@ onBeforeUnmount(() => {
 .pf-editor { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
 
 .pf-hint { font-size: 13px; color: #6b7280; margin: 0 0 10px; }
+.pf-warn {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.5;
+}
 .pf-hint.armed { color: #1d4ed8; font-weight: 600; }
 
 .pf-page {

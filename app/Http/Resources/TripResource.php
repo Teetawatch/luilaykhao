@@ -125,6 +125,9 @@ class TripResource extends JsonResource
             'border_pass_documents' => $this->offersBorderPass()
                 ? TripDocumentRequirements::borderPass()
                 : [],
+            // แจ้งในหน้าจองว่าหลังจองต้องเซ็นแบบฟอร์มอุทยาน (+ ที่อยู่ที่อุทยานขอ) — null = ไม่มี
+            // ทริปส่วนใหญ่ไม่มีแบบฟอร์ม จึงโหลดฟอร์มเฉพาะทริปที่ผูกไว้
+            'permit_notice' => $this->permit_form_id ? $this->permitForm?->customerNotice() : null,
             'checkin_bring' => $this->checkinBringNote(),
             // มื้ออาหาร: `meal_plan` คือค่าที่แอดมินแก้ (ฟอร์มแก้ทริปอ่านกลับ) ส่วน `meals`
             // คือฉบับที่นับและเรียงคำให้แล้ว ทุกหน้าจอลูกค้าวาดตัวนี้ — null ทั้งคู่ = ยังไม่ระบุ

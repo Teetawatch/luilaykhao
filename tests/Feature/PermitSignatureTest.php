@@ -648,4 +648,34 @@ class PermitSignatureTest extends TestCase
         $this->get("/permit-signatures/{$p->id}")->assertForbidden();
         $this->get(URL::temporarySignedRoute('public.permit-signature', now()->addMinute(), ['passenger' => $p->id]))->assertOk();
     }
+
+    public function test_booking_page_is_told_in_advance_about_the_form_and_the_address_it_asks(): void
+    {
+        $slug = fn (PermitForm $form) => $this->booking($form)->schedule->trip->slug;
+
+        $notice = $this->getJson('/api/v1/trips/'.$slug($this->addressForm()))
+            ->assertOk()
+            ->json('data.permit_notice');
+        $this->assertSame('ทริปนี้มีแบบฟอร์มอุทยาน', $notice['title']);
+        $this->assertStringContainsString('บ้านเลขที่ หมู่ที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์ โทรศัพท์ (บ้าน)', $notice['body']);
+        $this->assertStringContainsString('ไม่ต้องกรอกตอนจอง', $notice['body']);
+
+        // ฟอร์มที่มีแค่ลายเซ็น — แจ้งเรื่องเซ็น ไม่พูดถึงที่อยู่
+        $plain = $this->getJson('/api/v1/trips/'.$slug($this->form()))->json('data.permit_notice.body');
+        $this->assertStringNotContainsString('ที่อยู่', $plain);
+
+        // ไม่มีช่องลายเซ็น = ทีมงานกรอกยื่นเอง ลูกค้าไม่ต้องทำอะไร
+        $this->getJson('/api/v1/trips/'.$slug($this->form(withSignature: false)))
+            ->assertJsonPath('data.permit_notice', null);
+    }
+
+    public function test_editor_catalog_marks_fields_the_customer_fills_at_signing(): void
+    {
+        $catalog = collect($this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/permit-forms')->assertOk()->json('data.catalog'))->keyBy('key');
+
+        $this->assertTrue($catalog['addr_house_no']['asks_customer']);
+        $this->assertTrue($catalog['home_phone']['asks_customer']);
+        $this->assertFalse($catalog['first_name']['asks_customer']);
+    }
 }

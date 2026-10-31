@@ -210,6 +210,8 @@ class PermitFormFields
             'group' => $f[1],
             'type' => $f[2],
             'sample' => $f[3],
+            // ลูกค้ากรอกตอนเซ็น — ฟอร์มที่ไม่มีช่องลายเซ็นจะไม่มีขั้นให้กรอก หน้าแก้ฟอร์มเตือนไว้
+            'asks_customer' => isset(self::SOURCE_INPUTS[$key]),
         ])->values()->all();
     }
 
