@@ -85,6 +85,24 @@ class SiteOperatorSettingsTest extends TestCase
         $this->assertSame('ผู้ประกอบการเดิม', SiteSettings::operatorName());
     }
 
+    public function test_the_van_card_picture_survives_an_older_form_but_can_be_removed(): void
+    {
+        $this->actingAs($this->admin(), 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $this->validPayload([
+                'van_card_image' => 'https://cdn.example.com/media/van.png',
+            ]))
+            ->assertOk();
+        $this->assertSame('https://cdn.example.com/media/van.png', SiteSettings::vanCardImageUrl());
+
+        // ฟอร์มที่ไม่มีช่องนี้ต้องไม่ล้างรูปทิ้ง
+        $this->putJson('/api/v1/admin/settings/site', $this->validPayload())->assertOk();
+        $this->assertSame('https://cdn.example.com/media/van.png', SiteSettings::vanCardImageUrl());
+
+        // ส่ง null มาตรง ๆ = แอดมินกดเอารูปออก
+        $this->putJson('/api/v1/admin/settings/site', $this->validPayload(['van_card_image' => null]))->assertOk();
+        $this->assertNull(SiteSettings::vanCardImageUrl());
+    }
+
     public function test_the_public_stats_endpoint_carries_the_hours_and_legal_versions(): void
     {
         // publicStats นับลูกค้าด้วย User::role('customer') — บทบาทต้องมีอยู่จริง

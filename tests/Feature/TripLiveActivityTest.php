@@ -8,11 +8,13 @@ use App\Models\BookingMember;
 use App\Models\LiveActivity;
 use App\Models\ScheduleItineraryItem;
 use App\Models\SchedulePickupPoint;
+use App\Models\Setting;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Services\TripActivityService;
+use App\Support\SiteSettings;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -169,6 +171,28 @@ class TripLiveActivityTest extends TestCase
         $this->assertNull($state['kicker']);
         $this->assertSame('https://cdn.example.com/media/commuter.png', $state['vehicle_image_url']);
         $this->assertSame('https://cdn.example.com/media/somchai.jpg', $state['driver_photo_url']);
+    }
+
+    public function test_every_van_shares_the_one_van_picture_from_settings(): void
+    {
+        Setting::put(SiteSettings::KEY, ['van_card_image' => 'https://cdn.example.com/media/van.png']);
+        $vehicleId = $this->vehicleId();
+        Vehicle::whereKey($vehicleId)->update(['driver_photo' => 'https://cdn.example.com/media/somchai.jpg']);
+        $this->schedule->update(['vehicle_id' => $vehicleId]);
+
+        $state = fn () => app(TripActivityService::class)->stateFor($this->booking->fresh(['schedule']));
+
+        // รถตู้หน้าตาเหมือนกันทุกคัน — รูปรถมาจากที่เดียว ที่ต่างกันต่อรอบคือคนขับ
+        $this->assertSame('https://cdn.example.com/media/van.png', $state()['vehicle_image_url']);
+        $this->assertSame('https://cdn.example.com/media/somchai.jpg', $state()['driver_photo_url']);
+
+        // คันที่หน้าตาต่างไปใส่รูปของตัวเองทับได้
+        Vehicle::whereKey($vehicleId)->update(['cutout_image' => 'https://cdn.example.com/media/vip.png']);
+        $this->assertSame('https://cdn.example.com/media/vip.png', $state()['vehicle_image_url']);
+
+        // เรือไม่ได้รูปรถตู้
+        Vehicle::whereKey($vehicleId)->update(['cutout_image' => null, 'type' => 'boat']);
+        $this->assertNull($state()['vehicle_image_url']);
     }
 
     public function test_waiting_for_the_van_shows_it_without_a_minute_count(): void

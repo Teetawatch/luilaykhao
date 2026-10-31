@@ -538,7 +538,7 @@
           </div>
           <div class="form-grid">
             <div class="form-group full-width">
-              <label>รูปรถพื้นใส (การ์ดหน้าจอล็อก)</label>
+              <label>รูปรถเฉพาะคันนี้ (ไม่บังคับ)</label>
               <div class="media-upload-row">
                 <div class="media-preview-sm cutout-preview" v-if="form.cutout_image">
                   <img :src="form.cutout_image" />
@@ -554,8 +554,8 @@
                 <input ref="cutoutInput" type="file" hidden accept="image/png,image/webp" @change="handleMediaUpload($event, 'cutout')" />
               </div>
               <small class="field-hint">
-                PNG พื้นหลังโปร่งใส มุมเฉียงหน้ารถ — วางข้างรูปคนขับตอนรถกำลังมารับ
-                ถ้าไม่ใส่ การ์ดจะแสดงไอคอนรถแทน
+                ปกติไม่ต้องใส่ — รถตู้ทุกคันใช้รูปกลางจากหน้า "ตั้งค่าระบบ" อยู่แล้ว
+                ใส่เฉพาะคันที่หน้าตาต่างจากคันอื่น (PNG พื้นหลังโปร่งใส)
               </small>
               <button type="button" class="media-library-btn" @click="openVehicleMedia('cutout')">
                 <span class="material-symbols-rounded">photo_library</span> เลือกจากคลังสื่อ
@@ -2350,7 +2350,7 @@ onMounted(() => fetchData());
 .media-preview-sm { position: relative; width: 120px; height: 120px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .media-preview-sm img { width: 100%; height: 100%; object-fit: cover; }
 /* พื้นเข้มเท่าการ์ดหน้าจอล็อก — เห็นทันทีว่ารูปตัดพื้นหลังออกแล้วหรือยังเป็นกรอบขาว */
-.cutout-preview { width: 200px; background: #1b1f1e; }
+.cutout-preview { width: 200px; background: #0b1220; }
 .cutout-preview img { object-fit: contain; padding: 8px; }
 .video-preview { position: relative; width: 100%; max-width: 320px; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
 .video-preview video { width: 100%; display: block; }

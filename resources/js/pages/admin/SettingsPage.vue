@@ -366,6 +366,46 @@
           </span>
         </div>
       </section>
+
+      <!-- การ์ดวันเดินทาง -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">airport_shuttle</span>
+          <div>
+            <h2>การ์ดวันเดินทาง (หน้าจอล็อก)</h2>
+            <p>รูปรถตู้ที่วางคู่รูปคนขับตอนรถกำลังมารับลูกค้า ใช้รูปเดียวกับรถตู้ทุกคัน</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>รูปรถตู้พื้นใส</label>
+
+          <div class="van-preview">
+            <img v-if="form.van_card_image" :src="form.van_card_image" alt="รูปรถตู้บนการ์ด" />
+            <div v-else class="licence-empty">
+              <span class="material-symbols-rounded">directions_bus</span>
+              ยังไม่มีรูป — การ์ดแสดงไอคอนรถแทน
+            </div>
+          </div>
+
+          <div class="licence-actions">
+            <label class="upload-btn" :class="{ 'is-busy': vanUploading }">
+              <span class="material-symbols-rounded">{{ vanUploading ? 'hourglass_top' : 'upload' }}</span>
+              {{ vanUploading ? `กำลังอัปโหลด ${vanUploadPercent}%` : 'เลือกรูปรถตู้' }}
+              <input type="file" accept="image/png,image/webp" :disabled="vanUploading" @change="onPickVanImage" />
+            </label>
+            <button v-if="form.van_card_image" class="reset-link" :disabled="vanUploading" @click="form.van_card_image = ''">
+              เอารูปออก
+            </button>
+          </div>
+
+          <span class="help">
+            PNG พื้นหลังโปร่งใส มุมเฉียงหน้ารถ กว้าง 800px ขึ้นไป — พื้นเข้มด้านบนคือสีของการ์ดจริง
+            ถ้ายังเห็นกรอบขาวแปลว่ายังตัดพื้นหลังไม่หมด รูปคนขับมาจากทะเบียนคนขับของแต่ละคัน
+            <br />อัปโหลดแล้วต้องกด "บันทึกการตั้งค่า" ถึงจะมีผล
+          </span>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -406,6 +446,7 @@ const form = reactive({
   operator_address: '',
   licence_no: '',
   licence_image: '',
+  van_card_image: '',
 });
 
 const defaults = ref({});
@@ -460,6 +501,33 @@ function clearLicenceImage() {
   toast.info('จะกลับไปใช้รูปเดิมเมื่อกดบันทึก');
 }
 
+const vanUploading = ref(false);
+const vanUploadPercent = ref(0);
+
+async function onPickVanImage(event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+
+  if (file.size > MAX_LICENCE_BYTES) {
+    toast.error('ไฟล์ใหญ่เกิน 8 MB กรุณาย่อรูปก่อนอัปโหลด');
+    return;
+  }
+
+  vanUploading.value = true;
+  vanUploadPercent.value = 0;
+  try {
+    form.van_card_image = await uploadMedia(file, (loaded, total) => {
+      vanUploadPercent.value = total ? Math.round((loaded / total) * 100) : 0;
+    });
+    toast.success('อัปโหลดรูปแล้ว — กด "บันทึกการตั้งค่า" เพื่อให้มีผล');
+  } catch (e) {
+    toast.error(e.response?.data?.message || e.message || 'อัปโหลดไม่สำเร็จ');
+  } finally {
+    vanUploading.value = false;
+  }
+}
+
 function isChanged(key) {
   return form[key] !== defaults.value[key];
 }
@@ -477,7 +545,7 @@ async function load() {
     licenceImageUrl.value = res.data.data.licence_image_url || '';
     // ช่องข้อความว่างมาเป็น null จาก API — แปลงเป็นสตริงว่างให้ input ผูกค่าได้
     ['support_phone', 'support_line', 'support_email', 'support_hours', 'support_opens',
-      'support_closes', 'operator_name', 'operator_address', 'licence_image'].forEach((k) => {
+      'support_closes', 'operator_name', 'operator_address', 'licence_image', 'van_card_image'].forEach((k) => {
       form[k] = form[k] ?? '';
     });
   } catch {
@@ -502,6 +570,7 @@ async function save() {
       operator_address: form.operator_address?.trim() || null,
       licence_no: form.licence_no?.trim(),
       licence_image: form.licence_image?.trim() || null,
+      van_card_image: form.van_card_image?.trim() || null,
     });
     // เซิร์ฟเวอร์คืน URL ที่ใช้จริงหลังบันทึก — รวมกรณีถอยไปใช้รูปเดิม
     licenceImageUrl.value = res.data.data?.licence_image_url || '';
@@ -537,6 +606,16 @@ onMounted(load);
   height: 160px; color: #9ca3af; font-size: 13px; font-weight: 600;
 }
 .licence-empty .material-symbols-rounded { font-size: 32px; }
+
+/* พื้นสีเดียวกับการ์ดบนหน้าจอล็อก — เห็นทันทีว่าตัดพื้นหลังออกหมดหรือยัง */
+.van-preview {
+  margin: 4px 0 12px;
+  border-radius: 12px;
+  background: #0b1220;
+  overflow: hidden;
+}
+.van-preview img { display: block; width: 100%; max-height: 200px; object-fit: contain; padding: 16px; box-sizing: border-box; }
+.van-preview .licence-empty { color: #94a3b8; }
 
 .licence-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 

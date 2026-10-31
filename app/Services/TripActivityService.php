@@ -11,6 +11,7 @@ use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
 use App\Support\MediaDisk;
+use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -1672,10 +1673,20 @@ class TripActivityService
                 ? 'รถจะถึงจุดรับภายใน'
                 : null,
             'vehicle_summary' => $showing ? $this->vehicleSummary($vehicle) : null,
-            'vehicle_image_url' => MediaDisk::url($vehicle->cutout_image),
+            'vehicle_image_url' => $this->vehicleImageUrl($vehicle),
             'driver_photo_url' => MediaDisk::url($vehicle->driver_photo),
             'driver_name' => $driverName !== '' ? $driverName : null,
         ];
+    }
+
+    /**
+     * รูปรถของการ์ด — รูปเฉพาะคัน (ถ้าแอดมินใส่ไว้) ไม่งั้นรถตู้ใช้รูปกลางจาก
+     * /admin/settings ร่วมกันทุกคัน รถประเภทอื่นไม่ใช้รูปรถตู้ จะได้ไม่วาดรถตู้ให้คนรอเรือ
+     */
+    private function vehicleImageUrl(Vehicle $vehicle): ?string
+    {
+        return MediaDisk::url($vehicle->cutout_image)
+            ?? ($vehicle->type === 'van' ? SiteSettings::vanCardImageUrl() : null);
     }
 
     /** "9กข4835 · สีขาว · Toyota Commuter" — สิ่งที่ใช้มองหารถคันจริง เรียงตามที่ตาเห็นก่อน */

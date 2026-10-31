@@ -60,6 +60,7 @@ class AdminSettingsController extends Controller
             // เลขที่ใบอนุญาตเป็นเอกสารราชการ รูปแบบคือ เลขกลุ่ม/เลขลำดับ
             'licence_no' => ['required', 'string', 'regex:/^[0-9]{1,3}\/[0-9]{3,8}$/'],
             'licence_image' => ['nullable', 'string', 'max:2048'],
+            'van_card_image' => ['nullable', 'string', 'max:2048'],
             // บัญชีทริปโหมดเข้มงวด — nullable ทุกช่องเพราะ Setting::put เขียนทับทั้งก้อน
             // ฟอร์มรุ่นก่อนที่ยังไม่มีช่องเหล่านี้จึงต้องบันทึกผ่านได้โดยไม่ปิดโหมดทิ้งเงียบ ๆ
             'finance_strict_mode' => ['nullable', 'boolean'],
@@ -86,6 +87,11 @@ class AdminSettingsController extends Controller
         $data['support_closes'] = $data['support_closes'] ?? SiteSettings::supportCloses();
         $data['operator_name'] = $data['operator_name'] ?? (SiteSettings::get('operator_name') ?: null);
         $data['operator_address'] = $data['operator_address'] ?? (SiteSettings::get('operator_address') ?: null);
+
+        // ไม่ได้ส่งมาเลย (ฟอร์มรุ่นก่อน) ต่างจากส่ง null มา (แอดมินกดเอารูปออก)
+        if (! array_key_exists('van_card_image', $data)) {
+            $data['van_card_image'] = SiteSettings::get('van_card_image') ?: null;
+        }
 
         $data['finance_close_grace_days'] = (int) ($data['finance_close_grace_days'] ?? SiteSettings::financeCloseGraceDays());
 
