@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\PermitForm;
+use App\Models\StaffPermitSignature;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Services\PermitFormService;
 use App\Services\PermitSignatureService;
+use App\Services\StaffPermitService;
 use App\Support\PermitFormFields;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +34,7 @@ class AdminPermitFormController extends Controller
     public function __construct(
         private PermitFormService $forms,
         private PermitSignatureService $signatures,
+        private StaffPermitService $staffPermits,
     ) {}
 
     public function index(): JsonResponse
@@ -219,6 +222,44 @@ class AdminPermitFormController extends Controller
         $this->signatures->clear($passenger);
 
         return $this->success(null, 'ล้างลายเซ็นของ '.$passenger->displayName().' แล้ว');
+    }
+
+    /** เตือนสตาฟคนหนึ่งให้เซ็นแบบฟอร์มของตัวเอง — วันละครั้ง ไม่กินโควตาเตือนอัตโนมัติ */
+    public function remindStaff(int $scheduleId, int $userId): JsonResponse
+    {
+        $schedule = TripSchedule::with('trip.permitForm')->findOrFail($scheduleId);
+        $form = $this->staffPermits->formFor($schedule);
+        $user = $schedule->activeStaff()->where('users.id', $userId)->first();
+
+        if (! $form || ! $this->staffPermits->isOpen($schedule)) {
+            return $this->error('รอบนี้ไม่มีแบบฟอร์มที่ต้องเซ็นแล้ว', 422);
+        }
+
+        if (! $user) {
+            return $this->error('คนนี้ไม่ได้เป็นทีมงานของรอบนี้แล้ว', 404);
+        }
+
+        $row = $this->staffPermits->rowFor($schedule, $user);
+
+        if ($this->staffPermits->remindedToday($row)) {
+            return $this->error('แจ้งเตือนคนนี้ไปแล้ววันนี้ ลองส่งลิงก์ทางไลน์แทนได้ครับ', 422);
+        }
+
+        if (! $this->staffPermits->remind($row, $form, manual: true)) {
+            return $this->error('ทีมงานคนนี้เซ็นแล้ว', 422);
+        }
+
+        return $this->success(null, 'ส่งแจ้งเตือนให้ '.($user->nickname ?: $user->name).' แล้ว');
+    }
+
+    /** ล้างลายเซ็นของสตาฟคนหนึ่ง — เซ็นผิด หรือแก้ข้อมูลแล้วต้องเซ็นใหม่ */
+    public function clearStaffSignature(int $scheduleId, int $userId): JsonResponse
+    {
+        $row = StaffPermitSignature::where('schedule_id', $scheduleId)->where('user_id', $userId)->firstOrFail();
+
+        $this->staffPermits->clear($row);
+
+        return $this->success(null, 'ล้างลายเซ็นของทีมงานแล้ว');
     }
 
     private function pdf(string $bytes, string $filename): Response

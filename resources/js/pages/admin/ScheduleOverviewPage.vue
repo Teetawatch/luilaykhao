@@ -1315,6 +1315,7 @@
               {{ roundDocs.data?.trip_title || roundDocs.schedule?.trip_title || '' }}
               · {{ formatDate(roundDocs.data?.departure_date || roundDocs.schedule?.start) }}
               <template v-if="roundDocs.data"> · {{ roundDocs.data.total }} คน</template>
+              <template v-if="roundDocsStaff.length"> · ทีมงาน {{ roundDocsStaff.length }} คน</template>
             </p>
           </div>
           <button class="modal-close" @click="roundDocs.open = false">
@@ -1331,6 +1332,12 @@
                   เซ็นแล้ว {{ roundDocs.data.signed_count }}/{{ roundDocs.data.total }} คน
                 </strong>
                 <strong v-else>ไม่มีช่องลายเซ็น</strong>
+                <small
+                  v-if="roundDocs.data.permit_form.requires_signature && roundDocsStaff.length"
+                  :class="{ 'text-low': roundDocs.data.staff_unsigned_count }"
+                >
+                  ทีมงานเซ็นแล้ว {{ roundDocs.data.staff_signed_count }}/{{ roundDocsStaff.length }} คน
+                </small>
                 <small v-if="roundDocs.data.permit_form.deadline_label">ควรเซ็นภายใน {{ roundDocs.data.permit_form.deadline_label }}</small>
               </div>
               <div v-else class="docs-stat muted">
@@ -1360,9 +1367,9 @@
                 <span class="material-symbols-rounded">{{ roundDocs.downloading === 'permit' ? 'hourglass_top' : 'picture_as_pdf' }}</span>
                 แบบฟอร์มอุทยานรวมไฟล์เดียว
               </button>
-              <button v-if="roundDocs.data.unsigned_count" class="btn-secondary" @click="copyAllSignLinks">
+              <button v-if="roundDocsUnsignedTotal" class="btn-secondary" @click="copyAllSignLinks">
                 <span class="material-symbols-rounded">{{ roundDocs.copied === 'all' ? 'check' : 'content_copy' }}</span>
-                {{ roundDocs.copied === 'all' ? 'ก๊อปแล้ว' : `ก๊อปลิงก์ทุกคนที่ยังไม่เซ็น (${roundDocs.data.unsigned_count})` }}
+                {{ roundDocs.copied === 'all' ? 'ก๊อปแล้ว' : `ก๊อปลิงก์ทุกคนที่ยังไม่เซ็น (${roundDocsUnsignedTotal})` }}
               </button>
             </div>
             <p class="export-note">
@@ -1384,7 +1391,7 @@
               </button>
             </div>
 
-            <p v-if="!filteredRoundDocs.length" class="export-note">ไม่มีรายชื่อในกลุ่มนี้</p>
+            <p v-if="!filteredRoundDocs.length && !filteredRoundDocsStaff.length" class="export-note">ไม่มีรายชื่อในกลุ่มนี้</p>
             <div v-for="person in filteredRoundDocs" :key="person.passenger_id" class="docs-row">
               <div class="docs-person">
                 <strong>
@@ -1432,6 +1439,63 @@
                 </button>
               </div>
             </div>
+
+            <!-- สตาฟประจำรอบ — อุทยานลงทะเบียนทีมงานด้วย ข้อมูลเติมจากโปรไฟล์ของสตาฟ -->
+            <template v-if="filteredRoundDocsStaff.length">
+              <h3 class="docs-section-title">
+                ทีมงานประจำรอบ
+                <small>ข้อมูลในแบบฟอร์มมาจากโปรไฟล์ของสตาฟ · สตาฟเซ็นเองในแอปเมนูงานสตาฟ หรือลิงก์</small>
+              </h3>
+              <div v-for="member in filteredRoundDocsStaff" :key="`staff-${member.user_id}`" class="docs-row">
+                <div class="docs-person">
+                  <strong>
+                    {{ member.index }}. {{ [member.title, member.name].filter(Boolean).join(' ') }}
+                    <em v-if="member.nickname" class="cell-nickname">({{ member.nickname }})</em>
+                  </strong>
+                  <div class="cell-chips">
+                    <span class="tiny-chip staff">ทีมงาน</span>
+                    <span v-if="member.permit_signed === true" class="tiny-chip check">เซ็นแบบฟอร์มแล้ว</span>
+                    <span v-else-if="member.permit_signed === false" class="tiny-chip unsigned">ยังไม่เซ็นแบบฟอร์ม</span>
+                  </div>
+                  <span v-if="member.missing_profile.length" class="docs-missing">
+                    โปรไฟล์ยังขาด: {{ member.missing_profile.join(', ') }} (ช่องนี้ในฟอร์มจะว่าง)
+                  </span>
+                </div>
+                <div class="docs-files"></div>
+                <div class="docs-row-actions">
+                  <button v-if="member.sign_url" class="btn-export-mini docs" @click="copyStaffSignLink(member)">
+                    <span class="material-symbols-rounded">{{ roundDocs.copied === `staff-${member.user_id}` ? 'check' : 'content_copy' }}</span>
+                    {{ roundDocs.copied === `staff-${member.user_id}` ? 'ก๊อปแล้ว' : 'ก๊อปลิงก์เซ็น' }}
+                  </button>
+                  <button
+                    v-if="member.permit_signed === false && !member.released"
+                    class="btn-export-mini docs"
+                    :disabled="member.reminded_today || roundDocs.busy === `remind-${member.user_id}`"
+                    @click="remindStaffPermit(member)"
+                  >
+                    <span class="material-symbols-rounded">{{ member.reminded_today ? 'check' : 'notifications' }}</span>
+                    {{ member.reminded_today ? 'เตือนแล้ววันนี้' : 'เตือนในแอป' }}
+                  </button>
+                  <button
+                    v-if="member.permit_signed === true"
+                    class="btn-export-mini docs"
+                    :disabled="roundDocs.busy === `clear-${member.user_id}`"
+                    @click="clearStaffPermit(member)"
+                  >
+                    <span class="material-symbols-rounded">ink_eraser</span>
+                    ล้างลายเซ็น
+                  </button>
+                  <button
+                    class="btn-export-mini docs"
+                    :disabled="!!roundDocs.downloading"
+                    @click="downloadRoundDocs(member)"
+                  >
+                    <span class="material-symbols-rounded">{{ roundDocs.downloading === `staff-${member.user_id}` ? 'hourglass_top' : 'download' }}</span>
+                    ดาวน์โหลดของคนนี้
+                  </button>
+                </div>
+              </div>
+            </template>
           </template>
         </div>
       </div>
@@ -2900,7 +2964,7 @@ async function openBorderPass(sch) {
 
 // เอกสารของรอบ — แบบฟอร์มอุทยาน + ไฟล์ที่ลูกค้าแนบ โหลดตอนกดเปิดเท่านั้นเหมือน Border Pass
 // (ลิงก์ไฟล์เป็น signed URL อายุสั้น) ZIP สร้างที่เซิร์ฟเวอร์ทุกครั้ง ไม่มีไฟล์ค้าง
-const roundDocs = reactive({ open: false, loading: false, data: null, schedule: null, filter: 'all', downloading: null, copied: null });
+const roundDocs = reactive({ open: false, loading: false, data: null, schedule: null, filter: 'all', downloading: null, copied: null, busy: null });
 
 function hasRoundDocuments(sch) {
   return Boolean(sch?.permit_form_name || sch?.document_requirement_count || sch?.border_pass_count);
@@ -2908,11 +2972,24 @@ function hasRoundDocuments(sch) {
 
 const roundDocsPeople = computed(() => (roundDocs.data?.passengers || []).map((p, i) => ({ ...p, index: i + 1 })));
 
+// สตาฟประจำรอบต่อท้ายลูกทริป — เลขลำดับต่อจากลูกทริป ตรงกับชื่อโฟลเดอร์ใน ZIP
+const roundDocsStaff = computed(() => (roundDocs.data?.staff || []).map((m, i) => ({
+  ...m,
+  index: roundDocsPeople.value.length + i + 1,
+})));
+
+const roundDocsUnsignedTotal = computed(() => (roundDocs.data?.unsigned_count || 0) + (roundDocs.data?.staff_unsigned_count || 0));
+
 const roundDocsFilterOptions = computed(() => {
   const people = roundDocsPeople.value;
-  const options = [{ value: 'all', label: 'ทั้งหมด', count: people.length }];
+  const staff = roundDocsStaff.value;
+  const options = [{ value: 'all', label: 'ทั้งหมด', count: people.length + staff.length }];
   if (roundDocs.data?.permit_form?.requires_signature) {
-    options.push({ value: 'unsigned', label: 'ยังไม่เซ็น', count: people.filter((p) => p.permit_signed === false).length });
+    options.push({
+      value: 'unsigned',
+      label: 'ยังไม่เซ็น',
+      count: people.filter((p) => p.permit_signed === false).length + staff.filter((m) => m.permit_signed === false).length,
+    });
   }
   options.push({ value: 'missing', label: 'ขาดเอกสาร', count: people.filter((p) => p.missing_labels.length).length });
   return options;
@@ -2924,13 +3001,19 @@ const filteredRoundDocs = computed(() => roundDocsPeople.value.filter((p) => {
   return true;
 }));
 
+// "ขาดเอกสาร" คือไฟล์ที่ลูกค้าแนบ สตาฟไม่มี — ซ่อนทีมงานในแท็บนั้น
+const filteredRoundDocsStaff = computed(() => roundDocsStaff.value.filter((m) => {
+  if (roundDocs.filter === 'unsigned') return m.permit_signed === false;
+  return roundDocs.filter !== 'missing';
+}));
+
 async function openRoundDocs(sch) {
   Object.assign(roundDocs, { open: true, loading: true, data: null, schedule: sch, filter: 'all', copied: null });
   try {
     const res = await api.get(`/admin/calendar/schedules/${sch.id}/documents`);
     roundDocs.data = res.data.data;
     // ตัวเลขบนการ์ดมาจากตอนโหลดปฏิทิน — ให้ตรงกับที่เพิ่งเห็นในโมดัล
-    if (roundDocs.data.permit_form?.requires_signature) sch.permit_unsigned_count = roundDocs.data.unsigned_count;
+    if (roundDocs.data.permit_form?.requires_signature) sch.permit_unsigned_count = roundDocsUnsignedTotal.value;
   } catch (e) {
     roundDocs.open = false;
     alert(e.response?.data?.message || 'โหลดเอกสารของรอบไม่สำเร็จ');
@@ -2964,17 +3047,18 @@ function safeFileName(name) {
   return String(name || '').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'เอกสาร';
 }
 
-// ไม่ส่ง person = ทั้งรอบ (โฟลเดอร์ละคน) · ส่ง person = เฉพาะคนนั้น
+// ไม่ส่ง person = ทั้งรอบ (โฟลเดอร์ละคน) · ส่ง person = เฉพาะคนนั้น (ลูกทริปหรือสตาฟ)
 async function downloadRoundDocs(person = null) {
   const data = roundDocs.data;
   if (!data || roundDocs.downloading) return;
-  roundDocs.downloading = person ? person.passenger_id : 'all';
+  const isStaff = Boolean(person?.user_id);
+  roundDocs.downloading = person ? (isStaff ? `staff-${person.user_id}` : person.passenger_id) : 'all';
   try {
     const res = await api.get(`/admin/calendar/schedules/${data.schedule_id}/documents/download`, {
-      params: person ? { passenger_id: person.passenger_id } : {},
+      params: person ? (isStaff ? { staff_user_id: person.user_id } : { passenger_id: person.passenger_id }) : {},
       responseType: 'blob',
     });
-    const who = person ? person.name : data.trip_title;
+    const who = person ? `${isStaff ? 'ทีมงาน-' : ''}${person.name}` : data.trip_title;
     saveBlob(res.data, 'application/zip', `เอกสาร-${safeFileName(who)}-${data.departure_date || data.schedule_id}.zip`);
   } catch (e) {
     alert(await blobErrorMessage(e, 'ดาวน์โหลดเอกสารไม่สำเร็จ'));
@@ -3013,8 +3097,40 @@ function copySignLink(person) {
   if (person.share_text) copyRoundDocsText(person.share_text, person.passenger_id);
 }
 
+function copyStaffSignLink(member) {
+  if (member.share_text) copyRoundDocsText(member.share_text, `staff-${member.user_id}`);
+}
+
+async function remindStaffPermit(member) {
+  const data = roundDocs.data;
+  roundDocs.busy = `remind-${member.user_id}`;
+  try {
+    await api.post(`/admin/schedules/${data.schedule_id}/staff/${member.user_id}/permit-reminder`);
+    member.reminded_today = true;
+    const row = data.staff.find((m) => m.user_id === member.user_id);
+    if (row) row.reminded_today = true;
+  } catch (e) {
+    alert(e.response?.data?.message || 'ส่งแจ้งเตือนไม่สำเร็จ');
+  } finally {
+    roundDocs.busy = null;
+  }
+}
+
+async function clearStaffPermit(member) {
+  if (!confirm(`ล้างลายเซ็นของ ${member.nickname || member.name}? สตาฟต้องเซ็นใหม่อีกครั้ง`)) return;
+  roundDocs.busy = `clear-${member.user_id}`;
+  try {
+    await api.delete(`/admin/schedules/${roundDocs.data.schedule_id}/staff/${member.user_id}/permit-signature`);
+    await openRoundDocs(roundDocs.schedule);
+  } catch (e) {
+    alert(e.response?.data?.message || 'ล้างลายเซ็นไม่สำเร็จ');
+  } finally {
+    roundDocs.busy = null;
+  }
+}
+
 function copyAllSignLinks() {
-  const people = roundDocsPeople.value.filter((p) => p.sign_url);
+  const people = [...roundDocsPeople.value, ...roundDocsStaff.value].filter((p) => p.sign_url);
   if (!people.length) return;
   const data = roundDocs.data;
   const text = [
@@ -4984,6 +5100,18 @@ onUnmounted(() => {
 .docs-files .border-pass-file { width: 76px; height: 54px; }
 .docs-row-actions { display: flex; flex-direction: column; gap: 6px; }
 .tiny-chip.unsigned { background: #fef3c7; color: #92400e; }
+.tiny-chip.staff { background: #e0e7ff; color: #3730a3; }
+.docs-section-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 18px 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+.docs-section-title small { font-size: 12px; font-weight: 500; color: #6b7280; }
 @media (max-width: 640px) {
   .docs-row { grid-template-columns: minmax(0, 1fr); }
   .docs-files { justify-content: flex-start; }

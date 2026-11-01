@@ -10,7 +10,6 @@ use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PublicAccountClaimController;
 use App\Http\Controllers\PublicBirthdateController;
 use App\Http\Controllers\PublicFriendPassController;
-use App\Http\Controllers\PublicPermitFormController;
 use App\Http\Controllers\PublicGiftController;
 use App\Http\Controllers\PublicGiftVoucherController;
 use App\Http\Controllers\PublicIntakeBookingController;
@@ -18,6 +17,7 @@ use App\Http\Controllers\PublicIntakeController;
 use App\Http\Controllers\PublicPassengerFillController;
 use App\Http\Controllers\PublicPassportController;
 use App\Http\Controllers\PublicPaymentController;
+use App\Http\Controllers\PublicPermitFormController;
 use App\Http\Controllers\PublicProfileController;
 use App\Http\Controllers\PublicReceiptController;
 use App\Http\Controllers\PublicRescheduleController;
@@ -260,6 +260,19 @@ Route::get('/permit-signatures/{passenger}', [PublicPermitFormController::class,
     ->whereNumber('passenger')
     ->middleware(['signed', 'throttle:60,1'])
     ->name('public.permit-signature');
+// แบบฟอร์มอุทยานของสตาฟประจำรอบ — ลิงก์ที่แอดมินก๊อปส่งให้ ดู StaffPermitService
+Route::get('/staff-permit/{token}', [PublicPermitFormController::class, 'staffShow'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:60,1')
+    ->name('public.staff-permit.show');
+Route::post('/staff-permit/{token}', [PublicPermitFormController::class, 'staffSign'])
+    ->where('token', '[A-Za-z0-9]+')
+    ->middleware('throttle:10,1')
+    ->name('public.staff-permit.sign');
+Route::get('/staff-permit-signatures/{row}', [PublicPermitFormController::class, 'staffSignature'])
+    ->whereNumber('row')
+    ->middleware(['signed', 'throttle:60,1'])
+    ->name('public.staff-permit-signature');
 
 // ลิงก์เก็บข้อมูลลูกค้าก่อนการจอง — แปะไว้ในไบโอไอจี / auto-reply ไลน์ได้
 // `/r/` คือลิงก์ของทีมงาน (ใช้ซ้ำได้) `/g/` คือลิงก์ของกลุ่มที่คนแรกส่งต่อให้เพื่อน

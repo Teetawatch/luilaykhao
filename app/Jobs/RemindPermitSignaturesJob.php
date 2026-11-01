@@ -4,7 +4,11 @@ namespace App\Jobs;
 
 use App\Models\Booking;
 use App\Models\PermitForm;
+use App\Models\TripSchedule;
+use App\Models\User;
 use App\Services\PermitSignatureService;
+use App\Services\StaffPermitService;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +27,9 @@ use Illuminate\Support\Facades\Log;
  * ก่อนเตือนตามกำหนด ไล่แจ้งครั้งแรกให้ใบจองที่ยังไม่เคยได้ (ปกติแจ้งตอนยืนยันการ
  * จองไปแล้ว — ที่ค้างคือรอบที่เพิ่งครบขั้นต่ำ/ทีมงานเพิ่งยืนยันออกเดินทาง หรือทริปที่
  * เพิ่งผูกแบบฟอร์มทีหลัง)
+ *
+ * สตาฟประจำรอบที่ยังไม่เซ็นของตัวเองก็ได้เตือนในแอป — เริ่มช่วงเดียวกับลูกทริป แต่เตือน
+ * ต่อจนถึงวันเดินทาง (สตาฟมักถูกจัดลงรอบช้า หลังพ้นกำหนดไปแล้ว) ไม่เกิน MAX_REMINDERS
  */
 class RemindPermitSignaturesJob implements ShouldQueue
 {
@@ -36,11 +43,12 @@ class RemindPermitSignaturesJob implements ShouldQueue
 
     public int $backoff = 60;
 
-    public function handle(PermitSignatureService $signatures): void
+    public function handle(PermitSignatureService $signatures, StaffPermitService $staffPermits): void
     {
         $today = now('Asia/Bangkok')->startOfDay();
         $reminded = 0;
         $requested = $this->sendPendingFirstRequests($signatures, $today->toDateString());
+        $staffReminded = $this->remindStaff($staffPermits, $today);
 
         PermitForm::query()->whereNotNull('sign_due_days')->get()
             ->filter(fn (PermitForm $form) => $form->requiresSignature())
@@ -74,9 +82,45 @@ class RemindPermitSignaturesJob implements ShouldQueue
                     });
             });
 
-        if ($reminded > 0 || $requested > 0) {
-            Log::info('RemindPermitSignaturesJob: requested '.$requested.', reminded '.$reminded.' bookings');
+        if ($reminded > 0 || $requested > 0 || $staffReminded > 0) {
+            Log::info('RemindPermitSignaturesJob: requested '.$requested.', reminded '.$reminded.' bookings, '.$staffReminded.' staff');
         }
+    }
+
+    private function remindStaff(StaffPermitService $staffPermits, CarbonInterface $today): int
+    {
+        $sent = 0;
+
+        PermitForm::query()->whereNotNull('sign_due_days')->get()
+            ->filter(fn (PermitForm $form) => $form->requiresSignature())
+            ->each(function (PermitForm $form) use ($staffPermits, $today, &$sent) {
+                TripSchedule::query()
+                    ->whereDate('departure_date', '>=', $today->toDateString())
+                    ->whereDate('departure_date', '<=', $today->copy()->addDays($form->sign_due_days + self::WINDOW_DAYS)->toDateString())
+                    ->where('status', '!=', 'cancelled')
+                    ->travelMessagesAllowed()
+                    ->whereHas('trip', fn ($t) => $t->where('permit_form_id', $form->id))
+                    ->with(['trip', 'activeStaff'])
+                    ->get()
+                    ->each(function (TripSchedule $schedule) use ($form, $staffPermits, $today, &$sent) {
+                        $schedule->activeStaff->each(function (User $user) use ($schedule, $form, $staffPermits, $today, &$sent) {
+                            $row = $staffPermits->rowFor($schedule, $user);
+
+                            if ($row->reminder_count >= self::MAX_REMINDERS
+                                || ($row->reminded_at !== null && $row->reminded_at->gte($today->copy()->utc()))) {
+                                return;
+                            }
+
+                            $row->setRelation('schedule', $schedule)->setRelation('user', $user);
+
+                            if ($staffPermits->remind($row, $form)) {
+                                $sent++;
+                            }
+                        });
+                    });
+            });
+
+        return $sent;
     }
 
     private function sendPendingFirstRequests(PermitSignatureService $signatures, string $today): int

@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Storage;
  * รอบ (โฟลเดอร์ละคน) หรือเฉพาะคนเดียว
  *
  * ผู้เดินทางชุดเดียวกับแบบฟอร์มอุทยาน: ใบจองที่ยังไม่ยกเลิก ไม่รวมคนที่แจ้งว่าไม่ไป
+ * ทริปที่ผูกแบบฟอร์มมีแถวของสตาฟประจำรอบต่อท้าย (แบบฟอร์มอย่างเดียว ไม่มีไฟล์แนบ)
+ * ดู StaffPermitService
  */
 class ScheduleDocumentService
 {
@@ -27,6 +29,7 @@ class ScheduleDocumentService
         private BookingDocumentService $documents,
         private PermitFormService $forms,
         private PermitSignatureService $signatures,
+        private StaffPermitService $staffPermits,
     ) {}
 
     /** รายคน: เซ็นแบบฟอร์มหรือยัง + เอกสารแนบแต่ละรายการ */
@@ -61,6 +64,8 @@ class ScheduleDocumentService
             ];
         })->values();
 
+        $staff = $form ? $this->staffPermits->adminRows($schedule, $form) : [];
+
         $deadline = $form?->sign_due_days && $schedule->departure_date
             ? $schedule->departure_date->copy()->subDays($form->sign_due_days)
             : null;
@@ -82,23 +87,31 @@ class ScheduleDocumentService
             'unsigned_count' => $rows->where('permit_signed', false)->count(),
             'missing_documents_count' => $rows->filter(fn (array $r) => $r['missing_labels'] !== [])->count(),
             'file_count' => $rows->sum('file_count'),
+            'staff' => $staff,
+            'staff_signed_count' => collect($staff)->where('permit_signed', true)->count(),
+            'staff_unsigned_count' => collect($staff)->where('permit_signed', false)->count(),
         ];
     }
 
     /**
-     * ZIP เอกสาร — ทั้งรอบแยกโฟลเดอร์ละคน หรือ `$passengerId` = เฉพาะคนนั้น (ไฟล์อยู่ชั้นบนสุด)
+     * ZIP เอกสาร — ทั้งรอบแยกโฟลเดอร์ละคน (ลูกทริปแล้วต่อด้วยทีมงาน) หรือ `$passengerId` /
+     * `$staffUserId` = เฉพาะคนนั้น (ไฟล์อยู่ชั้นบนสุด)
      *
      * @return string|null path ของไฟล์ ZIP ชั่วคราว (ผู้เรียกต้องลบเอง) — null = ไม่มีอะไรให้โหลด
      */
-    public function zip(TripSchedule $schedule, ?int $passengerId = null): ?string
+    public function zip(TripSchedule $schedule, ?int $passengerId = null, ?int $staffUserId = null): ?string
     {
         $schedule->loadMissing('trip.permitForm');
         $form = $schedule->trip?->permitForm;
         $passengers = $this->passengers($schedule);
-        $groupSize = $passengers->count();
+        // แบบฟอร์มอย่างเดียว — ทริปที่ไม่ได้ผูกแบบฟอร์ม สตาฟไม่มีอะไรให้โหลด
+        $staff = $form ? $this->forms->staffFor($schedule) : collect();
+        $groupSize = $passengers->count() + $staff->count();
+        $single = $passengerId !== null || $staffUserId !== null;
 
-        if ($passengerId !== null) {
-            $passengers = $passengers->where('id', $passengerId)->values();
+        if ($single) {
+            $passengers = $passengerId !== null ? $passengers->where('id', $passengerId)->values() : collect();
+            $staff = $staffUserId !== null ? $staff->filter(fn (array $m) => $m['user']->id === $staffUserId)->values() : collect();
         }
 
         // ใช้ไฟล์ที่ tempnam สร้างตรง ๆ (ชื่อไฟล์ตอนดาวน์โหลดตั้งแยกอยู่แล้ว) — ต่อ .zip จะทิ้งไฟล์เปล่าค้าง
@@ -108,12 +121,24 @@ class ScheduleDocumentService
         $added = 0;
 
         foreach ($passengers->values() as $i => $passenger) {
-            $folder = $passengerId !== null ? '' : sprintf('%02d-%s/', $i + 1, $this->safeName($this->fullName($passenger)));
+            $folder = $single ? '' : sprintf('%02d-%s/', $i + 1, $this->safeName($this->fullName($passenger)));
 
             foreach ($this->filesFor($passenger, $schedule, $form, $groupSize) as $name => $bytes) {
                 $zip->addFromString($folder.$name, $bytes);
                 $added++;
             }
+        }
+
+        foreach ($staff->values() as $i => $member) {
+            $person = $member['passenger'];
+            $folder = $single ? '' : sprintf('%02d-ทีมงาน-%s/', $passengers->count() + $i + 1, $this->safeName($this->fullName($person)));
+            $unsigned = $form->requiresSignature() && ! $person->hasCompletedPermitForm($form) ? ' (ยังไม่เซ็น)' : '';
+
+            $zip->addFromString(
+                $folder.'แบบฟอร์มอุทยาน-'.$this->safeName($form->name).$unsigned.'.pdf',
+                $this->forms->renderPassengerInRound($form, $person, $schedule, $groupSize),
+            );
+            $added++;
         }
 
         $zip->close();
@@ -133,7 +158,7 @@ class ScheduleDocumentService
         $date = $schedule->departure_date?->toDateString() ?? 'round';
 
         return $passenger
-            ? 'เอกสาร-'.$this->safeName($this->fullName($passenger)).'-'.$date.'.zip'
+            ? 'เอกสาร-'.($passenger->booking_id ? '' : 'ทีมงาน-').$this->safeName($this->fullName($passenger)).'-'.$date.'.zip'
             : 'เอกสาร-'.$this->safeName((string) $schedule->trip?->title).'-'.$date.'.zip';
     }
 

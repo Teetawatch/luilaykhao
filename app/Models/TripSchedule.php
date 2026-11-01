@@ -610,6 +610,12 @@ class TripSchedule extends Model
         return $this->staff()->wherePivotNotNull('released_at');
     }
 
+    /** แบบฟอร์มอุทยานของสตาฟประจำรอบ ดู StaffPermitService */
+    public function staffPermitSignatures(): HasMany
+    {
+        return $this->hasMany(StaffPermitSignature::class, 'schedule_id');
+    }
+
     public function waitlistEntries(): HasMany
     {
         return $this->hasMany(WaitlistEntry::class, 'schedule_id');

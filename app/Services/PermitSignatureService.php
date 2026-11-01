@@ -170,11 +170,7 @@ class PermitSignatureService
         // ตรวจข้อมูลก่อนแตะลายเซ็น — กรอกไม่ครบต้องไม่เหลือลายเซ็นค้างอยู่ครึ่ง ๆ
         $extra = $this->validateExtra($form, $extra);
 
-        $png = $this->decode($dataUrl);
-        $png = $this->trim($png);
-
-        $path = 'permit-signatures/'.$passenger->id.'-'.Str::random(16).'.png';
-        Storage::disk(self::DISK)->put($path, $png);
+        $path = $this->storeImage($dataUrl, (string) $passenger->id);
 
         $passenger->forceFill([
             'permit_signature_path' => $path,
@@ -190,6 +186,23 @@ class PermitSignatureService
         ])->save();
 
         return $passenger;
+    }
+
+    /**
+     * ตรวจ ตัดขอบ ย้อมหมึก แล้วเก็บภาพลายเซ็น — ทั้งลูกทริปและสตาฟใช้ทางนี้
+     *
+     * @return string path บนดิสก์ส่วนตัว
+     *
+     * @throws \Exception
+     */
+    public function storeImage(string $dataUrl, string $prefix): string
+    {
+        $png = $this->trim($this->decode($dataUrl));
+
+        $path = 'permit-signatures/'.$prefix.'-'.Str::random(16).'.png';
+        Storage::disk(self::DISK)->put($path, $png);
+
+        return $path;
     }
 
     /**

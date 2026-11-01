@@ -92,10 +92,17 @@
             </div>
 
             <p class="muted">
-                อุทยานให้ผู้เดินทางทุกคนยื่นแบบฟอร์มนี้ตอนลงทะเบียนล่วงหน้า เราเติมข้อมูลที่คุณให้ไว้ตอนจองให้แล้ว
-                (ข้อมูลส่วนตัวถูกปิดไว้บางส่วนในหน้านี้) — <strong>อ่านให้ครบ</strong> แล้วเซ็นในกรอบด้านล่าง
+                {{ $p['intro'] ?? 'อุทยานให้ผู้เดินทางทุกคนยื่นแบบฟอร์มนี้ตอนลงทะเบียนล่วงหน้า เราเติมข้อมูลที่คุณให้ไว้ตอนจองให้แล้ว (ข้อมูลส่วนตัวถูกปิดไว้บางส่วนในหน้านี้)' }}
+                — <strong>อ่านให้ครบ</strong> แล้วเซ็นในกรอบด้านล่าง
                 ช่องที่ยังว่าง ทีมงานจะกรอกให้หรือสอบถามเพิ่มเติม
             </p>
+
+            @if (! empty($p['missing_profile']))
+                {{-- ฟอร์มของสตาฟเติมจากโปรไฟล์ — ช่องที่ว่างต้องไปกรอกในแอปก่อน --}}
+                <div class="alert alert-error">
+                    โปรไฟล์ของคุณยังขาด: {{ implode(', ', $p['missing_profile']) }} — กรอกในแอป (โปรไฟล์ › แก้ไขข้อมูลส่วนตัว) แล้วเปิดลิงก์นี้ใหม่ ช่องนั้นในแบบฟอร์มจะได้ไม่ว่าง
+                </div>
+            @endif
 
             <div class="step">1. อ่านแบบฟอร์ม</div>
             @foreach ($p['pages'] as $i => $page)
@@ -113,7 +120,7 @@
 
             @if ($p['open'])
                 <div id="sign-area" @if ($p['signed']) hidden @endif>
-                    <form method="POST" action="{{ route('public.friend-permit.sign', $p['token']) }}" id="sign-form">
+                    <form method="POST" action="{{ $p['action'] }}" id="sign-form">
                         @csrf
                         <input type="hidden" name="signature" id="signature-input">
 

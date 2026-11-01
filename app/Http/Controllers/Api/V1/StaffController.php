@@ -15,6 +15,7 @@ use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleLedgerService;
 use App\Services\SchedulePhotoService;
 use App\Services\StaffIntroService;
+use App\Services\StaffPermitService;
 use App\Services\VehicleLocationService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,7 @@ class StaffController extends Controller
         private VehicleLocationService $vehicleLocations,
         private StaffIntroService $intros,
         private SchedulePhotoService $schedulePhotos,
+        private StaffPermitService $staffPermits,
     ) {}
 
     public function mySchedules(Request $request): JsonResponse
@@ -44,7 +46,7 @@ class StaffController extends Controller
 
         $userId = $request->user()->id;
 
-        $schedules = TripSchedule::with(['trip', 'vehicle', 'pickupPoints'])
+        $schedules = TripSchedule::with(['trip.permitForm', 'vehicle', 'pickupPoints'])
             ->withCount('photos')
             ->whereHas('activeStaff', fn ($q) => $q->where('users.id', $userId))
             ->orderBy('departure_date')
@@ -74,7 +76,7 @@ class StaffController extends Controller
                 'total_schedules' => $schedules->count(),
                 'upcoming_count' => $schedules->filter(fn ($s) => $s->departure_date?->toDateString() >= $today)->count(),
             ],
-            'schedules' => $schedules->map(function ($s) use ($userId) {
+            'schedules' => $schedules->map(function ($s) use ($userId, $request) {
                 // Count individual *passengers*, not bookings — a single group
                 // booking can carry multiple travelers and the staff manifest
                 // needs the headcount, matching the admin manifest endpoint.
@@ -214,6 +216,8 @@ class StaffController extends Controller
                     'join_trip_passengers' => $roster($joinTripRows),
                     'photos_count' => (int) $s->photos_count,
                     'photo_upload_open' => $this->schedulePhotos->staffWindowOpen($s),
+                    // แบบฟอร์มอุทยานของสตาฟเอง — null = รอบนี้ไม่ต้องเซ็น
+                    'permit_form' => $this->staffPermits->statusFor($s, $request->user()),
                 ];
             })->values(),
             'photo_rounds' => $photoRounds->map(fn (TripSchedule $s) => [

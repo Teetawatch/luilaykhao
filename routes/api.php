@@ -103,6 +103,7 @@ use App\Http\Controllers\Api\V1\ShoppingListController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SplitPaymentController;
 use App\Http\Controllers\Api\V1\StaffController;
+use App\Http\Controllers\Api\V1\StaffPermitController;
 use App\Http\Controllers\Api\V1\StaffPhotoController;
 use App\Http\Controllers\Api\V1\StickerController;
 use App\Http\Controllers\Api\V1\SupportController;
@@ -625,6 +626,10 @@ Route::prefix('v1')->group(function () {
         Route::get('staff/profile', [StaffController::class, 'profile']);
         Route::put('staff/profile', [StaffController::class, 'updateProfile']);
         Route::post('staff/reviews', [StaffController::class, 'storeReview']);
+        // แบบฟอร์มอุทยานของสตาฟเอง — ข้อมูลเติมจากโปรไฟล์ ดู StaffPermitService
+        Route::get('staff/schedules/{id}/permit-form', [StaffPermitController::class, 'show'])->whereNumber('id');
+        Route::post('staff/schedules/{id}/permit-form/sign', [StaffPermitController::class, 'sign'])
+            ->whereNumber('id')->middleware('throttle:20,1');
         Route::post('staff/check-in/lookup', [DriverController::class, 'lookupCheckIn']);
         Route::post('staff/check-in/confirm', [DriverController::class, 'checkIn']);
         Route::post('staff/check-in/undo', [DriverController::class, 'undoCheckIn']);
@@ -1027,6 +1032,11 @@ Route::prefix('v1')->group(function () {
         Route::delete('bookings/{ref}/passengers/{passengerId}/permit-signature', [AdminPermitFormController::class, 'clearSignature'])->whereNumber('passengerId');
         Route::get('bookings/{ref}/permit-signatures', [AdminPermitFormController::class, 'bookingSignatures']);
         Route::post('bookings/{ref}/permit-reminder', [AdminPermitFormController::class, 'remindBooking'])->middleware('throttle:30,1');
+        // แบบฟอร์มของสตาฟประจำรอบ ดู StaffPermitService
+        Route::post('schedules/{id}/staff/{userId}/permit-reminder', [AdminPermitFormController::class, 'remindStaff'])
+            ->whereNumber(['id', 'userId'])->middleware('throttle:30,1');
+        Route::delete('schedules/{id}/staff/{userId}/permit-signature', [AdminPermitFormController::class, 'clearStaffSignature'])
+            ->whereNumber(['id', 'userId']);
 
         // ตั้งค่าระบบทั่วไป (เกณฑ์ที่นั่ง/ช่วงเวลางดรบกวน/ข้อมูลติดต่อ)
         Route::get('settings/site', [AdminSettingsController::class, 'show']);

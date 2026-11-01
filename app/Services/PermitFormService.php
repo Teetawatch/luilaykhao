@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\PermitForm;
+use App\Models\StaffPermitSignature;
 use App\Models\TripSchedule;
+use App\Models\User;
 use App\Support\PermitFormFields;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -129,12 +131,49 @@ class PermitFormService
             ->get();
     }
 
-    /** PDF ทั้งรอบ */
+    /**
+     * สตาฟประจำรอบ — อุทยานลงทะเบียนทุกคนที่เข้าพื้นที่ ทีมงานจึงต้องยื่นฟอร์มด้วย ข้อมูล
+     * มาจากโปรไฟล์ของสตาฟ (`passenger` เป็นผู้เดินทางชั่วคราว ไม่บันทึก) นับทุกคนที่ถูก
+     * จัดลงรอบรวมคนที่ถูกปลดหลังจบทริปแล้ว — PDF ที่โหลดย้อนหลังยังมีทีมงานครบ
+     *
+     * @return Collection<int, array{user: User, row: ?StaffPermitSignature, passenger: BookingPassenger}>
+     */
+    public function staffFor(TripSchedule $schedule): Collection
+    {
+        $rows = StaffPermitSignature::where('schedule_id', $schedule->id)->get()->keyBy('user_id');
+
+        return $schedule->staff()
+            ->orderBy('schedule_staff_assignments.created_at')
+            ->orderBy('users.id')
+            ->get()
+            ->map(fn (User $user) => [
+                'user' => $user,
+                'row' => $rows->get($user->id),
+                'passenger' => StaffPermitSignature::asPassenger($user, $rows->get($user->id)),
+            ])
+            ->values();
+    }
+
+    /** ลูกทริปตามด้วยสตาฟ — ทุกคนที่ต้องยื่นในรอบนี้ */
+    public function peopleFor(TripSchedule $schedule): Collection
+    {
+        return $this->passengersFor($schedule)
+            ->concat($this->staffFor($schedule)->pluck('passenger'))
+            ->values();
+    }
+
+    /** ช่อง "กลุ่มคณะ ... คน" — นับทีมงานด้วย อุทยานนับทุกคนที่เข้าพื้นที่ */
+    public function groupSize(TripSchedule $schedule): int
+    {
+        return $this->passengersFor($schedule)->count() + $schedule->staff()->count();
+    }
+
+    /** PDF ทั้งรอบ (ลูกทริปแล้วต่อด้วยสตาฟ) */
     public function renderForSchedule(PermitForm $form, TripSchedule $schedule): string
     {
-        $passengers = $this->passengersFor($schedule);
+        $people = $this->peopleFor($schedule);
 
-        return $this->renderPassengers($form, $schedule, $passengers, $passengers->count());
+        return $this->renderPassengers($form, $schedule, $people, $people->count());
     }
 
     /**
@@ -147,6 +186,8 @@ class PermitFormService
     {
         $schedule->loadMissing('trip');
         $passengers = $this->passengersFor($schedule);
+        $staff = $this->staffFor($schedule)->pluck('passenger');
+        $groupSize = $passengers->count() + $staff->count();
         $needsSignature = $form->requiresSignature();
 
         // ใช้ไฟล์ที่ tempnam สร้างตรง ๆ — ต่อ .zip เมื่อก่อนทิ้งไฟล์เปล่าค้างไว้ทุกครั้ง
@@ -154,15 +195,16 @@ class PermitFormService
         $zip = new \ZipArchive;
         $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
-        foreach ($passengers->values() as $i => $passenger) {
+        foreach ($passengers->concat($staff)->values() as $i => $passenger) {
             $name = trim(preg_replace('/[\\\\\/:*?"<>|]+/u', ' ', $passenger->displayName()) ?: 'ผู้เดินทาง');
+            $role = $passenger->booking_id ? '' : 'ทีมงาน-';
             $unsigned = $needsSignature && ! $passenger->hasCompletedPermitForm($form) ? ' (ยังไม่เซ็น)' : '';
-            $row = $this->rowFor($form, $passenger, $schedule, $passengers->count());
+            $row = $this->rowFor($form, $passenger, $schedule, $groupSize);
 
-            $zip->addFromString(sprintf('%02d-%s%s.pdf', $i + 1, $name, $unsigned), $this->render($form, [$row]));
+            $zip->addFromString(sprintf('%02d-%s%s%s.pdf', $i + 1, $role, $name, $unsigned), $this->render($form, [$row]));
         }
 
-        if ($passengers->isEmpty()) {
+        if ($passengers->isEmpty() && $staff->isEmpty()) {
             $zip->addFromString('แบบฟอร์มเปล่า.pdf', $this->renderForSchedule($form, $schedule));
         }
 
@@ -176,7 +218,7 @@ class PermitFormService
     {
         $schedule = $passenger->booking->schedule;
 
-        return $this->renderPassengers($form, $schedule, collect([$passenger]), $this->passengersFor($schedule)->count());
+        return $this->renderPassengers($form, $schedule, collect([$passenger]), $this->groupSize($schedule));
     }
 
     /** PDF ของคนเดียวเมื่อผู้เรียกรู้ขนาดกลุ่มของรอบอยู่แล้ว — ไม่ต้องนับใหม่ทุกคน */
@@ -192,11 +234,12 @@ class PermitFormService
      * เปล่า + ข้อความของแต่ละช่องในตำแหน่งเดียวกับใน PDF
      *
      * @param  bool  $mask  ปิดข้อมูลส่วนตัวไว้บางส่วน — ใช้กับหน้าที่เปิดด้วยลิงก์อย่างเดียว
+     * @param  TripSchedule|null  $schedule  ต้องส่งเมื่อเป็นสตาฟ (ไม่มีใบจองให้หารอบ)
      */
-    public function preview(PermitForm $form, BookingPassenger $passenger, bool $mask = false): array
+    public function preview(PermitForm $form, BookingPassenger $passenger, bool $mask = false, ?TripSchedule $schedule = null): array
     {
-        $schedule = $passenger->booking->schedule->loadMissing('trip');
-        $values = $this->rowFor($form, $passenger, $schedule, $this->passengersFor($schedule)->count());
+        $schedule = ($schedule ?? $passenger->booking->schedule)->loadMissing('trip');
+        $values = $this->rowFor($form, $passenger, $schedule, $this->groupSize($schedule));
         $expires = now()->addHours(2);
 
         return [
@@ -244,7 +287,7 @@ class PermitFormService
             ->orderBy('id')
             ->get();
 
-        return $this->renderPassengers($form, $schedule, $passengers, $this->passengersFor($schedule)->count());
+        return $this->renderPassengers($form, $schedule, $passengers, $this->groupSize($schedule));
     }
 
     /** ตัวอย่างด้วยข้อมูลสมมติ — ใช้ตรวจตำแหน่งช่องก่อนใช้จริง */

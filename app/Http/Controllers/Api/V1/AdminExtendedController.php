@@ -13,6 +13,7 @@ use App\Models\LoyaltyPointTransfer;
 use App\Models\LoyaltyReward;
 use App\Models\LoyaltyTransaction;
 use App\Models\Review;
+use App\Models\StaffPermitSignature;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -21,6 +22,7 @@ use App\Models\VehicleMaintenance;
 use App\Rules\ThaiName;
 use App\Services\BookingDocumentService;
 use App\Services\PassengerCheckInService;
+use App\Services\PermitFormService;
 use App\Services\ScheduleDocumentService;
 use App\Support\Countries;
 use App\Support\MediaDisk;
@@ -54,6 +56,7 @@ class AdminExtendedController extends Controller
             'pickupPoints',
             // activeStaff ไม่ใช่ staff — รอบที่จบแล้วสตาฟถูกปลดออก ไม่ต้องโชว์ค้างไว้
             'activeStaff',
+            'staffPermitSignatures',
         ]);
 
         if ($request->filled('start')) {
@@ -314,7 +317,7 @@ class AdminExtendedController extends Controller
      * modal rather than folded into calendarSchedules(), so the year-wide calendar
      * payload stays lean and slip URLs are always freshly signed when viewed.
      */
-    /** คนที่ยังต้องเซ็นแบบฟอร์มอุทยานของรอบ — null = ทริปนี้ไม่มีช่องลายเซ็น */
+    /** คนที่ยังต้องเซ็นแบบฟอร์มอุทยานของรอบ (ลูกทริป + สตาฟ) — null = ทริปนี้ไม่มีช่องลายเซ็น */
     private static function permitUnsignedCount(TripSchedule $schedule, Collection $activeBookings): ?int
     {
         $form = $schedule->trip->permitForm;
@@ -323,10 +326,17 @@ class AdminExtendedController extends Controller
             return null;
         }
 
-        return $activeBookings
+        $passengers = $activeBookings
             ->flatMap(fn (Booking $booking) => $booking->passengers)
             ->filter(fn (BookingPassenger $p) => $p->not_going_at === null && ! $p->hasCompletedPermitForm($form))
             ->count();
+
+        $signatures = $schedule->staffPermitSignatures->keyBy('user_id');
+        $staff = $schedule->activeStaff
+            ->reject(fn (User $user) => StaffPermitSignature::asPassenger($user, $signatures->get($user->id))->hasCompletedPermitForm($form))
+            ->count();
+
+        return $passengers + $staff;
     }
 
     public function schedulePayments(int $id): JsonResponse
@@ -572,11 +582,12 @@ class AdminExtendedController extends Controller
         return $this->success($documents->summary(TripSchedule::findOrFail($id)));
     }
 
-    /** ZIP เอกสารทั้งรอบ (โฟลเดอร์ละคน) หรือ `?passenger_id=` เฉพาะคนเดียว */
-    public function downloadScheduleDocuments(Request $request, int $id, ScheduleDocumentService $documents): Response|JsonResponse
+    /** ZIP เอกสารทั้งรอบ (โฟลเดอร์ละคน) หรือ `?passenger_id=` / `?staff_user_id=` เฉพาะคนเดียว */
+    public function downloadScheduleDocuments(Request $request, int $id, ScheduleDocumentService $documents, PermitFormService $forms): Response|JsonResponse
     {
         $schedule = TripSchedule::with('trip.permitForm')->findOrFail($id);
         $passengerId = $request->filled('passenger_id') ? (int) $request->query('passenger_id') : null;
+        $staffUserId = $request->filled('staff_user_id') ? (int) $request->query('staff_user_id') : null;
         $passenger = null;
 
         if ($passengerId !== null) {
@@ -584,9 +595,14 @@ class AdminExtendedController extends Controller
             if (! $passenger) {
                 return $this->error('ไม่พบผู้เดินทางคนนี้ในรอบ', 404);
             }
+        } elseif ($staffUserId !== null) {
+            $passenger = $forms->staffFor($schedule)->first(fn (array $m) => $m['user']->id === $staffUserId)['passenger'] ?? null;
+            if (! $passenger) {
+                return $this->error('ไม่พบทีมงานคนนี้ในรอบ', 404);
+            }
         }
 
-        $path = $documents->zip($schedule, $passengerId);
+        $path = $documents->zip($schedule, $passengerId, $staffUserId);
 
         if ($path === null) {
             return $this->error('ยังไม่มีเอกสารให้ดาวน์โหลด', 422);

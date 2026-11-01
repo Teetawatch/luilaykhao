@@ -79,6 +79,37 @@ class PermitFormFields
         'home_phone' => 'home_phone',
     ];
 
+    /**
+     * ช่องที่สตาฟต้องมีในโปรไฟล์ (ฟอร์มของสตาฟเติมจากโปรไฟล์ ไม่ใช่ใบจอง) — ช่องที่
+     * วางในฟอร์มแต่ยังว่าง แอปบอกให้ไปกรอกในโปรไฟล์ก่อนเซ็น ไม่นับโรคประจำตัว/แพ้ยา
+     * เพราะว่างแปลว่า "ไม่มี" ได้
+     */
+    private const PROFILE_SOURCES = [
+        'title' => 'คำนำหน้า',
+        'check_mr' => 'คำนำหน้า',
+        'check_mrs' => 'คำนำหน้า',
+        'check_miss' => 'คำนำหน้า',
+        'first_name' => 'ชื่อ',
+        'last_name' => 'นามสกุล',
+        'full_name' => 'ชื่อ-นามสกุล',
+        'title_full_name' => 'ชื่อ-นามสกุล',
+        'name_en' => 'ชื่อภาษาอังกฤษ',
+        'nickname' => 'ชื่อเล่น',
+        'age' => 'วันเกิด',
+        'birth_date' => 'วันเกิด',
+        'nationality' => 'เลขบัตรประชาชน',
+        'id_card' => 'เลขบัตรประชาชน',
+        'id_or_passport' => 'เลขบัตรประชาชน',
+        'passport_no' => 'เลขหนังสือเดินทาง',
+        'blood_group' => 'กรุ๊ปเลือด',
+        'phone' => 'เบอร์มือถือ',
+        'email' => 'อีเมล',
+        'emergency_name' => 'ผู้ติดต่อฉุกเฉิน',
+        'emergency_first_name' => 'ผู้ติดต่อฉุกเฉิน',
+        'emergency_last_name' => 'ผู้ติดต่อฉุกเฉิน',
+        'emergency_phone' => 'เบอร์ผู้ติดต่อฉุกเฉิน',
+    ];
+
     /** ช่องที่ข้อความมาจากแอดมินพิมพ์เอง (เช่น ชื่อบริษัทประกัน) */
     public const STATIC = 'static';
 
@@ -167,6 +198,25 @@ class PermitFormFields
             ->all();
 
         return array_values(array_filter(array_keys(self::ASK_INPUTS), fn ($k) => in_array($k, $needed, true)));
+    }
+
+    /**
+     * ข้อมูลโปรไฟล์ที่ฟอร์มนี้ใช้แต่ยังว่าง (ป้ายภาษาไทย ไม่ซ้ำกัน)
+     *
+     * @param  array<string, string>  $values  ผลของ values() ของคนนั้น
+     * @return list<string>
+     */
+    public static function missingProfile(array $fields, array $values): array
+    {
+        return collect($fields)
+            ->pluck('source')
+            ->filter(fn ($source) => isset(self::PROFILE_SOURCES[$source]) && trim((string) ($values[$source] ?? '')) === '')
+            // ✓ นาย/นาง/นางสาว ว่างสองในสามช่องเป็นปกติ — ขาดจริงเมื่อไม่มีคำนำหน้าเลย
+            ->reject(fn ($source) => str_starts_with($source, 'check_m') && trim((string) ($values['title'] ?? '')) !== '')
+            ->map(fn ($source) => self::PROFILE_SOURCES[$source])
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /** ช่องนี้แสดงค่าที่ลูกค้ากำลังพิมพ์ช่องไหน (null = ไม่ใช่ช่องที่ถาม หรือประกอบจากหลายช่อง) */
