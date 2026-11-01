@@ -19,7 +19,8 @@
 #
 # Horizon และ Reverb ไม่ต้องเปิดมือหลังรีบูต: supervisor ตั้ง autostart=true ไว้แล้ว
 #
-# ปรับได้ผ่าน env: APP_DIR, WEB_USER (www-data), PHP_TARGET (อ่านจาก composer.json)
+# ปรับได้ผ่าน env: APP_DIR, WEB_USER (www-data), PHP_TARGET (อ่านจาก composer.json),
+#   APT_IPV4=1 (บังคับ apt ใช้ IPv4 — เมื่อค้างที่ที่อยู่ IPv6 ของ mirror)
 
 set -Eeuo pipefail
 
@@ -178,8 +179,31 @@ fi
 
 [ "$FAILURES" -eq 0 ] || die "เช็คก่อนอัปเดตไม่ผ่าน (ด้านบน)"
 
+# apt ใช้ได้ทีละตัว — หลังเปิดเครื่อง/ล็อกอินใหม่ ๆ unattended-upgrades มักถือ lock อยู่
+# ไม่บอกก่อน หน้าจอจะดูเหมือนค้างเฉย ๆ
+wait_for_apt() {
+  local holders i
+  for i in $(seq 1 120); do
+    holders="$($SUDO fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock 2>/dev/null | tr -s ' ' || true)"
+    [ -z "${holders// /}" ] && return 0
+    if [ "$i" -eq 1 ]; then
+      note "apt กำลังถูกใช้โดยโปรแกรมอื่น (ปกติคือ unattended-upgrades ที่อัปเดตเองอยู่) — รอให้เสร็จ:"
+      # shellcheck disable=SC2086
+      ps -o pid=,etime=,cmd= -p $(echo $holders | tr ' ' ',') 2>/dev/null | sed 's/^/      /' || true
+    fi
+    sleep 5
+  done
+  die "รอ apt 10 นาทีแล้วยังไม่ว่าง — ดูว่าใครถือ: sudo fuser -v /var/lib/dpkg/lock-frontend"
+}
+
+# ตัดการเชื่อมต่อที่ไม่ตอบใน 30 วินาที แทนที่จะรอเงียบ ๆ (เช่น IPv6 ของ VPS ใช้ไม่ได้จริง)
+APT_NET=(-o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=1)
+if [ "${APT_IPV4:-0}" = "1" ]; then APT_NET+=(-o Acquire::ForceIPv4=true); fi
+
 step "ดึงรายการแพ็กเกจ"
-$SUDO apt-get update -q >/dev/null
+wait_for_apt
+$SUDO apt-get update "${APT_NET[@]}" \
+  || die "apt-get update ไม่สำเร็จ (ด้านบน) — ถ้าค้างที่ที่อยู่ IPv6 ลอง: APT_IPV4=1 bash $0"
 UPGRADABLE="$(apt list --upgradable 2>/dev/null | grep -v '^Listing' || true)"
 if [ -z "$UPGRADABLE" ]; then
   note "ไม่มีแพ็กเกจให้อัปเดต"
@@ -203,8 +227,9 @@ if [ -n "$UPGRADABLE" ]; then
   # --force-confold: แพ็กเกจมีไฟล์ config ใหม่ ให้เก็บของเราไว้ ไม่ถาม ไม่เขียนทับ
   # NEEDRESTART_MODE=a: รีสตาร์ทบริการที่ใช้ไลบรารีเก่าเอง ไม่เด้งหน้าจอถาม
   # --with-new-pkgs: ลง kernel ใหม่ได้ (upgrade เฉย ๆ จะ "kept back") แต่ไม่ลบแพ็กเกจใด
+  wait_for_apt
   $SUDO env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a \
-    apt-get -y -q --with-new-pkgs \
+    apt-get -y -q --with-new-pkgs "${APT_NET[@]}" \
     -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
     upgrade
   $SUDO env DEBIAN_FRONTEND=noninteractive apt-get -y -q autoremove >/dev/null || true
