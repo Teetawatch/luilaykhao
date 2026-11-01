@@ -27,7 +27,8 @@ use Illuminate\Support\Facades\Log;
  * - late    = รถออกไปแล้ว 15 นาทีแต่รอบนี้ยังไม่มีพิกัดเลย — เตือนสตาฟซ้ำ และแจ้ง
  *             แอดมิน/operator พร้อมเบอร์สตาฟ เพราะหน้างานวุ่นจนปัด push แรกทิ้ง
  *             เป็นเรื่องปกติ คนที่โทรตามได้คือคนที่ออฟฟิศ
- * - stalled = เคยส่งแล้วแต่เงียบไปนาน (การแชร์หลุดกลางทาง)
+ * - stalled = เคยส่งแล้วแต่เงียบไปนาน (การแชร์หลุดกลางทาง) — ยกเว้นสตาฟกดปิดเอง
+ *             พร้อมบอกเหตุผล (ถึงที่หมายแล้ว ฯลฯ) ที่เงียบคือตั้งใจ ไม่ใช่หลุด
  */
 class RemindStaffToShareLocationJob implements ShouldQueue
 {
@@ -239,7 +240,8 @@ class RemindStaffToShareLocationJob implements ShouldQueue
         if ($now->gt($departsAt->copy()->addMinutes(30))
             && $now->lte($departsAt->copy()->addHours(self::STALLED_WINDOW_HOURS))
             && ! $this->hasLocationWithin($vehicleId, self::STALLED_MINUTES)
-            && $this->sharedEarlierToday($vehicleId)) {
+            && $this->sharedEarlierToday($vehicleId)
+            && ! $locations->stopInEffect($schedule)) {
             return 'stalled';
         }
 

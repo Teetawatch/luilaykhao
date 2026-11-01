@@ -653,6 +653,9 @@ Route::prefix('v1')->group(function () {
         // มือถือของสตาฟที่นั่งไปกับรถคือ GPS ของรถ (คนขับไม่ได้ใช้แอป)
         Route::post('staff/schedules/{id}/vehicle-location', [StaffController::class, 'updateVehicleLocation'])
             ->middleware('throttle:120,1');
+        // สตาฟปิดแชร์เองพร้อมเหตุผล (ถึงที่หมายแล้ว ฯลฯ) — งานเตือนจะได้ไม่ตามซ้ำ
+        Route::post('staff/schedules/{id}/vehicle-location/stop', [StaffController::class, 'stopVehicleLocation'])
+            ->middleware('throttle:20,1');
 
         // สมุดบัญชีหน้างาน — สตาฟจดรายรับ/รายจ่ายระหว่างทริปพร้อมถ่ายสลิป
         Route::get('staff/schedules/{id}/ledger', [StaffController::class, 'ledger']);

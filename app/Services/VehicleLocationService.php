@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Events\VehicleLocationUpdated;
 use App\Models\Booking;
 use App\Models\TripSchedule;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
+use App\Models\VehicleShareStop;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Redis;
@@ -47,6 +49,9 @@ class VehicleLocationService
 
     /** พิกัดใหม่กว่านี้ (นาที) ถือว่ารถ "กำลังแชร์อยู่" — อุโมงค์/ทางเขาเงียบได้ราวนี้ */
     public const LIVE_MINUTES = 20;
+
+    /** พิกัดที่มาถึงภายในเท่านี้หลังกดปิด ยังนับเป็นของก่อนปิด (วินาที) */
+    public const STOP_GRACE_SECONDS = 60;
 
     /**
      * รถออกไปแล้วกี่นาทีโดยยังไม่มีพิกัดของรอบนี้เลย จึงนับว่า "ขาด" ไม่ใช่ "กำลังจะเปิด"
@@ -330,6 +335,12 @@ class VehicleLocationService
             return null;
         }
 
+        // สตาฟคนหนึ่งกดปิดพร้อมเหตุผลแล้ว (ถึงที่หมาย ฯลฯ) — เครื่องของสตาฟคนอื่น
+        // ในรอบเดียวกันต้องไม่เปิดแชร์ต่อให้เอง
+        if ($this->stopInEffect($schedule)) {
+            return null;
+        }
+
         return $this->everyoneAboard($schedule) ? 'onboard' : 'pickup';
     }
 
@@ -396,10 +407,11 @@ class VehicleLocationService
      * - missing  = รถออกแล้วแต่รอบนี้ยังไม่มีพิกัดเลย — ลูกค้ามองไม่เห็นรถ
      * - live     = มีพิกัดใหม่
      * - stalled  = เคยมีพิกัด แต่เงียบไปนานแล้ว
+     * - stopped  = เงียบเพราะสตาฟกดปิดเอง (บอกเหตุผลไว้) — ไม่ใช่การแชร์หลุด
      *
      * needs_attention = ต้องมีคนโทรตามสตาฟเดี๋ยวนี้ (เฉพาะช่วงวันเดินทางที่รถวิ่งจริง)
      *
-     * @return array{state: string, needs_attention: bool, last_recorded_at: ?string, minutes_since: ?int, sharer: ?array{id: int, name: string}}
+     * @return array{state: string, needs_attention: bool, last_recorded_at: ?string, minutes_since: ?int, sharer: ?array{id: int, name: string}, stopped: ?array{reason: string, reason_label: string, at: string, by: ?array{id: int, name: string}}}
      */
     public function sharingStatus(TripSchedule $schedule, ?Carbon $now = null): array
     {
@@ -419,7 +431,12 @@ class VehicleLocationService
             ? (int) floor(abs($latest->recorded_at->diffInMinutes(now())))
             : null;
 
-        if ($latest) {
+        // ปิดก่อนเคยส่งสักจุด = ลูกค้ายังไม่เคยเห็นรถ ยังต้องตามอยู่ดี
+        $stop = $latest ? $this->stopInEffect($schedule) : null;
+
+        if ($stop) {
+            $state = 'stopped';
+        } elseif ($latest) {
             $state = $minutesSince <= self::LIVE_MINUTES ? 'live' : 'stalled';
         } elseif (! $departsAt || $now->lt($departsAt->copy()->subMinutes(self::AUTO_START_BEFORE_MINUTES))) {
             $state = 'upcoming';
@@ -446,7 +463,74 @@ class VehicleLocationService
             'sharer' => $latest?->user
                 ? ['id' => (int) $latest->user->id, 'name' => (string) $latest->user->name]
                 : null,
+            'stopped' => $stop ? [
+                'reason' => $stop->reason,
+                'reason_label' => $stop->reasonLabel(),
+                'at' => $stop->stopped_at->toIso8601String(),
+                'by' => $stop->user
+                    ? ['id' => (int) $stop->user->id, 'name' => (string) $stop->user->name]
+                    : null,
+            ] : null,
         ];
+    }
+
+    /**
+     * สตาฟกดปิดแชร์เอง — จดไว้ว่าใคร กี่โมง เพราะอะไร
+     *
+     * ผูกกับพิกัดล่าสุดของรถตอนนั้น ไม่ใช่เวลา: เวลาในพิกัดมาจากนาฬิกาของมือถือ
+     * ซึ่งเพี้ยนได้ ส่วน id ของแถวเรียงตามลำดับที่เข้ามาจริงเสมอ
+     */
+    public function recordStop(TripSchedule $schedule, User $user, string $reason): VehicleShareStop
+    {
+        $lastLocationId = $schedule->vehicle_id
+            ? VehicleLocation::where('vehicle_id', $schedule->vehicle_id)->max('id')
+            : null;
+
+        return VehicleShareStop::create([
+            'schedule_id' => $schedule->id,
+            'vehicle_id' => $schedule->vehicle_id,
+            'user_id' => $user->id,
+            'reason' => array_key_exists($reason, VehicleShareStop::REASONS) ? $reason : 'other',
+            'last_location_id' => $lastLocationId,
+            'stopped_at' => now(),
+        ]);
+    }
+
+    /**
+     * การปิดครั้งล่าสุดของรอบนี้ ถ้ายังมีผลอยู่ — null เมื่อไม่เคยปิด หรือเปิดกลับมา
+     * ส่งพิกัดใหม่แล้ว (ปิดชั่วคราวแล้วเปิดต่อ ต้องกลับไปตามได้ตามปกติ)
+     *
+     * นับเฉพาะการปิดหลังรถออก: ปิดก่อนรถออกแปลว่าลูกค้าจะไม่เห็นรถทั้งวัน ยังต้อง
+     * ตามอยู่ดีไม่ว่าเหตุผลจะเป็นอะไร
+     */
+    public function stopInEffect(TripSchedule $schedule): ?VehicleShareStop
+    {
+        $departsAt = $this->departsAtThai($schedule);
+
+        if (! $departsAt) {
+            return null;
+        }
+
+        $departedUtc = Carbon::parse($departsAt->format('Y-m-d H:i:s'), self::TIMEZONE)->utc();
+
+        $stop = VehicleShareStop::with('user:id,name')
+            ->where('schedule_id', $schedule->id)
+            ->where('stopped_at', '>=', $departedUtc)
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $stop || ! $schedule->vehicle_id) {
+            return $stop;
+        }
+
+        // พิกัดที่ส่งค้างอยู่กลางทางตอนกดปิดมาถึงทีหลังได้ — ให้เวลาหนึ่งนาที
+        // ไม่งั้นจุดสุดท้ายจุดนั้นจะถูกนับว่า "เปิดกลับมาแล้ว"
+        $resumed = VehicleLocation::where('vehicle_id', $schedule->vehicle_id)
+            ->where('id', '>', (int) $stop->last_location_id)
+            ->where('created_at', '>', $stop->stopped_at->copy()->addSeconds(self::STOP_GRACE_SECONDS))
+            ->exists();
+
+        return $resumed ? null : $stop;
     }
 
     /**
@@ -473,7 +557,7 @@ class VehicleLocationService
             ->get()
             ->filter(fn (TripSchedule $s) => $s->vehicle !== null);
 
-        $order = ['missing' => 0, 'stalled' => 1, 'waiting' => 2, 'live' => 3, 'upcoming' => 4];
+        $order = ['missing' => 0, 'stalled' => 1, 'waiting' => 2, 'live' => 3, 'stopped' => 4, 'upcoming' => 5];
 
         return $schedules
             ->map(function (TripSchedule $s) {

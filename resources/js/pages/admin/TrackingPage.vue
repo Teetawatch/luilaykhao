@@ -181,6 +181,11 @@
                 · แชร์ตำแหน่งโดย {{ sharingFor(selectedVehicle).sharer.name }}
               </span>
             </div>
+            <!-- สตาฟปิดเองพร้อมเหตุผล — ที่เงียบคือตั้งใจ ไม่ต้องโทรตาม -->
+            <div v-if="sharingFor(selectedVehicle).stopped" class="map-info-stopped">
+              <span class="material-symbols-rounded">location_disabled</span>
+              <span>{{ stoppedText(sharingFor(selectedVehicle).stopped) }}</span>
+            </div>
             <div v-if="sharingFor(selectedVehicle).staff.length" class="map-info-staff-list">
               <component
                 :is="u.phone ? 'a' : 'span'"
@@ -327,6 +332,14 @@ function attentionText(r) {
   return r.state === 'missing'
     ? 'รถออกแล้ว แต่ยังไม่ได้เปิดแชร์ตำแหน่ง'
     : `ตำแหน่งหยุดส่งมา ${r.minutes_since} นาทีแล้ว`;
+}
+
+function stoppedText(stop) {
+  const at = new Date(stop.at).toLocaleTimeString('th-TH', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok',
+  });
+  const by = stop.by?.name ? ` โดย ${stop.by.name}` : '';
+  return `ปิดแชร์ตำแหน่งแล้ว — ${stop.reason_label}${by} · ${at} น.`;
 }
 
 async function loadSharing() {
@@ -893,6 +906,11 @@ onUnmounted(() => {
 .state-chip.stopped   { background: #fffbeb; color: #b45309; }
 .state-chip.offline   { background: #f1f5f9; color: #64748b; }
 .state-chip.no_signal { background: #fef2f2; color: #b91c1c; }
+.map-info-stopped {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px; font-size: 12px; color: #64748b;
+}
+.map-info-stopped .material-symbols-rounded { font-size: 16px; }
 .state-chip.lg { font-size: 11px; padding: 4px 10px; margin-left: auto; align-self: flex-start; }
 
 .vehicle-list-trip {

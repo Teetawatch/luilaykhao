@@ -8,6 +8,7 @@ use App\Models\ScheduleExpense;
 use App\Models\StaffReview;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Models\VehicleShareStop;
 use App\Services\OutstandingPaymentService;
 use App\Services\PickupArrivalService;
 use App\Services\RentalHandoutService;
@@ -201,6 +202,9 @@ class StaffController extends Controller
                     // เพื่อนสตาฟที่กำลังเป็น GPS ของรถคันนี้อยู่ — share_location_mode เป็น
                     // null ในกรณีนี้ แอปจะได้บอกว่า "มีคนแชร์อยู่แล้ว" แทน "ยังไม่ได้แชร์"
                     'vehicle_sharer' => $this->otherVehicleSharer($s, $userId),
+                    // สตาฟคนไหนกดปิดแชร์ไปพร้อมเหตุผล — ทุกเครื่องในรอบจะได้เห็นตรงกันว่า
+                    // ปิดเพราะอะไร ไม่ใช่การ์ดสีส้ม "ยังไม่ได้แชร์" บนเครื่องเพื่อน
+                    'vehicle_share_stopped' => $this->vehicleShareStopped($s),
                     'return_date' => $s->return_date?->toDateString(),
                     'status' => $s->status,
                     'transport_type' => $s->transport_type,
@@ -670,6 +674,53 @@ class StaffController extends Controller
             'license_plate' => $vehicle->license_plate,
             'recorded_at' => $location->recorded_at->toIso8601String(),
         ], 'อัปเดตตำแหน่งรถแล้ว');
+    }
+
+    /**
+     * @return array{reason: string, reason_label: string, at: string, by: ?string}|null
+     */
+    private function vehicleShareStopped(TripSchedule $schedule): ?array
+    {
+        if (! $schedule->vehicle_id) {
+            return null;
+        }
+
+        $stop = $this->vehicleLocations->stopInEffect($schedule);
+
+        return $stop ? [
+            'reason' => $stop->reason,
+            'reason_label' => $stop->reasonLabel(),
+            // นาฬิกาไทยตรง ๆ แบบเดียวกับ share_auto_starts_at — แอปไม่แปลงโซน
+            'at' => $stop->stopped_at->copy()->timezone('Asia/Bangkok')->format('Y-m-d H:i:s'),
+            'by' => $stop->user?->name,
+        ] : null;
+    }
+
+    /**
+     * สตาฟกดปิดแชร์ตำแหน่งรถเอง พร้อมเหตุผล — งานเตือนจะได้ไม่ตามว่า "การแชร์หลุด"
+     * และหน้าแอดมินเห็นว่าใครปิด กี่โมง เพราะอะไร
+     *
+     * ไม่ต้องเป็นคนที่ส่งพิกัดอยู่: สตาฟคนไหนของรอบก็บอกได้ว่าถึงที่หมายแล้ว
+     */
+    public function stopVehicleLocation(Request $request, int $scheduleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', Rule::in(array_keys(VehicleShareStop::REASONS))],
+        ]);
+
+        $schedule = $this->staffSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $stop = $this->vehicleLocations->recordStop($schedule, $request->user(), $validated['reason']);
+
+        return $this->success([
+            'reason' => $stop->reason,
+            'reason_label' => $stop->reasonLabel(),
+            'stopped_at' => $stop->stopped_at->toIso8601String(),
+        ], 'บันทึกการปิดแชร์ตำแหน่งรถแล้ว');
     }
 
     /**
