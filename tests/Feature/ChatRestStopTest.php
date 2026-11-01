@@ -9,6 +9,7 @@ use App\Models\BookingMember;
 use App\Models\BookingPassenger;
 use App\Models\ChatMessage;
 use App\Models\ChatRestStop;
+use App\Models\ChatRoomPreference;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -28,7 +29,7 @@ class ChatRestStopTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @var array<int, array{user: int, title: string, body: string, staff_alert: bool}> */
+    /** @var array<int, array{user: int, title: string, body: string, staff_alert: bool, trip_alert: bool, tag: ?string}> */
     private array $pushes = [];
 
     protected function setUp(): void
@@ -44,6 +45,8 @@ class ChatRestStopTest extends TestCase
                     'title' => $title,
                     'body' => $body,
                     'staff_alert' => (bool) ($display['staff_alert'] ?? false),
+                    'trip_alert' => (bool) ($display['trip_alert'] ?? false),
+                    'tag' => $display['tag'] ?? null,
                 ];
             });
         });
@@ -112,15 +115,22 @@ class ChatRestStopTest extends TestCase
         return $staff;
     }
 
+    /**
+     * ประกาศจุดพัก — ล้างใบประกาศที่เพิ่งเด้งออกไป ให้เทสที่ตามมานับแค่ใบเตือน
+     * (ตัวประกาศเองมีเทสของมัน: test_announcing_a_stop_buzzes_everyone_in_the_room)
+     */
     private function openStop(User $staff, TripSchedule $schedule, array $payload = []): array
     {
-        return $this->actingAs($staff, 'sanctum')
+        $data = $this->actingAs($staff, 'sanctum')
             ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops", array_merge([
                 'minutes' => 20,
                 'place' => 'ปั๊ม ปตท. วังน้อย',
             ], $payload))
             ->assertCreated()
             ->json('data');
+        $this->pushes = [];
+
+        return $data;
     }
 
     private function board(User $user, TripSchedule $schedule, int $stopId, array $ids, bool $boarded = true)
@@ -159,8 +169,61 @@ class ChatRestStopTest extends TestCase
         $this->assertSame(0, $stop['boarded_count']);
         $this->assertSame(['สมชาย', 'สมหญิง', 'มานะ'], array_column($stop['passengers'], 'name'));
         $this->assertArrayNotHasKey('phone', $stop['passengers'][0], 'การ์ดที่กระจายทั้งห้องต้องไม่มีเบอร์โทร');
+        $this->assertNotNull($stop['opened_at'], 'แอปใช้วาดวงเวลาที่ผ่านไปของการพัก');
+    }
 
-        Bus::assertDispatched(SendChatPushJob::class, fn ($job) => $job->callToAction === true);
+    public function test_announcing_a_stop_buzzes_everyone_in_the_room(): void
+    {
+        $schedule = $this->makeSchedule();
+        [$owner] = $this->party($schedule, ['สมชาย ใจดี', 'สมหญิง รักดี']);
+        [$muted] = $this->party($schedule, ['มานะ ขยัน']);
+        // ปิดแจ้งเตือนห้องไว้ — แต่เวลากลับรถพลาดไม่ได้ ต้องได้เหมือนใบเตือนก่อนรถออก
+        ChatRoomPreference::create(['user_id' => $muted->id, 'schedule_id' => $schedule->id, 'notify_level' => ChatRoomPreference::LEVEL_OFF]);
+        $staff = $this->staff($schedule);
+        $otherStaff = $this->staff($schedule);
+
+        $stopId = $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops", ['minutes' => 20, 'place' => 'ปั๊ม ปตท. วังน้อย'])
+            ->assertCreated()
+            ->json('data.rest_stop.id');
+
+        // ไม่ใช่ push แชททั่วไป ("💬 ชื่อทริป · พี่สตาฟ: …") อีกแล้ว — ไม่งั้นได้สองใบ
+        Bus::assertNotDispatched(SendChatPushJob::class);
+
+        $time = ChatRestStop::find($stopId)->return_at->timezone('Asia/Bangkok')->format('H:i');
+        foreach ([$owner, $muted, $otherStaff] as $user) {
+            $pushes = $this->pushesTo($user);
+            $this->assertCount(1, $pushes, "ผู้ใช้ {$user->id} ต้องได้ประกาศหนึ่งใบ");
+            $this->assertSame("🅿️ พักรถ 20 นาที · กลับขึ้นรถ {$time} น.", $pushes[0]['title']);
+            $this->assertStringStartsWith('ปั๊ม ปตท. วังน้อย — ', $pushes[0]['body']);
+            $this->assertTrue($pushes[0]['trip_alert'], 'ประกาศพักต้องสั่น');
+            $this->assertFalse($pushes[0]['staff_alert']);
+            $this->assertSame("rest-stop-{$stopId}", $pushes[0]['tag']);
+        }
+        $this->assertCount(0, $this->pushesTo($staff), 'คนประกาศไม่ต้องได้ใบของตัวเอง');
+    }
+
+    public function test_extending_tells_only_the_people_still_away_about_the_new_time(): void
+    {
+        $schedule = $this->makeSchedule();
+        [$onBus, , $a] = $this->party($schedule, ['สมชาย ใจดี']);
+        [$away] = $this->party($schedule, ['มานะ ขยัน']);
+        $staff = $this->staff($schedule);
+        $stopId = $this->openStop($staff, $schedule, ['minutes' => 15])['rest_stop']['id'];
+        $this->board($onBus, $schedule, $stopId, [$a[0]->id]);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/schedules/{$schedule->id}/chat/rest-stops/{$stopId}/extend", ['minutes' => 5])
+            ->assertOk();
+
+        $time = ChatRestStop::find($stopId)->return_at->timezone('Asia/Bangkok')->format('H:i');
+        $this->assertCount(0, $this->pushesTo($onBus));
+        $pushes = $this->pushesTo($away);
+        $this->assertCount(1, $pushes);
+        $this->assertSame("⏰ ขยายเวลาพักอีก 5 นาที · กลับขึ้นรถ {$time} น.", $pushes[0]['title']);
+        // ทับใบประกาศเดิมในถาด — ไม่ต้องสั่น ได้เวลาเพิ่มไม่ใช่เรื่องด่วน
+        $this->assertSame("rest-stop-{$stopId}", $pushes[0]['tag']);
+        $this->assertFalse($pushes[0]['trip_alert']);
     }
 
     public function test_customers_cannot_announce_a_stop(): void
@@ -263,6 +326,10 @@ class ChatRestStopTest extends TestCase
         // สตาฟอาจงีบอยู่บนรถ — ใบนี้สั่นยาวปลุก ส่วนใบที่ลูกทริปได้เป็นแจ้งเตือนปกติ
         $this->assertTrue($toStaff[0]['staff_alert']);
         $this->assertFalse($this->pushesTo($late)[1]['staff_alert']);
+        // ลูกทริปที่ยังไม่กลับรถได้ใบสั่น ทับใบประกาศของจุดพักนี้ในถาด
+        $this->assertTrue($this->pushesTo($late)[0]['trip_alert']);
+        $this->assertTrue($this->pushesTo($late)[1]['trip_alert']);
+        $this->assertSame("rest-stop-{$stopId}", $this->pushesTo($late)[1]['tag']);
     }
 
     public function test_extending_moves_the_deadline_and_reminds_again(): void
@@ -286,10 +353,14 @@ class ChatRestStopTest extends TestCase
         $this->assertEqualsWithDelta(now()->addMinutes(10)->timestamp, $stop->return_at->timestamp, 5);
         $this->assertTrue(ChatMessage::where('schedule_id', $schedule->id)->where('body', 'like', '⏰ ขยายเวลาพักอีก 10 นาที%')->exists());
 
+        // ขยายแล้วคนที่ยังไม่กลับได้เวลาใหม่ทันที
+        $this->assertCount(2, $this->pushesTo($late));
+        $this->assertStringStartsWith('⏰ ขยายเวลาพักอีก 10 นาที', $this->pushesTo($late)[1]['title']);
+
         $this->travel(6)->minutes();
         $this->settle();
-        $this->assertCount(2, $this->pushesTo($late));
-        $this->assertSame('⏰ อีก 4 นาทีรถออก', $this->pushesTo($late)[1]['title']);
+        $this->assertCount(3, $this->pushesTo($late));
+        $this->assertSame('⏰ อีก 4 นาทีรถออก', $this->pushesTo($late)[2]['title']);
     }
 
     public function test_short_stop_does_not_remind_right_after_the_announcement(): void

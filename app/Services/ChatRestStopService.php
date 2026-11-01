@@ -88,7 +88,37 @@ class ChatRestStopService
             broadcast(new ChatMessageSent($message))->toOthers();
         }
 
+        $this->announce($staff, $stop, $minutes);
+
         return $stop->fresh('boardings');
+    }
+
+    /**
+     * เด้งประกาศพักถึงทุกคนในห้อง — สั่นและทะลุโหมดโฟกัส (trip_alert)
+     *
+     * ไม่ผ่าน SendChatPushJob เพราะนี่ไม่ใช่ "ข้อความแชท" แต่เป็นเวลานัดที่ตกรถได้ถ้า
+     * พลาด: คนที่ตั้งห้องเป็น "ปิด" ก็ได้ (กติกาเดียวกับใบเตือนก่อนรถออก) และไม่ข้าม
+     * คนที่เปิดห้องค้างไว้ — การสั่นคือสิ่งที่ทำให้เขาเงยหน้าจากร้านกาแฟ
+     * tag ต่อจุดพัก: ขยายเวลา/เตือนก่อนออกรถทับใบนี้ในถาด เหลือเวลาล่าสุดใบเดียว
+     */
+    private function announce(User $staff, ChatRestStop $stop, int $minutes): void
+    {
+        $schedule = $stop->schedule;
+        $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
+        $title = "🅿️ พักรถ {$minutes} นาที · กลับขึ้นรถ {$this->clock($stop->return_at)} น.";
+        $body = ($stop->place ? "{$stop->place} — " : '')
+            .'กลับถึงรถแล้วกด "ขึ้นรถแล้ว" ในแชทด้วยนะครับ · '.$tripTitle;
+
+        $this->chatService->pushRecipientIds($schedule)
+            ->map(fn ($id) => (int) $id)
+            ->reject(fn (int $id) => $id === (int) $staff->id)
+            ->each(fn (int $id) => $this->send($id, [$title, $body], $this->pushData($stop), $this->restTag($stop), tripAlert: true));
+    }
+
+    /** tag แจ้งเตือนของจุดพักหนึ่งจุด — ใบใหม่ของจุดเดียวกันทับใบเดิมในถาด */
+    private function restTag(ChatRestStop $stop): ?string
+    {
+        return $stop->isRest() ? "rest-stop-{$stop->id}" : null;
     }
 
     /**
@@ -471,6 +501,17 @@ class ChatRestStopService
             default => "⏰ ขยายเวลาพักอีก {$minutes} นาที — กลับขึ้นรถ {$this->clock($fresh->return_at)} น.",
         });
 
+        // พักรถ: คนที่ยังไม่กลับรถต้องรู้เวลาใหม่ — ทับใบประกาศเดิมในถาด ไม่ต้องสั่น (ได้เวลาเพิ่ม)
+        if ($fresh->isRest()) {
+            $tripTitle = $fresh->schedule->trip?->title ?? 'ทริปของคุณ';
+            foreach ($this->missing($fresh)->pluck('user_id')->filter()->unique() as $userId) {
+                $this->send((int) $userId, [
+                    "⏰ ขยายเวลาพักอีก {$minutes} นาที · กลับขึ้นรถ {$this->clock($fresh->return_at)} น.",
+                    ($fresh->place ? "{$fresh->place} — " : '')."ไม่ต้องรีบนะครับ · {$tripTitle}",
+                ], $this->pushData($fresh), $this->restTag($fresh));
+            }
+        }
+
         return $fresh;
     }
 
@@ -618,7 +659,8 @@ class ChatRestStopService
                 default => ["⏰ อีก {$left} นาทีรถออก{$who}", "กลับขึ้นรถ {$time} น. แล้วกด \"ขึ้นรถแล้ว\" ในแชทด้วยนะครับ · {$tripTitle}"],
             };
 
-            $this->send((int) $userId, $text, $data);
+            // ใกล้/ถึงเวลาแล้วยังไม่กลับ — ต้องรู้สึกตัวแม้มือถืออยู่ในกระเป๋า
+            $this->send((int) $userId, $text, $data, $this->restTag($stop), tripAlert: true);
         }
 
         // ถึงเวลาแล้วยังไม่ครบ — บอกสตาฟว่าขาดใคร จะได้โทรตามได้ทันที
@@ -698,6 +740,8 @@ class ChatRestStopService
             'id' => $stop->id,
             'kind' => $stop->kind ?: ChatRestStop::KIND_REST,
             'place' => $stop->place,
+            // ตอนประกาศ — แอปวาดวงเวลาที่ผ่านไปของการพัก (opened_at → return_at)
+            'opened_at' => $stop->created_at?->toISOString(),
             'return_at' => $stop->return_at?->toISOString(),
             'departed_at' => $stop->departed_at?->toISOString(),
             'is_departed' => $stop->isDeparted(),
@@ -1090,14 +1134,18 @@ class ChatRestStopService
      * @param  array{0: string, 1: string}  $text
      * @param  array<string, string>  $data
      */
-    /** @param  bool  $staffAlert  ทีมงานต้องลุกมาจัดการ — สั่นยาว ทะลุโหมดนอน (ดู FcmService::sendToUser) */
-    private function send(int $userId, array $text, array $data, ?string $tag = null, string $channel = SendChatPushJob::ANDROID_CHANNEL, bool $staffAlert = false): void
+    /**
+     * @param  bool  $staffAlert  ทีมงานต้องลุกมาจัดการ — สั่นยาว ทะลุโหมดนอน (ดู FcmService::sendToUser)
+     * @param  bool  $tripAlert  ลูกทริปพลาดไม่ได้ (พักรถ/ใกล้เวลาออกรถ) — สั่นสองจังหวะ
+     */
+    private function send(int $userId, array $text, array $data, ?string $tag = null, string $channel = SendChatPushJob::ANDROID_CHANNEL, bool $staffAlert = false, bool $tripAlert = false): void
     {
         try {
             $this->fcm->sendToUser($userId, $text[0], $text[1], $data, array_filter([
                 'tag' => $tag,
                 'android_channel' => $channel,
                 'staff_alert' => $staffAlert,
+                'trip_alert' => $tripAlert,
             ]));
         } catch (\Throwable $e) {
             Log::warning('ChatRestStopService: ส่ง push ไม่สำเร็จ', [

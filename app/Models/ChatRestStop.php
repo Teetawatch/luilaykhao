@@ -97,6 +97,12 @@ class ChatRestStop extends Model
         return $this->hasMany(ChatRestStopBoarding::class, 'stop_id');
     }
 
+    /** พักรถระหว่างทาง (แถวเก่าก่อนมี kind ถือเป็นพักรถ) */
+    public function isRest(): bool
+    {
+        return ($this->kind ?: self::KIND_REST) === self::KIND_REST;
+    }
+
     public function isMeetup(): bool
     {
         return $this->kind === self::KIND_MEETUP;

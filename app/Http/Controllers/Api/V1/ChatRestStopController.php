@@ -76,7 +76,10 @@ class ChatRestStopController extends Controller
 
         if ($message) {
             $this->chatService->markRead($user, $schedule, $message->id);
-            SendChatPushJob::dispatch($message->id, $user->id, [], true);
+            // พักรถเด้งประกาศของตัวเอง (สั่น + ทับใบเดิมด้วย tag) — ดู ChatRestStopService::announce()
+            if (! $stop->isRest()) {
+                SendChatPushJob::dispatch($message->id, $user->id, [], true);
+            }
         }
 
         return $this->success(

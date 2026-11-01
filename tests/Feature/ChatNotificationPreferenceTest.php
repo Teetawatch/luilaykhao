@@ -493,6 +493,33 @@ class ChatNotificationPreferenceTest extends TestCase
         $this->assertSame('stop_request', $message['data']['type']);
     }
 
+    public function test_trip_alert_payload_vibrates_and_breaks_through_focus(): void
+    {
+        config(['services.fcm.project_id' => 'demo-project']);
+        Cache::put('fcm_access_token', 'test-token', 60);
+        Http::fake(['fcm.googleapis.com/*' => Http::response(['name' => 'ok'])]);
+
+        $user = User::factory()->create();
+        FcmToken::create(['user_id' => $user->id, 'token' => 'device-1', 'platform' => 'android', 'is_active' => true]);
+
+        app(FcmService::class)->sendToUser($user->id, '🅿️ พักรถ 20 นาที', 'b', ['type' => 'rest_stop'], [
+            'tag' => 'rest-stop-4',
+            'android_channel' => 'chat_messages',
+            'trip_alert' => true,
+        ]);
+
+        $message = Http::recorded()->first()[0]->data()['message'];
+        $android = $message['android']['notification'];
+        $this->assertSame(FcmService::TRIP_ALERT_CHANNEL, $android['channel_id']);
+        $this->assertSame('PRIORITY_MAX', $android['notification_priority']);
+        $this->assertNotEmpty($android['vibrate_timings']);
+        $this->assertSame('rest-stop-4', $android['tag']);
+        $this->assertSame('time-sensitive', $message['apns']['payload']['aps']['interruption-level']);
+        // แอปที่เปิดอยู่ใช้ธงนี้สั่นเอง
+        $this->assertSame('1', $message['data']['trip_alert']);
+        $this->assertArrayNotHasKey('staff_alert', $message['data']);
+    }
+
     public function test_fcm_payload_without_display_is_unchanged(): void
     {
         config(['services.fcm.project_id' => 'demo-project']);
@@ -512,6 +539,7 @@ class ChatNotificationPreferenceTest extends TestCase
         $this->assertSame('default', $message['apns']['payload']['aps']['sound']);
         $this->assertArrayNotHasKey('thread-id', $message['apns']['payload']['aps']);
         $this->assertArrayNotHasKey('staff_alert', $message['data']);
+        $this->assertArrayNotHasKey('trip_alert', $message['data']);
     }
 
     // ── ล้างห้อง ─────────────────────────────────────────────────────────────

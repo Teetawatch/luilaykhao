@@ -35,6 +35,14 @@ class FcmService
     /** ใช้กับ Android รุ่นก่อน 8 ที่ยังไม่มี channel — รูปแบบเดียวกับฝั่งแอป */
     private const STAFF_ALERT_VIBRATION = ['0s', '0.8s', '0.3s', '0.8s', '0.3s', '0.8s'];
 
+    /**
+     * channel ของประกาศถึงลูกทริปที่พลาดไม่ได้ (พักรถ / ใกล้ถึงเวลากลับขึ้นรถ)
+     * สั่นสองจังหวะ — ต้องตรงกับ `PushNotificationService.tripAlertChannel` ฝั่งแอป
+     */
+    public const TRIP_ALERT_CHANNEL = 'trip_alerts';
+
+    private const TRIP_ALERT_VIBRATION = ['0s', '0.5s', '0.2s', '0.5s'];
+
     public function sendNotification(SmartNotification $notification): void
     {
         $tokens = FcmToken::where('user_id', $notification->user_id)
@@ -144,8 +152,10 @@ class FcmService
      *   จะใช้ channel เริ่มต้นใน manifest แทน)
      * - staff_alert: ลูกทริปเรียกทีมงาน — สั่นยาวบน channel STAFF_ALERT_CHANNEL และ iOS
      *   ส่งเป็น time-sensitive ให้ทะลุโหมดนอน/โฟกัส (ทับ quiet และ android_channel)
+     * - trip_alert: ประกาศถึงลูกทริปที่พลาดไม่ได้ (พักรถ/ใกล้ถึงเวลากลับขึ้นรถ) — สั่นสอง
+     *   จังหวะบน channel TRIP_ALERT_CHANNEL และ time-sensitive บน iOS (staff_alert ชนะถ้าส่งทั้งคู่)
      *
-     * @param  array{tag?: string, thread?: string, quiet?: bool, android_channel?: string, staff_alert?: bool}  $display
+     * @param  array{tag?: string, thread?: string, quiet?: bool, android_channel?: string, staff_alert?: bool, trip_alert?: bool}  $display
      */
     public function sendToUser(int $userId, string $title, string $body, array $data = [], array $display = []): void
     {
@@ -290,16 +300,24 @@ class FcmService
 
         $tag = isset($display['tag']) && $display['tag'] !== '' ? (string) $display['tag'] : null;
         $staffAlert = (bool) ($display['staff_alert'] ?? false);
-        $quiet = ! $staffAlert && (bool) ($display['quiet'] ?? false);
+        $tripAlert = ! $staffAlert && (bool) ($display['trip_alert'] ?? false);
+        $quiet = ! $staffAlert && ! $tripAlert && (bool) ($display['quiet'] ?? false);
         if ($staffAlert) {
             // แอปที่เปิดอยู่อ่านค่านี้เพื่อสั่นเอง — ตอนอยู่หน้าจอ ระบบไม่สั่นให้ทุกกรณี
             $data['staff_alert'] = '1';
         }
+        if ($tripAlert) {
+            $data['trip_alert'] = '1';
+        }
 
         $androidNotification = [
-            'channel_id' => $staffAlert ? self::STAFF_ALERT_CHANNEL : ($display['android_channel'] ?? 'important_updates'),
+            'channel_id' => match (true) {
+                $staffAlert => self::STAFF_ALERT_CHANNEL,
+                $tripAlert => self::TRIP_ALERT_CHANNEL,
+                default => $display['android_channel'] ?? 'important_updates',
+            },
             'notification_priority' => match (true) {
-                $staffAlert => 'PRIORITY_MAX',
+                $staffAlert, $tripAlert => 'PRIORITY_MAX',
                 $quiet => 'PRIORITY_LOW',
                 default => 'PRIORITY_HIGH',
             },
@@ -308,6 +326,9 @@ class FcmService
         if ($staffAlert) {
             $androidNotification['sound'] = 'default';
             $androidNotification['vibrate_timings'] = self::STAFF_ALERT_VIBRATION;
+        } elseif ($tripAlert) {
+            $androidNotification['sound'] = 'default';
+            $androidNotification['vibrate_timings'] = self::TRIP_ALERT_VIBRATION;
         } elseif (! $quiet) {
             // Android 8+ เอาเสียง/การสั่นจาก channel อยู่แล้ว สองค่านี้มีผลแค่
             // เครื่องรุ่นเก่า — ใบเงียบจึงไม่ใส่
@@ -329,7 +350,7 @@ class FcmService
             // passive = เข้าศูนย์แจ้งเตือนเงียบ ๆ ไม่ปลุกหน้าจอ ไม่มีเสียง
             // time-sensitive = ทะลุโหมดนอน/โฟกัส (entitlement มีอยู่แล้วจาก SOS)
             'interruption-level' => match (true) {
-                $staffAlert => 'time-sensitive',
+                $staffAlert, $tripAlert => 'time-sensitive',
                 $quiet => 'passive',
                 default => 'active',
             },
