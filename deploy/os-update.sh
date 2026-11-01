@@ -62,7 +62,10 @@ else
   SUDO=""
 fi
 
-artisan() { $SUDO -u "$WEB_USER" php artisan "$@"; }
+# sudo -u ตรง ๆ ไม่ใช่ $SUDO -u — รันในนาม root แล้ว $SUDO ว่าง จะเหลือแค่ "-u www-data ..."
+artisan() {
+  if [ "$(id -un)" = "$WEB_USER" ]; then php artisan "$@"; else sudo -u "$WEB_USER" php artisan "$@"; fi
+}
 
 PHP_TARGET="${PHP_TARGET:-$(sed -n 's/.*"php": *"\([0-9]*\.[0-9]*\)\..*/\1/p' composer.json | tail -1)}"
 [ -n "$PHP_TARGET" ] || die "อ่านเวอร์ชัน PHP จาก composer.json (config.platform.php) ไม่ได้ — ระบุเองด้วย PHP_TARGET=8.3"
