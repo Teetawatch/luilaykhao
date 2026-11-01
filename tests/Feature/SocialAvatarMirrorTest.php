@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\MirrorSocialAvatarJob;
 use App\Models\User;
 use App\Support\MediaDisk;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -93,6 +94,23 @@ class SocialAvatarMirrorTest extends TestCase
 
         // Left the existing avatar untouched rather than storing an HTML blob.
         $this->assertSame('avatars/social/existing.jpg', $user->avatar);
+    }
+
+    public function test_job_keeps_the_current_avatar_when_the_upload_fails(): void
+    {
+        $user = User::factory()->create(['avatar' => self::PICTURE_URL]);
+
+        Http::fake([self::PICTURE_URL => Http::response('fake-jpeg-bytes', 200, ['Content-Type' => 'image/jpeg'])]);
+
+        // R2 disks don't throw — a timed-out PutObject just comes back false.
+        $disk = \Mockery::mock(Filesystem::class);
+        $disk->shouldReceive('exists')->andReturn(false);
+        $disk->shouldReceive('put')->once()->andReturn(false);
+        Storage::shouldReceive('disk')->with(MediaDisk::name())->andReturn($disk);
+
+        (new MirrorSocialAvatarJob($user->id, self::PICTURE_URL))->handle();
+
+        $this->assertSame(self::PICTURE_URL, $user->refresh()->avatar);
     }
 
     private function fakeLineLogin(): void

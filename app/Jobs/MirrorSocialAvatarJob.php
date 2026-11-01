@@ -28,6 +28,10 @@ class MirrorSocialAvatarJob implements ShouldQueue
 
     public int $backoff = 30;
 
+    // Below Horizon's 60 s supervisor timeout. The download (15 s) and each R2 call
+    // (30 s, config/filesystems.php) normally give up well before this.
+    public int $timeout = 45;
+
     public function __construct(
         public int $userId,
         public string $sourceUrl,
@@ -79,7 +83,14 @@ class MirrorSocialAvatarJob implements ShouldQueue
             return;
         }
 
-        $disk->put($path, $body, 'public');
+        // The disk doesn't throw: a timed-out upload just returns false. Keep the
+        // current avatar rather than pointing it at a file that was never written.
+        if (! $disk->put($path, $body, 'public')) {
+            Log::warning('MirrorSocialAvatarJob: upload failed', ['user_id' => $this->userId]);
+
+            return;
+        }
+
         $user->update(['avatar' => $path]);
     }
 

@@ -79,6 +79,13 @@ return [
             'url' => env('R2_PUBLIC_URL'),
             'use_path_style_endpoint' => true,
             'visibility' => 'public',
+            // The AWS SDK waits forever by default, so one stalled connection to R2
+            // held a queue worker until Horizon killed the job at 60 s. Give up on
+            // our own well before that.
+            'http' => [
+                'connect_timeout' => 5,
+                'timeout' => 30,
+            ],
             // Cloudflare R2 rejects the CRC checksums aws-sdk-php >= 3.337 adds to
             // every upload by default; opt out so PutObject succeeds. See R2 S3
             // compatibility notes.
@@ -101,6 +108,11 @@ return [
             'endpoint' => env('R2_ENDPOINT'),
             'use_path_style_endpoint' => true,
             'visibility' => 'private',
+            // See note on the 'r2' disk.
+            'http' => [
+                'connect_timeout' => 5,
+                'timeout' => 30,
+            ],
             // See note on the 'r2' disk: disable the auto checksums that break
             // uploads to Cloudflare R2.
             'request_checksum_calculation' => 'when_required',
