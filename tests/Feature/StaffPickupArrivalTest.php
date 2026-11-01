@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Events\ChatMessageUpdated;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\BookingPassenger;
@@ -17,6 +18,7 @@ use App\Services\TripActivityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -103,6 +105,8 @@ class StaffPickupArrivalTest extends TestCase
 
         $this->assertNull(ChatMessage::where('system_key', "pickup_arrived_{$point->id}")->value('image_path'));
 
+        Event::fake([ChatMessageUpdated::class]);
+
         $this->actingAs($staff, 'sanctum')
             ->post("/api/v1/staff/schedules/{$schedule->id}/pickup-points/{$point->id}/arrived", [
                 'photo' => UploadedFile::fake()->image('parked.jpg'),
@@ -110,6 +114,12 @@ class StaffPickupArrivalTest extends TestCase
             ->assertOk();
 
         $this->assertNotNull(ChatMessage::where('system_key', "pickup_arrived_{$point->id}")->value('image_path'));
+        // คนที่เปิดห้องค้างไว้ต้องได้รูปทันที ไม่ใช่รอออกแล้วเข้าใหม่
+        Event::assertDispatched(
+            ChatMessageUpdated::class,
+            fn (ChatMessageUpdated $e) => $e->message->system_key === "pickup_arrived_{$point->id}"
+                && $e->message->image_path !== null,
+        );
     }
 
     public function test_companions_on_the_booking_are_told_too(): void

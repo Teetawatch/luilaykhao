@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\ChatMessageUpdated;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\BookingPassenger;
@@ -431,10 +432,19 @@ class PickupArrivalService
     /** สตาฟถ่ายรูปตามมาทีหลัง — เติมรูปให้ข้อความเดิมแทนการโพสต์ใหม่ */
     private function updateChatMessage(ChatMessage $message, string $body, SchedulePickupPoint $point): void
     {
-        $message->update([
+        $message->fill([
             'body' => $body,
             'image_path' => $point->arrival_photo_path ?? $message->image_path,
         ]);
+
+        if (! $message->isDirty()) {
+            return;
+        }
+
+        $message->save();
+
+        // คนที่เปิดห้องค้างไว้ต้องเห็นรูปที่เพิ่งเติมทันที ไม่ใช่ต้องออกแล้วเข้าใหม่
+        broadcast(new ChatMessageUpdated($message));
     }
 
     private function chatKey(SchedulePickupPoint $point): string
