@@ -24,6 +24,12 @@ class OpsHealthService
 
     public const FAIL = 'fail';
 
+    /**
+     * ขนาด event ทดสอบที่ส่งเข้า Reverb — ราวการ์ดจุดพักของรอบ 100 คน ถ้า Reverb
+     * ที่รันอยู่ยังใช้เพดานเก่า 10 KB การตรวจจะล้มตรงนี้ ไม่ใช่ตอนแชตรอบใหญ่ล้ม
+     */
+    public const REALTIME_PROBE_BYTES = 30_000;
+
     /** เวลาที่งานแต่ละตัวทำงานจบล่าสุด — เขียนโดย RecordMonitoredJobRun */
     private const JOB_KEY = 'ops:job_ok:';
 
@@ -399,7 +405,10 @@ class OpsHealthService
 
         try {
             app(BroadcastManager::class)->pusher($config)
-                ->trigger('ops-health', 'probe', ['at' => now()->timestamp]);
+                ->trigger('ops-health', 'probe', [
+                    'at' => now()->timestamp,
+                    'pad' => str_repeat('x', self::REALTIME_PROBE_BYTES),
+                ]);
         } catch (\Throwable $e) {
             return [
                 'status' => self::FAIL,
@@ -419,7 +428,7 @@ class OpsHealthService
             $status === 401, $status === 403 => 'Reverb ปฏิเสธลายเซ็น: REVERB_APP_ID/KEY/SECRET ใน .env ไม่ตรงกับที่ Reverb ตัวที่รันอยู่ใช้ (แก้ .env แล้วต้อง restart reverb ด้วย)',
             $status === 404, $status === 405 => 'มีเซิร์ฟเวอร์ตอบแต่ไม่ใช่ Reverb (มักเป็น nginx ที่ไม่ได้ส่ง /apps/ ต่อให้) — ฝั่ง Laravel ควรชี้ตรงไป REVERB_HOST=127.0.0.1 REVERB_PORT=8080 REVERB_SCHEME=http',
             $status === 400 && str_contains($message, 'HTTPS port') => 'ส่ง http ไปพอร์ต https: REVERB_SCHEME ไม่ตรงกับ REVERB_PORT — ฝั่ง Laravel ควรชี้ตรงไป REVERB_HOST=127.0.0.1 REVERB_PORT=8080 REVERB_SCHEME=http',
-            $status === 413 => 'ข้อมูล event ใหญ่เกินที่ Reverb รับ (max_request_size)',
+            $status === 413 => 'Reverb ที่รันอยู่ยังรับ event ได้ไม่ถึง '.number_format(self::REALTIME_PROBE_BYTES).' ไบต์ (แชตรอบคนเยอะจะไม่เด้ง) — เพดานอยู่ที่ max_request_size ใน config/reverb.php ซึ่ง Reverb อ่านตอนเริ่มเท่านั้น: sudo supervisorctl restart reverb',
             $status >= 500 => 'Reverb ตอบ error — ดู log ของ supervisor reverb',
             str_contains($message, 'SSL') || str_contains($message, 'certificate') => 'TLS ไม่ผ่าน — ถ้า Reverb อยู่เครื่องเดียวกัน ให้ชี้ตรงไป REVERB_HOST=127.0.0.1 REVERB_PORT=8080 REVERB_SCHEME=http',
             default => 'ต่อไม่ติด: Reverb ไม่ได้รัน (sudo supervisorctl status reverb) หรือ REVERB_HOST/PORT ใน .env ชี้ผิดที่ — ฝั่ง Laravel ควรชี้ตรงไป 127.0.0.1:8080 http',

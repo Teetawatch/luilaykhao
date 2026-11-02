@@ -121,4 +121,38 @@ class RealtimeHealthTest extends TestCase
 
         $this->artisan('reverb:check')->assertSuccessful();
     }
+
+    /**
+     * 2026-11-02: ChatMessageSent ของการ์ดจุดพักรอบคนเยอะล้มด้วย "Payload too large"
+     * เพราะ Reverb รับได้แค่ 10 KB — แก้ config แล้ว Reverb ตัวที่รันอยู่ต้อง restart ด้วย
+     */
+    public function test_a_payload_too_large_says_to_restart_reverb(): void
+    {
+        $this->reverbAnswers(new Response(413, [], 'Payload too large.'));
+
+        $probe = $this->probe();
+
+        $this->assertSame(OpsHealthService::FAIL, $probe['status']);
+        $this->assertStringContainsString('supervisorctl restart reverb', $probe['hint']);
+    }
+
+    public function test_the_probe_is_as_big_as_a_large_rounds_chat_card(): void
+    {
+        $history = [];
+        $this->reverbAnswers(new Response(200, [], '{}'));
+        $stack = config('broadcasting.connections.reverb.client_options.handler');
+        $stack->push(\GuzzleHttp\Middleware::history($history));
+
+        $this->probe();
+
+        $this->assertGreaterThan(OpsHealthService::REALTIME_PROBE_BYTES, $history[0]['request']->getBody()->getSize());
+    }
+
+    public function test_reverb_accepts_events_bigger_than_the_probe(): void
+    {
+        $this->assertGreaterThan(
+            OpsHealthService::REALTIME_PROBE_BYTES * 5,
+            config('reverb.servers.reverb.max_request_size'),
+        );
+    }
 }
