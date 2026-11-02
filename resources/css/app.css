@@ -146,6 +146,15 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Until the icon font has loaded (app.blade.php adds .icons-ready), an icon is
+   just its ligature name in a fallback font — "airline_seat_recline_normal"
+   spilling across the card. Keep it invisible and icon-sized instead. */
+html:not(.icons-ready) .material-symbols-rounded {
+    visibility: hidden;
+    max-width: 1em;
+    overflow: hidden;
+}
+
 /* ── Scroll reveal (resources/js/lib/useReveal.js) ──────────────────────
    ซ่อนเฉพาะใต้ .reveal-ready ที่ useReveal ใส่ให้เมื่อแอนิเมชันเปิดได้ */
 .reveal-ready .reveal {

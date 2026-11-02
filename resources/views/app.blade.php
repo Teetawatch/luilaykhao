@@ -214,7 +214,25 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    {{-- Only the axes the site actually uses: FILL 0/1, wght 200–700 (inline
+         styles stay in 200–600, plus a couple of font-bold icons), opsz and
+         GRAD at their defaults. Asking for every axis made Google serve a
+         5.4 MB font; this is 1.5 MB with identical icons. Before, phones on
+         mobile data waited long enough for the 3 s block period to run out,
+         and every icon turned into its ligature name ("arrow_forward") across
+         the page — customers reported it as the site not loading. --}}
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,200..700,0..1,0&display=block" rel="stylesheet">
+    {{-- Marks <html> once the icon font is in, so app.css can keep icons
+         hidden (and 1em wide) until then instead of printing their names. --}}
+    <script>
+        (function () {
+            var ready = function () { document.documentElement.classList.add('icons-ready'); };
+            if (!document.fonts || !document.fonts.load) return ready();
+            document.fonts.load("24px 'Material Symbols Rounded'").then(function (faces) {
+                if (faces.length) ready();
+            }, function () {});
+        })();
+    </script>
     {{-- Primary site font: DB Heavent (licensed, self-hosted, same-origin only) --}}
     <link rel="stylesheet" href="{{ asset('fonts/db-heavent/db-heavent.css') }}?v={{ filemtime(public_path('fonts/db-heavent/db-heavent.css')) }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
