@@ -41,7 +41,7 @@ return [
             // ก twice over (7 bytes). A rest-stop card with a 45-person
             // roster is ~12 KB, so on big rounds ChatMessageSent failed with
             // "Payload too large". Reverb only reads this at start:
-            // sudo supervisorctl restart reverb. reverb:check probes with
+            // sudo supervisorctl restart 'reverb:*'. reverb:check probes with
             // OpsHealthService::REALTIME_PROBE_BYTES to prove the live limit.
             'max_request_size' => env('REVERB_MAX_REQUEST_SIZE', 500_000),
             'scaling' => [

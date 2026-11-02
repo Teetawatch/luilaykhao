@@ -68,7 +68,7 @@ bash /var/www/luilaykhao/deploy/deploy.sh
 sudo crontab -l -u www-data | grep schedule:run   # 1 บรรทัด
 crontab -l | grep schedule:run                    # ไม่มี
 sudo crontab -l | grep schedule:run               # ไม่มี
-sudo supervisorctl status                         # luilaykhao-horizon + reverb เท่านั้น
+sudo supervisorctl status                         # luilaykhao-horizon + reverb:reverb_00 เท่านั้น
 ```
 
 ## เฝ้าระบบ
@@ -142,9 +142,9 @@ cd /var/www/luilaykhao && sudo -u www-data php artisan reverb:check
 ```
 
 บอกว่าส่งไปที่ไหน ล้มเพราะอะไร และต้องแก้อะไร (`ops:doctor` / `ops:alert` ตรวจข้อนี้ด้วย)
-แก้ `.env` แล้ว: `config:clear` → `horizon:terminate` → `sudo supervisorctl restart reverb`
+แก้ `.env` แล้ว: `config:clear` → `horizon:terminate` → `sudo supervisorctl restart 'reverb:*'`
 ขนาด event ที่ Reverb รับได้คือ `max_request_size` ใน `config/reverb.php` (500 KB) Reverb อ่านค่านี้ตอนเริ่มเท่านั้น
-ถ้า `reverb:check` ขึ้น `Payload too large` แปลว่า Reverb ที่รันอยู่ยังใช้ค่าเก่า → `sudo supervisorctl restart reverb`
+ถ้า `reverb:check` ขึ้น `Payload too large` แปลว่า Reverb ที่รันอยู่ยังใช้ค่าเก่า → `sudo supervisorctl restart 'reverb:*'`
 event สดที่ล้มไปแล้วหมดความหมายแล้ว ไม่ต้อง retry (`queue:flush` ล้างได้ แต่ล้าง*ทุก*งานที่ล้ม — ดูก่อนว่าไม่มีงานอื่นปน)
 
 ## Log

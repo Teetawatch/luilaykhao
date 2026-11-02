@@ -54,7 +54,7 @@ class RealtimeHealthTest extends TestCase
 
         $this->assertSame(OpsHealthService::FAIL, $probe['status']);
         $this->assertStringContainsString('Failed to connect', $probe['detail']);
-        $this->assertStringContainsString('supervisorctl status reverb', $probe['hint']);
+        $this->assertStringContainsString("supervisorctl status 'reverb:*'", $probe['hint']);
     }
 
     public function test_a_proxy_that_is_not_reverb_says_so(): void
@@ -133,7 +133,7 @@ class RealtimeHealthTest extends TestCase
         $probe = $this->probe();
 
         $this->assertSame(OpsHealthService::FAIL, $probe['status']);
-        $this->assertStringContainsString('supervisorctl restart reverb', $probe['hint']);
+        $this->assertStringContainsString("supervisorctl restart 'reverb:*'", $probe['hint']);
     }
 
     public function test_the_probe_is_as_big_as_a_large_rounds_chat_card(): void
