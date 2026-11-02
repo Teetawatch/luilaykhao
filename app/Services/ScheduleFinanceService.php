@@ -34,6 +34,7 @@ class ScheduleFinanceService
     public function __construct(
         private ScheduleLedgerService $ledgerService,
         private ExpenseAuditService $auditService,
+        private StaffFeeService $staffFees,
     ) {}
 
     // ─── กติกาที่บังคับ ──────────────────────────────────────────
@@ -396,9 +397,17 @@ class ScheduleFinanceService
             return round((float) $schedule->finance_budget, 2);
         }
 
-        $fromTemplates = ExpenseTemplate::where('trip_id', $schedule->trip_id)
+        $templates = ExpenseTemplate::where('trip_id', $schedule->trip_id)
             ->where('is_active', true)
-            ->sum('default_amount');
+            ->whereNotNull('default_amount')
+            ->get();
+
+        // นับคนเฉพาะเมื่อมีรายการต่อหัว — หน้าภาพรวมเรียกตรงนี้ทุกรอบ
+        $headcount = $templates->contains(fn (ExpenseTemplate $t) => $t->isPerHead())
+            ? $this->staffFees->headcount($schedule)
+            : null;
+
+        $fromTemplates = $templates->sum(fn (ExpenseTemplate $t) => $this->staffFees->amountFor($t, $schedule, $headcount));
 
         return $fromTemplates > 0 ? round((float) $fromTemplates, 2) : null;
     }

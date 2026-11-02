@@ -15,6 +15,7 @@ use App\Services\RentalHandoutService;
 use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleLedgerService;
 use App\Services\SchedulePhotoService;
+use App\Services\StaffFeeService;
 use App\Services\StaffIntroService;
 use App\Services\StaffPermitService;
 use App\Services\VehicleLocationService;
@@ -37,6 +38,7 @@ class StaffController extends Controller
         private StaffIntroService $intros,
         private SchedulePhotoService $schedulePhotos,
         private StaffPermitService $staffPermits,
+        private StaffFeeService $staffFees,
     ) {}
 
     public function mySchedules(Request $request): JsonResponse
@@ -473,6 +475,70 @@ class StaffController extends Controller
         return $this->success(
             $this->ledgerService->forSchedule($schedule, $request->user()->id),
             'ลบรายการแล้ว',
+        );
+    }
+
+    /**
+     * เงินที่ต้องจ่ายหน้างานของรอบ — ค่าผ่านด่าน ค่าเข้าพื้นที่ ฯลฯ ที่แอดมินตั้งไว้
+     * คูณจำนวนคนของรอบมาให้แล้ว สตาฟจะได้รู้ว่าต้องเตรียมเงินส่วนไหนเท่าไร
+     */
+    public function fees(Request $request, int $scheduleId): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedule = $this->assignedSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        return $this->success($this->staffFees->forSchedule($schedule, $request->user()));
+    }
+
+    /**
+     * บันทึกว่าจ่ายรายการนี้แล้ว — ลงสมุดบัญชีหน้างานให้เลย ยกเลิกได้ผ่านการลบแถวนั้น
+     */
+    public function payFee(Request $request, int $scheduleId, int $templateId): JsonResponse
+    {
+        if (! $request->user()->hasRole('staff')) {
+            return $this->error('สิทธิ์ไม่เพียงพอสำหรับเมนูสตาฟ', 403);
+        }
+
+        $schedule = $this->assignedSchedule($request, $scheduleId);
+
+        if (! $schedule) {
+            return $this->error('คุณไม่ได้รับผิดชอบรอบเดินทางนี้', 403);
+        }
+
+        $validated = $request->validate([
+            // ไม่ส่ง = ใช้ยอดที่ระบบคำนวณ ส่งมา = จ่ายจริงไม่ตรง (เรตเงินกีบ คนมาไม่ครบ)
+            'amount' => ['nullable', 'numeric', 'min:0', 'max:9999999'],
+            'note' => ['nullable', 'string', 'max:1000'],
+            'spent_at' => ['nullable', 'date'],
+            'slip' => ['nullable', 'image', 'max:5120'],
+        ]);
+
+        try {
+            $this->financeService->assertEditable($schedule, $request->user());
+
+            $expected = collect($this->staffFees->forSchedule($schedule)['items'])->firstWhere('id', $templateId);
+            $this->financeService->assertEvidence([
+                'kind' => ScheduleExpense::KIND_EXPENSE,
+                'category' => $expected['category'] ?? 'other',
+                'amount' => $validated['amount'] ?? ($expected['amount'] ?? 0),
+            ], $request->hasFile('slip'));
+
+            $this->staffFees->pay($schedule, $templateId, $request->user(), $validated, $request->file('slip'));
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success(
+            $this->staffFees->forSchedule($schedule, $request->user()),
+            'บันทึกว่าจ่ายแล้ว',
+            201,
         );
     }
 

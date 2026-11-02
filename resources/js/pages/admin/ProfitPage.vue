@@ -486,18 +486,27 @@
           <button class="modal-close" @click="showTemplates = false"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div class="modal-body">
-          <p class="page-subtitle" style="margin-bottom:12px;">รายการที่ตั้งไว้ที่นี่ดึงเข้ารอบเดินทางได้เร็วด้วยปุ่ม "ใช้รายการประจำ"</p>
+          <p class="page-subtitle" style="margin-bottom:12px;">
+            รายการที่ตั้งไว้ที่นี่ดึงเข้ารอบเดินทางได้เร็วด้วยปุ่ม "ใช้รายการประจำ" ·
+            รายการ "ต่อคน" ระบบคูณจำนวนคนของรอบให้ · ติ๊ก "สตาฟจ่ายหน้างาน" แล้วสตาฟจะเห็นในแอป (เมนูต้องจ่าย) ว่าต้องเตรียมเงินเท่าไร
+          </p>
 
           <div class="loading-state" v-if="tmplLoading"><div class="spinner spinner-sm"></div></div>
           <table class="data-table exp-table" v-else>
             <thead>
-              <tr><th>รายการ</th><th>หมวด</th><th class="num">จำนวนตั้งต้น</th><th>สถานะ</th><th></th></tr>
+              <tr><th>รายการ</th><th>หมวด</th><th class="num">ยอด</th><th>สถานะ</th><th></th></tr>
             </thead>
             <tbody>
               <tr v-for="tm in templates" :key="tm.id">
-                <td>{{ tm.name }}</td>
+                <td>
+                  {{ tm.name }}
+                  <span v-if="tm.staff_visible" class="tmpl-chip chip-staff" :title="tm.staff_note || 'สตาฟเห็นในแอป'">สตาฟจ่ายหน้างาน</span>
+                </td>
                 <td>{{ categoryLabel(tm.category) }}</td>
-                <td class="num">{{ tm.default_amount != null ? formatMoney(tm.default_amount) : '-' }}</td>
+                <td class="num">
+                  {{ tm.default_amount != null ? formatMoney(tm.default_amount) : '-' }}
+                  <div v-if="tm.amount_basis && tm.amount_basis !== 'flat'" class="tmpl-basis">{{ basisLabel(tm.amount_basis) }}</div>
+                </td>
                 <td><span class="status-badge" :class="tm.is_active ? 'status-active' : 'status-inactive'">{{ tm.is_active ? 'ใช้งาน' : 'ปิด' }}</span></td>
                 <td class="action-btns">
                   <button class="btn-icon btn-edit" title="แก้ไข" @click="startEditTmpl(tm)"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
@@ -521,8 +530,26 @@
               </select>
             </div>
             <div class="form-group exp-amount">
-              <label>จำนวนตั้งต้น</label>
+              <label>{{ tmplForm.amount_basis === 'flat' ? 'ยอดตั้งต้น' : 'ยอดต่อคน' }}</label>
               <input v-model.number="tmplForm.default_amount" type="number" step="0.01" min="0" placeholder="ไม่บังคับ" />
+            </div>
+            <div class="form-group">
+              <label>คิดแบบ</label>
+              <select v-model="tmplForm.amount_basis">
+                <option v-for="b in amountBases" :key="b.value" :value="b.value">{{ b.label }}</option>
+              </select>
+            </div>
+            <div class="form-group tmpl-staff">
+              <label class="tmpl-check">
+                <input type="checkbox" v-model="tmplForm.staff_visible" />
+                สตาฟจ่ายหน้างาน (โชว์ในแอปสตาฟ)
+              </label>
+              <input
+                v-if="tmplForm.staff_visible"
+                v-model="tmplForm.staff_note"
+                maxlength="500"
+                placeholder="บอกสตาฟ เช่น จ่ายที่ด่านบ่อเต็น ใช้เงินกีบ ขอใบเสร็จทุกครั้ง"
+              />
             </div>
             <div class="form-group">
               <label>สถานะ</label>
@@ -611,7 +638,19 @@ const showTemplates = ref(false);
 const templates = ref([]);
 const tmplLoading = ref(false);
 const tmplBusy = ref(false);
-const tmplForm = reactive({ id: null, name: '', category: null, default_amount: null, is_active: true });
+const tmplForm = reactive({
+  id: null, name: '', category: null, default_amount: null, amount_basis: 'flat',
+  staff_visible: false, staff_note: '', is_active: true,
+});
+// ตรงกับ ExpenseTemplate::BASES — ต่อหัวคูณจำนวนคนของรอบที่ฝั่งเซิร์ฟเวอร์
+const amountBases = [
+  { value: 'flat', label: 'เหมาต่อรอบ' },
+  { value: 'per_traveller', label: 'ต่อลูกทริป' },
+  { value: 'per_person', label: 'ต่อคน (รวมทีมงาน)' },
+];
+function basisLabel(value) {
+  return amountBases.find((b) => b.value === value)?.label || '';
+}
 
 function formatMoney(amount) {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(amount || 0);
@@ -890,6 +929,9 @@ function resetTmplForm() {
   tmplForm.name = '';
   tmplForm.category = null;
   tmplForm.default_amount = null;
+  tmplForm.amount_basis = 'flat';
+  tmplForm.staff_visible = false;
+  tmplForm.staff_note = '';
   tmplForm.is_active = true;
 }
 function startEditTmpl(tm) {
@@ -897,6 +939,9 @@ function startEditTmpl(tm) {
   tmplForm.name = tm.name;
   tmplForm.category = tm.category || null;
   tmplForm.default_amount = tm.default_amount != null ? Number(tm.default_amount) : null;
+  tmplForm.amount_basis = tm.amount_basis || 'flat';
+  tmplForm.staff_visible = !!tm.staff_visible;
+  tmplForm.staff_note = tm.staff_note || '';
   tmplForm.is_active = !!tm.is_active;
 }
 
@@ -904,7 +949,15 @@ async function submitTemplate() {
   tmplBusy.value = true;
   try {
     const tripId = activeTrip.value.trip_id;
-    const payload = { name: tmplForm.name, category: tmplForm.category, default_amount: tmplForm.default_amount, is_active: tmplForm.is_active };
+    const payload = {
+      name: tmplForm.name,
+      category: tmplForm.category,
+      default_amount: tmplForm.default_amount,
+      amount_basis: tmplForm.amount_basis,
+      staff_visible: tmplForm.staff_visible,
+      staff_note: tmplForm.staff_visible ? (tmplForm.staff_note || null) : null,
+      is_active: tmplForm.is_active,
+    };
     if (tmplForm.id) {
       await admin.updateExpenseTemplate(tripId, tmplForm.id, payload);
     } else {
@@ -1141,6 +1194,11 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .sc-hint { font-size: 11px; color: #9aa0aa; font-weight: 600; }
 .warn-text { color: #b45309; font-weight: 700; font-size: 12px; }
 .chip-open { color: #b45309; background: #fffbeb; }
+.chip-staff { color: #b45309; background: #fffbeb; }
+.tmpl-basis { font-size: 11px; color: #64748b; font-weight: 600; }
+.exp-form .tmpl-staff { flex: 1 1 100%; display: flex; flex-direction: column; gap: 6px; }
+.exp-form .tmpl-check { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+.exp-form .tmpl-check input { width: auto; margin: 0; }
 
 .sched-actions { display: flex; gap: 6px; }
 .sched-sub { font-size: 13px; color: #6b7280; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #eef0f3; }

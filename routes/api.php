@@ -662,6 +662,9 @@ Route::prefix('v1')->group(function () {
         Route::post('staff/schedules/{id}/ledger', [StaffController::class, 'storeLedgerEntry']);
         Route::post('staff/schedules/{id}/ledger/{entry}', [StaffController::class, 'updateLedgerEntry']);
         Route::delete('staff/schedules/{id}/ledger/{entry}', [StaffController::class, 'deleteLedgerEntry']);
+        // เงินที่ต้องจ่ายหน้างาน (ค่าผ่านด่าน/ค่าเข้าพื้นที่) — กดจ่ายแล้วลงสมุดบัญชีข้างบน
+        Route::get('staff/schedules/{id}/fees', [StaffController::class, 'fees']);
+        Route::post('staff/schedules/{id}/fees/{templateId}/pay', [StaffController::class, 'payFee']);
 
         // อัลบั้มรอบ — สตาฟอัปรูปทริปจากมือถือขึ้น R2 ทีละหลายรูป ลบได้เฉพาะรูปของตัวเอง
         Route::get('staff/schedules/{id}/photos', [StaffPhotoController::class, 'index']);

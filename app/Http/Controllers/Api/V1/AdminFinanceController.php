@@ -12,6 +12,7 @@ use App\Models\TripSchedule;
 use App\Services\ExpenseAuditService;
 use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleLedgerService;
+use App\Services\StaffFeeService;
 use App\Support\MediaDisk;
 use App\Support\SiteSettings;
 use App\Support\ThaiDate;
@@ -36,6 +37,7 @@ class AdminFinanceController extends Controller
         private ScheduleLedgerService $ledgerService,
         private ScheduleFinanceService $financeService,
         private ExpenseAuditService $auditService,
+        private StaffFeeService $staffFees,
     ) {}
 
     /**
@@ -341,6 +343,9 @@ class AdminFinanceController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'category' => ['nullable', Rule::in(array_keys(ScheduleExpense::EXPENSE_CATEGORIES))],
             'default_amount' => ['nullable', 'numeric', 'min:0'],
+            'amount_basis' => ['sometimes', Rule::in(array_keys(ExpenseTemplate::BASES))],
+            'staff_visible' => ['sometimes', 'boolean'],
+            'staff_note' => ['nullable', 'string', 'max:500'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
@@ -358,6 +363,9 @@ class AdminFinanceController extends Controller
             'name' => ['sometimes', 'string', 'max:255'],
             'category' => ['nullable', Rule::in(array_keys(ScheduleExpense::EXPENSE_CATEGORIES))],
             'default_amount' => ['nullable', 'numeric', 'min:0'],
+            'amount_basis' => ['sometimes', Rule::in(array_keys(ExpenseTemplate::BASES))],
+            'staff_visible' => ['sometimes', 'boolean'],
+            'staff_note' => ['nullable', 'string', 'max:500'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
@@ -417,7 +425,8 @@ class AdminFinanceController extends Controller
                 ->findOrFail($validated['expense_template_id']);
             $templateId = $template->id;
             $name = $name ?: $template->name;
-            $amount = $amount ?? $template->default_amount;
+            // รายการต่อหัวต้องคูณจำนวนคนของรอบ ไม่ใช่เอายอดต่อคนมาลงตรง ๆ
+            $amount = $amount ?? $this->staffFees->amountFor($template, $schedule);
             $templateCategory = $template->category;
         }
 
@@ -478,6 +487,10 @@ class AdminFinanceController extends Controller
             ->pluck('expense_template_id')
             ->all();
 
+        $headcount = $templates->contains(fn (ExpenseTemplate $t) => $t->isPerHead())
+            ? $this->staffFees->headcount($schedule)
+            : null;
+
         $created = 0;
         foreach ($templates as $template) {
             if (in_array($template->id, $alreadyApplied, true)) {
@@ -488,7 +501,7 @@ class AdminFinanceController extends Controller
                 'expense_template_id' => $template->id,
                 'category' => $template->category,
                 'name' => $template->name,
-                'amount' => $template->default_amount ?? 0,
+                'amount' => $this->staffFees->amountFor($template, $schedule, $headcount) ?? 0,
                 'created_by' => $request->user()?->id,
             ]);
             $this->auditService->created($expense, $request->user(), 'ดึงจากรายการประจำ');
