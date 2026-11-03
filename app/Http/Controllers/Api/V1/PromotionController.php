@@ -8,6 +8,7 @@ use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\Promotion;
 use App\Models\SavedPromotion;
+use App\Models\Trip;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -62,15 +63,29 @@ class PromotionController extends Controller
      * แอปเก็บคูปองไว้ใช้ตอนจอง — ต้องรู้ว่าโค้ดใช้ได้กับทริปไหน จะได้ไม่เสนอ
      * โค้ดที่ validate แล้วตกแน่ ๆ (null = ทุกทริป). ใช้กฎเดียวกับ
      * validateCode/BookingService: จำกัดทริปก็ต่อเมื่อเป็น array ที่ไม่ว่าง
+     *
+     * `trip_types` = หมวดทริป (trips.type = categories.slug) ของทริปที่โค้ดใช้ได้
+     * ให้แอปจัดคูปองเป็นหมวดแบบร้านค้าออนไลน์ — null เมื่อใช้ได้ทุกทริป
      */
     private function presentPublic(Collection $promotions): Collection
     {
-        return $promotions->each(function (Promotion $promotion) {
+        $idsOf = function (Promotion $promotion): array {
             $ids = $promotion->trip_ids;
-            $ids = is_array($ids)
+
+            return is_array($ids)
                 ? array_values(array_map('intval', array_filter($ids, 'is_numeric')))
                 : [];
+        };
+
+        $typeByTrip = Trip::whereIn('id', $promotions->flatMap($idsOf)->unique()->values())
+            ->pluck('type', 'id');
+
+        return $promotions->each(function (Promotion $promotion) use ($idsOf, $typeByTrip) {
+            $ids = $idsOf($promotion);
+            $types = collect($ids)->map(fn ($id) => $typeByTrip[$id] ?? null)
+                ->filter()->unique()->values()->all();
             $promotion->setAttribute('trip_ids', $ids === [] ? null : $ids);
+            $promotion->setAttribute('trip_types', $ids === [] ? null : $types);
         })->values();
     }
 
