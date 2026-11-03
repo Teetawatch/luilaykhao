@@ -78,6 +78,7 @@ use App\Http\Controllers\Api\V1\PartnerController;
 use App\Http\Controllers\Api\V1\PartyGameController;
 use App\Http\Controllers\Api\V1\PassengerInviteController;
 use App\Http\Controllers\Api\V1\PassportController;
+use App\Http\Controllers\Api\V1\PassportPinController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PermitSignatureController;
@@ -307,6 +308,13 @@ Route::prefix('v1')->group(function () {
         Route::get('me/passport', [PassportController::class, 'show']);
         // แผนที่พิชิต — ทริปที่เดินจบแล้ว + ความลึกรายภาค
         Route::get('me/passport/map', [PassportController::class, 'map']);
+        // หมุดความทรงจำ — ปักตรงที่ที่ไปมาจริง + แนบรูป (เห็นเฉพาะเจ้าของ)
+        Route::get('me/passport/pins', [PassportPinController::class, 'index']);
+        Route::post('me/passport/pins', [PassportPinController::class, 'store'])->middleware('throttle:30,60');
+        Route::match(['put', 'patch'], 'me/passport/pins/{id}', [PassportPinController::class, 'update'])->whereNumber('id')->middleware('throttle:60,1');
+        Route::delete('me/passport/pins/{id}', [PassportPinController::class, 'destroy'])->whereNumber('id');
+        Route::post('me/passport/pins/{id}/photos', [PassportPinController::class, 'addPhotos'])->whereNumber('id')->middleware('throttle:40,60');
+        Route::delete('me/passport/pins/{id}/photos/{photoId}', [PassportPinController::class, 'destroyPhoto'])->whereNumber(['id', 'photoId']);
         // ตู้เหรียญพิชิต — เหรียญประจำตัวของทริปที่เดินจบจริง
         Route::get('me/medals', [MedalController::class, 'index']);
         Route::post('me/medals/seen', [MedalController::class, 'markSeen']);

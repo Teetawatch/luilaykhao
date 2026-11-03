@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\PassportPinPhoto;
 use App\Models\SchedulePhoto;
 use App\Models\TripPhoto;
 use App\Support\Thumbnailer;
@@ -26,16 +27,16 @@ class GeneratePhotoThumbnailJob implements ShouldQueue
 
     public int $timeout = 120;
 
-    /** @param  class-string<SchedulePhoto|TripPhoto>  $photoClass */
+    /** @param  class-string<SchedulePhoto|TripPhoto|PassportPinPhoto>  $photoClass */
     public function __construct(public string $photoClass, public int $photoId) {}
 
     public function handle(): void
     {
-        if (! in_array($this->photoClass, [SchedulePhoto::class, TripPhoto::class], true)) {
+        if (! in_array($this->photoClass, [SchedulePhoto::class, TripPhoto::class, PassportPinPhoto::class], true)) {
             return;
         }
 
-        /** @var SchedulePhoto|TripPhoto|null $photo */
+        /** @var SchedulePhoto|TripPhoto|PassportPinPhoto|null $photo */
         $photo = $this->photoClass::find($this->photoId);
 
         if (! $photo || ! $photo->path || $photo->thumb_path) {

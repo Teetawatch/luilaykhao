@@ -30,7 +30,10 @@ class ConquestMapService
         'south' => 'ภาคใต้',
     ];
 
-    public function __construct(private PassportService $passport) {}
+    public function __construct(
+        private PassportService $passport,
+        private PassportPinService $pins,
+    ) {}
 
     public function forUser(int $userId): array
     {
@@ -63,10 +66,21 @@ class ConquestMapService
 
         $visited = collect(array_values($byTrip));
 
+        // หมุดที่ผู้ใช้ปักเอง (พร้อมรูป) — วาดบนแผนที่เดียวกัน แต่ไม่นับรวมในสถิติ
+        // รายภาค เพราะสถิติข้างบนเป็นของทริปที่เดินจบจริงเท่านั้น
+        $memories = $this->pins->pinsFor($userId)
+            ->map(fn ($pin) => $this->pins->format($pin))
+            ->values()
+            ->all();
+
         return [
-            'summary' => $this->summary($visited),
+            'summary' => $this->summary($visited) + [
+                'memories_count' => count($memories),
+                'memory_photos_count' => array_sum(array_map(fn (array $m) => count($m['photos']), $memories)),
+            ],
             'regions' => $this->regions($visited),
             'pins' => $this->pins($visited),
+            'memories' => $memories,
             'frontier' => $this->frontier($visited),
         ];
     }

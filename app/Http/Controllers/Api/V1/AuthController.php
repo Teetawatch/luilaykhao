@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Jobs\MirrorSocialAvatarJob;
+use App\Models\PassportPin;
 use App\Models\User;
 use App\Services\MailService;
 use App\Services\ReferralService;
@@ -109,6 +110,9 @@ class AuthController extends Controller
 
         // Remove the stored avatar so no personal media is left behind.
         $this->deleteAvatarFile($user->avatar);
+        // รูปในหมุดความทรงจำก็เป็นรูปส่วนตัว — ลบผ่านโมเดลให้ไฟล์ถูกกวาดด้วย
+        // (cascade ของฐานข้อมูลลบแค่แถว)
+        PassportPin::where('user_id', $user->id)->get()->each->delete();
 
         // Revoke all access tokens, then delete the user. Related records
         // (bookings, reviews, loyalty, notifications, fcm tokens, …) are removed
