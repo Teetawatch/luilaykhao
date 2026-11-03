@@ -385,6 +385,22 @@ class Trip extends Model
         })->count();
     }
 
+    /**
+     * คนที่จองทริปนี้ใน 7 วันที่ผ่านมา (หัวคน ไม่ใช่จำนวนใบจอง) — บรรทัด
+     * "N คนจองในสัปดาห์นี้" บนการ์ดทริปในแอป นับเฉพาะใบที่ยืนยันแล้ว
+     * ใบที่ยังไม่จ่าย/ยกเลิกไม่นับ ตัวเลขจึงไม่พองจากคนที่กดจองทิ้งไว้
+     */
+    public function getBookedThisWeekCountAttribute(): int
+    {
+        return BookingPassenger::whereHas('booking', function ($q) {
+            $q->whereIn('status', ['confirmed', 'completed'])
+                ->where('created_at', '>=', now()->subDays(7))
+                ->whereHas('schedule', function ($sq) {
+                    $sq->where('trip_id', $this->id);
+                });
+        })->count();
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

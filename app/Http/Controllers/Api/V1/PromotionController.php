@@ -7,7 +7,10 @@ use App\Models\GiftVoucher;
 use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\Promotion;
+use App\Models\SavedPromotion;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 
 class PromotionController extends Controller
@@ -21,30 +24,153 @@ class PromotionController extends Controller
 
     public function publicActive()
     {
-        $promotions = Promotion::where('is_active', true)
+        return response()->json(['data' => $this->presentPublic($this->activePromotions()->get())]);
+    }
+
+    /**
+     * โปรโมชันที่ยังใช้ได้ตอนนี้ — เปิดอยู่ อยู่ในช่วงวันที่ ยังไม่ใช้ครบ และ
+     * Flash Sale ยังไม่หมดเวลา ใช้ร่วมกันทั้งรายการสาธารณะและคูปองที่เก็บไว้
+     */
+    private function activePromotions(): Builder
+    {
+        return Promotion::where('promotions.is_active', true)
             ->where(function ($q) {
-                $q->whereNull('start_date')->orWhere('start_date', '<=', now()->startOfDay());
+                $q->whereNull('promotions.start_date')->orWhere('promotions.start_date', '<=', now()->startOfDay());
             })
             ->where(function ($q) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', now()->startOfDay());
+                $q->whereNull('promotions.end_date')->orWhere('promotions.end_date', '>=', now()->startOfDay());
             })
             ->where(function ($q) {
-                $q->whereNull('max_uses')->orWhereColumn('used_count', '<', 'max_uses');
+                $q->whereNull('promotions.max_uses')->orWhereColumn('promotions.used_count', '<', 'promotions.max_uses');
             })
             // A flash sale with a precise deadline drops off the moment it lapses.
             ->where(function ($q) {
-                $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
+                $q->whereNull('promotions.ends_at')->orWhere('promotions.ends_at', '>', now());
             })
             ->select(
-                'id', 'code', 'name', 'type', 'value', 'start_date', 'end_date',
-                'max_uses', 'used_count', 'is_flash_sale', 'ends_at'
+                'promotions.id', 'promotions.code', 'promotions.name', 'promotions.type',
+                'promotions.value', 'promotions.start_date', 'promotions.end_date',
+                'promotions.max_uses', 'promotions.used_count', 'promotions.is_flash_sale',
+                'promotions.ends_at', 'promotions.trip_ids'
             )
             // Surface flash sales first so the urgency is front and centre.
-            ->orderByDesc('is_flash_sale')
-            ->orderBy('id', 'desc')
+            ->orderByDesc('promotions.is_flash_sale')
+            ->orderBy('promotions.id', 'desc');
+    }
+
+    /**
+     * แอปเก็บคูปองไว้ใช้ตอนจอง — ต้องรู้ว่าโค้ดใช้ได้กับทริปไหน จะได้ไม่เสนอ
+     * โค้ดที่ validate แล้วตกแน่ ๆ (null = ทุกทริป). ใช้กฎเดียวกับ
+     * validateCode/BookingService: จำกัดทริปก็ต่อเมื่อเป็น array ที่ไม่ว่าง
+     */
+    private function presentPublic(Collection $promotions): Collection
+    {
+        return $promotions->each(function (Promotion $promotion) {
+            $ids = $promotion->trip_ids;
+            $ids = is_array($ids)
+                ? array_values(array_map('intval', array_filter($ids, 'is_numeric')))
+                : [];
+            $promotion->setAttribute('trip_ids', $ids === [] ? null : $ids);
+        })->values();
+    }
+
+    /** เก็บได้ไม่เกินเท่านี้ต่อบัญชี — เก็บใหม่แล้วตัวเก่าสุดหลุด */
+    public const SAVED_LIMIT = 50;
+
+    /**
+     * คูปองที่ลูกค้าเก็บไว้และยังใช้ได้ ใหม่สุดก่อน — ตัวที่หมดอายุ/ใช้ครบแล้วยัง
+     * อยู่ในตาราง แต่ไม่ถูกส่งกลับ (ถ้าแอดมินต่ออายุ มันกลับมาเอง)
+     */
+    public function saved(Request $request)
+    {
+        $promotions = $this->activePromotions()
+            ->join('saved_promotions', 'saved_promotions.promotion_id', '=', 'promotions.id')
+            ->where('saved_promotions.user_id', $request->user()->id)
+            ->reorder()
+            ->orderByDesc('saved_promotions.updated_at')
+            ->orderByDesc('saved_promotions.id')
             ->get();
 
-        return response()->json(['data' => $promotions]);
+        return response()->json(['data' => $this->presentPublic($promotions)]);
+    }
+
+    /**
+     * เก็บคูปอง — `code` ทีละใบ (ตอบแถวที่เก็บ, 404 ถ้าโค้ดใช้ไม่ได้) หรือ
+     * `codes` หลายใบพร้อมกัน ตอนแขกล็อกอินแล้วแอปย้ายคูปองในเครื่องเข้าบัญชี
+     * (ข้ามโค้ดที่ใช้ไม่ได้แล้วเงียบ ๆ แล้วตอบรายการทั้งหมดของบัญชี)
+     *
+     * ไม่ใช้ throttle:promotion ร่วมกับ validate — โค้ดที่เก็บได้ล้วนอยู่ใน
+     * promotions/active ที่ใครก็เปิดดูได้ การเก็บจึงไม่ใช่ช่องเดาโค้ด และเพดาน
+     * 10 ครั้งต่อนาทีนั้นจะตีกลับการย้ายคูปองตอนล็อกอินจนของหาย
+     */
+    public function save(Request $request)
+    {
+        $request->validate([
+            'code' => 'required_without:codes|string|max:50',
+            'codes' => 'array|max:'.self::SAVED_LIMIT,
+            'codes.*' => 'string|max:50',
+        ]);
+        $userId = $request->user()->id;
+
+        if ($request->has('codes')) {
+            // ลิสต์ในแอปเรียงใหม่สุดก่อน — บันทึกจากเก่าไปใหม่ ใบแรกในลิสต์จึง
+            // ได้เวลา/ไอดีล่าสุดและขึ้นบนสุดเหมือนในเครื่อง
+            foreach (array_reverse($request->input('codes')) as $code) {
+                $promotion = $this->activePromotions()->where('promotions.code', trim($code))->first();
+                if ($promotion) {
+                    $this->remember($userId, $promotion);
+                }
+            }
+            $this->trimSaved($userId);
+
+            return $this->saved($request);
+        }
+
+        $promotion = $this->activePromotions()
+            ->where('promotions.code', trim($request->input('code')))
+            ->first();
+        if (! $promotion) {
+            return response()->json([
+                'message' => 'ไม่พบโค้ดนี้ หรือโค้ดหมดอายุแล้ว',
+            ], 404);
+        }
+
+        $this->remember($userId, $promotion);
+        $this->trimSaved($userId);
+
+        return response()->json(['data' => $this->presentPublic(collect([$promotion]))->first()], 201);
+    }
+
+    /** เก็บซ้ำ = ดันขึ้นเป็นตัวล่าสุด (เรียงตาม updated_at ลำดับเดียวกับที่แอปแสดง) */
+    private function remember(int $userId, Promotion $promotion): void
+    {
+        $row = SavedPromotion::firstOrCreate(['user_id' => $userId, 'promotion_id' => $promotion->id]);
+        if (! $row->wasRecentlyCreated) {
+            $row->touch();
+        }
+    }
+
+    private function trimSaved(int $userId): void
+    {
+        $overflow = SavedPromotion::where('user_id', $userId)
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->skip(self::SAVED_LIMIT)
+            ->take(PHP_INT_MAX)
+            ->pluck('id');
+        if ($overflow->isNotEmpty()) {
+            SavedPromotion::whereIn('id', $overflow)->delete();
+        }
+    }
+
+    public function unsave(Request $request, string $code)
+    {
+        $promotionIds = Promotion::where('code', $code)->pluck('id');
+        SavedPromotion::where('user_id', $request->user()->id)
+            ->whereIn('promotion_id', $promotionIds)
+            ->delete();
+
+        return response()->json(['data' => null]);
     }
 
     public function store(Request $request)

@@ -585,6 +585,10 @@ Route::prefix('v1')->group(function () {
 
         // Promotions validation
         Route::post('promotions/validate', [PromotionController::class, 'validateCode'])->middleware('throttle:promotion');
+        // คูปองที่ลูกค้ากด "เก็บ" ไว้ — ผูกกับบัญชี (แขกเก็บในเครื่อง แล้วย้ายเข้าบัญชีตอนล็อกอิน)
+        Route::get('promotions/saved', [PromotionController::class, 'saved']);
+        Route::post('promotions/saved', [PromotionController::class, 'save']);
+        Route::delete('promotions/saved/{code}', [PromotionController::class, 'unsave']);
 
         // Payments
         Route::post('payments/charge', [PaymentController::class, 'charge'])->middleware('throttle:payment');
