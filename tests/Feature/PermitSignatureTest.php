@@ -406,7 +406,7 @@ class PermitSignatureTest extends TestCase
         $sent = SmartNotification::where('type', 'permit_sign_reminder')->get();
         $this->assertCount(1, $sent);
         $this->assertSame('ทริปนี้ต้องเซ็นแบบฟอร์มอุทยาน', $sent[0]->title);
-        $this->assertStringContainsString('กรุณาเซ็นภายใน', $sent[0]->body);
+        $this->assertStringContainsString('กรุณาเซ็นทันที', $sent[0]->body);
         $this->assertSame($this->owner->id, $sent[0]->user_id);
         $this->assertNotNull($booking->fresh()->permit_requested_at);
     }
@@ -890,7 +890,7 @@ class PermitSignatureTest extends TestCase
         $this->assertStringContainsString('ยังไม่ได้เซ็น: คุณสมหญิง, คุณแพร, คุณก้อง', $chat[0]->body);
         $this->assertStringNotContainsString('ใจดี', $chat[0]->body);
         $this->assertStringNotContainsString('คุณสมชาย', $chat[0]->body);
-        $this->assertStringContainsString('กรุณาเซ็นภายใน', $chat[0]->body);
+        $this->assertStringContainsString('กรุณาเซ็นทันทีครับ', $chat[0]->body);
 
         // push ถึงคนจองแต่ละใบ บอกชื่อคนที่ยังค้างในใบของตัวเอง
         $pushes = SmartNotification::where('type', 'permit_sign_reminder')->get()->keyBy('user_id');
@@ -967,5 +967,28 @@ class PermitSignatureTest extends TestCase
         $this->actingAs($this->owner, 'sanctum')
             ->postJson("/api/v1/admin/schedules/{$booking->schedule_id}/permit-reminder")
             ->assertForbidden();
+    }
+
+    public function test_every_reminder_just_asks_to_sign_right_away(): void
+    {
+        // ฟอร์มมีกำหนด D-7 — ข้อความไม่บอกวันที่ บอกแค่ "กรุณาเซ็นทันที"
+        $booking = $this->booking($this->form(dueDays: 7), daysAhead: 8);
+        $p = $booking->passengers->sortBy('id')->first();
+        $this->actingAs($this->admin, 'sanctum')->postJson("/api/v1/admin/schedules/{$booking->schedule_id}/permit-reminder")->assertOk();
+
+        $texts = [
+            SmartNotification::where('type', 'permit_sign_reminder')->latest('id')->value('body'),
+            $this->permitChat($booking)->first()->body,
+            app(PermitSignatureService::class)->shareText($p, $booking, $booking->schedule->trip->permitForm),
+        ];
+
+        foreach ($texts as $text) {
+            $this->assertStringContainsString('ทันที', $text);
+            $this->assertStringNotContainsString('ภายใน', $text);
+            $this->assertStringNotContainsString('ไม่เกิน', $text);
+            $this->assertStringNotContainsString('ก่อนวันเดินทาง', $text);
+            $this->assertStringNotContainsString('2569', $text);
+        }
+        $this->assertStringContainsString('กรุณาเซ็นทันที ให้แต่ละคนเซ็นเอง', $texts[0]);
     }
 }

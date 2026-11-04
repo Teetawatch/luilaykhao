@@ -74,6 +74,13 @@ class PermitSignatureService
         return $this->roundDeadline($booking->schedule, $form);
     }
 
+    /**
+     * คำขอในข้อความเตือนทุกช่องทาง (push แชท สตาฟ ข้อความส่งทางไลน์) — "ทันที" เสมอ
+     * ไม่บอกวันที่ (เจ้าของต้องการให้ลงมือตอนเห็นข้อความ ไม่ใช่รอใกล้กำหนด) วันกำหนด
+     * ยังใช้เลือกวันเตือนอัตโนมัติ และแสดงในหน้าเซ็น/หน้าแอดมิน
+     */
+    public const SIGN_REQUEST = 'กรุณาเซ็นทันที';
+
     public function roundDeadline(?TripSchedule $schedule, PermitForm $form): ?CarbonInterface
     {
         $departure = $schedule?->departure_date;
@@ -317,7 +324,6 @@ class PermitSignatureService
             'permit_reminded_at' => now(),
         ])->saveQuietly();
 
-        $deadline = $this->deadline($booking, $form);
         $total = $booking->passengers->whereNull('not_going_at')->count();
 
         SmartNotification::send(
@@ -325,7 +331,7 @@ class PermitSignatureService
             'permit_sign_reminder',
             'ทริปนี้ต้องเซ็นแบบฟอร์มอุทยาน',
             ($schedule->trip?->title ?? 'ทริปของคุณ').' — อุทยานให้ผู้เดินทางทุกคนเซ็นแบบฟอร์มก่อนลงทะเบียน'
-                .($deadline ? ' กรุณาเซ็นภายใน '.ThaiDate::full($deadline) : '')
+                .' '.self::SIGN_REQUEST
                 .' ข้อมูลกรอกไว้ให้แล้ว แค่อ่านและเซ็น'
                 .($total > 1 ? ' (ส่งลิงก์ให้เพื่อนเซ็นเองได้)' : ''),
             [
@@ -362,8 +368,6 @@ class PermitSignatureService
         ])->saveQuietly();
 
         $trip = $booking->schedule?->trip?->title ?? 'ทริปของคุณ';
-        $deadline = $this->deadline($booking, $form);
-        $due = $deadline ? 'ภายใน '.ThaiDate::full($deadline) : 'ก่อนวันเดินทาง';
         $data = [
             'booking_ref' => $booking->booking_ref,
             'route' => 'permit_form',
@@ -380,8 +384,8 @@ class PermitSignatureService
             'permit_sign_reminder',
             $total > 1 ? "เซ็นแบบฟอร์มอุทยานแล้ว {$signed}/{$total} คน" : 'อย่าลืมเซ็นแบบฟอร์มอุทยาน',
             $total > 1
-                ? "ยังไม่ได้เซ็น: {$waiting} — {$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due} ให้แต่ละคนเซ็นเอง หรือส่งลิงก์ให้เพื่อนได้"
-                : "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due} — ใช้เวลาไม่ถึงนาที",
+                ? "ยังไม่ได้เซ็น: {$waiting} — {$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน ".self::SIGN_REQUEST.' ให้แต่ละคนเซ็นเอง หรือส่งลิงก์ให้เพื่อนได้'
+                : "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน ".self::SIGN_REQUEST.' — ใช้เวลาไม่ถึงนาที',
             $data,
         );
 
@@ -395,7 +399,7 @@ class PermitSignatureService
                 $userId,
                 'permit_sign_reminder',
                 'อย่าลืมเซ็นแบบฟอร์มอุทยาน',
-                "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due}",
+                "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน ".self::SIGN_REQUEST,
                 $data,
             ));
 
@@ -438,7 +442,6 @@ class PermitSignatureService
             $unsigned->map(fn (BookingPassenger $p) => self::chatName($p))->values()->all(),
             $people->count() - $unsigned->count(),
             $people->count(),
-            $this->roundDeadline($schedule, $form),
         );
     }
 
@@ -519,11 +522,9 @@ class PermitSignatureService
     /** ข้อความพร้อมส่งทางไลน์ ให้ทีมงานก๊อปไปส่งลูกค้า */
     public function shareText(BookingPassenger $passenger, Booking $booking, PermitForm $form): string
     {
-        $deadline = $this->deadline($booking, $form);
         $trip = $booking->schedule?->trip?->title ?? 'ทริป';
 
-        return 'คุณ'.$passenger->displayName().' กรุณาอ่านและเซ็นแบบฟอร์มอุทยาน ('.$trip.')'
-            .($deadline ? ' ภายใน '.ThaiDate::full($deadline) : '')
+        return 'คุณ'.$passenger->displayName().' กรุณาอ่านและเซ็นแบบฟอร์มอุทยาน ('.$trip.') ทันที'
             .' ที่ลิงก์นี้ครับ ข้อมูลกรอกไว้ให้แล้ว แค่อ่านและเซ็นบนมือถือ ไม่ต้องสมัครสมาชิก '
             .$this->signUrl($passenger);
     }

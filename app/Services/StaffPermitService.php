@@ -177,11 +177,9 @@ class StaffPermitService
     /** ข้อความพร้อมส่งทางไลน์ ให้แอดมินก๊อปไปส่งสตาฟ */
     public function shareText(StaffPermitSignature $row, User $user, TripSchedule $schedule, PermitForm $form): string
     {
-        $deadline = $this->deadline($schedule, $form);
         $name = trim((string) ($user->nickname ?: $user->name)) ?: 'ทีมงาน';
 
-        return 'คุณ'.$name.' (ทีมงาน) กรุณาอ่านและเซ็นแบบฟอร์มอุทยาน ('.($schedule->trip?->title ?? 'ทริป').')'
-            .($deadline ? ' ภายใน '.ThaiDate::full($deadline) : '')
+        return 'คุณ'.$name.' (ทีมงาน) กรุณาอ่านและเซ็นแบบฟอร์มอุทยาน ('.($schedule->trip?->title ?? 'ทริป').') ทันที'
             .' ในแอปเมนูงานสตาฟ หรือที่ลิงก์นี้ครับ ข้อมูลเติมจากโปรไฟล์ของคุณ '
             .$this->signUrl($row);
     }
@@ -259,7 +257,6 @@ class StaffPermitService
         ])->saveQuietly();
 
         $schedule = $row->schedule;
-        $deadline = $this->deadline($schedule, $form);
         $missing = $this->missingProfile($form, $schedule, StaffPermitSignature::asPassenger($row->user, $row));
 
         SmartNotification::send(
@@ -267,7 +264,7 @@ class StaffPermitService
             'staff_permit_sign',
             'เซ็นแบบฟอร์มอุทยานของคุณ',
             ($schedule->trip?->title ?? 'รอบที่คุณดูแล').' · '.$schedule->departureLabelThai()
-                .' — อุทยานลงทะเบียนทีมงานด้วย กรุณาเซ็น'.($deadline ? 'ภายใน '.ThaiDate::full($deadline) : 'ก่อนวันเดินทาง')
+                .' — อุทยานลงทะเบียนทีมงานด้วย '.PermitSignatureService::SIGN_REQUEST
                 .($missing !== [] ? ' (โปรไฟล์ยังขาด '.implode(', ', $missing).')' : ''),
             [
                 'route' => 'staff_permit_sign',

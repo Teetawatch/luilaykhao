@@ -8,8 +8,6 @@ use App\Models\ChatMessage;
 use App\Models\PermitForm;
 use App\Models\TripSchedule;
 use App\Models\User;
-use App\Support\ThaiDate;
-use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -330,24 +328,17 @@ class ChatRoomEventService
      * @param  list<string>  $names  คนที่ยังไม่เซ็น
      * @return bool โพสต์แล้ว (false = วันนี้โพสต์ไปแล้ว หรือรอบนี้ไม่ควรโพสต์)
      */
-    public function permitUnsigned(TripSchedule $schedule, PermitForm $form, array $names, int $signed, int $total, ?CarbonInterface $deadline): bool
+    public function permitUnsigned(TripSchedule $schedule, PermitForm $form, array $names, int $signed, int $total): bool
     {
         $shown = array_slice($names, 0, self::PERMIT_NAMES_SHOWN);
         $more = count($names) - count($shown);
         $today = now('Asia/Bangkok')->startOfDay();
 
-        $due = match (true) {
-            $deadline === null => 'ก่อนวันเดินทาง',
-            $deadline->copy()->startOfDay()->lt($today) => 'โดยเร็วที่สุด (เลยวันที่ทีมงานต้องลงทะเบียนแล้ว)',
-            $deadline->isSameDay($today) => 'ภายในวันนี้',
-            default => 'ภายใน '.ThaiDate::full($deadline),
-        };
-
         return $this->post(
             $schedule,
             "📝 แบบฟอร์มอุทยาน · เซ็นแล้ว {$signed}/{$total} คน\n"
                 .'ยังไม่ได้เซ็น: คุณ'.implode(', คุณ', $shown).($more > 0 ? " และอีก {$more} คน" : '')."\n"
-                ."อุทยานต้องใช้แบบฟอร์มที่เซ็นแล้วของทุกคนตอนลงทะเบียน กรุณาเซ็น{$due}ครับ\n"
+                .'อุทยานต้องใช้แบบฟอร์มที่เซ็นแล้วของทุกคนตอนลงทะเบียน '.PermitSignatureService::SIGN_REQUEST."ครับ\n"
                 .'เปิดใบจองในแอปแล้วกดเซ็นแบบฟอร์มได้เลย ใช้เวลาไม่ถึงนาที ถ้าจองให้เพื่อน ส่งลิงก์เซ็นให้เพื่อนจากใบจองได้ครับ',
             'permit_unsigned:'.$form->id.':'.$today->toDateString(),
         );
