@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\ChatMessage;
+use App\Models\PermitForm;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\ThaiDate;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,6 +28,9 @@ use Illuminate\Support\Facades\Log;
  */
 class ChatRoomEventService
 {
+    /** ชื่อคนที่ยังไม่เซ็นที่โชว์ในห้อง — เกินนี้สรุปเป็น "และอีก N คน" ให้ข้อความไม่ยาวเป็นหน้า */
+    private const PERMIT_NAMES_SHOWN = 12;
+
     public function __construct(private ChatService $chatService) {}
 
     /**
@@ -314,19 +320,77 @@ class ChatRoomEventService
     }
 
     /**
+     * แบบฟอร์มอุทยานยังเซ็นไม่ครบ — บอกในห้องว่าใครบ้าง ให้เพื่อนในกลุ่มช่วยกันทวง
+     * (คนจองหลายคนไม่ได้เปิดแจ้งเตือน แต่เปิดห้องแชท) วันละครั้งต่อรอบ ชื่อใช้ชื่อเล่น
+     * หรือชื่อต้นที่ผู้เรียกเตรียมมา ไม่มีนามสกุล
+     *
+     * push ไม่ได้ยิงจากตรงนี้ — PermitSignatureService::sendReminder ส่งถึงเฉพาะคนที่
+     * ยังต้องเซ็น คนที่เซ็นครบแล้วไม่ต้องโดนปลุก
+     *
+     * @param  list<string>  $names  คนที่ยังไม่เซ็น
+     * @return bool โพสต์แล้ว (false = วันนี้โพสต์ไปแล้ว หรือรอบนี้ไม่ควรโพสต์)
+     */
+    public function permitUnsigned(TripSchedule $schedule, PermitForm $form, array $names, int $signed, int $total, ?CarbonInterface $deadline): bool
+    {
+        $shown = array_slice($names, 0, self::PERMIT_NAMES_SHOWN);
+        $more = count($names) - count($shown);
+        $today = now('Asia/Bangkok')->startOfDay();
+
+        $due = match (true) {
+            $deadline === null => 'ก่อนวันเดินทาง',
+            $deadline->copy()->startOfDay()->lt($today) => 'โดยเร็วที่สุด (เลยวันที่ทีมงานต้องลงทะเบียนแล้ว)',
+            $deadline->isSameDay($today) => 'ภายในวันนี้',
+            default => 'ภายใน '.ThaiDate::full($deadline),
+        };
+
+        return $this->post(
+            $schedule,
+            "📝 แบบฟอร์มอุทยาน · เซ็นแล้ว {$signed}/{$total} คน\n"
+                .'ยังไม่ได้เซ็น: คุณ'.implode(', คุณ', $shown).($more > 0 ? " และอีก {$more} คน" : '')."\n"
+                ."อุทยานต้องใช้แบบฟอร์มที่เซ็นแล้วของทุกคนตอนลงทะเบียน กรุณาเซ็น{$due}ครับ\n"
+                .'เปิดใบจองในแอปแล้วกดเซ็นแบบฟอร์มได้เลย ใช้เวลาไม่ถึงนาที ถ้าจองให้เพื่อน ส่งลิงก์เซ็นให้เพื่อนจากใบจองได้ครับ',
+            'permit_unsigned:'.$form->id.':'.$today->toDateString(),
+        );
+    }
+
+    /**
+     * ทุกคนเซ็นแบบฟอร์มครบแล้ว — ปิดเรื่องในห้อง เฉพาะห้องที่เคยถูกทวง (ห้องที่ไม่เคย
+     * ได้ยินเรื่องนี้ไม่ต้องรู้) ครั้งเดียวต่อแบบฟอร์ม
+     */
+    public function permitAllSigned(TripSchedule $schedule, PermitForm $form): bool
+    {
+        $reminded = ChatMessage::where('schedule_id', $schedule->id)
+            ->where('system_key', 'like', 'permit_unsigned:'.$form->id.':%')
+            ->exists();
+
+        if (! $reminded) {
+            return false;
+        }
+
+        return $this->post(
+            $schedule,
+            "✅ ทุกคนเซ็นแบบฟอร์มอุทยานครบแล้วครับ\n"
+                .'ขอบคุณทุกท่านที่ช่วยกันครับ ทีมงานจะนำไปลงทะเบียนกับอุทยานให้เอง ไม่ต้องทำอะไรเพิ่มแล้วครับ 🙏',
+            'permit_complete:'.$form->id,
+        );
+    }
+
+    /**
      * โพสต์ข้อความระบบแบบกันซ้ำ + กันรอบที่ไม่ควรโพสต์ (ยกเลิก / เดินทางไปแล้ว)
      * `force` ข้ามการกันรอบ — ใช้กับข้อความที่อธิบายการยกเลิกเอง
+     *
+     * @return bool โพสต์ใหม่แล้วหรือไม่
      */
-    private function post(TripSchedule $schedule, string $body, string $systemKey, bool $force = false): void
+    private function post(TripSchedule $schedule, string $body, string $systemKey, bool $force = false): bool
     {
         try {
             if (! $force && $schedule->status === 'cancelled') {
-                return;
+                return false;
             }
 
             $departsAt = $schedule->effectiveDepartsAt();
             if (! $force && $departsAt && $departsAt->isPast()) {
-                return;
+                return false;
             }
 
             $exists = ChatMessage::where('schedule_id', $schedule->id)
@@ -334,12 +398,14 @@ class ChatRoomEventService
                 ->exists();
 
             if ($exists) {
-                return;
+                return false;
             }
 
             // ห้องต้องเริ่มด้วยข้อความต้อนรับเสมอ ไม่ใช่ข้อความเหตุการณ์
             $this->chatService->ensureWelcome($schedule);
             $this->chatService->postSystem($schedule, $body, $systemKey);
+
+            return true;
         } catch (\Throwable $e) {
             // แข่งกันโพสต์พร้อมกันจะชน unique key — ถือว่ามีข้อความนั้นแล้ว
             Log::warning('ChatRoomEvent: โพสต์ข้อความเหตุการณ์ไม่สำเร็จ', [
@@ -347,6 +413,8 @@ class ChatRoomEventService
                 'system_key' => $systemKey,
                 'message' => $e->getMessage(),
             ]);
+
+            return false;
         }
     }
 

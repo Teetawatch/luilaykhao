@@ -1050,6 +1050,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('bookings/{ref}/passengers/{passengerId}/permit-signature', [AdminPermitFormController::class, 'clearSignature'])->whereNumber('passengerId');
         Route::get('bookings/{ref}/permit-signatures', [AdminPermitFormController::class, 'bookingSignatures']);
         Route::post('bookings/{ref}/permit-reminder', [AdminPermitFormController::class, 'remindBooking'])->middleware('throttle:30,1');
+        // ทั้งรอบ: สรุปในห้องแชท + push ถึงทุกใบที่ยังมีคนไม่เซ็น
+        Route::post('schedules/{id}/permit-reminder', [AdminPermitFormController::class, 'remindSchedule'])
+            ->whereNumber('id')->middleware('throttle:10,1');
         // แบบฟอร์มของสตาฟประจำรอบ ดู StaffPermitService
         Route::post('schedules/{id}/staff/{userId}/permit-reminder', [AdminPermitFormController::class, 'remindStaff'])
             ->whereNumber(['id', 'userId'])->middleware('throttle:30,1');

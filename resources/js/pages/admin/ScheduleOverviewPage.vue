@@ -1371,7 +1371,20 @@
                 <span class="material-symbols-rounded">{{ roundDocs.copied === 'all' ? 'check' : 'content_copy' }}</span>
                 {{ roundDocs.copied === 'all' ? 'ก๊อปแล้ว' : `ก๊อปลิงก์ทุกคนที่ยังไม่เซ็น (${roundDocsUnsignedTotal})` }}
               </button>
+              <!-- ห้องแชทของรอบ: "ยังไม่ได้เซ็น: คุณ…" + push ถึงคนจองทุกใบที่ยังค้าง -->
+              <button
+                v-if="roundDocs.data.permit_form?.requires_signature && roundDocs.data.unsigned_count"
+                class="btn-secondary"
+                :disabled="roundDocs.busy === 'remind-round'"
+                @click="remindRoundPermit"
+              >
+                <span class="material-symbols-rounded">{{ roundDocs.busy === 'remind-round' ? 'hourglass_top' : 'campaign' }}</span>
+                เตือนทั้งรอบ (ห้องแชท + แจ้งเตือน)
+              </button>
             </div>
+            <p v-if="roundDocs.remindNote" class="docs-remind-note">
+              <span class="material-symbols-rounded">check_circle</span>{{ roundDocs.remindNote }}
+            </p>
             <p class="export-note">
               🔒 ไฟล์มีเลขบัตรและเอกสารส่วนตัว ใช้ยื่นอุทยาน/หน่วยงานเท่านั้น · ไฟล์แบบฟอร์มของคนที่ยังไม่เซ็นจะมีคำว่า
               "(ยังไม่เซ็น)" ในชื่อ · ลิงก์เซ็นเปิดได้โดยไม่ต้องล็อกอิน ส่งให้เจ้าตัวทางไลน์ได้เลย
@@ -2964,7 +2977,7 @@ async function openBorderPass(sch) {
 
 // เอกสารของรอบ — แบบฟอร์มอุทยาน + ไฟล์ที่ลูกค้าแนบ โหลดตอนกดเปิดเท่านั้นเหมือน Border Pass
 // (ลิงก์ไฟล์เป็น signed URL อายุสั้น) ZIP สร้างที่เซิร์ฟเวอร์ทุกครั้ง ไม่มีไฟล์ค้าง
-const roundDocs = reactive({ open: false, loading: false, data: null, schedule: null, filter: 'all', downloading: null, copied: null, busy: null });
+const roundDocs = reactive({ open: false, loading: false, data: null, schedule: null, filter: 'all', downloading: null, copied: null, busy: null, remindNote: '' });
 
 function hasRoundDocuments(sch) {
   return Boolean(sch?.permit_form_name || sch?.document_requirement_count || sch?.border_pass_count);
@@ -3008,7 +3021,7 @@ const filteredRoundDocsStaff = computed(() => roundDocsStaff.value.filter((m) =>
 }));
 
 async function openRoundDocs(sch) {
-  Object.assign(roundDocs, { open: true, loading: true, data: null, schedule: sch, filter: 'all', copied: null });
+  Object.assign(roundDocs, { open: true, loading: true, data: null, schedule: sch, filter: 'all', copied: null, remindNote: '' });
   try {
     const res = await api.get(`/admin/calendar/schedules/${sch.id}/documents`);
     roundDocs.data = res.data.data;
@@ -3099,6 +3112,22 @@ function copySignLink(person) {
 
 function copyStaffSignLink(member) {
   if (member.share_text) copyRoundDocsText(member.share_text, `staff-${member.user_id}`);
+}
+
+// เตือนทั้งรอบ — ห้องแชทวันละครั้ง ใบที่เตือนไปแล้ววันนี้เซิร์ฟเวอร์ข้ามให้เอง กดซ้ำได้ไม่สแปม
+async function remindRoundPermit() {
+  const data = roundDocs.data;
+  if (!confirm(`เตือนลูกทริปที่ยังไม่เซ็น ${data.unsigned_count} คน?\nโพสต์รายชื่อในห้องแชทของรอบ และส่งแจ้งเตือนถึงคนจองของแต่ละใบ`)) return;
+  roundDocs.busy = 'remind-round';
+  roundDocs.remindNote = '';
+  try {
+    const res = await api.post(`/admin/schedules/${data.schedule_id}/permit-reminder`);
+    roundDocs.remindNote = res.data.message || 'ส่งแจ้งเตือนแล้ว';
+  } catch (e) {
+    alert(e.response?.data?.message || 'ส่งแจ้งเตือนไม่สำเร็จ');
+  } finally {
+    roundDocs.busy = null;
+  }
 }
 
 async function remindStaffPermit(member) {
@@ -5085,6 +5114,11 @@ onUnmounted(() => {
 .docs-stat strong.text-low, .docs-stat small.text-low { color: #b45309; }
 .docs-stat.muted strong { color: #9ca3af; font-size: 13px; }
 .docs-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.docs-remind-note {
+  display: flex; align-items: center; gap: 6px; margin: 10px 0 0; padding: 8px 12px;
+  border-radius: 10px; background: #ecfdf5; color: #047857; font-size: 13px;
+}
+.docs-remind-note .material-symbols-rounded { font-size: 18px; }
 .docs-filter { margin: 12px 0 4px; }
 .docs-row {
   display: grid;

@@ -7,6 +7,7 @@ use App\Models\BookingMember;
 use App\Models\BookingPassenger;
 use App\Models\PermitForm;
 use App\Models\SmartNotification;
+use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\PermitFormFields;
 use App\Support\ThaiAddress;
@@ -70,7 +71,12 @@ class PermitSignatureService
     /** วันสุดท้ายที่ควรเซ็น (ก่อนทีมงานลงทะเบียนกับอุทยาน) — null = แบบฟอร์มไม่ได้กำหนด */
     public function deadline(Booking $booking, PermitForm $form): ?CarbonInterface
     {
-        $departure = $booking->schedule?->departure_date;
+        return $this->roundDeadline($booking->schedule, $form);
+    }
+
+    public function roundDeadline(?TripSchedule $schedule, PermitForm $form): ?CarbonInterface
+    {
+        $departure = $schedule?->departure_date;
 
         if (! $departure || ! $form->sign_due_days) {
             return null;
@@ -184,6 +190,11 @@ class PermitSignatureService
             ],
             'permit_extra' => $extra === [] ? null : $extra,
         ])->save();
+
+        // คนสุดท้ายของรอบเซ็นแล้ว — ห้องที่เคยถูกทวงได้ยินว่าครบแล้ว
+        if ($booking->schedule && $this->roundUnsigned($booking->schedule, $form)->isEmpty()) {
+            app(ChatRoomEventService::class)->permitAllSigned($booking->schedule, $form);
+        }
 
         return $passenger;
     }
@@ -361,13 +372,16 @@ class PermitSignatureService
 
         $total = $going->count();
         $signed = $total - $unsigned->count();
+        // ใบของตัวเอง — บอกชื่อเลยว่าใครยังค้าง ไม่ต้องเปิดแอปไปไล่ดูเอง
+        $waiting = $unsigned->map(fn (BookingPassenger $p) => $p->displayName())->implode(', ');
 
         SmartNotification::send(
             $booking->user_id,
             'permit_sign_reminder',
             $total > 1 ? "เซ็นแบบฟอร์มอุทยานแล้ว {$signed}/{$total} คน" : 'อย่าลืมเซ็นแบบฟอร์มอุทยาน',
-            "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due} — "
-                .($total > 1 ? 'ให้แต่ละคนเซ็นเอง หรือส่งลิงก์ให้เพื่อนได้' : 'ใช้เวลาไม่ถึงนาที'),
+            $total > 1
+                ? "ยังไม่ได้เซ็น: {$waiting} — {$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due} ให้แต่ละคนเซ็นเอง หรือส่งลิงก์ให้เพื่อนได้"
+                : "{$trip} ต้องแนบแบบฟอร์มที่เซ็นแล้วตอนลงทะเบียนกับอุทยาน กรุณาเซ็น{$due} — ใช้เวลาไม่ถึงนาที",
             $data,
         );
 
@@ -386,6 +400,107 @@ class PermitSignatureService
             ));
 
         return true;
+    }
+
+    /**
+     * ผู้เดินทางของรอบที่ยังเซ็นไม่เสร็จ — ใบจองที่ยืนยันแล้ว ไม่นับคนที่แจ้งไม่ไป
+     * (สตาฟไม่อยู่ในนี้: ห้องแชทเป็นของลูกทริป สตาฟเตือนแยก ดู StaffPermitService)
+     *
+     * @return Collection<int, BookingPassenger>
+     */
+    public function roundUnsigned(TripSchedule $schedule, PermitForm $form): Collection
+    {
+        return $this->roundPassengers($schedule)
+            ->reject(fn (BookingPassenger $p) => $p->hasCompletedPermitForm($form))
+            ->values();
+    }
+
+    /**
+     * โพสต์สรุปในห้องแชทของรอบว่าใครยังไม่เซ็น — วันละครั้ง ทั้งเตือนอัตโนมัติและปุ่มแอดมิน
+     * ใช้คีย์เดียวกัน รอบที่ยังไม่ยืนยันออกเดินทางไม่โพสต์ (ขอให้เซ็น = บอกว่ารอบออกแน่)
+     */
+    public function postRoundReminder(TripSchedule $schedule, PermitForm $form): bool
+    {
+        if ($schedule->holdsTravelMessages()) {
+            return false;
+        }
+
+        $people = $this->roundPassengers($schedule);
+        $unsigned = $people->reject(fn (BookingPassenger $p) => $p->hasCompletedPermitForm($form));
+
+        if ($unsigned->isEmpty()) {
+            return false;
+        }
+
+        return app(ChatRoomEventService::class)->permitUnsigned(
+            $schedule,
+            $form,
+            $unsigned->map(fn (BookingPassenger $p) => self::chatName($p))->values()->all(),
+            $people->count() - $unsigned->count(),
+            $people->count(),
+            $this->roundDeadline($schedule, $form),
+        );
+    }
+
+    /**
+     * ปุ่มแอดมิน "เตือนทั้งรอบ" — สรุปในห้องแชท + push ถึงคนจองทุกใบที่ยังมีคนไม่เซ็น
+     * (และเพื่อนที่ผูกชื่อไว้) ใบที่ได้เตือนไปแล้ววันนี้ข้าม ไม่กินโควตาเตือนอัตโนมัติ
+     *
+     * @return array{chat_posted: bool, bookings_reminded: int, already_today: int, unsigned_count: int}
+     */
+    public function remindRound(TripSchedule $schedule, PermitForm $form): array
+    {
+        $chat = $this->postRoundReminder($schedule, $form);
+        $reminded = 0;
+        $skipped = 0;
+
+        Booking::query()
+            ->where('schedule_id', $schedule->id)
+            ->where('status', 'confirmed')
+            ->whereNotNull('user_id')
+            ->with(['schedule.trip', 'passengers'])
+            ->get()
+            ->each(function (Booking $booking) use ($form, &$reminded, &$skipped) {
+                if (! $this->remindedToday($booking)) {
+                    $reminded += $this->sendReminder($booking, $form, manual: true) ? 1 : 0;
+
+                    return;
+                }
+
+                $pending = $booking->passengers->whereNull('not_going_at')
+                    ->contains(fn (BookingPassenger $p) => ! $p->hasCompletedPermitForm($form));
+                $skipped += $pending ? 1 : 0;
+            });
+
+        return [
+            'chat_posted' => $chat,
+            'bookings_reminded' => $reminded,
+            'already_today' => $skipped,
+            'unsigned_count' => $this->roundUnsigned($schedule, $form)->count(),
+        ];
+    }
+
+    /** @return Collection<int, BookingPassenger> */
+    private function roundPassengers(TripSchedule $schedule): Collection
+    {
+        return BookingPassenger::query()
+            ->whereNull('not_going_at')
+            ->whereHas('booking', fn ($q) => $q->where('schedule_id', $schedule->id)->where('status', 'confirmed'))
+            ->orderBy('booking_id')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /** ชื่อในห้องแชทกลุ่ม — ชื่อเล่น ไม่มีก็ชื่อต้น ไม่เอานามสกุลขึ้นห้อง */
+    private static function chatName(BookingPassenger $passenger): string
+    {
+        $nickname = trim((string) $passenger->nickname);
+
+        if ($nickname !== '') {
+            return $nickname;
+        }
+
+        return PermitFormFields::splitName($passenger->name)[0] ?: 'ผู้เดินทาง';
     }
 
     /** เตือนไปแล้ววันนี้ (เวลาไทย) หรือยัง — ปุ่มแอดมินกดได้วันละครั้งต่อใบ */

@@ -213,6 +213,42 @@ class AdminPermitFormController extends Controller
         return $this->success($this->signatures->adminSummary($booking->fresh()), 'ส่งแจ้งเตือนให้คนจองแล้ว');
     }
 
+    /**
+     * "เตือนทั้งรอบ" — สรุปในห้องแชทว่าใครยังไม่เซ็น + push ถึงคนจองทุกใบที่ยังค้าง
+     * ห้องแชทวันละครั้ง ใบที่เตือนไปแล้ววันนี้ข้าม (กดซ้ำได้ ไม่สแปม)
+     */
+    public function remindSchedule(int $id): JsonResponse
+    {
+        $schedule = TripSchedule::with('trip.permitForm')->findOrFail($id);
+        $form = $schedule->trip?->permitForm;
+
+        if (! $form?->requiresSignature()) {
+            return $this->error('ทริปนี้ไม่มีแบบฟอร์มที่ต้องเซ็น', 422);
+        }
+
+        if ($schedule->status === 'cancelled') {
+            return $this->error('รอบนี้ถูกยกเลิกแล้ว', 422);
+        }
+
+        if ($schedule->holdsTravelMessages()) {
+            return $this->error('รอบนี้ยังไม่ยืนยันออกเดินทาง — ยืนยันรอบก่อนแล้วค่อยเตือนเซ็น', 422);
+        }
+
+        if ($this->signatures->roundUnsigned($schedule, $form)->isEmpty()) {
+            return $this->error('ลูกทริปทุกคนเซ็นครบแล้ว', 422);
+        }
+
+        $result = $this->signatures->remindRound($schedule, $form);
+
+        $parts = array_filter([
+            $result['chat_posted'] ? 'โพสต์ในห้องแชทแล้ว' : 'ห้องแชทแจ้งไปแล้ววันนี้',
+            $result['bookings_reminded'] ? "ส่งแจ้งเตือน {$result['bookings_reminded']} ใบจอง" : null,
+            $result['already_today'] ? "{$result['already_today']} ใบได้เตือนไปแล้ววันนี้" : null,
+        ]);
+
+        return $this->success($result, implode(' · ', $parts));
+    }
+
     /** ล้างลายเซ็นของคนหนึ่ง — เซ็นผิดคน หรือแก้ข้อมูลแล้วต้องให้เจ้าตัวเซ็นใหม่ */
     public function clearSignature(string $ref, int $passengerId): JsonResponse
     {

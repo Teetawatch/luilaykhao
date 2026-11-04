@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Log;
  * - คนจอง: "ยังเซ็นไม่ครบ x/y คน" — คนที่ได้ทาง LINE (ไม่มีแอป) ลิงก์ไปใบเดินทาง
  *   #permit ซึ่งมีลิงก์เซ็นของแต่ละคน
  * - เพื่อนที่ผูกชื่อในแอปและยังไม่เซ็น: เตือนเจ้าตัวด้วย
+ * - ห้องแชทของรอบ: สรุปว่าใครยังไม่เซ็น วันละครั้งในวันเดียวกับที่เตือน (ไม่จำกัด
+ *   MAX_REMINDERS ต่อใบ — ห้องเห็นทั้งรอบ ไม่ปลุกใคร) ครบแล้วห้องได้ข้อความขอบคุณ
  *
  * ก่อนเตือนตามกำหนด ไล่แจ้งครั้งแรกให้ใบจองที่ยังไม่เคยได้ (ปกติแจ้งตอนยืนยันการ
  * จองไปแล้ว — ที่ค้างคือรอบที่เพิ่งครบขั้นต่ำ/ทีมงานเพิ่งยืนยันออกเดินทาง หรือทริปที่
@@ -47,16 +49,28 @@ class RemindPermitSignaturesJob implements ShouldQueue
     {
         $today = now('Asia/Bangkok')->startOfDay();
         $reminded = 0;
+        $rooms = 0;
         $requested = $this->sendPendingFirstRequests($signatures, $today->toDateString());
         $staffReminded = $this->remindStaff($staffPermits, $today);
 
         PermitForm::query()->whereNotNull('sign_due_days')->get()
             ->filter(fn (PermitForm $form) => $form->requiresSignature())
-            ->each(function (PermitForm $form) use ($signatures, $today, &$reminded) {
+            ->each(function (PermitForm $form) use ($signatures, $today, &$reminded, &$rooms) {
                 // กำหนดเซ็น = วันเดินทาง − sign_due_days → เตือนเมื่อวันนี้อยู่ใน
                 // [กำหนด − WINDOW_DAYS, กำหนด] คือวันเดินทางอยู่ในช่วงข้างล่าง
                 $from = $today->copy()->addDays($form->sign_due_days)->toDateString();
                 $to = $today->copy()->addDays($form->sign_due_days + self::WINDOW_DAYS)->toDateString();
+
+                TripSchedule::query()
+                    ->whereDate('departure_date', '>=', $from)
+                    ->whereDate('departure_date', '<=', $to)
+                    ->where('status', '!=', 'cancelled')
+                    ->travelMessagesAllowed()
+                    ->whereHas('trip', fn ($t) => $t->where('permit_form_id', $form->id))
+                    ->get()
+                    ->each(function (TripSchedule $schedule) use ($form, $signatures, &$rooms) {
+                        $rooms += $signatures->postRoundReminder($schedule, $form) ? 1 : 0;
+                    });
 
                 Booking::query()
                     ->where('status', 'confirmed')
@@ -82,8 +96,8 @@ class RemindPermitSignaturesJob implements ShouldQueue
                     });
             });
 
-        if ($reminded > 0 || $requested > 0 || $staffReminded > 0) {
-            Log::info('RemindPermitSignaturesJob: requested '.$requested.', reminded '.$reminded.' bookings, '.$staffReminded.' staff');
+        if ($reminded > 0 || $requested > 0 || $staffReminded > 0 || $rooms > 0) {
+            Log::info('RemindPermitSignaturesJob: requested '.$requested.', reminded '.$reminded.' bookings, '.$staffReminded.' staff, '.$rooms.' chat rooms');
         }
     }
 

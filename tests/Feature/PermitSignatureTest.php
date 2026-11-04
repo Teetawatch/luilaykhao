@@ -8,6 +8,7 @@ use App\Mail\PaymentConfirmedMail;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\BookingPassenger;
+use App\Models\ChatMessage;
 use App\Models\PermitForm;
 use App\Models\SmartNotification;
 use App\Models\Trip;
@@ -834,5 +835,137 @@ class PermitSignatureTest extends TestCase
         $pdf = app(PermitFormService::class)->renderSample($form->fresh());
         $this->assertStringStartsWith('%PDF', $pdf);
         $this->assertSame('บริษัท ก', PermitFormFields::sampleValues($form->fresh()->fields)[PermitFormFields::askKey($fields['q1'])]);
+    }
+
+    /** ใบจองที่สองในรอบเดียวกัน (คนจองอีกคน) */
+    private function secondBooking(Booking $first, array $passengers): Booking
+    {
+        $owner = User::factory()->create();
+        $owner->assignRole('customer');
+        $booking = Booking::create([
+            'booking_ref' => Booking::generateRef(),
+            'user_id' => $owner->id,
+            'schedule_id' => $first->schedule_id,
+            'qr_code' => Booking::generateQrCode(),
+            'status' => 'confirmed',
+            'total_amount' => 3900,
+            'paid_amount' => 3900,
+            'payment_type' => 'full',
+        ]);
+        foreach ($passengers as $p) {
+            BookingPassenger::create(['booking_id' => $booking->id, 'title' => 'นาย', 'id_card' => '1103700123456', ...$p]);
+        }
+        // เหมือน booking(): แจ้งครั้งแรกไปแล้วเมื่อวาน — เทสต์สนใจแค่การเตือนของวันนี้
+        $booking->forceFill(['permit_requested_at' => now()->subDay(), 'permit_reminded_at' => now()->subDay()])->saveQuietly();
+        SmartNotification::where('user_id', $owner->id)->delete();
+
+        return $booking->fresh('passengers');
+    }
+
+    private function permitChat(Booking $booking)
+    {
+        return ChatMessage::where('schedule_id', $booking->schedule_id)
+            ->where('system_key', 'like', 'permit_%')
+            ->orderBy('id')
+            ->get();
+    }
+
+    public function test_reminder_day_tells_the_trip_chat_who_has_not_signed(): void
+    {
+        $form = $this->form(dueDays: 7);
+        $mine = $this->booking($form, daysAhead: 8, names: ['สมชาย ใจดี', 'สมหญิง ใจดี']);
+        $theirs = $this->secondBooking($mine, [['name' => 'วิภา รักป่า', 'nickname' => 'แพร'], ['name' => 'ก้อง ภูเขา']]);
+        $this->actingAs($this->owner, 'sanctum')
+            ->postJson($this->signUrl($mine, $mine->passengers->sortBy('id')->first()), ['signature' => $this->signature(), 'accept' => true])
+            ->assertOk();
+
+        app()->call([new RemindPermitSignaturesJob, 'handle']);
+        app()->call([new RemindPermitSignaturesJob, 'handle']);
+
+        $chat = $this->permitChat($mine);
+        $this->assertCount(1, $chat, 'once a day');
+        $this->assertNull($chat[0]->user_id);
+        $this->assertStringContainsString('เซ็นแล้ว 1/4 คน', $chat[0]->body);
+        // ชื่อเล่นก่อน ไม่มีก็ชื่อต้น — ไม่มีนามสกุลในห้องกลุ่ม
+        $this->assertStringContainsString('ยังไม่ได้เซ็น: คุณสมหญิง, คุณแพร, คุณก้อง', $chat[0]->body);
+        $this->assertStringNotContainsString('ใจดี', $chat[0]->body);
+        $this->assertStringNotContainsString('คุณสมชาย', $chat[0]->body);
+        $this->assertStringContainsString('กรุณาเซ็นภายใน', $chat[0]->body);
+
+        // push ถึงคนจองแต่ละใบ บอกชื่อคนที่ยังค้างในใบของตัวเอง
+        $pushes = SmartNotification::where('type', 'permit_sign_reminder')->get()->keyBy('user_id');
+        $this->assertSame('เซ็นแบบฟอร์มอุทยานแล้ว 1/2 คน', $pushes[$this->owner->id]->title);
+        $this->assertStringStartsWith('ยังไม่ได้เซ็น: สมหญิง ใจดี —', $pushes[$this->owner->id]->body);
+        $this->assertStringStartsWith('ยังไม่ได้เซ็น: แพร, ก้อง ภูเขา —', $pushes[$theirs->user_id]->body);
+    }
+
+    public function test_the_last_signature_closes_the_matter_in_chat(): void
+    {
+        $form = $this->form(dueDays: 7);
+        $booking = $this->booking($form, daysAhead: 8);
+        [$a, $b] = $booking->passengers->sortBy('id')->values();
+        $sign = fn ($p) => $this->actingAs($this->owner, 'sanctum')
+            ->postJson($this->signUrl($booking, $p), ['signature' => $this->signature(), 'accept' => true])->assertOk();
+
+        app()->call([new RemindPermitSignaturesJob, 'handle']);
+        $sign($a);
+        $this->assertCount(1, $this->permitChat($booking));
+
+        $sign($b);
+        $sign($b);
+        $chat = $this->permitChat($booking);
+        $this->assertCount(2, $chat);
+        $this->assertStringContainsString('ทุกคนเซ็นแบบฟอร์มอุทยานครบแล้ว', $chat[1]->body);
+    }
+
+    public function test_rooms_never_reminded_hear_nothing_when_everyone_signs(): void
+    {
+        $booking = $this->booking($this->form(), names: ['คนเดียว ไปเอง']);
+        $this->actingAs($this->owner, 'sanctum')
+            ->postJson($this->signUrl($booking, $booking->passengers->first()), ['signature' => $this->signature(), 'accept' => true])
+            ->assertOk();
+
+        $this->assertCount(0, $this->permitChat($booking));
+    }
+
+    public function test_admin_reminds_the_whole_round_once_a_day(): void
+    {
+        $form = $this->form(dueDays: 7);
+        // นอกช่วงเตือนอัตโนมัติ — ทีมงานกดเองได้ทุกเมื่อ
+        $mine = $this->booking($form, daysAhead: 30);
+        $theirs = $this->secondBooking($mine, [['name' => 'วิภา รักป่า']]);
+        $url = "/api/v1/admin/schedules/{$mine->schedule_id}/permit-reminder";
+
+        $this->actingAs($this->admin, 'sanctum')->postJson($url)->assertOk()
+            ->assertJsonPath('data.chat_posted', true)
+            ->assertJsonPath('data.bookings_reminded', 2)
+            ->assertJsonPath('data.unsigned_count', 3);
+        $this->assertStringContainsString('คุณสมชาย, คุณสมหญิง, คุณวิภา', $this->permitChat($mine)[0]->body);
+        $this->assertSame(2, SmartNotification::where('type', 'permit_sign_reminder')->count());
+        $this->assertSame(0, $mine->fresh()->permit_reminder_count, 'manual does not use up auto reminders');
+
+        // กดซ้ำวันเดียวกัน — ไม่โพสต์ซ้ำ ไม่ปลุกซ้ำ
+        $this->actingAs($this->admin, 'sanctum')->postJson($url)->assertOk()
+            ->assertJsonPath('data.chat_posted', false)
+            ->assertJsonPath('data.bookings_reminded', 0)
+            ->assertJsonPath('data.already_today', 2);
+        $this->assertCount(1, $this->permitChat($mine));
+        $this->assertSame(2, SmartNotification::where('type', 'permit_sign_reminder')->count());
+        $this->assertNotNull($theirs);
+    }
+
+    public function test_admin_round_reminder_waits_for_rounds_that_may_not_go(): void
+    {
+        $booking = $this->booking($this->form(), departureConfirmed: false);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$booking->schedule_id}/permit-reminder")
+            ->assertStatus(422);
+        $this->assertCount(0, $this->permitChat($booking));
+        $this->assertSame(0, SmartNotification::where('type', 'permit_sign_reminder')->count());
+
+        $this->actingAs($this->owner, 'sanctum')
+            ->postJson("/api/v1/admin/schedules/{$booking->schedule_id}/permit-reminder")
+            ->assertForbidden();
     }
 }
