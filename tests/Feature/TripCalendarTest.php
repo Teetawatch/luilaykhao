@@ -221,6 +221,28 @@ class TripCalendarTest extends TestCase
         $this->assertSame($soon->id, $this->calendar('2026-11')['hot'][0]['id']);
     }
 
+    public function test_the_hot_page_lists_more_than_the_calendar_strip_soonest_first(): void
+    {
+        $trip = $this->trip();
+        $ids = [];
+        foreach (range(1, 10) as $i) {
+            $ids[] = $this->schedule($trip, ['departure_date' => '2026-09-'.(15 + $i % 10)])->id;
+        }
+        $this->schedule($trip, ['departure_date' => '2026-10-30']);
+
+        $this->assertCount(TripCalendarService::HOT_LIMIT, $this->calendar()['hot']);
+
+        $response = $this->getJson('/api/v1/trips/hot')->assertOk();
+        $rounds = $response->json('data.rounds');
+        $this->assertCount(10, $rounds);
+        $this->assertEqualsCanonicalizing($ids, array_column($rounds, 'id'));
+        $dates = array_column($rounds, 'departure_date');
+        $sorted = $dates;
+        sort($sorted);
+        $this->assertSame($sorted, $dates);
+        $this->assertSame(TripCalendarService::HOT_DAYS, $response->json('data.hot_days'));
+    }
+
     // ── เดือนที่เลือกได้ ──────────────────────────────────────────────────────
 
     public function test_month_options_cover_half_a_year_ahead(): void

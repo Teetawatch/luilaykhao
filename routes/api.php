@@ -172,6 +172,8 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/flash-sale', [TripController::class, 'flashSale']);
         // ปฏิทินทริปรายเดือน — หน้าที่ทีมงานส่งลิงก์ให้ลูกค้าเวลาถามว่าเดือนหน้ามีอะไร
         Route::get('trips/calendar', [TripCalendarController::class, 'index']);
+        // ทริปไฟไหม้ทั้งหมด (เมนูลัดหน้าแรกของแอป) — นิยามเดียวกับโซนบนปฏิทิน
+        Route::get('trips/hot', [TripCalendarController::class, 'hot']);
         Route::get('trips/urgent-popup', [TripController::class, 'urgentPopup']);
         Route::get('trips/{slug}', [TripController::class, 'show']);
         Route::get('trips/{slug}/related', [TripController::class, 'related']);

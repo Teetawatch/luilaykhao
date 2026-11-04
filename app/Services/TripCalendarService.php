@@ -40,6 +40,9 @@ class TripCalendarService
     /** จำนวนรอบสูงสุดในโซนไฟไหม้ — เป็นรายการที่ต้องกวาดตาจบ ไม่ใช่รายการที่ต้องอ่าน */
     public const HOT_LIMIT = 8;
 
+    /** หน้ารวมทริปไฟไหม้ในแอป — เลื่อนดูได้ จึงยาวกว่าโซนบนปฏิทิน */
+    public const HOT_PAGE_LIMIT = 40;
+
     /** เหลือเท่านี้หรือน้อยกว่า = "ใกล้เต็ม" ตัวเลขเดียวกับที่หน้าอื่นใช้เตือน */
     public const LOW_SEATS = 3;
 
@@ -70,6 +73,23 @@ class TripCalendarService
             'days' => $days,
             'summary' => $this->summary($days),
             'hot' => $this->hot($today),
+            'hot_days' => self::HOT_DAYS,
+            'generated_at' => CarbonImmutable::now(self::TIMEZONE)->toIso8601String(),
+        ];
+    }
+
+    /**
+     * หน้ารวมทริปไฟไหม้ (เมนูลัดหน้าแรกของแอป) — นิยามเดียวกับโซนบนปฏิทิน
+     * แค่ยาวกว่า
+     *
+     * @return array<string, mixed>
+     */
+    public function hotList(): array
+    {
+        $today = CarbonImmutable::now(self::TIMEZONE)->startOfDay();
+
+        return [
+            'rounds' => $this->hot($today, self::HOT_PAGE_LIMIT),
             'hot_days' => self::HOT_DAYS,
             'generated_at' => CarbonImmutable::now(self::TIMEZONE)->toIso8601String(),
         ];
@@ -155,7 +175,7 @@ class TripCalendarService
      *
      * @return array<int, array<string, mixed>>
      */
-    private function hot(CarbonImmutable $today): array
+    private function hot(CarbonImmutable $today, int $limit = self::HOT_LIMIT): array
     {
         $schedules = $this->schedulesBetween($today, $today->addDays(self::HOT_FLASH_SALE_DAYS));
         $soonest = $today->addDays(self::HOT_DAYS)->toDateString();
@@ -166,7 +186,7 @@ class TripCalendarService
                 || $s->departure_date->toDateString() <= $soonest)
             // ออกก่อนขึ้นก่อน — ความเร่งด่วนคือเหตุผลเดียวที่โซนนี้มีอยู่
             ->sortBy(fn (TripSchedule $s) => $s->departure_date->toDateString())
-            ->take(self::HOT_LIMIT)
+            ->take($limit)
             ->map(fn (TripSchedule $s) => $this->round($s, $today))
             ->values()
             ->all();

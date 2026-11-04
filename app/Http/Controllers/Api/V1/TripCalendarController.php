@@ -22,4 +22,10 @@ class TripCalendarController extends Controller
     {
         return $this->success($calendar->forMonth($request->query('month')));
     }
+
+    /** ทริปไฟไหม้ทั้งหมด — รอบที่ออกใน 10 วันหรือติด flash sale และยังมีที่ว่าง */
+    public function hot(TripCalendarService $calendar): JsonResponse
+    {
+        return $this->success($calendar->hotList());
+    }
 }
