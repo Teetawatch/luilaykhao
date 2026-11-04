@@ -105,7 +105,7 @@
 
       <div class="pf-editor">
         <!-- หน้าแบบฟอร์ม -->
-        <div ref="pagesEl" class="pf-pages" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointerleave="onPointerUp">
+        <div ref="pagesEl" class="pf-pages">
           <section v-for="(page, pi) in editing.pages" :key="pi" class="pf-page-block" :ref="(el) => (pageBlockEls[pi] = el)">
             <header class="pf-page-label">
               <span>หน้า {{ pi + 1 }} / {{ editing.pages.length }}</span>
@@ -125,7 +125,7 @@
                 v-for="field in fieldsOnPage(pi)"
                 :key="field.id"
                 class="pf-field"
-                :class="{ selected: selectedId === field.id, check: isCheck(field.source), sig: isSignature(field.source) }"
+                :class="{ selected: selectedId === field.id, check: isCheck(field.source), sig: isSignature(field.source), dragging: draggingId === field.id }"
                 :style="fieldStyle(field, page)"
                 @pointerdown.stop="startDrag($event, field, pi, 'move')"
                 @click.stop
@@ -185,6 +185,13 @@
                   </button>
                 </div>
               </div>
+            </div>
+            <div v-if="editing.pages.length > 1">
+              <label class="pf-label">อยู่หน้า</label>
+              <select :value="selected.page" @change="moveToPage(selected, Number($event.target.value))">
+                <option v-for="(p, pi) in editing.pages" :key="pi" :value="pi">หน้า {{ pi + 1 }}</option>
+              </select>
+              <p class="pf-muted pf-help">ลากข้ามหน้าได้ หรือเลือกหน้าตรงนี้ — ตำแหน่งบนหน้าเหมือนเดิม (กด "ทำซ้ำ" แล้วเลือกหน้า = วางช่องเดียวกันอีกหน้า)</p>
             </div>
             <div class="pf-panel-actions">
               <button class="btn-secondary" @click="duplicate(selected)"><i class="fas fa-clone"></i> ทำซ้ำ</button>
@@ -565,29 +572,101 @@ function onSizeChange(field) {
   dirty.value = true;
 }
 
+// ลาก — ฟังที่ window ระหว่างลาก (ไม่ใช่แค่พื้นที่หน้า) ช่องจึงลากข้ามหน้าได้: หน้าที่อยู่ใต้
+// เมาส์คือหน้าของช่อง และจุดที่จับไว้บนกล่องอยู่ใต้เมาส์ตลอด ใกล้ขอบจอเลื่อนหน้าให้เอง
 let drag = null;
+const draggingId = ref(null);
+const AUTO_SCROLL_ZONE = 64;
 function startDrag(event, field, pi, mode) {
-  if (armed.value) return;
+  if (armed.value || event.button > 0) return;
+  event.preventDefault();
   selectedId.value = field.id;
   const rect = pageEls[pi].getBoundingClientRect();
-  drag = { field, rect, mode, startX: event.clientX, startY: event.clientY, orig: { ...field } };
-  event.target.setPointerCapture?.(event.pointerId);
+  drag = {
+    field, mode,
+    pointerX: event.clientX, pointerY: event.clientY,
+    // จุดที่จับ เทียบมุมซ้ายบนของกล่อง (สัดส่วนของหน้า) — ข้ามหน้าแล้วกล่องไม่กระโดด
+    grabX: (event.clientX - rect.left) / rect.width - field.x,
+    grabY: (event.clientY - rect.top) / rect.height - field.y,
+    startX: event.clientX, startY: event.clientY, orig: { ...field }, rect,
+    scrollFrame: 0,
+  };
+  draggingId.value = field.id;
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
 }
+
+/** หน้าที่อยู่ใต้ตำแหน่งแนวตั้งนี้ — อยู่ช่องว่างระหว่างหน้าก็คงหน้าเดิม */
+function pageAt(clientY, fallback) {
+  const i = pageEls.findIndex((el) => {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return clientY >= r.top && clientY <= r.bottom;
+  });
+  return i === -1 ? fallback : i;
+}
+
+function applyDrag() {
+  const { field, mode, pointerX, pointerY } = drag;
+  if (mode === 'move') {
+    const pi = pageAt(pointerY, field.page);
+    const rect = pageEls[pi].getBoundingClientRect();
+    const x = clamp((pointerX - rect.left) / rect.width - drag.grabX, 0, 1 - field.w);
+    const y = clamp((pointerY - rect.top) / rect.height - drag.grabY, 0, 1 - field.h);
+    if (pi !== field.page || x !== field.x || y !== field.y) dirty.value = true;
+    field.page = pi;
+    field.x = x;
+    field.y = y;
+  } else {
+    const { rect, orig } = drag;
+    field.w = clamp(orig.w + (pointerX - drag.startX) / rect.width, 0.01, 1 - field.x);
+    field.h = clamp(orig.h + (pointerY - drag.startY) / rect.height, 0.005, 1 - field.y);
+    dirty.value = true;
+  }
+}
+
 function onPointerMove(event) {
   if (!drag) return;
-  const { field, rect, mode, orig } = drag;
-  const dx = (event.clientX - drag.startX) / rect.width;
-  const dy = (event.clientY - drag.startY) / rect.height;
-  if (mode === 'move') {
-    field.x = clamp(orig.x + dx, 0, 1 - field.w);
-    field.y = clamp(orig.y + dy, 0, 1 - field.h);
-  } else {
-    field.w = clamp(orig.w + dx, 0.01, 1 - field.x);
-    field.h = clamp(orig.h + dy, 0.005, 1 - field.y);
-  }
-  if (dx || dy) dirty.value = true;
+  drag.pointerX = event.clientX;
+  drag.pointerY = event.clientY;
+  applyDrag();
+  if (drag.mode === 'move' && !drag.scrollFrame) drag.scrollFrame = requestAnimationFrame(autoScroll);
 }
-function onPointerUp() { drag = null; }
+
+// เมาส์ชิดขอบล่างจอ หรือชิดใต้แถบเครื่องมือ — เลื่อนหน้าไปเรื่อย ๆ ระหว่างที่ยังกดค้าง
+function autoScroll() {
+  if (!drag) return;
+  drag.scrollFrame = 0;
+  const top = stickyOffset();
+  const y = drag.pointerY;
+  let speed = 0;
+  if (y > window.innerHeight - AUTO_SCROLL_ZONE) speed = (y - (window.innerHeight - AUTO_SCROLL_ZONE)) / AUTO_SCROLL_ZONE;
+  else if (y < top + AUTO_SCROLL_ZONE) speed = -((top + AUTO_SCROLL_ZONE - y) / AUTO_SCROLL_ZONE);
+  if (!speed) return;
+  window.scrollBy(0, Math.max(-1, Math.min(1, speed)) * 22);
+  applyDrag();
+  drag.scrollFrame = requestAnimationFrame(autoScroll);
+}
+
+function onPointerUp() {
+  if (drag?.scrollFrame) cancelAnimationFrame(drag.scrollFrame);
+  drag = null;
+  draggingId.value = null;
+  window.removeEventListener('pointermove', onPointerMove);
+  window.removeEventListener('pointerup', onPointerUp);
+  window.removeEventListener('pointercancel', onPointerUp);
+}
+
+/** ย้ายช่องไปอีกหน้า ตำแหน่งบนหน้าเท่าเดิม (บีบให้อยู่ในหน้า) แล้วเลื่อนไปให้เห็น */
+function moveToPage(field, pi) {
+  if (pi === field.page || !editing.value.pages[pi]) return;
+  field.page = pi;
+  field.x = clamp(field.x, 0, 1 - field.w);
+  field.y = clamp(field.y, 0, 1 - field.h);
+  dirty.value = true;
+  scrollToPage(pi);
+}
 
 function onKey(event) {
   if (!editing.value) return;
@@ -912,6 +991,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', onBeforeUnload);
   window.removeEventListener('scroll', onScroll);
   if (scrollFrame) cancelAnimationFrame(scrollFrame);
+  onPointerUp();
   resizeObserver?.disconnect();
   barObserver?.disconnect();
   revokePages();
@@ -1071,6 +1151,7 @@ onBeforeUnmount(() => {
 }
 .pf-page.armed .pf-field { pointer-events: none; }
 .pf-field.selected { border: 1.5px solid #1d4ed8; background: rgba(191, 219, 254, 0.5); z-index: 2; }
+.pf-field.dragging { cursor: grabbing; z-index: 3; outline: 3px solid rgba(29, 78, 216, 0.18); }
 .pf-field.check { font-family: 'DejaVu Sans', 'Segoe UI Symbol', sans-serif; }
 .pf-field.sig { border-color: #f59e0b; background: rgba(254, 243, 199, 0.55); color: #b45309; text-align: center; }
 .pf-field.sig .pf-field-text { text-align: center !important; font-size: 11px; padding-top: 2px; }
