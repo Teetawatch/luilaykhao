@@ -54,64 +54,94 @@
     </template>
 
     <!-- ─── ตัววางช่อง ─────────────────────────── -->
-    <template v-else>
-      <div class="pf-editor-bar">
-        <button class="btn-secondary" @click="closeEditor"><i class="fas fa-arrow-left"></i> กลับ</button>
-        <input v-model="editing.name" class="pf-name-input" maxlength="255" @input="dirty = true" />
-        <span v-if="dirty" class="pf-dirty">ยังไม่บันทึก</span>
-        <div class="pf-bar-actions">
-          <button class="btn-secondary" :disabled="previewing" @click="preview(editing, editing.fields)">
-            <i class="fas" :class="previewing ? 'fa-spinner fa-spin' : 'fa-eye'"></i> ดูตัวอย่าง PDF
-          </button>
-          <button class="btn-primary" :disabled="saving" @click="save">
-            <i class="fas" :class="saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i> บันทึก
-          </button>
+    <div v-else class="pf-workspace" :style="{ '--pf-bar-h': `${barHeight}px` }">
+      <!-- แถบเครื่องมือลอย — ชื่อ/หน้า/บันทึก อยู่ในมือตลอด ไม่ว่าจะเลื่อนลงไปหน้าไหนของ PDF -->
+      <div ref="barEl" class="pf-toolbar">
+        <div class="pf-toolbar-row">
+          <button class="pf-icon-btn" title="กลับไปรายการแบบฟอร์ม" @click="closeEditor"><i class="fas fa-arrow-left"></i></button>
+          <div class="pf-title-block">
+            <input v-model="editing.name" class="pf-name-input" maxlength="255" aria-label="ชื่อแบบฟอร์ม" @input="dirty = true" />
+            <div class="pf-meta">
+              <span>{{ editing.pages.length }} หน้า</span>
+              <span class="pf-meta-sep"></span>
+              <span>{{ editing.fields.length }} ช่อง</span>
+              <span v-if="dirty" class="pf-status pf-status-dirty"><i class="fas fa-circle"></i> ยังไม่บันทึก</span>
+              <span v-else class="pf-status pf-status-saved"><i class="fas fa-check"></i> บันทึกแล้ว</span>
+            </div>
+          </div>
+          <nav v-if="editing.pages.length > 1" class="pf-page-nav" aria-label="ไปยังหน้า">
+            <span class="pf-page-nav-label">หน้า</span>
+            <button
+              v-for="(p, pi) in editing.pages"
+              :key="pi"
+              :class="{ active: currentPage === pi }"
+              :title="`ไปหน้า ${pi + 1} (${fieldsOnPage(pi).length} ช่อง)`"
+              @click="scrollToPage(pi)"
+            >
+              {{ pi + 1 }}<span v-if="fieldsOnPage(pi).length" class="pf-page-dot"></span>
+            </button>
+          </nav>
+          <div class="pf-bar-actions">
+            <button class="btn-secondary" :disabled="previewing" @click="preview(editing, editing.fields)">
+              <i class="fas" :class="previewing ? 'fa-spinner fa-spin' : 'fa-eye'"></i><span class="pf-hide-sm"> ดูตัวอย่าง PDF</span>
+            </button>
+            <button class="btn-primary" :disabled="saving" @click="save">
+              <i class="fas" :class="saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i> บันทึก
+            </button>
+          </div>
+        </div>
+        <div class="pf-hint" :class="{ armed: armed }">
+          <template v-if="armed">
+            <i class="fas fa-crosshairs"></i>
+            <span>คลิกตรงต้นเส้นประที่จะวาง <strong>"{{ labelOf(armed) }}"</strong> · กด Esc เพื่อยกเลิก</span>
+            <button class="pf-hint-cancel" @click="armed = null">ยกเลิก</button>
+          </template>
+          <template v-else>
+            <i class="fas fa-circle-info"></i>
+            <span>เลือกช่องจากแผงขวา แล้วคลิกบนฟอร์ม · ลากเพื่อย้าย ลากมุมขวาล่างเพื่อขยาย · ปุ่มลูกศรขยับทีละนิด (Shift = ทีละมาก)</span>
+          </template>
         </div>
       </div>
 
       <div class="pf-editor">
         <!-- หน้าแบบฟอร์ม -->
         <div ref="pagesEl" class="pf-pages" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointerleave="onPointerUp">
-          <p class="pf-hint" :class="{ armed: armed }">
-            <template v-if="armed">
-              <i class="fas fa-crosshairs"></i> คลิกตรงต้นเส้นประที่จะวาง "{{ labelOf(armed) }}" · กด Esc เพื่อยกเลิก
-            </template>
-            <template v-else>
-              เลือกช่องจากแผงขวา แล้วคลิกบนฟอร์ม · ลากเพื่อย้าย ลากมุมขวาล่างเพื่อขยาย · ปุ่มลูกศรขยับทีละนิด (Shift = ทีละมาก)
-            </template>
-          </p>
-          <div
-            v-for="(page, pi) in editing.pages"
-            :key="pi"
-            class="pf-page"
-            :class="{ armed: armed }"
-            :style="{ aspectRatio: `${page.width_mm} / ${page.height_mm}` }"
-            :ref="(el) => (pageEls[pi] = el)"
-            @click="placeArmed($event, pi)"
-          >
-            <img v-if="pageUrls[pi]" :src="pageUrls[pi]" alt="" draggable="false" />
-            <div v-else class="pf-page-loading"><div class="spinner"></div></div>
-
+          <section v-for="(page, pi) in editing.pages" :key="pi" class="pf-page-block" :ref="(el) => (pageBlockEls[pi] = el)">
+            <header class="pf-page-label">
+              <span>หน้า {{ pi + 1 }} / {{ editing.pages.length }}</span>
+              <span class="pf-muted">{{ fieldsOnPage(pi).length }} ช่อง</span>
+            </header>
             <div
-              v-for="field in fieldsOnPage(pi)"
-              :key="field.id"
-              class="pf-field"
-              :class="{ selected: selectedId === field.id, check: isCheck(field.source), sig: isSignature(field.source) }"
-              :style="fieldStyle(field, page)"
-              @pointerdown.stop="startDrag($event, field, pi, 'move')"
-              @click.stop
+              class="pf-page"
+              :class="{ armed: armed }"
+              :style="{ aspectRatio: `${page.width_mm} / ${page.height_mm}` }"
+              :ref="(el) => (pageEls[pi] = el)"
+              @click="placeArmed($event, pi)"
             >
-              <span class="pf-field-text" :style="{ textAlign: field.align }">{{ sampleOf(field) }}</span>
-              <span class="pf-resize" @pointerdown.stop="startDrag($event, field, pi, 'resize')"></span>
+              <img v-if="pageUrls[pi]" :src="pageUrls[pi]" alt="" draggable="false" />
+              <div v-else class="pf-page-loading"><div class="spinner"></div></div>
+
+              <div
+                v-for="field in fieldsOnPage(pi)"
+                :key="field.id"
+                class="pf-field"
+                :class="{ selected: selectedId === field.id, check: isCheck(field.source), sig: isSignature(field.source) }"
+                :style="fieldStyle(field, page)"
+                @pointerdown.stop="startDrag($event, field, pi, 'move')"
+                @click.stop
+              >
+                <span class="pf-field-text" :style="{ textAlign: field.align }">{{ sampleOf(field) }}</span>
+                <span class="pf-resize" @pointerdown.stop="startDrag($event, field, pi, 'resize')"></span>
+              </div>
             </div>
-          </div>
+          </section>
         </div>
 
-        <!-- แผงควบคุม -->
-        <aside class="pf-side">
-          <section v-if="selected" class="table-card pf-panel">
+        <!-- แผงควบคุม — ลอยตามเมื่อเลื่อน เลื่อนในตัวเองเมื่อยาวกว่าจอ -->
+        <aside ref="sideEl" class="pf-side">
+          <section v-if="selected" class="table-card pf-panel pf-panel-selected">
             <div class="pf-panel-head">
-              <h4>ช่องที่เลือก</h4>
+              <h4><i class="fas fa-crop-simple"></i> ช่องที่เลือก <span class="pf-muted">· หน้า {{ selected.page + 1 }}</span></h4>
               <button class="btn-icon" title="ยกเลิกการเลือก" @click="selectedId = null"><i class="fas fa-xmark"></i></button>
             </div>
             <label class="pf-label">ข้อมูล</label>
@@ -162,24 +192,41 @@
             </div>
           </section>
 
-          <section class="table-card pf-panel">
-            <h4>เพิ่มช่อง</h4>
-            <div v-for="g in catalogGroups" :key="g.name" class="pf-palette-group">
-              <p class="pf-group-name">{{ g.name }}</p>
-              <div class="pf-palette">
-                <button
-                  v-for="c in g.items"
-                  :key="c.key"
-                  class="pf-pill"
-                  :class="{ active: armed === c.key, used: usedSources.has(c.key) }"
-                  @click="armed = armed === c.key ? null : c.key"
-                >{{ c.label }}</button>
-              </div>
+          <section class="table-card pf-panel pf-panel-tabs">
+            <div class="pf-tabs" role="tablist">
+              <button role="tab" :aria-selected="sideTab === 'fields'" :class="{ active: sideTab === 'fields' }" @click="sideTab = 'fields'">
+                <i class="fas fa-plus"></i> เพิ่มช่อง
+              </button>
+              <button role="tab" :aria-selected="sideTab === 'trips'" :class="{ active: sideTab === 'trips' }" @click="sideTab = 'trips'">
+                <i class="fas fa-route"></i> ทริป <span class="pf-tab-badge">{{ editing.trip_ids.length }}</span>
+              </button>
+              <button role="tab" :aria-selected="sideTab === 'settings'" :class="{ active: sideTab === 'settings' }" @click="sideTab = 'settings'">
+                <i class="fas fa-sliders"></i> ตั้งค่า <span v-if="askedWithoutSignature" class="pf-tab-alert" title="มีเรื่องต้องแก้"></span>
+              </button>
             </div>
-          </section>
 
-          <section class="table-card pf-panel">
-            <h4>ใช้กับทริป <span class="pf-muted">({{ editing.trip_ids.length }})</span></h4>
+            <div v-show="sideTab === 'fields'" class="pf-tab-body">
+              <div class="pf-search">
+                <i class="fas fa-magnifying-glass"></i>
+                <input v-model="fieldSearch" type="search" placeholder="ค้นหาช่อง เช่น ชื่อ วันที่ ที่อยู่" />
+              </div>
+              <div v-for="g in filteredCatalogGroups" :key="g.name" class="pf-palette-group">
+                <p class="pf-group-name">{{ g.name }}</p>
+                <div class="pf-palette">
+                  <button
+                    v-for="c in g.items"
+                    :key="c.key"
+                    class="pf-pill"
+                    :class="{ active: armed === c.key, used: usedSources.has(c.key) }"
+                    :title="usedSources.has(c.key) ? 'วางไว้แล้ว — วางซ้ำได้' : ''"
+                    @click="armed = armed === c.key ? null : c.key"
+                  ><i v-if="usedSources.has(c.key)" class="fas fa-check"></i>{{ c.label }}</button>
+                </div>
+              </div>
+              <p v-if="!filteredCatalogGroups.length" class="pf-muted pf-empty-search">ไม่พบช่องที่ตรงกับ "{{ fieldSearch }}"</p>
+            </div>
+
+            <div v-show="sideTab === 'trips'" class="pf-tab-body">
             <input v-model="tripSearch" placeholder="ค้นหาทริป" class="pf-trip-search" />
             <div class="pf-trip-list">
               <label v-for="t in filteredTrips" :key="t.id" class="pf-trip-row">
@@ -188,10 +235,9 @@
                 <small v-if="t.permit_form_id && t.permit_form_id !== editing.id" class="pf-muted">(ใช้ฟอร์มอื่นอยู่ — ติ๊กแล้วจะย้ายมา)</small>
               </label>
             </div>
-          </section>
+            </div>
 
-          <section class="table-card pf-panel">
-            <h4>เครื่องมือ</h4>
+            <div v-show="sideTab === 'settings'" class="pf-tab-body">
             <label class="pf-label">คัดลอกช่องจากฟอร์มอื่น</label>
             <select :value="''" @change="copyFrom($event.target.value); $event.target.value = ''">
               <option value="">— เลือกแบบฟอร์ม —</option>
@@ -218,10 +264,11 @@
             <p v-else class="pf-muted pf-help">วางช่อง "ลายเซ็น" ถ้าอยากให้ลูกค้าเซ็นในแอป/เว็บ/ลิงก์ก่อนเดินทาง</p>
             <label class="pf-label">หมายเหตุ</label>
             <input v-model="editing.note" maxlength="500" placeholder="เช่น ปีงบ 2570 ส่งทางอีเมลอุทยาน" @input="dirty = true" />
+            </div>
           </section>
         </aside>
       </div>
-    </template>
+    </div>
 
     <!-- ─── อัปโหลด ─────────────────────────── -->
     <div v-if="showUpload" class="modal-overlay" @click.self="closeUpload">
@@ -257,7 +304,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import api from '../../lib/axios';
 import { useToast } from '../../lib/toast';
 import { useSwal } from '../../lib/swal';
@@ -296,7 +343,26 @@ const resizeObserver = typeof ResizeObserver !== 'undefined'
   ? new ResizeObserver(([entry]) => { pagesWidth.value = entry.contentRect.width; })
   : null;
 
+// แถบเครื่องมือลอย + แผงขวาลอย — แผงขวาลอยใต้แถบ จึงต้องรู้ความสูงแถบ (ขึ้นบรรทัดใหม่ได้)
+const barEl = ref(null);
+const sideEl = ref(null);
+const barHeight = ref(0);
+const barObserver = typeof ResizeObserver !== 'undefined'
+  ? new ResizeObserver(([entry]) => { barHeight.value = Math.round(entry.borderBoxSize?.[0]?.blockSize ?? entry.target.offsetHeight); })
+  : null;
+const pageBlockEls = [];
+const currentPage = ref(0);
+const sideTab = ref('fields');
+const fieldSearch = ref('');
+
 const catalogByKey = computed(() => Object.fromEntries(catalog.value.map((c) => [c.key, c])));
+const filteredCatalogGroups = computed(() => {
+  const q = fieldSearch.value.trim().toLowerCase();
+  if (!q) return catalogGroups.value;
+  return catalogGroups.value
+    .map((g) => ({ ...g, items: g.items.filter((c) => c.label.toLowerCase().includes(q) || g.name.toLowerCase().includes(q)) }))
+    .filter((g) => g.items.length);
+});
 const catalogGroups = computed(() => {
   const groups = [];
   for (const c of catalog.value) {
@@ -362,11 +428,19 @@ async function openEditor(form) {
   armed.value = null;
   dirty.value = false;
   tripSearch.value = '';
+  fieldSearch.value = '';
+  sideTab.value = 'fields';
+  currentPage.value = 0;
+  pageBlockEls.length = 0;
   window.scrollTo({ top: 0 });
   await nextTick();
   if (pagesEl.value) {
     pagesWidth.value = pagesEl.value.clientWidth;
     resizeObserver?.observe(pagesEl.value);
+  }
+  if (barEl.value) {
+    barHeight.value = barEl.value.offsetHeight;
+    barObserver?.observe(barEl.value);
   }
 
   revokePages();
@@ -387,9 +461,45 @@ async function closeEditor() {
     if (!res.isConfirmed) return;
   }
   resizeObserver?.disconnect();
+  barObserver?.disconnect();
   editing.value = null;
   revokePages();
 }
+
+// ─── เลื่อนระหว่างหน้า ──────────────────────────────
+
+/** ระยะที่ถูกบังด้านบน = topbar ของหลังบ้าน + แถบเครื่องมือลอย */
+function stickyOffset() {
+  const topbar = document.querySelector('.admin-topbar')?.offsetHeight ?? 64;
+  return topbar + barHeight.value + 12;
+}
+
+function scrollToPage(pi) {
+  const el = pageBlockEls[pi];
+  if (!el) return;
+  currentPage.value = pi;
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - stickyOffset(), behavior: 'smooth' });
+}
+
+// หน้าที่กำลังดู = หน้าสุดท้ายที่ขอบบนเลยเส้นใต้แถบเครื่องมือลงมาแล้ว (เผื่อหนึ่งในสามจอ)
+let scrollFrame = 0;
+function onScroll() {
+  if (scrollFrame || !editing.value) return;
+  scrollFrame = requestAnimationFrame(() => {
+    scrollFrame = 0;
+    const line = stickyOffset() + window.innerHeight * 0.3;
+    let page = 0;
+    pageBlockEls.forEach((el, i) => {
+      if (el && el.getBoundingClientRect().top <= line) page = i;
+    });
+    currentPage.value = page;
+  });
+}
+
+// เลือกช่องแล้วแผงขวาเลื่อนกลับขึ้นบน — กล่อง "ช่องที่เลือก" อยู่ตรงนั้น
+watch(selectedId, (id) => {
+  if (id) sideEl.value?.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 function revokePages() {
   pageUrls.value.forEach((u) => u && URL.revokeObjectURL(u));
@@ -794,12 +904,16 @@ onMounted(() => {
   }
   window.addEventListener('keydown', onKey);
   window.addEventListener('beforeunload', onBeforeUnload);
+  window.addEventListener('scroll', onScroll, { passive: true });
   load();
 });
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey);
   window.removeEventListener('beforeunload', onBeforeUnload);
+  window.removeEventListener('scroll', onScroll);
+  if (scrollFrame) cancelAnimationFrame(scrollFrame);
   resizeObserver?.disconnect();
+  barObserver?.disconnect();
   revokePages();
 });
 </script>
@@ -833,22 +947,96 @@ onBeforeUnmount(() => {
 .pf-card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
 
 /* ─── ตัววางช่อง ─── */
-.pf-editor-bar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  margin-bottom: 14px;
+/* ─── พื้นที่ทำงาน: แถบเครื่องมือลอย + หน้าฟอร์ม + แผงขวาลอย ─── */
+.pf-workspace {
+  --pf-topbar: 64px;
+  --pf-gutter: 28px;
+  --pf-ink: #111827;
+  --pf-muted: #6b7280;
+  --pf-line: #e5e7eb;
+  --pf-blue: #1d4ed8;
+  --pf-blue-soft: #eff6ff;
 }
+
+.pf-toolbar {
+  position: sticky;
+  top: var(--pf-topbar);
+  z-index: 20;
+  margin: calc(var(--pf-gutter) * -1) calc(var(--pf-gutter) * -1) 18px;
+  padding: 12px var(--pf-gutter) 0;
+  background: #fff;
+  border-bottom: 1px solid var(--pf-line);
+}
+.pf-toolbar-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+.pf-icon-btn {
+  width: 38px; height: 38px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--pf-line); border-radius: 10px; background: #fff;
+  color: #374151; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.pf-icon-btn:hover { background: #f9fafb; border-color: #d1d5db; }
+
+.pf-title-block { flex: 1; min-width: 220px; }
 .pf-name-input {
-  flex: 1; min-width: 200px;
-  font-size: 18px; font-weight: 700;
-  border: 1px solid transparent; border-radius: 8px; padding: 6px 10px; background: transparent;
+  width: 100%;
+  font-size: 18px; font-weight: 700; color: var(--pf-ink);
+  border: 1px solid transparent; border-radius: 8px; padding: 3px 8px; margin-left: -8px; background: transparent;
 }
 .pf-name-input:hover, .pf-name-input:focus { border-color: #d1d5db; background: #fff; outline: none; }
-.pf-dirty { font-size: 12px; color: #b45309; background: #fef3c7; padding: 3px 10px; border-radius: 999px; }
+.pf-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--pf-muted); margin-top: 1px; }
+.pf-meta-sep { width: 3px; height: 3px; border-radius: 50%; background: #cbd5e1; }
+.pf-status { display: inline-flex; align-items: center; gap: 5px; padding: 1px 9px; border-radius: 999px; font-weight: 600; }
+.pf-status i { font-size: 7px; }
+.pf-status-saved i { font-size: 10px; }
+.pf-status-dirty { color: #b45309; background: #fef3c7; }
+.pf-status-saved { color: #047857; background: #ecfdf5; }
+
+.pf-page-nav {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px; border: 1px solid var(--pf-line); border-radius: 12px; background: #f9fafb;
+  max-width: 100%; overflow-x: auto; scrollbar-width: none;
+}
+.pf-page-nav::-webkit-scrollbar { display: none; }
+.pf-page-nav-label { font-size: 12px; color: var(--pf-muted); padding: 0 6px 0 4px; white-space: nowrap; }
+.pf-page-nav button {
+  position: relative; min-width: 32px; height: 30px; padding: 0 8px; flex: none;
+  border: 0; border-radius: 8px; background: transparent;
+  font-size: 13px; font-weight: 600; color: #4b5563; cursor: pointer;
+  font-variant-numeric: tabular-nums; transition: background 0.15s, color 0.15s;
+}
+.pf-page-nav button:hover { background: #fff; color: var(--pf-ink); }
+.pf-page-nav button.active { background: var(--pf-blue); color: #fff; }
+.pf-page-dot { position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: #60a5fa; }
+.pf-page-nav button.active .pf-page-dot { background: #bfdbfe; }
+
 .pf-bar-actions { display: flex; gap: 8px; }
 
-.pf-editor { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.pf-hint {
+  display: flex; align-items: center; gap: 8px;
+  margin: 10px calc(var(--pf-gutter) * -1) 0; padding: 7px var(--pf-gutter);
+  font-size: 12.5px; color: var(--pf-muted);
+  border-top: 1px solid #f3f4f6;
+  transition: background 0.2s, color 0.2s;
+}
+.pf-hint i { flex: none; }
+.pf-hint span { flex: 1; min-width: 0; }
+.pf-hint.armed { background: var(--pf-blue-soft); color: var(--pf-blue); border-top-color: #dbeafe; }
+.pf-hint-cancel {
+  flex: none; font-size: 12px; font-weight: 600; color: var(--pf-blue);
+  background: #fff; border: 1px solid #bfdbfe; border-radius: 999px; padding: 2px 12px; cursor: pointer;
+}
+.pf-hint-cancel:hover { background: #dbeafe; }
 
-.pf-hint { font-size: 13px; color: #6b7280; margin: 0 0 10px; }
+.pf-editor { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+
+.pf-page-block { margin-bottom: 20px; scroll-margin-top: calc(var(--pf-topbar) + var(--pf-bar-h) + 12px); }
+.pf-page-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px; font-weight: 600; color: #374151; margin: 0 2px 6px;
+}
+.pf-page-label .pf-muted { font-weight: 400; }
+
 .pf-warn {
   margin: 8px 0 0;
   padding: 10px 12px;
@@ -858,12 +1046,12 @@ onBeforeUnmount(() => {
   font-size: 12px;
   line-height: 1.5;
 }
-.pf-hint.armed { color: #1d4ed8; font-weight: 600; }
+
 
 .pf-page {
   position: relative; width: 100%;
   background: #fff; border: 1px solid #e5e7eb; border-radius: 4px;
-  margin-bottom: 16px; overflow: hidden;
+  overflow: hidden;
   user-select: none; touch-action: none;
 }
 .pf-page.armed { cursor: crosshair; }
@@ -896,7 +1084,48 @@ onBeforeUnmount(() => {
 }
 .pf-field.selected .pf-resize { opacity: 1; }
 
-.pf-side { display: flex; flex-direction: column; gap: 12px; }
+.pf-side {
+  display: flex; flex-direction: column; gap: 12px;
+  position: sticky;
+  top: calc(var(--pf-topbar) + var(--pf-bar-h) + 16px);
+  max-height: calc(100vh - var(--pf-topbar) - var(--pf-bar-h) - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+  padding-right: 2px;
+}
+.pf-side::-webkit-scrollbar { width: 6px; }
+.pf-side::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 999px; }
+.pf-panel-selected { flex: none; border-color: #bfdbfe; }
+.pf-panel-selected h4 i { color: var(--pf-blue); margin-right: 2px; }
+.pf-panel.pf-panel-tabs { flex: none; padding: 0; gap: 0; }
+
+.pf-tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--pf-line); }
+.pf-tabs button {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 11px 6px; border: 0; background: transparent; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--pf-muted); transition: color 0.15s;
+}
+.pf-tabs button i { font-size: 12px; }
+.pf-tabs button:hover { color: var(--pf-ink); }
+.pf-tabs button.active { color: var(--pf-blue); }
+.pf-tabs button.active::after {
+  content: ''; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--pf-blue);
+}
+.pf-tab-badge {
+  min-width: 18px; padding: 0 5px; border-radius: 999px; background: #f3f4f6; color: #4b5563;
+  font-size: 11px; line-height: 18px; font-variant-numeric: tabular-nums;
+}
+.pf-tabs button.active .pf-tab-badge { background: #dbeafe; color: var(--pf-blue); }
+.pf-tab-alert { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; }
+.pf-tab-body { display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+
+.pf-search { position: relative; }
+.pf-search i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #9ca3af; pointer-events: none; }
+.pf-panel .pf-search input[type='search'] { padding-left: 32px; background: #f9fafb; }
+.pf-panel .pf-search input[type='search']:focus { background: #fff; border-color: #93c5fd; outline: none; }
+.pf-empty-search { font-size: 13px; text-align: center; padding: 12px 0; }
 .pf-panel { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
 .pf-panel h4 { margin: 0 0 2px; font-size: 14px; font-weight: 700; }
 .pf-panel-head { display: flex; justify-content: space-between; align-items: center; }
@@ -921,8 +1150,12 @@ onBeforeUnmount(() => {
   font-size: 12px; padding: 4px 10px; border-radius: 999px;
   border: 1px solid #e5e7eb; background: #fff; color: #374151; cursor: pointer;
 }
-.pf-pill.used { background: #f3f4f6; color: #9ca3af; }
-.pf-pill.active { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.pf-pill { display: inline-flex; align-items: center; gap: 5px; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.pf-pill:hover { border-color: #93c5fd; color: var(--pf-blue); }
+.pf-pill i { font-size: 9px; color: #10b981; }
+.pf-pill.used { background: #f9fafb; color: #6b7280; }
+.pf-pill.active { background: var(--pf-blue); border-color: var(--pf-blue); color: #fff; }
+.pf-pill.active i { color: #fff; }
 
 .pf-trip-list { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
 .pf-trip-row { display: flex; gap: 8px; align-items: baseline; font-size: 13px; padding: 4px 2px; cursor: pointer; }
@@ -932,7 +1165,16 @@ onBeforeUnmount(() => {
 .pf-thumbs img { width: 90px; border: 1px solid #e5e7eb; border-radius: 4px; }
 
 @media (max-width: 1023px) {
+  .pf-workspace { --pf-topbar: 56px; --pf-gutter: 12px; }
+  .pf-toolbar { margin-top: -16px; padding-top: 10px; }
   .pf-editor { grid-template-columns: 1fr; }
-  .pf-side { order: -1; }
+  /* จอแคบแผงอยู่บนหน้าฟอร์ม — ไม่ลอย ไม่ต้องเลื่อนในตัวเอง */
+  .pf-side { order: -1; position: static; max-height: none; overflow: visible; padding-right: 0; }
+  .pf-hide-sm { display: none; }
+  /* คำแนะนำเมาส์/คีย์บอร์ดไม่ใช้บนจอสัมผัส — โชว์แถวนี้เฉพาะตอนกำลังวางช่อง */
+  .pf-hint:not(.armed) { display: none; }
+  .pf-title-block { min-width: 0; flex-basis: calc(100% - 52px); }
+  .pf-page-nav { order: 3; flex: 1; }
+  .pf-bar-actions { order: 4; }
 }
 </style>

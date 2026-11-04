@@ -30,6 +30,20 @@
   font-feature-settings: 'liga';
 }
 
+/* Font Awesome ต้องใช้ฟอนต์ของมันเอง — ไม่งั้น `.admin-page *` ข้างบนทับ ไอคอนเหลือเป็นจุดเล็ก ๆ */
+.admin-page .fa,
+.admin-page .fas,
+.admin-page .fa-solid,
+.admin-page .far,
+.admin-page .fa-regular {
+  font-family: 'Font Awesome 6 Free' !important;
+}
+
+.admin-page .fab,
+.admin-page .fa-brands {
+  font-family: 'Font Awesome 6 Brands' !important;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

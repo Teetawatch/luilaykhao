@@ -111,7 +111,7 @@
   <Teleport to="body">
     <Transition name="back-to-top">
       <button
-        v-if="showBackToTop"
+        v-if="showBackToTop && !route.meta.hideBackToTop"
         @click="scrollToTop"
         class="fixed bottom-24 right-8 z-[150] w-14 h-14 bg-[var(--color-accent)] text-white rounded-2xl shadow-[0_15px_40px_rgba(45,122,79,0.3)] hover:shadow-[0_20px_50px_rgba(45,122,79,0.5)] hover:bg-[var(--color-primary)] transition-all duration-500 hover:-translate-y-2 group flex items-center justify-center cursor-pointer border border-white/20 backdrop-blur-md"
         aria-label="Back to Top"
