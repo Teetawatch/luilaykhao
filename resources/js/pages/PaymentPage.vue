@@ -14,7 +14,7 @@
   </div>
 
   <!-- Main Content -->
-  <div v-else class="font-['DB Heavent', 'Anuphan'] bg-[#f9f9f9] min-h-screen pt-8 pb-24 px-4 md:px-8 lg:px-12">
+  <div v-else class="font-['DB Heavent', 'Anuphan'] bg-[#f9f9f9] min-h-screen pt-8 pb-32 lg:pb-24 px-4 md:px-8 lg:px-12">
     <!-- Progress Stepper -->
     <div class="flex items-center justify-center mb-12 max-w-7xl mx-auto pay-rise">
       <div class="flex items-center w-full max-w-2xl">
@@ -207,7 +207,7 @@
               <ul class="text-[12px] text-gray-600 space-y-1 mt-1">
                 <li class="flex items-center gap-1.5">
                   <span class="material-symbols-rounded text-teal-500 text-[14px]">check_circle</span>
-                  จ่ายส่วนที่เหลือก่อนเดินทาง 15 วัน
+                  จ่ายส่วนที่เหลือก่อนเดินทาง {{ POLICY.balanceDueDays }} วัน
                 </li>
                 <li class="flex items-center gap-1.5">
                   <span class="material-symbols-rounded text-teal-500 text-[14px]">check_circle</span>
@@ -373,7 +373,8 @@
               <span class="material-symbols-rounded text-amber-500 text-lg">tune</span>
               แบ่งได้ถึง {{ maxInstallmentCount }} งวด — เลือกได้ตามสะดวก
             </label>
-            <div class="flex gap-2">
+            <!-- สูงสุด 6 ปุ่มในแถวเดียวแคบเกินบนมือถือ — จอเล็กเรียงเป็นตาราง 3 คอลัมน์ -->
+            <div class="grid grid-cols-3 gap-2 sm:flex">
               <button v-for="n in availableInstallmentOptions" :key="n" @click="selectedInstallmentCount = n"
                 class="flex-1 py-3 px-2 rounded-xl border-2 text-center transition-all font-black text-sm"
                 :class="selectedInstallmentCount === n
@@ -390,28 +391,30 @@
 
           <!-- Installment Schedule Table -->
           <div v-if="paymentType === 'installment'" class="mt-8">
-             <div class="flex items-center justify-between mb-4">
+             <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <h3 class="font-bold text-gray-900 tracking-tight">ตารางการผ่อนชำระ</h3>
                 <span class="text-[11px] font-black text-amber-600 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-tighter">ยอดรวมคงเดิม ไม่มีดอกเบี้ย</span>
              </div>
-            <div class="overflow-hidden rounded-2xl border border-gray-100">
-              <table class="w-full text-sm">
+            <!-- 4 คอลัมน์กว้างกว่าจอมือถือ — เดิม overflow-hidden ตัดคอลัมน์ยอดเงิน/สถานะทิ้ง
+                 จึงให้เลื่อนแนวนอนได้ และลดช่องว่างบนจอเล็ก -->
+            <div class="overflow-x-auto rounded-2xl border border-gray-100">
+              <table class="w-full text-sm whitespace-nowrap">
                 <thead>
                   <tr class="bg-gray-50">
-                    <th class="text-left px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">งวดที่</th>
-                    <th class="text-left px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">ครบกำหนด</th>
-                    <th class="text-right px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">จำนวนเงิน</th>
-                    <th class="text-center px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">สถานะ</th>
+                    <th class="text-left px-3 sm:px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">งวดที่</th>
+                    <th class="text-left px-3 sm:px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">ครบกำหนด</th>
+                    <th class="text-right px-3 sm:px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">จำนวนเงิน</th>
+                    <th class="text-center px-3 sm:px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                   <tr v-for="inst in installmentSchedule" :key="inst.no"
                     class="transition-colors"
                     :class="inst.no === 1 ? 'bg-amber-50/20' : 'hover:bg-gray-50'">
-                    <td class="px-5 py-4 text-gray-700 font-bold">งวดที่ {{ inst.no }}</td>
-                    <td class="px-5 py-4 text-gray-600">{{ formatDate(inst.dueDate) }}</td>
-                    <td class="px-5 py-4 text-right font-black text-gray-900 border-r border-gray-50">฿{{ inst.amount.toLocaleString() }}</td>
-                    <td class="px-5 py-4 text-center">
+                    <td class="px-3 sm:px-5 py-4 text-gray-700 font-bold">งวดที่ {{ inst.no }}</td>
+                    <td class="px-3 sm:px-5 py-4 text-gray-600">{{ formatDate(inst.dueDate) }}</td>
+                    <td class="px-3 sm:px-5 py-4 text-right font-black text-gray-900 border-r border-gray-50">฿{{ inst.amount.toLocaleString() }}</td>
+                    <td class="px-3 sm:px-5 py-4 text-center">
                       <span v-if="inst.no === 1"
                         class="text-[10px] font-black px-3 py-1.5 rounded-full bg-teal-600 text-white uppercase tracking-tighter">
                         ชำระงวดแรก
@@ -440,8 +443,8 @@
         </section>
 
         <!-- ── Payment Method ── -->
-        <section class="bg-white rounded-3xl p-8 border border-gray-100 pay-rise" style="--d: 240ms">
-          <h2 class="text-xl font-extrabold mb-8 text-gray-900 flex items-center gap-2">
+        <section class="bg-white rounded-3xl p-5 sm:p-8 border border-gray-100 pay-rise" style="--d: 240ms">
+          <h2 class="text-xl font-extrabold mb-6 sm:mb-8 text-gray-900 flex items-center gap-2">
             <span class="material-symbols-rounded text-teal-600">account_balance_wallet</span>
             เลือกช่องทางชำระเงิน
           </h2>
@@ -755,7 +758,8 @@
                 </div>
                 <div class="text-center space-y-1">
                   <p class="text-base font-black text-gray-900">ลากไฟล์มาวาง หรือคลิกเพื่ออัปโหลด</p>
-                  <p class="text-[11px] text-gray-400 font-bold uppercase tracking-widest">JPG, PNG, PDF ขนาดไม่เกิน 5MB</p>
+                  <!-- เซิร์ฟเวอร์รับเฉพาะรูป (กฎ image, max:5120) — เดิมเขียนว่ารับ PDF ด้วย -->
+                  <p class="text-[11px] text-gray-400 font-bold uppercase tracking-widest">ไฟล์รูป JPG, PNG ขนาดไม่เกิน 5MB</p>
                 </div>
               </template>
 
@@ -779,6 +783,9 @@
             </div>
             
             <input ref="slipInputRef" type="file" accept="image/*" required class="hidden" @change="onSlipChange" />
+            <p v-if="slipError" class="-mt-3 flex items-center gap-1.5 text-xs font-bold text-red-600">
+              <span class="material-symbols-rounded text-[16px]">error</span>{{ slipError }}
+            </p>
 
             <!-- Auto slip check status — ตรวจยอดจากสลิปให้อัตโนมัติ ไม่ต้องกรอกวัน/เวลาเอง -->
             <div v-if="slipFile" class="rounded-3xl p-5 border flex items-start gap-3 transition-colors"
@@ -842,7 +849,7 @@
       </div>
 
       <!-- RIGHT: Booking Summary Card -->
-      <aside class="lg:col-span-4 sticky top-24 pb-20 pay-rise" style="--d: 160ms">
+      <aside class="lg:col-span-4 lg:sticky lg:top-24 lg:pb-20 pay-rise" style="--d: 160ms">
         <div class="bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 transition-all duration-300">
 
           <!-- Trip Premium Header -->
@@ -1046,9 +1053,15 @@
           </div>
         </div>
 
-        <!-- Sticky Mobile Button (Only visible on mobile via class) -->
-        <div class="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-[100] translate-y-0 transition-transform duration-500"
-          :class="!loading && booking ? 'translate-y-0' : 'translate-y-full'">
+      </aside>
+    </div>
+
+        <!--
+          Sticky Mobile Button — ต้องอยู่นอก <aside> ที่มีแอนิเมชัน pay-rise (transform)
+          เพราะ element ที่มี transform กลายเป็นกรอบอ้างอิงของ position: fixed
+          เดิมแถบนี้จึงไปโผล่ท้ายการ์ดสรุปแทนที่จะติดขอบล่างจอระหว่างแอนิเมชัน
+        -->
+        <div class="lg:hidden fixed bottom-0 left-0 right-0 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-xl border-t border-gray-100 z-[100]">
             <!-- โหมดเกตเวย์ไม่มีอะไรให้กดยืนยัน — บอกสถานะแทน -->
             <div v-if="useBeam" class="w-full py-4 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center gap-2 text-sm">
               <template v-if="beamSettling">
@@ -1063,8 +1076,16 @@
               </template>
             </div>
 
+            <!-- ยังไม่แนบสลิป: เดิมปุ่มเป็นสีเทากดไม่ได้โดยไม่บอกเหตุผล (กล่องแนบอยู่ไกลกลางหน้า)
+                 ตอนนี้กดแล้วเปิดเลือกรูปสลิปได้เลย -->
+            <button v-else-if="!slipFile" @click="slipInputRef?.click()"
+              class="w-full py-4 rounded-2xl bg-teal-600 text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm">
+              <span class="material-symbols-rounded text-lg">upload_file</span>
+              <span>แนบสลิปการโอน ฿{{ currentPayAmount.toLocaleString() }}</span>
+            </button>
+
             <button v-else @click="processPayment"
-              :disabled="paying || scanningSlip || !slipFile"
+              :disabled="paying || scanningSlip"
               class="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
               <template v-if="!paying && !scanningSlip">
                 <span>ยืนยันการชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
@@ -1073,8 +1094,6 @@
               <div v-else class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
             </button>
         </div>
-      </aside>
-    </div>
   </div>
 </template>
 
@@ -1183,17 +1202,32 @@ const slipChecked = ref(false);
 const slipAmountMatched = ref(false);
 // เผื่อลูกค้าโอนไม่ครบ — เก็บยอดที่ OCR อ่านได้ไว้บอก
 const slipDetectedAmount = ref(null);
+// แนบไฟล์ไม่ผ่าน (ไม่ใช่รูป / ใหญ่เกิน) — โชว์ใต้กล่องแนบสลิป ไม่ใช่ท้ายหน้า
+const slipError = ref('');
 
 function handleDrop(e) {
   isDragging.value = false;
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) {
-    setFile(file);
-  }
+  // setFile เช็คชนิด/ขนาดเองและบอกเหตุผล — เดิมลากไฟล์ที่ไม่ใช่รูปมาแล้วเงียบไปเฉย ๆ
+  setFile(e.dataTransfer.files[0]);
 }
+
+// ตรงกับกฎของเซิร์ฟเวอร์ (slip_image: image, max:5120) — เช็คตั้งแต่ตอนเลือกไฟล์
+// ไม่งั้นลูกค้าจะรอ OCR จนเสร็จแล้วค่อยโดนปฏิเสธตอนกดยืนยัน
+const MAX_SLIP_BYTES = 5 * 1024 * 1024;
 
 function setFile(file) {
   if (!file) return;
+  if (!file.type?.startsWith('image/')) {
+    slipError.value = 'กรุณาแนบสลิปเป็นไฟล์รูปภาพ (JPG หรือ PNG)';
+    if (slipInputRef.value) slipInputRef.value.value = '';
+    return;
+  }
+  if (file.size > MAX_SLIP_BYTES) {
+    slipError.value = 'ไฟล์สลิปใหญ่เกิน 5MB กรุณาแคปหน้าจอสลิปจากแอปธนาคารแล้วแนบใหม่';
+    if (slipInputRef.value) slipInputRef.value.value = '';
+    return;
+  }
+  slipError.value = '';
   slipFile.value = file;
   const reader = new FileReader();
   reader.onload = (ev) => { slipPreview.value = ev.target.result; };

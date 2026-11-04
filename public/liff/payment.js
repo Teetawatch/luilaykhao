@@ -560,6 +560,19 @@ async function pollBeamStatus() {
 // QR ต่อแผนของการจองที่กำลังเปิดอยู่ — ล้างทุกครั้งที่เปลี่ยนใบจอง
 const qrCache = new Map();
 
+/**
+ * เช็คไฟล์สลิปตั้งแต่ตอนเลือก — ตรงกับกฎของเซิร์ฟเวอร์ (slip_image: image, max:5120)
+ * เดิมเลือกไฟล์ใหญ่/ไม่ใช่รูปได้ แล้วไปโดนปฏิเสธตอนกดยืนยันด้วยข้อความจาก validator
+ * คืนข้อความภาษาไทยเมื่อใช้ไม่ได้ หรือ null เมื่อผ่าน (หน้าเว็บใช้กติกาเดียวกันใน PaymentPage.vue)
+ */
+const MAX_SLIP_BYTES = 5 * 1024 * 1024;
+function slipFileProblem(f) {
+  if (!f) return null;
+  if (!String(f.type || '').startsWith('image/')) return 'กรุณาแนบสลิปเป็นไฟล์รูปภาพ (JPG หรือ PNG)';
+  if (f.size > MAX_SLIP_BYTES) return 'ไฟล์สลิปใหญ่เกิน 5MB กรุณาแคปหน้าจอสลิปจากแอปธนาคารแล้วแนบใหม่';
+  return null;
+}
+
 async function renderManualArea(host) {
   const token = pay.render;
   host.appendChild(el(`<div class="loading-inline"><div class="spinner"></div></div>`));
@@ -617,6 +630,9 @@ async function renderManualArea(host) {
 
   file.onchange = () => {
     pay.slipFile = file.files && file.files[0] ? file.files[0] : null;
+    const problem = slipFileProblem(pay.slipFile);
+    banner.innerHTML = problem ? `<div class="banner error">${esc(problem)}</div>` : '';
+    if (problem) { pay.slipFile = null; file.value = ''; }
     submit.disabled = !pay.slipFile;
     preview.innerHTML = '';
     if (pay.slipFile) {
@@ -978,6 +994,9 @@ async function renderOutstandingManual(host) {
 
   file.onchange = () => {
     outstanding.slipFile = file.files?.[0] || null;
+    const problem = slipFileProblem(outstanding.slipFile);
+    banner.innerHTML = problem ? `<div class="banner error">${esc(problem)}</div>` : '';
+    if (problem) { outstanding.slipFile = null; file.value = ''; }
     submit.disabled = !outstanding.slipFile;
     preview.innerHTML = '';
     if (outstanding.slipFile) {

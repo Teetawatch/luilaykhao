@@ -1514,14 +1514,14 @@ function setAddonQty(index, qty) {
   const clamped = Math.max(0, Math.min(qty, item ? addonMaxQty(item) : ADDON_MAX_QTY));
   if (clamped > 0) bk.addons.set(index, clamped);
   else bk.addons.delete(index);
-  renderSummaryStep();
+  renderSummaryStep({ keepScroll: true });
 }
 
 function setRentalQty(index, qty) {
   const clamped = Math.max(0, Math.min(qty, RENTAL_MAX_QTY));
   if (clamped > 0) bk.rentals.set(index, clamped);
   else bk.rentals.delete(index);
-  renderSummaryStep();
+  renderSummaryStep({ keepScroll: true });
 }
 
 // ลดจำนวนผู้เดินทางแล้วย้อนกลับมา จำนวนของรายการต่อคนต้องหดตาม
@@ -1567,7 +1567,13 @@ function qtyRow(item, qty, max, unitLabel, onStep, extraClass) {
   return row;
 }
 
-function renderSummaryStep() {
+/**
+ * keepScroll — วาดใหม่เพราะกด +/− บริการเสริม ติ๊กจองกลุ่ม หรือใส่โค้ดส่วนลด
+ * render() เลื่อนขึ้นบนสุดเสมอ เดิมทุกครั้งที่แตะหน้าจึงเด้งขึ้นหัว ต้องเลื่อนกลับ
+ * ลงมาดูผลเอง (โค้ดส่วนลดอยู่ใต้รายการเสริม มักอยู่นอกจอ) — เข้าขั้นนี้ครั้งแรกยังเริ่มบนสุด
+ */
+function renderSummaryStep({ keepScroll = false } = {}) {
+  const scrollY = keepScroll ? window.scrollY : 0;
   clampAddonQuantities();
 
   const node = el(`<div></div>`);
@@ -1606,7 +1612,7 @@ function renderSummaryStep() {
       <div class="pick-sub">ใส่ชื่อกลุ่มและโน้ตให้ทีมงานจัดที่นั่งและดูแลได้ตรงขึ้น</div>
     </div>
   </label>`);
-  groupToggle.querySelector('input').onchange = (e) => { bk.isGroup = e.target.checked; renderSummaryStep(); };
+  groupToggle.querySelector('input').onchange = (e) => { bk.isGroup = e.target.checked; renderSummaryStep({ keepScroll: true }); };
   content.appendChild(groupToggle);
 
   if (bk.isGroup) {
@@ -1651,6 +1657,7 @@ function renderSummaryStep() {
   const cta = el(`<div class="sticky-cta"><button class="btn" id="confirm">ยืนยันการจอง · ${baht(estimateTotal())}</button></div>`);
   node.appendChild(cta);
   render(node);
+  if (scrollY) window.scrollTo(0, scrollY);
 
   cta.querySelector('#confirm').onclick = () => confirmTerms(banner, cta.querySelector('#confirm'));
 }
@@ -1667,7 +1674,7 @@ function buildPromoBlock() {
       bk.promoData = null;
       bk.promoCode = '';
       bk.promoInput = '';
-      renderSummaryStep();
+      renderSummaryStep({ keepScroll: true });
     };
     wrap.appendChild(remove);
     return wrap;
@@ -1705,7 +1712,7 @@ async function applyPromotion(btn) {
     bk.promoCode = '';
     bk.promoError = e.message || 'โค้ดส่วนลดไม่ถูกต้องหรือหมดอายุแล้ว';
   }
-  renderSummaryStep();
+  renderSummaryStep({ keepScroll: true });
 }
 
 function addonLines() {

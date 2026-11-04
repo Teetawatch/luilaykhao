@@ -1,5 +1,6 @@
 <template>
-  <div class="trip-detail-page bg-[var(--color-sand)] min-h-screen font-anuphan selection:bg-[var(--color-accent)] selection:text-white pb-20">
+  <!-- pb บนมือถือเผื่อแถบจองที่ fixed ด้านล่าง (สูงขึ้นเมื่อมีบรรทัดผ่อนชำระ) -->
+  <div class="trip-detail-page bg-[var(--color-sand)] min-h-screen font-anuphan selection:bg-[var(--color-accent)] selection:text-white pb-32 lg:pb-20">
     <!-- Loading -->
     <div v-if="loading" class="flex items-center justify-center min-h-[70vh]">
       <div class="flex flex-col items-center gap-5">
@@ -757,10 +758,16 @@
             
             <!-- Right Column: Sticky Booking Panel -->
           <aside class="lg:col-span-4">
-            <div class="sticky top-28 space-y-6">
+            <!--
+              ติดจอเฉพาะเดสก์ท็อป และต้องอยู่ใต้ navbar (64px) + แถบเมนูของหน้า (~55px)
+              เดิม top-28 (112px) ทำให้หัวการ์ดราคาจมใต้แถบเมนู
+              แผงนี้ยาวกว่าจอโน้ตบุ๊กได้ (ปฏิทิน + สรุปราคา + ปุ่มจอง) — ถ้าไม่จำกัดความสูง
+              ปุ่มจองจะติดอยู่ใต้ขอบจอจนกว่าจะเลื่อนสุดคอลัมน์ซ้าย จึงให้เลื่อนในแผงเองได้
+            -->
+            <div class="booking-rail space-y-6 lg:sticky lg:top-32 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-2">
 
               <!-- Price Card -->
-              <div id="booking-section" class="bg-white p-8 rounded-[2rem] border border-gray-100 relative overflow-hidden z-10">
+              <div id="booking-section" class="scroll-mt-32 bg-white p-5 sm:p-8 rounded-[2rem] border border-gray-100 relative overflow-hidden z-10">
                 <!-- ราคาลดตามช่วงเวลา — แบนเนอร์เรียบ ไม่ไล่สี ไม่ตะโกน นับถอยหลังเป็นข้อมูลว่าหมดเมื่อไร -->
                 <div v-if="campaignInfo && !flashSchedule" class="mb-4 px-3.5 py-2.5 rounded-[1rem] text-white"
                   :style="{ backgroundColor: campaignInfo.theme_color || '#e11d48' }">
@@ -1199,12 +1206,12 @@
         <!-- Reviews Section (Moved to bottom for Mobile flow) -->
         <section id="reviews" class="scroll-mt-32 mt-16 pt-16 border-t border-gray-200">
           <div class="flex items-center justify-between mb-10">
-            <div>
+            <div class="min-w-0">
               <header class="ed-head mb-3">
                 <span class="ed-kicker">เสียงจากผู้ร่วมทริป</span>
                 <h2 class="ed-title">รีวิวจากคนที่ไปรอบก่อน</h2>
               </header>
-              <div class="flex items-center gap-3">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <div class="flex text-[#FFB020]">
                   <span v-for="star in 5" :key="star" class="material-symbols-rounded text-[24px]"
                     :style="star <= Math.round(trip.rating) ? 'font-variation-settings:\'FILL\' 1' : ''">
@@ -1269,9 +1276,9 @@
           <div v-else-if="reviews.length > 0">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div v-for="review in displayedReviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 transition-all h-full flex flex-col">
-                <div class="flex justify-between items-start mb-6">
-                  <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-1 ring-gray-100">
+                <div class="flex justify-between items-start gap-3 mb-6">
+                  <div class="flex items-center gap-4 min-w-0">
+                    <div class="w-12 h-12 shrink-0 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-1 ring-gray-100">
                       <img
                         v-if="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
                         :src="review.user_avatar || review.user?.avatar_url || review.user?.avatar"
@@ -1279,8 +1286,8 @@
                       />
                       <span v-else>{{ review.user_name?.charAt(0) }}</span>
                     </div>
-                    <div>
-                      <p class="font-extrabold text-[var(--color-text-dark)] text-base mb-1">{{ review.user_name }}</p>
+                    <div class="min-w-0">
+                      <p class="font-extrabold text-[var(--color-text-dark)] text-base mb-1 truncate">{{ review.user_name }}</p>
                       <div class="flex gap-0.5">
                         <span v-for="s in 5" :key="s" class="material-symbols-rounded text-[18px]"
                           :class="s <= review.rating ? 'text-[#FFB020]' : 'text-gray-200'"
@@ -1290,7 +1297,7 @@
                       </div>
                     </div>
                   </div>
-                  <span class="text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full">
+                  <span class="shrink-0 whitespace-nowrap text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-sand)] px-3 py-1.5 rounded-full">
                     {{ formatDate(review.created_at) }}
                   </span>
                 </div>
@@ -3172,6 +3179,13 @@ async function fetchAlbumPhotos() {
 </script>
 
 <style scoped>
+/* แผงจองด้านขวาเลื่อนในตัวเองได้บนเดสก์ท็อป — แถบเลื่อนบาง ๆ ไม่แย่งสายตาจากการ์ด */
+.booking-rail {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 0 0 / 0.12) transparent;
+}
+.booking-rail::-webkit-scrollbar { width: 6px; }
+.booking-rail::-webkit-scrollbar-thumb { background: rgb(0 0 0 / 0.12); border-radius: 999px; }
 /* ── แกลเลอรีรูป + วิดีโอ ─────────────────────────────────── */
 .gallery-bar {
   display: flex;

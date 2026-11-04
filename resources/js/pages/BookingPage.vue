@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50/50">
+  <div class="booking-page min-h-screen bg-gray-50/50">
 
     <!-- Loading -->
     <div v-if="loading" class="flex items-center justify-center min-h-screen">
@@ -9,16 +9,23 @@
       </div>
     </div>
 
-    <div v-else-if="schedule" class="pt-6 pb-24 px-4 md:px-8 max-w-screen-xl mx-auto">
+    <!-- pb บนมือถือต้องสูงกว่าแถบล่างที่ fixed อยู่ ไม่งั้นปุ่ม/ช่องท้ายหน้าโดนบัง -->
+    <div v-else-if="schedule" class="pt-6 pb-36 lg:pb-24 px-4 md:px-8 max-w-screen-xl mx-auto">
 
-      <!-- Breadcrumb -->
-      <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2 bg-white px-4 py-3 rounded-2xl border border-gray-100 w-fit">
-        <router-link to="/trips" class="hover:text-teal-600 transition-colors flex items-center gap-1.5 font-medium">
+      <!-- Breadcrumb — กลับไปหน้าทริปเดิมได้ ไม่ใช่เด้งไปหน้ารวมทริป -->
+      <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2 bg-white px-4 py-3 rounded-2xl border border-gray-100 w-fit max-w-full min-w-0">
+        <router-link to="/trips" class="shrink-0 hover:text-teal-600 transition-colors flex items-center gap-1.5 font-medium">
           <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 0,'wght' 400">explore</span>
-          กิจกรรม
+          <span class="hidden sm:inline">กิจกรรม</span>
         </router-link>
-        <span class="material-symbols-rounded text-gray-300 text-[20px]">chevron_right</span>
-        <span class="text-gray-700 font-bold bg-gray-100 px-3 py-1 rounded-full">จองกิจกรรม</span>
+        <template v-if="schedule.trip?.slug">
+          <span class="material-symbols-rounded shrink-0 text-gray-300 text-[20px]">chevron_right</span>
+          <router-link :to="`/trips/${schedule.trip.slug}`" class="min-w-0 truncate hover:text-teal-600 transition-colors font-medium">
+            {{ schedule.trip.title }}
+          </router-link>
+        </template>
+        <span class="material-symbols-rounded shrink-0 text-gray-300 text-[20px]">chevron_right</span>
+        <span class="shrink-0 text-gray-700 font-bold bg-gray-100 px-3 py-1 rounded-full">จองกิจกรรม</span>
       </nav>
 
       <!-- Trip strip — the trip is already chosen; this is a reminder, not a pitch -->
@@ -67,10 +74,12 @@
       </div>
 
       <!-- Progress Stepper -->
-      <div class="flex justify-center mb-12">
+      <!-- บนมือถือป้ายขั้นตอนต้องตัดบรรทัดได้ — ถ้า nowrap ทริปเดินป่าที่มี 4 ขั้น
+           จะกว้างเกินจอแล้วหน้าเลื่อนซ้ายขวาได้ -->
+      <div class="flex justify-center mb-8 md:mb-12">
         <div class="flex items-center w-full max-w-3xl relative">
           <template v-for="(s, i) in steps" :key="i">
-            <div class="flex flex-col items-center flex-1 relative z-10">
+            <div class="flex flex-col items-center flex-1 min-w-0 relative z-10">
               <!-- Step Circle -->
               <div class="w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center mb-3 transition-all duration-500"
                 :class="step > i
@@ -82,13 +91,13 @@
                 <span v-else class="text-sm md:text-base font-bold">{{ i + 1 }}</span>
               </div>
               <!-- Step Label -->
-              <span class="text-xs md:text-sm font-bold text-center transition-colors duration-300 whitespace-nowrap"
+              <span class="text-[11px] sm:text-xs md:text-sm leading-tight font-bold text-center transition-colors duration-300 sm:whitespace-nowrap"
                 :class="step === i ? 'text-teal-700' : step > i ? 'text-teal-600' : 'text-gray-400'">
                 {{ s }}
               </span>
             </div>
             <!-- Progress Line -->
-            <div v-if="i < steps.length - 1" class="h-1 flex-1 mx-2 mb-8 transition-all duration-700 rounded-full bg-gray-100 overflow-hidden">
+            <div v-if="i < steps.length - 1" class="h-1 flex-1 min-w-3 mx-1 sm:mx-2 mb-8 transition-all duration-700 rounded-full bg-gray-100 overflow-hidden">
               <div class="h-full bg-teal-600 transition-all duration-700 ease-out" 
                    :style="{ width: step > i ? '100%' : '0%' }"></div>
             </div>
@@ -244,7 +253,7 @@
                 @click="confirmRegion"
                 :disabled="(offersVehicleChoice && !selectedVehicleOptionId) || (!selectedPickup && !customPickup && pickupPoints.length > 0)"
                 class="w-full sm:w-auto bg-teal-600 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-teal-700 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed group flex items-center justify-center gap-3">
-                <span>{{ pickupPoints.length ? 'ไปเลือกที่นั่ง' : 'ขั้นตอนถัดไป' }}</span>
+                <span>{{ regionNextLabel }}</span>
                 <span class="material-symbols-rounded transition-transform group-hover:translate-x-1">arrow_forward</span>
               </button>
             </div>
@@ -257,9 +266,8 @@
           </p>
         </div>
 
-        <!-- Sidebar region summary -->
-        <aside class="lg:col-span-5 xl:col-span-4 sticky transition-all duration-300 z-30"
-          :class="seatsStore.hasActiveBooking ? 'top-[140px]' : 'top-[100px]'">
+        <!-- Sidebar region summary — ติดจอเฉพาะเดสก์ท็อป บนมือถือเป็นแค่การ์ดท้ายหน้า -->
+        <aside class="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24 transition-all duration-300 z-30">
           <div class="bg-white rounded-[2rem] p-6 border border-gray-100 overflow-hidden relative">
             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-900">
               <span class="material-symbols-rounded text-teal-600">receipt_long</span>
@@ -1210,7 +1218,7 @@
             </div>
 
             <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-end">
-              <button @click="step = hasSeatMap ? (isTrekking ? 1 : 0) : (isTrekking ? 0 : -1); if (step === -1) $router.push('/trips')"
+              <button @click="backFromPassengers"
                 class="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-2xl font-bold text-base hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition-all duration-300">
                 <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_back</span>
                 ย้อนกลับ
@@ -1286,7 +1294,7 @@
                   <div v-if="!promotionData" class="flex flex-col gap-2">
                     <div class="flex gap-2">
                       <input v-model="promotionInput" type="text" placeholder="กรอกโค้ดส่วนลด (ถ้ามี)"
-                        class="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all uppercase"
+                        class="min-w-0 flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:ring-4 focus:ring-teal-600/10 focus:border-teal-600 outline-none transition-all uppercase"
                         @keyup.enter="applyPromotion" />
                       <button @click="applyPromotion" :disabled="promotionLoading || !promotionInput.trim()"
                         class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shrink-0">
@@ -1339,15 +1347,7 @@
                         <span class="font-bold text-gray-900">฿{{ passengerTicketPrice(p).toLocaleString() }}</span>
                       </div>
                     </template>
-                    <div v-if="selectedVehicleOption && vehicleAdjustment !== 0" class="flex justify-between items-center text-sm text-teal-700">
-                <span class="font-bold flex items-center gap-2 min-w-0">
-                  <span class="material-symbols-rounded text-[16px] shrink-0">directions_bus</span>
-                  <span class="truncate">{{ selectedVehicleOption.label }}</span>
-                  <span class="shrink-0 text-teal-500 font-bold">×{{ seatCount }}</span>
-                </span>
-                <span class="font-bold shrink-0">{{ vehicleAdjustment > 0 ? '+' : '-' }}฿{{ (Math.abs(vehicleAdjustment) * seatCount).toLocaleString() }}</span>
-              </div>
-              <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
+                    <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
                       <span class="flex items-center gap-2 min-w-0">
                         <img v-if="addon.image_url" :src="addon.image_url" :alt="addon.name" class="w-7 h-7 rounded-md object-cover shrink-0 border border-amber-100" />
                         <span v-else class="material-symbols-rounded text-[16px] shrink-0">add_circle</span>
@@ -1432,10 +1432,8 @@
                 :disabled="bookingLoading"
                 class="flex-1 flex items-center justify-center gap-3 bg-emerald-600 text-white px-8 py-4 rounded-2xl font-extrabold text-lg hover:bg-emerald-700 active:scale-[0.99] transition-all disabled:opacity-50">
                 <span v-if="bookingLoading" class="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                <template v-else>
-                  <span class="material-symbols-rounded text-[22px]">verified</span>
-                  <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
-                </template>
+                <span v-else class="material-symbols-rounded text-[22px]">verified</span>
+                <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
               </button>
             </div>
             
@@ -1446,12 +1444,12 @@
           </div>
         </div>
 
-        <!-- Right: Booking Panel (Sidebar) -->
-        <aside class="lg:col-span-5 xl:col-span-4 sticky transition-all duration-300 space-y-6 z-30"
-          :class="[
-            seatsStore.hasActiveBooking ? 'top-[140px]' : 'top-[100px]',
-            'lg:block'
-          ]" v-if="!isTrekking || step > 0">
+        <!-- Right: Booking Panel (Sidebar)
+             ติดจอเฉพาะเดสก์ท็อป (banner การจองค้างถูกซ่อนบนหน้านี้อยู่แล้ว จึงไม่ต้องเผื่อความสูง)
+             ขั้นสรุปบนมือถือซ่อนไปเลย — หน้าสรุปมีการ์ดราคา/โค้ดส่วนลดของตัวเองแล้ว -->
+        <aside class="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24 transition-all duration-300 space-y-6 z-30"
+          :class="isSummaryStep ? 'hidden lg:block' : ''"
+          v-if="!isTrekking || step > 0">
 
           <!-- Summary Card -->
           <div class="bg-white rounded-[2rem] p-6 border border-gray-100 overflow-hidden relative">
@@ -1500,6 +1498,15 @@
               <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-500 font-medium">จำนวนผู้ร่วมเดินทาง</span>
                 <span class="text-gray-900 font-bold">{{ seatCount }} คน</span>
+              </div>
+              <!-- ส่วนต่างของประเภทรถรวมอยู่ในยอดสุทธิแล้ว ต้องโชว์ไม่งั้นตัวเลขบวกกันไม่ลงตัว -->
+              <div v-if="selectedVehicleOption && vehicleAdjustment !== 0" class="flex justify-between items-center text-sm text-teal-700">
+                <span class="font-bold flex items-center gap-2 min-w-0">
+                  <span class="material-symbols-rounded text-[16px] shrink-0">directions_bus</span>
+                  <span class="truncate">{{ selectedVehicleOption.label }}</span>
+                  <span class="shrink-0 text-teal-500 font-bold">×{{ seatCount }}</span>
+                </span>
+                <span class="font-bold shrink-0">{{ vehicleAdjustment > 0 ? '+' : '-' }}฿{{ (Math.abs(vehicleAdjustment) * seatCount).toLocaleString() }}</span>
               </div>
               <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
                 <span class="font-bold flex items-center gap-2 min-w-0">
@@ -1576,8 +1583,8 @@
               </div>
             </div>
 
-            <!-- CTA Button Section -->
-            <div class="space-y-4">
+            <!-- CTA Button Section — มือถือใช้แถบล่างแทน ไม่ต้องมีปุ่มซ้ำท้ายหน้า -->
+            <div class="hidden lg:block space-y-4">
               <!-- Seat selection confirmed, go to passenger info -->
               <button v-if="step === (isTrekking ? 1 : 0) && hasSeatMap"
                 @click="lockAndNext"
@@ -1777,7 +1784,7 @@
     </Teleport>
 
     <!-- Sticky Mobile Bottom Bar -->
-    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe z-50 animate-in slide-in-from-bottom duration-500">
+    <div v-if="schedule && !loading" class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 animate-in slide-in-from-bottom duration-500">
       <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">
         <!-- ในขั้นกรอกข้อมูล สิ่งที่คนอยากรู้คือเหลืออีกกี่ช่อง ไม่ใช่ยอดเงิน -->
         <button v-if="isPassengerStep && missingFieldCount > 0" type="button"
@@ -1788,7 +1795,8 @@
             <span class="material-symbols-rounded text-[16px] text-gray-400">arrow_downward</span>
           </p>
         </button>
-        <div v-else @click="step === (isTrekking ? 3 : 2) ? null : window.scrollTo({top: 0, behavior: 'smooth'})" class="cursor-pointer">
+        <!-- `window` ใช้ใน template ไม่ได้ (Vue ไม่เปิดให้) — เดิมกดตรงนี้แล้ว error -->
+        <div v-else @click="scrollToTop" class="shrink-0 cursor-pointer">
           <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ยอดรวมสุทธิ</p>
           <p class="text-xl font-extrabold text-teal-700 font-anuphan tracking-tight">
             <span class="text-sm mr-0.5">฿</span>{{ totalAmount.toLocaleString() }}
@@ -1799,7 +1807,7 @@
           @click="lockAndNext"
           :disabled="!seatsStore.hasSelectedSeats || lockingSeats"
           class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
-          <span>{{ lockingSeats ? 'ล็อคที่นั่ง...' : 'ไปเลือกที่นั่ง' }}</span>
+          <span>{{ lockingSeats ? 'ล็อคที่นั่ง...' : 'ไปกรอกข้อมูล' }}</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
         </button>
 
@@ -1823,7 +1831,7 @@
           @click="confirmRegion"
           :disabled="(offersVehicleChoice && !selectedVehicleOptionId) || (!selectedPickup && !customPickup && pickupPoints.length > 0)"
           class="flex-1 bg-teal-600 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-teal-700 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
-          <span>ไปเลือกที่นั่ง</span>
+          <span>{{ regionNextLabel }}</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
         </button>
       </div>
@@ -2329,9 +2337,36 @@ function clearFormData({ keepDraft = false } = {}) {
   try { localStorage.removeItem(DRAFT_KEY.value); } catch {}
 }
 
-watch(step, (newStep) => {
+watch(step, (newStep, oldStep) => {
   seatsStore.saveStep(newStep);
+  // เปลี่ยนขั้นแล้วต้องพากลับขึ้นบนสุด — ปุ่มไปขั้นถัดไปอยู่ท้ายฟอร์มยาว ๆ
+  // ถ้าไม่เลื่อน มือถือจะค้างอยู่กลางหน้าขั้นใหม่ที่สั้นกว่า (หรือเห็นแต่ที่ว่าง)
+  if (oldStep !== undefined && newStep !== oldStep) scrollToTop();
 });
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ขั้นสรุปการจอง (ขั้นสุดท้าย)
+const isSummaryStep = computed(() => step.value === (isTrekking.value ? 3 : 2));
+
+// ปุ่มถัดไปของขั้นเลือกจุดรับ — ขั้นถัดไปคือผังที่นั่งก็ต่อเมื่อรอบนี้มีผังจริง
+// (เดิมดูจากว่ามีจุดรับไหม ทำให้รอบที่ไม่มีผังขึ้นว่า "ไปเลือกที่นั่ง")
+const regionNextLabel = computed(() => (hasSeatMap.value ? 'ไปเลือกที่นั่ง' : 'ไปกรอกข้อมูล'));
+
+// ย้อนกลับจากขั้นกรอกข้อมูล — ขั้นแรกสุดอยู่แล้วก็ออกไปหน้าทริป
+// (เดิมตั้ง step = -1 ก่อน navigate ทำให้หน้าว่างวูบหนึ่ง)
+function backFromPassengers() {
+  if (hasSeatMap.value) {
+    step.value = isTrekking.value ? 1 : 0;
+  } else if (isTrekking.value) {
+    step.value = 0;
+  } else {
+    const slug = schedule.value?.trip?.slug;
+    router.push(slug ? `/trips/${slug}` : '/trips');
+  }
+}
 
 watch(passengers, saveFormData, { deep: true });
 watch([bookingFor, isGroup, groupName, groupNotes, passengerCount, selectedPickup, promotionCode, promotionData], saveFormData);
@@ -2812,6 +2847,13 @@ const rentalLineTotal = (item) => item.price * (item.quantity ?? rentalQty(item.
 const rentalsTotal = computed(() => selectedRentalItems.value.reduce((sum, item) => sum + rentalLineTotal(item), 0));
 
 const passengerTicketPrice = (p) => {
+  // ปักหมุดเอง = ทั้งการจองคิดราคาหมุด (ตอนส่งก็ส่ง pickup_point_id = null ทุกคน)
+  // เดิมเช็ค pickup_point_id ก่อน — คนที่เลือกจุด A ไว้แล้วค่อยเปลี่ยนมาปักหมุด
+  // ยังค้าง id ของจุด A อยู่ หน้าเว็บจึงโชว์ราคาจุด A ไม่ตรงกับยอดที่เซิร์ฟเวอร์คิดจริง
+  // (ลำดับเดียวกับ passengerTicketPrice ใน public/liff/booking.js)
+  if (customPickup.value && !selectedPickup.value && !isJoinTrip.value) {
+    return customPickupPrice.value + vehicleAdjustment.value;
+  }
   // ส่วนต่างของรถบวกท้ายราคาที่ได้ ไม่ทับราคาโซนของจุดขึ้นรถ (ตรงกับ BookingService)
   if (pickupPoints.value.length && p.pickup_point_id) {
     const pt = pickupPoints.value.find(pp => pp.id === p.pickup_point_id);
@@ -3249,3 +3291,18 @@ onBeforeUnmount(() => {
   // continues to show on other pages. It will be cleared on expiry or booking success.
 });
 </script>
+
+<style>
+/*
+ * ช่องกรอกในฟอร์มนี้ใช้ text-sm (14px) — ซาฟารีบน iOS จะซูมหน้าจอทุกครั้งที่แตะช่อง
+ * ที่ตัวอักษรเล็กกว่า 16px แล้วไม่ซูมกลับ ลูกค้ากรอกไปซูมไป ต้องถ่างจอกลับเองทุกช่อง
+ * บนจอเล็กจึงบังคับ 16px (ไม่ scoped เพื่อครอบคอมโพเนนต์ลูกในหน้านี้ด้วย)
+ */
+@media (max-width: 639px) {
+  .booking-page input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  .booking-page select,
+  .booking-page textarea {
+    font-size: 16px;
+  }
+}
+</style>

@@ -133,7 +133,7 @@
               <div class="relative">
                 <select v-model="tripsStore.filters.sort" @change="applyFilters()"
                   aria-label="เรียงลำดับ"
-                  class="appearance-none bg-white pl-5 pr-10 py-2.5 rounded-full border border-gray-200 text-sm font-bold text-[var(--color-text-dark)] cursor-pointer hover:border-[var(--color-accent)] transition-colors outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20">
+                  class="appearance-none bg-white pl-5 pr-10 py-2.5 rounded-full border border-gray-200 text-base sm:text-sm font-bold text-[var(--color-text-dark)] cursor-pointer hover:border-[var(--color-accent)] transition-colors outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20">
                   <option value="popular">ทริปยอดนิยม</option>
                   <option value="price_asc">ราคาจากน้อยไปมาก</option>
                   <option value="price_desc">ราคาจากมากไปน้อย</option>
@@ -211,7 +211,11 @@
                 <span class="material-symbols-rounded">chevron_left</span>
               </button>
 
-              <div class="flex items-center gap-1 px-1">
+              <!-- มือถือ: เลขหน้าเต็มชุด (สูงสุด 9 ปุ่ม × 44px) กว้างเกินจอ จึงย่อเป็น "หน้า x / y" -->
+              <span class="sm:hidden px-3 text-sm font-extrabold text-[var(--color-text-dark)] tabular-nums whitespace-nowrap">
+                หน้า {{ tripsStore.meta.current_page }} / {{ tripsStore.meta.last_page }}
+              </span>
+              <div class="hidden sm:flex items-center gap-1 px-1">
                 <template v-for="(page, i) in paginationPages" :key="`${page}-${i}`">
                   <span v-if="page === '...'" class="text-gray-400 font-bold px-1.5">···</span>
                   <button v-else
