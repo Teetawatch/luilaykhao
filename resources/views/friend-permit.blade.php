@@ -129,7 +129,7 @@
                             $askAddress = $ask->has('province');
                         @endphp
                         @if ($ask->isNotEmpty())
-                            {{-- ภูมิลำเนา/โทรศัพท์บ้าน — อุทยานบังคับ แต่เราไม่เก็บในการจอง จึงถามตรงนี้ --}}
+                            {{-- ภูมิลำเนา/โทรศัพท์บ้าน/คำถามที่แอดมินตั้ง — อุทยานบังคับ แต่เราไม่เก็บในการจอง จึงถามตรงนี้ --}}
                             <div class="step">2. กรอกข้อมูลที่อุทยานต้องการ</div>
                             <p class="muted" style="margin-bottom: 12px">
                                 อุทยานบังคับกรอกทุกช่อง — เราใช้ข้อมูลนี้เฉพาะในแบบฟอร์มฉบับนี้ ไม่เก็บไว้ในการจอง และลบทิ้งหลังจบทริป
@@ -143,7 +143,8 @@
                                     <label class="field" for="ask-{{ $key }}">{{ $item['label'] }}</label>
                                     <div class="ask-row">
                                         <input type="{{ $key === 'home_phone' ? 'tel' : 'text' }}" id="ask-{{ $key }}" name="extra[{{ $key }}]"
-                                               value="{{ old('extra.'.$key) }}" maxlength="100" data-ask="{{ $key }}"
+                                               value="{{ old('extra.'.$key) }}" maxlength="{{ $item['max_length'] ?? 100 }}" data-ask="{{ $key }}"
+                                               @if (! empty($item['hint'])) placeholder="{{ $item['hint'] }}" @endif
                                                autocomplete="off" class="ask-input">
                                         @if ($item['allow_none'])
                                             <label class="none"><input type="checkbox" data-none="{{ $key }}" @checked(old('extra.'.$key) === '-')> ไม่มี</label>
@@ -155,7 +156,7 @@
                                 @endif
                                 <label class="check" style="margin-top: 4px">
                                     <input type="checkbox" id="remember-address">
-                                    <span>จำที่อยู่นี้ไว้ในเครื่องนี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)</span>
+                                    <span>จำ{{ $askAddress ? 'ที่อยู่' : 'ข้อมูล' }}นี้ไว้ในเครื่องนี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)</span>
                                 </label>
                             </div>
                         @endif

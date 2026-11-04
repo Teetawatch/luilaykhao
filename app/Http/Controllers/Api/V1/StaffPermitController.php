@@ -7,6 +7,7 @@ use App\Models\PermitForm;
 use App\Models\TripSchedule;
 use App\Services\PermitSignatureService;
 use App\Services\StaffPermitService;
+use App\Support\PermitFormFields;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,7 +44,7 @@ class StaffPermitController extends Controller
             'accept' => ['accepted'],
             'channel' => ['nullable', 'in:app,web'],
             'extra' => ['sometimes', 'array'],
-            'extra.*' => ['nullable', 'string', 'max:100'],
+            'extra.*' => ['nullable', 'string', 'max:'.PermitFormFields::ASK_MAX_LENGTH],
         ], [
             'accept.accepted' => 'กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น',
         ]);

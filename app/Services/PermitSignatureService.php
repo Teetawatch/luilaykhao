@@ -151,7 +151,7 @@ class PermitSignatureService
      *
      * @param  string  $dataUrl  PNG แบบ data URL (`data:image/png;base64,...`) จากแผ่นเซ็นของทุกช่องทาง
      * @param  array{channel: string, ip?: string|null, user_agent?: string|null, user_id?: int|null}  $meta
-     * @param  array<string, mixed>  $extra  ข้อมูลที่ฟอร์มถามตอนเซ็น (ภูมิลำเนา โทรศัพท์บ้าน) ดู askSpec()
+     * @param  array<string, mixed>  $extra  ข้อมูลที่ฟอร์มถามตอนเซ็น (ภูมิลำเนา โทรศัพท์บ้าน คำถามที่ตั้งเอง) ดู askSpec()
      *
      * @throws \Exception ข้อความภาษาไทยสำหรับแสดงลูกค้า
      */
@@ -206,22 +206,19 @@ class PermitSignatureService
     }
 
     /**
-     * ข้อมูลที่ต้องถามตอนเซ็นสำหรับฟอร์มนี้ — ว่าง = ฟอร์มไม่ได้วางช่องที่อยู่ไว้
+     * ข้อมูลที่ต้องถามตอนเซ็นสำหรับฟอร์มนี้ — ว่าง = ฟอร์มไม่ได้วางช่องที่อยู่หรือคำถามไว้
      *
-     * @return list<array{key: string, label: string, allow_none: bool}>
+     * @return list<array{key: string, label: string, allow_none: bool, max_length: int, custom: bool, hint: string}>
      */
     public function askSpec(PermitForm $form): array
     {
-        return array_map(fn (string $key) => [
-            'key' => $key,
-            'label' => PermitFormFields::ASK_INPUTS[$key][0],
-            'allow_none' => PermitFormFields::ASK_INPUTS[$key][1],
-        ], PermitFormFields::askedInputs($form->fields ?? []));
+        return PermitFormFields::askSpec($form->fields ?? []);
     }
 
     /**
      * ตรวจข้อมูลที่ถาม — ทุกช่องบังคับ (อุทยานไม่รับช่องว่าง) ช่องที่หลายคนไม่มีจริง
-     * (หมู่ ซอย ถนน โทรศัพท์บ้าน) ตอบ "-" ได้ ตำบล/อำเภอ/จังหวัดต้องเป็นชุดที่มีจริง
+     * (หมู่ ซอย ถนน โทรศัพท์บ้าน และคำถามที่แอดมินเปิดให้) ตอบ "-" ได้ ตำบล/อำเภอ/จังหวัด
+     * ต้องเป็นชุดที่มีจริง
      *
      * @return array<string, string> เฉพาะช่องที่ฟอร์มถาม + รหัสไปรษณีย์ที่หาให้
      *
@@ -229,19 +226,20 @@ class PermitSignatureService
      */
     public function validateExtra(PermitForm $form, array $input): array
     {
-        $keys = PermitFormFields::askedInputs($form->fields ?? []);
         $clean = [];
 
-        foreach ($keys as $key) {
-            [$label, $allowNone] = PermitFormFields::ASK_INPUTS[$key];
+        foreach (PermitFormFields::askSpec($form->fields ?? []) as $item) {
+            ['key' => $key, 'label' => $label, 'allow_none' => $allowNone] = $item;
             $value = trim(preg_replace('/\s+/u', ' ', (string) ($input[$key] ?? '')));
+            // คำถามที่ตั้งเองพิมพ์ได้ทุกแบบ ("ทำงานที่ไหน") — ยกทั้งคำถามมาบอก ไม่ต่อท้าย "กรุณากรอก"
+            $missing = $item['custom'] ? "กรุณาตอบ \"{$label}\"" : "กรุณากรอก{$label}";
 
             if ($value === '' || ($value === '-' && ! $allowNone)) {
-                throw new \Exception("กรุณากรอก{$label}".($allowNone ? ' (ถ้าไม่มี ติ๊ก "ไม่มี")' : ''));
+                throw new \Exception($missing.($allowNone ? ' (ถ้าไม่มี ติ๊ก "ไม่มี")' : ''));
             }
 
-            if (mb_strlen($value) > 100) {
-                throw new \Exception("{$label}ยาวเกินไป");
+            if (mb_strlen($value) > $item['max_length']) {
+                throw new \Exception($item['custom'] ? "คำตอบของ \"{$label}\" ยาวเกินไป" : "{$label}ยาวเกินไป");
             }
 
             if ($key === 'home_phone' && $value !== '-' && ! preg_match('/^[0-9+\-\s()#]{6,20}$/', $value)) {

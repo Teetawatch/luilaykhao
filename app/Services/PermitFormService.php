@@ -95,6 +95,7 @@ class PermitFormService
             ->map(function (array $f) use ($clamp) {
                 $x = $clamp($f['x'] ?? 0, 0, 0.99);
                 $y = $clamp($f['y'] ?? 0, 0, 0.99);
+                $ask = $f['source'] === PermitFormFields::ASK;
 
                 return array_filter([
                     'id' => Str::limit((string) ($f['id'] ?? Str::random(8)), 32, ''),
@@ -109,6 +110,10 @@ class PermitFormService
                     'text' => $f['source'] === PermitFormFields::STATIC
                         ? Str::limit(trim((string) ($f['text'] ?? '')), 300, '')
                         : null,
+                    // คำถามที่ตั้งเอง — ยังไม่ตั้งคำถามก็เก็บช่องไว้ (แต่ยังไม่ถามใคร) ไม่ทิ้งงานที่วางไว้
+                    'question' => $ask ? Str::limit(trim(preg_replace('/\s+/u', ' ', (string) ($f['question'] ?? ''))), 120, '') : null,
+                    'allow_none' => $ask ? filter_var($f['allow_none'] ?? false, FILTER_VALIDATE_BOOLEAN) : null,
+                    'hint' => $ask ? Str::limit(trim((string) ($f['hint'] ?? '')), 100, '') : null,
                 ], fn ($v) => $v !== null);
             })
             ->values()
@@ -254,7 +259,7 @@ class PermitFormService
                 $value = match (true) {
                     $source === PermitFormFields::STATIC => (string) ($f['text'] ?? ''),
                     $type === PermitFormFields::TYPE_SIGNATURE => '',
-                    default => (string) ($values[$source] ?? ''),
+                    default => (string) ($values[PermitFormFields::valueKey($f)] ?? ''),
                 };
 
                 if ($mask && in_array($source, PermitFormFields::SENSITIVE, true)) {
@@ -265,7 +270,7 @@ class PermitFormService
                     'page' => (int) $f['page'],
                     'type' => $type,
                     // ช่องที่ลูกค้ากรอกตอนเซ็น — แอป/เว็บแสดงค่าที่กำลังพิมพ์ทับได้ทันที
-                    'input' => PermitFormFields::liveInput($source),
+                    'input' => PermitFormFields::liveInput($f),
                     'x' => $f['x'], 'y' => $f['y'], 'w' => $f['w'], 'h' => $f['h'],
                     'size' => $f['size'] ?? 11,
                     'align' => $f['align'] ?? 'left',
@@ -297,7 +302,7 @@ class PermitFormService
             $form = (clone $form)->forceFill(['fields' => $fields]);
         }
 
-        return $this->render($form, [PermitFormFields::sampleValues()], sample: true);
+        return $this->render($form, [PermitFormFields::sampleValues($form->fields ?? [])], sample: true);
     }
 
     private function renderPassengers(PermitForm $form, TripSchedule $schedule, Collection $passengers, int $groupSize): string
@@ -369,7 +374,7 @@ class PermitFormService
 
         $value = $source === PermitFormFields::STATIC
             ? (string) ($field['text'] ?? '')
-            : (string) ($values[$source] ?? '');
+            : (string) ($values[PermitFormFields::valueKey($field)] ?? '');
 
         if ($value === '') {
             return;

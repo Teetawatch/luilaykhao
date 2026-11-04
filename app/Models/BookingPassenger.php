@@ -49,7 +49,7 @@ class BookingPassenger extends Model
             'not_going_at' => 'datetime',
             'permit_signed_at' => 'datetime',
             'permit_sign_meta' => 'array',
-            // ภูมิลำเนา/โทรศัพท์บ้านที่อุทยานบังคับ — ถามตอนเซ็นเท่านั้น ดู PermitFormFields::ASK_INPUTS
+            // ภูมิลำเนา/โทรศัพท์บ้าน/คำถามที่ตั้งเองที่อุทยานบังคับ — ถามตอนเซ็นเท่านั้น ดู PermitFormFields::askSpec
             'permit_extra' => 'encrypted:array',
             'custom_pickup_lat' => 'float',
             'custom_pickup_lng' => 'float',

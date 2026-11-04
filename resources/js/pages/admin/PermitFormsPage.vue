@@ -124,6 +124,23 @@
               <label class="pf-label">ข้อความ (เหมือนกันทุกใบ)</label>
               <input v-model="selected.text" maxlength="300" placeholder="เช่น ชื่อบริษัทประกัน" @input="dirty = true" />
             </template>
+            <template v-else-if="selected.source === 'ask'">
+              <!-- อุทยานแต่ละแห่งขอข้อมูลไม่เหมือนกัน — ตั้งคำถามเอง ลูกค้าตอบตอนเซ็น -->
+              <label class="pf-label">คำถามที่ให้ลูกค้าตอบ</label>
+              <input
+                ref="questionInput"
+                v-model="selected.question" maxlength="120" placeholder="เช่น ชื่อสถานที่ทำงาน"
+                :class="{ 'pf-input-missing': !selected.question?.trim() }"
+                @input="dirty = true"
+              />
+              <label class="pf-label">ตัวอย่างคำตอบ (ไม่บังคับ)</label>
+              <input v-model="selected.hint" maxlength="100" placeholder="เช่น บริษัท ตัวอย่าง จำกัด" @input="dirty = true" />
+              <label class="pf-check">
+                <input type="checkbox" v-model="selected.allow_none" @change="dirty = true" />
+                <span>ตอบ "ไม่มี" ได้ (เช่น นักเรียน หรือคนที่ไม่ได้ทำงาน) — พิมพ์ "-" ลงฟอร์ม</span>
+              </label>
+              <p class="pf-muted pf-help">ลูกค้าต้องตอบก่อนเซ็น คำถามเดียวกันวางหลายจุดได้ ลูกค้าตอบครั้งเดียว · แก้คำถามแล้วคนที่ตอบไปแล้วต้องตอบใหม่</p>
+            </template>
             <div class="pf-row">
               <div v-if="!isSignature(selected.source)">
                 <label class="pf-label">ขนาดตัวอักษร (pt)</label>
@@ -195,7 +212,7 @@
             </template>
             <p v-else-if="askedWithoutSignature" class="pf-warn">
               <i class="fas fa-triangle-exclamation"></i>
-              ฟอร์มนี้มีช่องที่อยู่/โทรศัพท์บ้าน ซึ่งลูกค้ากรอกตอนเซ็นเท่านั้น แต่ยังไม่มีช่อง "ลายเซ็น"
+              ฟอร์มนี้มีช่องที่อยู่/โทรศัพท์บ้าน/คำถามที่ตั้งเอง ซึ่งลูกค้ากรอกตอนเซ็นเท่านั้น แต่ยังไม่มีช่อง "ลายเซ็น"
               — ลูกค้าจะไม่ถูกถาม และช่องเหล่านี้จะว่างในไฟล์ วางช่องลายเซ็นด้วยครับ
             </p>
             <p v-else class="pf-muted pf-help">วางช่อง "ลายเซ็น" ถ้าอยากให้ลูกค้าเซ็นในแอป/เว็บ/ลิงก์ก่อนเดินทาง</p>
@@ -266,6 +283,7 @@ const editing = ref(null);
 const pageUrls = ref([]);
 const pageEls = [];
 const selectedId = ref(null);
+const questionInput = ref(null);
 const armed = ref(null);
 const dirty = ref(false);
 const saving = ref(false);
@@ -289,7 +307,8 @@ const catalogGroups = computed(() => {
   return groups;
 });
 const selected = computed(() => editing.value?.fields.find((f) => f.id === selectedId.value) || null);
-const usedSources = computed(() => new Set((editing.value?.fields || []).map((f) => f.source)));
+// คำถามที่ตั้งเองวางได้หลายข้อ — ไม่ทำให้ปุ่มดูเหมือนใช้ไปแล้ว
+const usedSources = computed(() => new Set((editing.value?.fields || []).map((f) => f.source).filter((s) => s !== 'ask')));
 const otherForms = computed(() => forms.value.filter((f) => f.id !== editing.value?.id && f.fields.length));
 const filteredTrips = computed(() => {
   const q = tripSearch.value.trim().toLowerCase();
@@ -311,6 +330,7 @@ function sampleOf(field) {
   if (isCheck(field.source)) return '✓';
   if (isSignature(field.source)) return '( ลายเซ็น )';
   if (field.source === 'static') return field.text || '(ข้อความ)';
+  if (field.source === 'ask') return field.hint || field.question || '(ยังไม่ได้ตั้งคำถาม)';
   return catalogByKey.value[field.source]?.sample || labelOf(field.source);
 }
 function fieldsOnPage(pi) { return editing.value.fields.filter((f) => f.page === pi); }
@@ -407,9 +427,11 @@ function placeArmed(event, pi) {
     w, h, size,
     align: check || sig ? 'center' : 'left',
     ...(armed.value === 'static' ? { text: '' } : {}),
+    ...(armed.value === 'ask' ? { question: '', hint: '', allow_none: false } : {}),
   };
   editing.value.fields.push(field);
   selectedId.value = field.id;
+  if (field.source === 'ask') nextTick(() => questionInput.value?.focus());
   armed.value = null;
   dirty.value = true;
 }
@@ -543,6 +565,13 @@ async function importJson() {
 async function save() {
   if (!editing.value.name?.trim()) {
     toast.error('ตั้งชื่อแบบฟอร์มก่อน');
+    return;
+  }
+  const noQuestion = editing.value.fields.find((f) => f.source === 'ask' && !f.question?.trim());
+  if (noQuestion) {
+    selectedId.value = noQuestion.id;
+    nextTick(() => questionInput.value?.focus());
+    toast.error('มีช่อง "คำถามที่ตั้งเอง" ที่ยังไม่ได้พิมพ์คำถาม');
     return;
   }
   saving.value = true;
@@ -875,6 +904,9 @@ onBeforeUnmount(() => {
   width: 100%; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; background: #fff;
 }
 .pf-label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.pf-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #374151; line-height: 1.5; cursor: pointer; }
+.pf-check input { margin-top: 3px; }
+.pf-panel input.pf-input-missing { border-color: #f59e0b; background: #fffbeb; }
 .pf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pf-align { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
 .pf-align button { flex: 1; padding: 7px 0; background: #fff; border: 0; color: #6b7280; cursor: pointer; }

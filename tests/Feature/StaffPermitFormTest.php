@@ -14,6 +14,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\PermitFormService;
 use App\Services\StaffPermitService;
+use App\Support\PermitFormFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -326,5 +327,35 @@ class StaffPermitFormTest extends TestCase
 
         $this->assertNull($row->fresh()->signed_at);
         Storage::disk('local')->assertMissing($path);
+    }
+
+    public function test_staff_answer_the_forms_own_questions_too(): void
+    {
+        $form = $this->form();
+        $form->update(['fields' => [...$form->fields, [
+            'id' => 'q', 'page' => 0, 'source' => 'ask', 'question' => 'ชื่อสถานที่ทำงาน',
+            'x' => 0.1, 'y' => 0.5, 'w' => 0.5, 'h' => 0.02, 'size' => 11, 'align' => 'left',
+        ]]]);
+        $form = $form->fresh();
+        $schedule = $this->round($form);
+        $key = PermitFormFields::askKey($form->fields[4]);
+        $url = "/api/v1/staff/schedules/{$schedule->id}/permit-form";
+
+        $this->actingAs($this->staff, 'sanctum')->getJson($url)->assertOk()
+            ->assertJsonPath('data.ask.0.label', 'ชื่อสถานที่ทำงาน');
+
+        $this->actingAs($this->staff, 'sanctum')
+            ->postJson($url.'/sign', ['signature' => $this->signature(), 'accept' => true])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'กรุณาตอบ "ชื่อสถานที่ทำงาน"');
+
+        $this->actingAs($this->staff, 'sanctum')
+            ->postJson($url.'/sign', ['signature' => $this->signature(), 'accept' => true, 'extra' => [$key => 'ลุยเลเขา']])
+            ->assertOk()
+            ->assertJsonPath('data.signed', true);
+
+        $row = StaffPermitSignature::where('schedule_id', $schedule->id)->first();
+        $this->assertSame('ลุยเลเขา', $row->extra[$key]);
+        $this->assertTrue(StaffPermitSignature::asPassenger($this->staff, $row)->hasCompletedPermitForm($form));
     }
 }

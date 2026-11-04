@@ -33,7 +33,20 @@ class PermitFormFields
         'id_card', 'passport_no', 'id_or_passport', 'phone', 'email', 'emergency_phone',
         'health_notes', 'allergies', 'birth_date', 'blood_group',
         'addr_house_no', 'addr_moo', 'addr_soi', 'addr_road', 'addr_full', 'home_phone',
+        self::ASK,
     ];
+
+    /**
+     * คำถามที่แอดมินตั้งเองต่อฟอร์ม (เช่น ชื่อ/ที่ตั้งของที่ทำงาน) — อุทยานแต่ละแห่งขอ
+     * ไม่เหมือนกัน จึงไม่ทำเป็นช่องตายตัว ช่องเก็บ `question`, `allow_none`, `hint`
+     * คำตอบอยู่ใน `permit_extra` ใต้ askKey() เหมือนที่อยู่ ถามตอนเซ็นแล้วลบหลังจบทริป
+     */
+    public const ASK = 'ask';
+
+    /** ความยาวคำตอบของคำถามที่ตั้งเอง — ที่อยู่ที่ทำงานบรรทัดเดียวยาวกว่าช่องที่อยู่บ้าน */
+    public const ASK_MAX_LENGTH = 200;
+
+    private const INPUT_MAX_LENGTH = 100;
 
     /**
      * ข้อมูลที่เราไม่เก็บในการจอง (ไม่จำเป็นต่อการเดินทาง + PDPA) แต่อุทยานบังคับกรอก
@@ -172,6 +185,8 @@ class PermitFormFields
         'addr_full' => ['ที่อยู่เต็ม (บรรทัดเดียว)', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, '99/1 หมู่ 5 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพมหานคร 10110'],
         'home_phone' => ['โทรศัพท์ (บ้าน)', 'ที่อยู่ (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, '-'],
 
+        self::ASK => ['คำถามที่ตั้งเอง', 'คำถามเพิ่มเติม (ลูกค้ากรอกตอนเซ็น)', self::TYPE_TEXT, ''],
+
         'today_day' => ['วันที่ออกเอกสาร — วัน', 'วันที่ยื่น', self::TYPE_TEXT, '28'],
         'today_month' => ['วันที่ออกเอกสาร — เดือน', 'วันที่ยื่น', self::TYPE_TEXT, 'ตุลาคม'],
         'today_year' => ['วันที่ออกเอกสาร — ปี พ.ศ.', 'วันที่ยื่น', self::TYPE_TEXT, '2569'],
@@ -192,12 +207,81 @@ class PermitFormFields
      */
     public static function askedInputs(array $fields): array
     {
+        return array_column(self::askSpec($fields), 'key');
+    }
+
+    /**
+     * สิ่งที่ต้องถามตอนเซ็น — ที่อยู่ก่อน (ตามลำดับ ASK_INPUTS) แล้วคำถามที่ตั้งเองตาม
+     * ลำดับช่องในฟอร์ม คำถามเดียวกันวางหลายจุดถามครั้งเดียว
+     *
+     * @return list<array{key: string, label: string, allow_none: bool, max_length: int, custom: bool, hint: string}>
+     */
+    public static function askSpec(array $fields): array
+    {
         $needed = collect($fields)
             ->flatMap(fn ($f) => self::SOURCE_INPUTS[$f['source'] ?? ''] ?? [])
             ->unique()
             ->all();
 
-        return array_values(array_filter(array_keys(self::ASK_INPUTS), fn ($k) => in_array($k, $needed, true)));
+        $spec = [];
+        foreach (self::ASK_INPUTS as $key => [$label, $allowNone]) {
+            if (in_array($key, $needed, true)) {
+                $spec[$key] = [
+                    'key' => $key, 'label' => $label, 'allow_none' => $allowNone,
+                    'max_length' => self::INPUT_MAX_LENGTH, 'custom' => false, 'hint' => '',
+                ];
+            }
+        }
+
+        foreach ($fields as $field) {
+            $key = self::askKey($field);
+            if ($key === null || isset($spec[$key])) {
+                continue;
+            }
+
+            $spec[$key] = [
+                'key' => $key,
+                'label' => self::question($field),
+                'allow_none' => (bool) ($field['allow_none'] ?? false),
+                'max_length' => self::ASK_MAX_LENGTH,
+                'custom' => true,
+                'hint' => trim((string) ($field['hint'] ?? '')),
+            ];
+        }
+
+        return array_values($spec);
+    }
+
+    /**
+     * ที่เก็บคำตอบของคำถามที่ตั้งเอง — มาจากตัวคำถาม คนในใบจองเดียวกันจึงใช้ key
+     * เดียวกัน และแก้คำถามแล้วคนที่ตอบไว้ต้องตอบใหม่ (null = ไม่ใช่คำถาม/ยังไม่ตั้ง)
+     */
+    public static function askKey(array $field): ?string
+    {
+        if (($field['source'] ?? null) !== self::ASK) {
+            return null;
+        }
+
+        $question = self::question($field);
+
+        return $question === '' ? null : 'q_'.substr(md5($question), 0, 12);
+    }
+
+    private static function question(array $field): string
+    {
+        return trim(preg_replace('/\s+/u', ' ', (string) ($field['question'] ?? '')));
+    }
+
+    /** ค่าของช่องนี้อยู่ใต้ key ไหนในผลของ values() */
+    public static function valueKey(array $field): string
+    {
+        return self::askKey($field) ?? (string) ($field['source'] ?? '');
+    }
+
+    /** ที่อยู่อย่างเดียว — "ใช้ที่อยู่เดียวกับ…" ไม่ควรลอกที่ทำงานของคนอื่นมาด้วย */
+    public static function addressOnly(array $extra): array
+    {
+        return array_intersect_key($extra, [...self::ASK_INPUTS, 'zip' => true]);
     }
 
     /**
@@ -220,9 +304,9 @@ class PermitFormFields
     }
 
     /** ช่องนี้แสดงค่าที่ลูกค้ากำลังพิมพ์ช่องไหน (null = ไม่ใช่ช่องที่ถาม หรือประกอบจากหลายช่อง) */
-    public static function liveInput(string $source): ?string
+    public static function liveInput(array $field): ?string
     {
-        return self::SOURCE_SINGLE_INPUT[$source] ?? null;
+        return self::askKey($field) ?? self::SOURCE_SINGLE_INPUT[$field['source'] ?? ''] ?? null;
     }
 
     /** ที่อยู่บรรทัดเดียว — ข้ามช่องที่ตอบ "ไม่มี" กรุงเทพใช้ แขวง/เขต ที่อื่นใช้ ต./อ./จ. */
@@ -261,14 +345,23 @@ class PermitFormFields
             'type' => $f[2],
             'sample' => $f[3],
             // ลูกค้ากรอกตอนเซ็น — ฟอร์มที่ไม่มีช่องลายเซ็นจะไม่มีขั้นให้กรอก หน้าแก้ฟอร์มเตือนไว้
-            'asks_customer' => isset(self::SOURCE_INPUTS[$key]),
+            'asks_customer' => isset(self::SOURCE_INPUTS[$key]) || $key === self::ASK,
         ])->values()->all();
     }
 
     /** ค่าตัวอย่างสำหรับปุ่ม "ดูตัวอย่าง" — ไม่ต้องมีการจองจริง */
-    public static function sampleValues(): array
+    public static function sampleValues(array $fields = []): array
     {
-        return array_map(fn (array $f) => $f[3], self::FIELDS);
+        $values = array_map(fn (array $f) => $f[3], self::FIELDS);
+
+        // คำถามที่ตั้งเอง — ใช้ตัวอย่างคำตอบที่แอดมินใส่ ไม่มีก็พิมพ์ตัวคำถาม พอเห็นตำแหน่ง
+        foreach ($fields as $field) {
+            if ($key = self::askKey($field)) {
+                $values[$key] = trim((string) ($field['hint'] ?? '')) ?: self::question($field);
+            }
+        }
+
+        return $values;
     }
 
     /**
@@ -352,6 +445,11 @@ class PermitFormFields
             'addr_zip' => $v('zip'),
             'addr_full' => $extra === [] ? '' : self::fullAddress($extra),
             'home_phone' => $v('home_phone'),
+            // คำตอบของคำถามที่ตั้งเอง (q_…) ไม่ชนกับชื่อช่องใด ๆ
+            ...collect($extra)
+                ->filter(fn ($value, $key) => str_starts_with((string) $key, 'q_'))
+                ->map(fn ($value) => trim((string) $value))
+                ->all(),
         ];
     }
 

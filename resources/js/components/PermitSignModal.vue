@@ -99,7 +99,7 @@
             </div>
 
             <div v-else-if="current.open" class="space-y-3">
-              <!-- ภูมิลำเนา/โทรศัพท์บ้าน — อุทยานบังคับ แต่เราไม่เก็บในการจอง จึงถามตอนเซ็น -->
+              <!-- ภูมิลำเนา/โทรศัพท์บ้าน/คำถามที่แอดมินตั้ง — อุทยานบังคับ แต่เราไม่เก็บในการจอง จึงถามตอนเซ็น -->
               <div v-if="current.ask?.length" class="space-y-3">
                 <p class="text-sm font-bold text-[#1a1c1c]">ข้อมูลที่อุทยานต้องการ</p>
                 <p class="text-xs text-[#505E5E]">อุทยานบังคับกรอกทุกช่อง — ใช้เฉพาะในแบบฟอร์มฉบับนี้ ไม่เก็บไว้ในการจอง และลบทิ้งหลังจบทริป</p>
@@ -124,8 +124,8 @@
                   <div v-else>
                     <label class="block text-xs font-bold text-[#505E5E] mb-1">{{ item.label }}</label>
                     <div class="flex items-center gap-3">
-                      <input v-model="askValues[item.key]" :readonly="askValues[item.key] === '-' && item.allow_none" maxlength="100"
-                        :type="item.key === 'home_phone' ? 'tel' : 'text'"
+                      <input v-model="askValues[item.key]" :readonly="askValues[item.key] === '-' && item.allow_none" :maxlength="item.max_length || 100"
+                        :type="item.key === 'home_phone' ? 'tel' : 'text'" :placeholder="item.hint || ''"
                         class="flex-1 border border-[#CBD5E1] rounded-[12px] px-3 py-2.5 text-sm read-only:bg-[#F1F5F9] read-only:text-[#889696]" />
                       <label v-if="item.allow_none" class="flex items-center gap-1.5 text-sm text-[#334155] whitespace-nowrap">
                         <input type="checkbox" :checked="askValues[item.key] === '-'" @change="askValues[item.key] = $event.target.checked ? '-' : ''" class="w-4 h-4" />
@@ -136,7 +136,7 @@
                 </template>
                 <label class="flex items-start gap-2 text-xs text-[#505E5E]">
                   <input type="checkbox" v-model="rememberAddress" class="mt-0.5 w-4 h-4 shrink-0" />
-                  <span>จำที่อยู่นี้ไว้ในเบราว์เซอร์นี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)</span>
+                  <span>จำ{{ askInputs.some((x) => x.key === 'address') ? 'ที่อยู่' : 'ข้อมูล' }}นี้ไว้ในเบราว์เซอร์นี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)</span>
                 </label>
               </div>
 
@@ -240,7 +240,7 @@ async function openPassenger(p) {
   setupPad();
 }
 
-// ─── ข้อมูลที่ถามตอนเซ็น (ดู PermitFormFields::ASK_INPUTS) ──────────────
+// ─── ข้อมูลที่ถามตอนเซ็น (ดู PermitFormFields::askSpec) ──────────────
 const ADDRESS_KEYS = ['sub_district', 'district', 'province'];
 const REMEMBER_KEY = 'llk_permit_address';
 const askValues = ref({});

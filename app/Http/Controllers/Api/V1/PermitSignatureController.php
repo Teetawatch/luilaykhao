@@ -8,6 +8,7 @@ use App\Models\BookingPassenger;
 use App\Models\PermitForm;
 use App\Services\PermitFormService;
 use App\Services\PermitSignatureService;
+use App\Support\PermitFormFields;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,13 +57,15 @@ class PermitSignatureController extends Controller
             'open' => $this->signatures->isOpen($booking),
             'signed' => $signed,
             'signed_at' => $signed ? $passenger->permit_signed_at?->toISOString() : null,
-            // ข้อมูลที่อุทยานบังคับแต่ไม่ได้เก็บตอนจอง — ถามตอนเซ็น ดู PermitFormFields::ASK_INPUTS
+            // ข้อมูลที่อุทยานบังคับแต่ไม่ได้เก็บตอนจอง — ถามตอนเซ็น ดู PermitFormFields::askSpec
             'ask' => $this->signatures->askSpec($form),
             'extra' => (object) ($passenger->permit_extra ?? []),
             // "ใช้ที่อยู่เดียวกับ…" — คนอื่นในใบจองที่เรามีสิทธิ์และกรอกไว้แล้ว (ครอบครัวเดียวกัน)
+            // ลอกแค่ที่อยู่ คำตอบอื่น (เช่น ที่ทำงาน) เป็นของแต่ละคน
             'address_suggestions' => $this->signatures->signablePassengers($booking, $request->user())
-                ->reject(fn (BookingPassenger $p) => $p->id === $passenger->id || blank($p->permit_extra))
-                ->map(fn (BookingPassenger $p) => ['name' => $p->displayName(), 'extra' => $p->permit_extra])
+                ->reject(fn (BookingPassenger $p) => $p->id === $passenger->id)
+                ->map(fn (BookingPassenger $p) => ['name' => $p->displayName(), 'extra' => PermitFormFields::addressOnly((array) ($p->permit_extra ?? []))])
+                ->reject(fn (array $sug) => $sug['extra'] === [])
                 ->values(),
             'signature_url' => $signed
                 ? URL::temporarySignedRoute('public.permit-signature', now()->addMinutes(30), ['passenger' => $passenger->id])
@@ -96,7 +99,7 @@ class PermitSignatureController extends Controller
             'accept' => ['accepted'],
             'channel' => ['nullable', 'in:app,web'],
             'extra' => ['sometimes', 'array'],
-            'extra.*' => ['nullable', 'string', 'max:100'],
+            'extra.*' => ['nullable', 'string', 'max:'.PermitFormFields::ASK_MAX_LENGTH],
         ], [
             'accept.accepted' => 'กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น',
         ]);

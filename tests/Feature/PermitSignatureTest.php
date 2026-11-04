@@ -678,4 +678,161 @@ class PermitSignatureTest extends TestCase
         $this->assertTrue($catalog['home_phone']['asks_customer']);
         $this->assertFalse($catalog['first_name']['asks_customer']);
     }
+
+    /** แบบฟอร์มที่แอดมินตั้งคำถามเอง — ที่ทำงาน (วางสองจุด) + ที่ตั้งของที่ทำงาน */
+    private function workForm(PermitForm $form): PermitForm
+    {
+        $ask = fn (string $id, string $question, float $y, array $extra = []) => [
+            'id' => $id, 'page' => 0, 'source' => 'ask', 'question' => $question,
+            'x' => 0.1, 'y' => $y, 'w' => 0.5, 'h' => 0.02, 'size' => 11, 'align' => 'left', ...$extra,
+        ];
+        $form->update(['fields' => [
+            ...$form->fields,
+            $ask('w1', 'ชื่อสถานที่ทำงาน', 0.5, ['allow_none' => true, 'hint' => 'บริษัท ตัวอย่าง จำกัด']),
+            $ask('w2', 'ที่ตั้งของที่ทำงาน', 0.53),
+            $ask('w3', 'ชื่อสถานที่ทำงาน', 0.9),
+            $ask('w4', '   ', 0.95),
+        ]]);
+
+        return $form->fresh();
+    }
+
+    private function workKey(PermitForm $form, string $question): string
+    {
+        return collect(PermitFormFields::askSpec($form->fields))->firstWhere('label', $question)['key'];
+    }
+
+    public function test_forms_ask_the_questions_the_admin_wrote_before_signing(): void
+    {
+        $form = $this->workForm($this->form());
+        $booking = $this->booking($form);
+        $p = $booking->passengers->sortBy('id')->first();
+        $work = $this->workKey($form, 'ชื่อสถานที่ทำงาน');
+        $place = $this->workKey($form, 'ที่ตั้งของที่ทำงาน');
+
+        $res = $this->actingAs($this->owner, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/permit-form/passengers/{$p->id}")
+            ->assertOk();
+        // คำถามเดียวกันสองจุดถามครั้งเดียว คำถามว่างไม่ถาม
+        $this->assertSame([
+            ['key' => $work, 'label' => 'ชื่อสถานที่ทำงาน', 'allow_none' => true, 'max_length' => 200, 'custom' => true, 'hint' => 'บริษัท ตัวอย่าง จำกัด'],
+            ['key' => $place, 'label' => 'ที่ตั้งของที่ทำงาน', 'allow_none' => false, 'max_length' => 200, 'custom' => true, 'hint' => ''],
+        ], $res->json('data.ask'));
+        $this->assertSame(2, collect($res->json('data.fields'))->where('input', $work)->count());
+
+        $sign = fn (array $extra) => $this->actingAs($this->owner, 'sanctum')
+            ->postJson($this->signUrl($booking, $p), ['signature' => $this->signature(), 'accept' => true, 'extra' => $extra]);
+        $longAddress = str_repeat('อาคารสาทรซิตี้ทาวเวอร์ ', 6);
+
+        $sign([$work => '-'])->assertStatus(422)->assertJsonPath('message', 'กรุณาตอบ "ที่ตั้งของที่ทำงาน"');
+        $sign([$work => '', $place => 'สาทร'])->assertStatus(422)
+            ->assertJsonPath('message', 'กรุณาตอบ "ชื่อสถานที่ทำงาน" (ถ้าไม่มี ติ๊ก "ไม่มี")');
+        $sign([$work => 'บริษัท ก', $place => '-'])->assertStatus(422);
+        $this->assertNull($p->fresh()->permit_signed_at, 'nothing half-saved');
+
+        $sign([$work => 'บริษัท ลุยเลเขา จำกัด', $place => $longAddress])->assertOk()->assertJsonPath('data.signed_count', 1);
+
+        $p->refresh();
+        $this->assertTrue($p->hasCompletedPermitForm($form));
+        $raw = DB::table('booking_passengers')->where('id', $p->id)->value('permit_extra');
+        $this->assertStringNotContainsString('ลุยเลเขา', (string) $raw, 'stored encrypted');
+        $values = PermitFormFields::values($p, $booking->schedule, 2);
+        $this->assertSame('บริษัท ลุยเลเขา จำกัด', $values[$work]);
+        $this->assertSame(trim($longAddress), $values[$place]);
+
+        $filled = collect(app(PermitFormService::class)->preview($form, $p)['fields'])->where('input', $work)->pluck('value')->all();
+        $this->assertSame(['บริษัท ลุยเลเขา จำกัด', 'บริษัท ลุยเลเขา จำกัด'], $filled);
+        $masked = collect(app(PermitFormService::class)->preview($form, $p, mask: true)['fields'])->firstWhere('input', $work)['value'];
+        $this->assertStringNotContainsString('ลุยเลเขา', $masked, 'forwardable link never shows the answer');
+
+        // แก้คำถาม = คำถามใหม่ คนที่ตอบไว้ต้องกลับมาตอบ
+        $fields = collect($form->fields)->map(fn ($f) => ($f['id'] ?? '') === 'w2' ? [...$f, 'question' => 'จังหวัดที่ทำงาน'] : $f)->all();
+        $form->update(['fields' => $fields]);
+        $this->assertFalse($p->fresh()->hasCompletedPermitForm($form->fresh()));
+    }
+
+    public function test_family_address_suggestion_leaves_other_answers_behind(): void
+    {
+        $form = $this->workForm($this->addressForm());
+        $booking = $this->booking($form);
+        [$a, $b] = $booking->passengers->sortBy('id')->values();
+        $work = $this->workKey($form, 'ชื่อสถานที่ทำงาน');
+        $place = $this->workKey($form, 'ที่ตั้งของที่ทำงาน');
+
+        $this->actingAs($this->owner, 'sanctum')->postJson($this->signUrl($booking, $a), [
+            'signature' => $this->signature(), 'accept' => true,
+            'extra' => [...$this->address(), $work => 'บริษัท ก', $place => 'สาทร'],
+        ])->assertOk();
+
+        $suggestion = $this->actingAs($this->owner, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/permit-form/passengers/{$b->id}")
+            ->assertOk()
+            ->json('data.address_suggestions.0.extra');
+
+        $this->assertSame('99/1', $suggestion['house_no']);
+        $this->assertSame('10110', $suggestion['zip']);
+        $this->assertArrayNotHasKey($work, $suggestion);
+        $this->assertArrayNotHasKey($place, $suggestion);
+    }
+
+    public function test_friend_link_asks_the_custom_questions(): void
+    {
+        $form = $this->workForm($this->form());
+        $booking = $this->booking($form);
+        $p = $booking->passengers->sortBy('id')->first();
+        $token = $p->ensurePassToken();
+        $work = $this->workKey($form, 'ชื่อสถานที่ทำงาน');
+        $place = $this->workKey($form, 'ที่ตั้งของที่ทำงาน');
+
+        $this->get("/f/{$token}/permit")->assertOk()
+            ->assertSee('ชื่อสถานที่ทำงาน')->assertSee('ที่ตั้งของที่ทำงาน')
+            ->assertSee('placeholder="บริษัท ตัวอย่าง จำกัด"', false)
+            ->assertSee('maxlength="200"', false);
+
+        $this->post("/f/{$token}/permit", ['signature' => $this->signature(), 'accept' => '1', 'extra' => [$work => 'บริษัท ก', $place => 'สาทร']])
+            ->assertRedirect("/f/{$token}/permit");
+
+        $this->assertTrue($p->fresh()->hasCompletedPermitForm($form));
+        $this->get("/f/{$token}/permit")->assertDontSee('บริษัท ก')->assertDontSee('สาทร');
+    }
+
+    public function test_booking_notice_lists_the_custom_questions(): void
+    {
+        $slug = $this->booking($this->workForm($this->form()))->schedule->trip->slug;
+
+        $body = $this->getJson('/api/v1/trips/'.$slug)->assertOk()->json('data.permit_notice.body');
+
+        $this->assertStringContainsString('ข้อมูลเพิ่มเติม (ชื่อสถานที่ทำงาน, ที่ตั้งของที่ทำงาน)', $body);
+        $this->assertStringNotContainsString('ทะเบียนบ้าน', $body);
+        $this->assertStringContainsString('ไปกรอกข้อมูลและเซ็น', $body);
+    }
+
+    public function test_editor_saves_question_settings_and_previews_them(): void
+    {
+        $form = $this->form();
+        $base = ['page' => 0, 'source' => 'ask', 'x' => 0.1, 'y' => 0.5, 'w' => 0.4, 'h' => 0.02, 'size' => 11, 'align' => 'left'];
+
+        $this->actingAs($this->admin, 'sanctum')->putJson("/api/v1/admin/permit-forms/{$form->id}", ['fields' => [
+            [...$base, 'id' => 'q1', 'question' => "  ชื่อ\nที่ทำงาน ", 'allow_none' => '1', 'hint' => 'บริษัท ก', 'text' => 'ไม่ใช่ช่องข้อความ'],
+            [...$base, 'id' => 'q2', 'question' => ''],
+            [...$base, 'id' => 'f1', 'source' => 'first_name', 'question' => 'ไม่เกี่ยว'],
+        ]])->assertOk();
+
+        $fields = collect($form->fresh()->fields)->keyBy('id');
+        $this->assertSame('ชื่อ ที่ทำงาน', $fields['q1']['question']);
+        $this->assertTrue($fields['q1']['allow_none']);
+        $this->assertSame('บริษัท ก', $fields['q1']['hint']);
+        $this->assertArrayNotHasKey('text', $fields['q1']);
+        $this->assertArrayHasKey('q2', $fields->all(), 'a question not written yet is kept, not dropped');
+        $this->assertArrayNotHasKey('question', $fields['f1']);
+        $this->assertSame(['ชื่อ ที่ทำงาน'], array_column(PermitFormFields::askSpec($form->fresh()->fields), 'label'));
+
+        $catalog = collect($this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/permit-forms')->json('data.catalog'))->keyBy('key');
+        $this->assertTrue($catalog['ask']['asks_customer']);
+
+        $pdf = app(PermitFormService::class)->renderSample($form->fresh());
+        $this->assertStringStartsWith('%PDF', $pdf);
+        $this->assertSame('บริษัท ก', PermitFormFields::sampleValues($form->fresh()->fields)[PermitFormFields::askKey($fields['q1'])]);
+    }
 }

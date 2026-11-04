@@ -9,6 +9,7 @@ use App\Services\PermitFormService;
 use App\Services\PermitSignatureService;
 use App\Services\StaffPermitService;
 use App\Services\TripBriefService;
+use App\Support\PermitFormFields;
 use App\Support\ThaiDate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -77,7 +78,7 @@ class PublicPermitFormController extends Controller
             'signature' => ['required', 'string', 'max:'.(int) (PermitSignatureService::MAX_BYTES * 1.4)],
             'accept' => ['accepted'],
             'extra' => ['sometimes', 'array'],
-            'extra.*' => ['nullable', 'string', 'max:100'],
+            'extra.*' => ['nullable', 'string', 'max:'.PermitFormFields::ASK_MAX_LENGTH],
         ], [
             'signature.required' => 'ยังไม่ได้เซ็น วาดลายเซ็นในกรอบก่อนกดยืนยัน',
             'accept.accepted' => 'กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น',
@@ -144,7 +145,7 @@ class PublicPermitFormController extends Controller
             'signature' => ['required', 'string', 'max:'.(int) (PermitSignatureService::MAX_BYTES * 1.4)],
             'accept' => ['accepted'],
             'extra' => ['sometimes', 'array'],
-            'extra.*' => ['nullable', 'string', 'max:100'],
+            'extra.*' => ['nullable', 'string', 'max:'.PermitFormFields::ASK_MAX_LENGTH],
         ], [
             'signature.required' => 'ยังไม่ได้เซ็น วาดลายเซ็นในกรอบก่อนกดยืนยัน',
             'accept.accepted' => 'กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น',
