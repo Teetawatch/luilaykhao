@@ -235,6 +235,8 @@ class TripCalendarService
                 ? round((float) $schedule->effective_join_trip_price, 2)
                 : null,
             'seats_left' => $seats,
+            // ที่นั่งทั้งรอบ — แอปวาดแถบ "จองแล้ว 8/10" บนหน้าทริปไฟไหม้
+            'total_seats' => (int) $schedule->total_seats,
             'is_full' => $isFull,
             'is_low' => ! $isFull && $seats <= self::LOW_SEATS,
             'status_label' => $this->statusLabel($schedule, $seats, $isFull),

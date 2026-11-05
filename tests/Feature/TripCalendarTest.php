@@ -181,6 +181,9 @@ class TripCalendarTest extends TestCase
         $this->assertSame($soon->id, $hot[0]['id']);
         $this->assertSame('อีก 3 วัน', $hot[0]['days_left_label']);
         $this->assertSame('เหลือ 2 ที่', $hot[0]['status_label']);
+        // ที่นั่งทั้งรอบ — แอปวาดแถบ "จองแล้ว 8/10"
+        $this->assertSame(10, $hot[0]['total_seats']);
+        $this->assertSame(2, $hot[0]['seats_left']);
         $this->assertNotContains($later->id, array_column($hot, 'id'));
     }
 
@@ -201,6 +204,8 @@ class TripCalendarTest extends TestCase
         $this->assertTrue($hot[0]['on_flash_sale']);
         $this->assertEquals(2900, $hot[0]['price']);
         $this->assertEquals(4500, $hot[0]['original_price']);
+        // เวลาจบดีล — หน้าทริปไฟไหม้นับถอยหลังจากค่านี้
+        $this->assertNotNull($hot[0]['flash_sale_ends_at']);
     }
 
     public function test_hot_ignores_a_round_that_already_left_and_one_that_is_full(): void
