@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\PostTripChatTimelineJob;
+use App\Jobs\PurgeEndedTripChatsJob;
 use App\Models\Booking;
 use App\Models\ChatMessage;
 use App\Models\ChatRestStop;
@@ -223,8 +224,8 @@ class TripChatTimelineTest extends TestCase
         $end = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-16 20:10'));
         $this->assertSame(['trip_end'], $end);
 
-        // ห้องถูกลบ 14 วันหลังจบทริป — เตือนเซฟรูปก่อน 1 วัน
-        $expiring = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-29 10:05'));
+        // ห้องถูกลบ 7 วันหลังจบทริป — เตือนเซฟรูปก่อน 1 วัน
+        $expiring = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-22 10:05'));
         $this->assertSame(['photos_expiring'], $expiring);
     }
 
@@ -238,7 +239,7 @@ class TripChatTimelineTest extends TestCase
         // รูปของทีมงานอยู่ที่ไอจี ไม่ใช่ในห้องแชท — บอกตั้งแต่วันจบทริป
         $this->assertStringContainsString('@luilaykhao', $body);
         // ชวนแชร์รูปพร้อมบอกว่าห้องอยู่ได้อีกกี่วัน
-        $this->assertStringContainsString('ห้องแชทจะปิดใน 14 วัน', $body);
+        $this->assertStringContainsString('ห้องแชทจะปิดใน '.PurgeEndedTripChatsJob::DELETE_AFTER_DAYS.' วัน', $body);
         $this->assertStringContainsString('ฟีดทริป', $body);
     }
 
@@ -247,7 +248,7 @@ class TripChatTimelineTest extends TestCase
         $schedule = $this->makeSchedule();
         $this->chat($schedule, 'ขอบคุณทีมงานครับ');
 
-        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-29 10:05'));
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-22 10:05'));
 
         $body = ChatMessage::where('system_key', 'photos_expiring')->value('body');
         // ยังไม่มีใครลงรูปในห้อง — พูดถึงรูปได้เฉพาะรูปที่ไอจี ไม่ใช่รูปที่กำลังจะหาย
@@ -261,7 +262,7 @@ class TripChatTimelineTest extends TestCase
         $schedule = $this->makeSchedule();
         $this->chat($schedule, '', 'chat/photo.jpg');
 
-        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-29 10:05'));
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-22 10:05'));
 
         $body = ChatMessage::where('system_key', 'photos_expiring')->value('body');
         $this->assertStringContainsString('บันทึกลงเครื่อง', $body);
@@ -274,7 +275,7 @@ class TripChatTimelineTest extends TestCase
         $this->chat($schedule, '', 'chat/photo.jpg', deleted: true);
         $this->chat($schedule, 'ขอบคุณครับ');
 
-        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-29 10:05'));
+        $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-22 10:05'));
 
         $body = ChatMessage::where('system_key', 'photos_expiring')->value('body');
         $this->assertStringContainsString('ห้องแชทของทริปนี้จะถูกปิด', $body);
@@ -287,14 +288,14 @@ class TripChatTimelineTest extends TestCase
         // มีแต่ข้อความระบบในห้อง — ไม่ต้องเด้ง badge บอกว่าห้องร้างกำลังจะถูกลบ
         $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-16 20:10'));
 
-        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-29 10:05'));
+        $posted = $this->timeline()->syncFor($schedule, $this->bangkok('2026-08-22 10:05'));
         $this->assertSame([], $posted);
     }
 
     public function test_job_still_reaches_the_room_the_day_before_it_is_purged(): void
     {
         // งานเคยดูแลแค่ 5 วันหลังจบทริป — ห้องที่อยู่ได้นานกว่านั้นจะไม่เคยได้คำเตือน
-        $this->travelTo($this->bangkok('2026-08-29 10:05'));
+        $this->travelTo($this->bangkok('2026-08-22 10:05'));
         $schedule = $this->makeSchedule();
         $this->bookOnto($schedule);
         $this->chat($schedule, 'ขอบคุณครับ');

@@ -45,7 +45,7 @@ class PurgeEndedTripChatsJob implements ShouldQueue
 {
     use Queueable;
 
-    public const DELETE_AFTER_DAYS = 14;
+    public const DELETE_AFTER_DAYS = 7;
 
     public const TIMEZONE = 'Asia/Bangkok';
 
