@@ -11,6 +11,7 @@ use App\Models\SchedulePhoto;
 use App\Models\Trip;
 use App\Models\TripPhoto;
 use App\Models\TripSchedule;
+use App\Services\AlbumPhotoNotifier;
 use App\Services\SchedulePhotoService;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
@@ -23,7 +24,10 @@ class PhotoController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private SchedulePhotoService $photos) {}
+    public function __construct(
+        private SchedulePhotoService $photos,
+        private AlbumPhotoNotifier $notifier,
+    ) {}
 
     private function disk(): string
     {
@@ -169,8 +173,9 @@ class PhotoController extends Controller
         }
 
         $attached = 0;
+        $touched = [];
 
-        DB::transaction(function () use ($targets, $photos, &$attached) {
+        DB::transaction(function () use ($targets, $photos, &$attached, &$touched) {
             foreach ($targets as $target) {
                 $base = (int) $target->photos()->max('schedule_photo.sort_order');
                 $existing = $target->photos()->pluck('schedule_photos.id')->all();
@@ -183,9 +188,15 @@ class PhotoController extends Controller
                     $position++;
                     $target->photos()->attach($photo->id, ['sort_order' => $base + $position]);
                     $attached++;
+                    $touched[$target->id] = $target;
                 }
             }
         });
+
+        // รอบปลายทางที่ได้รูปเพิ่มจริง — ลูกค้ารอบนั้นได้แจ้งเตือนเหมือนอัปใหม่
+        foreach ($touched as $target) {
+            $this->notifier->photosAdded($target);
+        }
 
         return $this->success(
             ['attached' => $attached, 'schedules' => $targets->count()],

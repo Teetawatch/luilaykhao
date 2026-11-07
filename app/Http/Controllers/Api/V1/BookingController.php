@@ -528,11 +528,16 @@ class BookingController extends Controller
      */
     public function photos(Request $request, string $ref): JsonResponse
     {
+        // เพื่อนที่เข้าร่วมใบจองก็อยู่ในรูปเหมือนกัน และได้แจ้งเตือน "รูปทริปมาแล้ว"
+        // ({@see \App\Jobs\NotifyAlbumPhotosAddedJob}) จึงเปิดดูได้เท่าเจ้าของ
         $booking = Booking::where('booking_ref', $ref)
-            ->where('user_id', $request->user()->id)
             ->whereNotIn('status', ['cancelled'])
             ->with('schedule.photos')
-            ->firstOrFail();
+            ->first();
+
+        if (! $booking || ! $booking->isAccessibleByUser($request->user()->id)) {
+            return $this->error('ไม่พบการจองนี้', 404);
+        }
 
         $photos = $booking->schedule?->photos ?? collect();
 

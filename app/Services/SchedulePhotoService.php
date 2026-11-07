@@ -36,6 +36,8 @@ class SchedulePhotoService
 
     private const TIMEZONE = 'Asia/Bangkok';
 
+    public function __construct(private AlbumPhotoNotifier $notifier) {}
+
     /** กติกา validate ของ `files[]` ที่ทุกจุดอัปใช้ร่วมกัน */
     public static function uploadRules(): array
     {
@@ -101,6 +103,11 @@ class SchedulePhotoService
 
         foreach ($ids as $id) {
             GeneratePhotoThumbnailJob::dispatch(SchedulePhoto::class, $id)->afterCommit();
+        }
+
+        // บอกลูกค้าว่ามีรูปใหม่ — รวมการอัปทั้งชุดเป็นแจ้งเตือนเดียว
+        if ($ids !== []) {
+            $this->notifier->photosAdded($schedule);
         }
 
         // Reload through the relation so each resource carries its pivot (sort_order).
