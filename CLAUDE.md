@@ -190,3 +190,5 @@ Background jobs that run on a schedule (configured via `routes/console.php` or H
 - `ExpireWaitlistOffersJob` — expires stale waitlist offers
 - `eta:notify-pickups` artisan command — ETA push notifications for today's schedules (run every few minutes)
 - `trip-activity:sync` artisan command — opens/updates/closes the lock-screen "วันเดินทาง" cards (every minute)
+
+When you need to search or read through files to answer a question, delegate it to the Explore agent instead of searching yourself.
