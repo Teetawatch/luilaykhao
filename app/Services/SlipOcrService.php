@@ -24,6 +24,12 @@ class SlipOcrService
     // Amount tolerance: ±2 baht (to handle rounding)
     private const AMOUNT_TOLERANCE = 2.0;
 
+    /** ยอดในสลิปนับว่า "ตรง" กับยอดที่คาดไว้ไหม — กติกาเดียวกับ verify() */
+    public static function amountMatches(float $ocrAmount, float $expectedAmount): bool
+    {
+        return abs($ocrAmount - $expectedAmount) <= self::AMOUNT_TOLERANCE;
+    }
+
     public function verify(string $slipPath, float $expectedAmount): array
     {
         // Read via the private slip disk so OCR works whether the slip lives
@@ -47,8 +53,7 @@ class SlipOcrService
 
         // Verify: slip must be "success" AND amount must be within tolerance
         if ($ocrStatus === 'success' && $ocrAmount !== null) {
-            $diff = abs($ocrAmount - $expectedAmount);
-            if ($diff <= self::AMOUNT_TOLERANCE) {
+            if (self::amountMatches($ocrAmount, $expectedAmount)) {
                 return ['status' => self::STATUS_VERIFIED, 'reason' => 'auto_verified', 'raw' => $parsed];
             }
 

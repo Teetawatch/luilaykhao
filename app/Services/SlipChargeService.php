@@ -55,6 +55,25 @@ class SlipChargeService
             ? $slip->store('slips/'.date('Y/m'), MediaDisk::slipDisk())
             : null;
 
+        // ตรวจยอดก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน ไม่ยืนยันที่นั่ง
+        $review = $this->needsReview($slipPath, $dueNow);
+
+        // เลือกมัดจำ/ผ่อน/แบ่งจ่ายไว้ แต่สลิปคือยอดเต็มทั้งใบ — ลูกค้าจ่ายครบแล้วจริง
+        // บันทึกเป็นจ่ายเต็ม ไม่ใช่กันไว้ว่า "ยอดไม่ตรง" แล้วรอแอดมินอนุมัติเป็นมัดจำ
+        // (ใบจองจะค้างยอดคงเหลือที่ลูกค้าจ่ายไปแล้ว และโดนทวงซ้ำ)
+        if ($review['hold'] && $paymentType !== 'full' && ($fullDue = $this->fullAmountPaid($booking, $review['ocr_amount']))) {
+            Log::info('Slip covers the full amount — recording as full payment', [
+                'booking_ref' => $booking->booking_ref,
+                'chosen' => $paymentType,
+                'slip_amount' => $review['ocr_amount'],
+            ]);
+
+            $paymentType = 'full';
+            $dueNow = $fullDue;
+            $installmentCount = null;
+            $review['hold'] = false;
+        }
+
         $paymentRef = match ($paymentType) {
             'installment' => 'PAY-INST-'.strtoupper(uniqid()),
             'split' => 'PAY-SPLIT-'.strtoupper(uniqid()),
@@ -70,9 +89,6 @@ class SlipChargeService
             'transfer_datetime' => $opts['transfer_datetime'] ?? null,
             'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
         ];
-
-        // ตรวจยอดก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน ไม่ยืนยันที่นั่ง
-        $review = $this->needsReview($slipPath, $dueNow);
 
         DB::transaction(function () use ($booking, $paymentType, $recordOpts, $review, $paymentMethod, $paymentRef, $dueNow) {
             $this->settlement->record($booking, $paymentType, $recordOpts);
@@ -111,18 +127,45 @@ class SlipChargeService
      * รายการที่ล้มเหลว เท่านั้น กรณีอ่านไม่ได้/ไม่ชัดเจน (เช่น ไม่มี API key, timeout)
      * คืน hold=false เพื่อคงพฤติกรรมเดิม — ยืนยันทันทีแล้ว flag ให้แอดมินผ่าน VerifySlipJob
      *
-     * @return array{hold: bool, raw: array|null}
+     * @return array{hold: bool, raw: array|null, ocr_amount: float|null}
      */
     private function needsReview(?string $slipPath, float $expectedAmount): array
     {
         if (! $slipPath) {
-            return ['hold' => false, 'raw' => null];
+            return ['hold' => false, 'raw' => null, 'ocr_amount' => null];
         }
 
         $result = $this->slipOcr->verify($slipPath, $expectedAmount);
-        $hold = in_array($result['reason'] ?? '', ['amount_mismatch', 'slip_status_failed'], true);
+        $reason = $result['reason'] ?? '';
+        $hold = in_array($reason, ['amount_mismatch', 'slip_status_failed'], true);
 
-        return ['hold' => $hold, 'raw' => $result['raw'] ?? null];
+        // ยอดที่ OCR อ่านได้ — เชื่อเฉพาะสลิปที่อ่านได้ว่า "สำเร็จ" แล้วยอดแค่ไม่ตรง
+        $amount = $result['raw']['amount'] ?? null;
+
+        return [
+            'hold' => $hold,
+            'raw' => $result['raw'] ?? null,
+            'ocr_amount' => $reason === 'amount_mismatch' && is_numeric($amount) ? (float) $amount : null,
+        ];
+    }
+
+    /**
+     * ยอดเต็มของใบจอง ถ้ายอดในสลิปตรงกับยอดเต็ม — null เมื่อไม่ตรง หรือรอบนี้
+     * จ่ายเต็มไม่ได้
+     */
+    private function fullAmountPaid(Booking $booking, ?float $ocrAmount): ?float
+    {
+        if ($ocrAmount === null) {
+            return null;
+        }
+
+        try {
+            $full = $this->settlement->quote($booking, 'full');
+        } catch (PaymentNotAvailableException) {
+            return null;
+        }
+
+        return SlipOcrService::amountMatches($ocrAmount, $full) ? $full : null;
     }
 
     /**

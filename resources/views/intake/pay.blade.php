@@ -151,7 +151,9 @@
                     </a>
                 @else
                     <label class="plan">
-                        <input type="radio" name="plan_pick" value="{{ $row['key'] }}" data-plan
+                        {{-- ปุ่มเลือกคือค่าที่ส่งไปกับสลิปเอง (form=) — ไม่มี hidden field แยก
+                             ที่อาจค้างค่าเก่าเมื่อเบราว์เซอร์คืนสถานะหน้าตอนกลับจากแอปธนาคาร --}}
+                        <input type="radio" name="payment_type" form="intake-pay-form" value="{{ $row['key'] }}" data-plan
                                @checked($plan === $row['key'])>
                         <span class="plan-card">
                             <span class="plan-dot"></span>
@@ -201,9 +203,8 @@
             </div>
 
             <form method="POST" action="{{ route('public.intake.pay.submit', $intake->token) }}"
-                  enctype="multipart/form-data" data-guard>
+                  enctype="multipart/form-data" data-guard id="intake-pay-form">
                 @csrf
-                <input type="hidden" name="payment_type" id="payment-type" value="{{ $plan }}">
 
                 <label class="slip-label" for="slip_image">โอนแล้ว? แนบสลิปที่นี่</label>
                 <input class="slip-input" type="file" name="slip_image" id="slip_image" accept="image/*" required>
@@ -225,17 +226,21 @@
 @push('scripts')
 <script>
     (function () {
-        // ── เลือกแผน: สลับ QR + ค่าที่ส่งไปกับสลิป ─────────────────────
-        var typeField = document.getElementById('payment-type');
-        document.querySelectorAll('[data-plan]').forEach(function (radio) {
-            radio.addEventListener('change', function () {
-                if (!radio.checked) { return; }
-                if (typeField) { typeField.value = radio.value; }
-                document.querySelectorAll('[data-plan-panel]').forEach(function (panel) {
-                    panel.hidden = panel.getAttribute('data-plan-panel') !== radio.value;
-                });
+        // ── เลือกแผน: สลับ QR ให้ตรงกับปุ่มที่ติ๊กอยู่ ──────────────────
+        // ปุ่มที่ติ๊กคือค่าที่ส่งไปกับสลิป จึงต้องให้ QR/ยอดที่เห็นตามปุ่มเสมอ รวมถึงตอน
+        // เบราว์เซอร์คืนสถานะหน้าเอง (รีเฟรช หรือกลับมาจากแอปธนาคาร) โดยไม่ยิง change
+        function syncPlan() {
+            var picked = document.querySelector('[data-plan]:checked');
+            if (!picked) { return; }
+            document.querySelectorAll('[data-plan-panel]').forEach(function (panel) {
+                panel.hidden = panel.getAttribute('data-plan-panel') !== picked.value;
             });
+        }
+        document.querySelectorAll('[data-plan]').forEach(function (radio) {
+            radio.addEventListener('change', syncPlan);
         });
+        syncPlan();
+        window.addEventListener('pageshow', syncPlan);
 
         // ── คัดลอกเลขบัญชี ───────────────────────────────────────────
         document.querySelectorAll('.copy-btn').forEach(function (btn) {

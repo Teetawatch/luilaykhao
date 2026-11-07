@@ -179,7 +179,48 @@ class BeamPaymentService
             $existing = null;
         }
 
-        return $existing ?? $this->startCharge($booking, $purpose, $methodType, $opts);
+        if ($existing) {
+            // ใช้ QR ใบเดิมซ้ำ — แต่ระหว่างนั้นลูกค้าอาจกดดูแผนอื่น (ออก QR มัดจำ) ซึ่ง
+            // เขียนแผนนั้นทับลงใบจองไปแล้ว ต้องเขียนแผนของ QR ที่โชว์อยู่กลับคืน
+            $this->syncRecordedPlan($booking, $purpose);
+
+            return $existing;
+        }
+
+        return $this->startCharge($booking, $purpose, $methodType, $opts);
+    }
+
+    /**
+     * ให้แผนที่บันทึกในใบจองตรงกับก้อนเงินนี้ — เต็มหรือมัดจำ
+     *
+     * startCharge() เขียนแผนลงใบจองตั้งแต่ตอนออก QR แต่ QR หลายใบของใบจองเดียว
+     * (เต็ม + มัดจำ) ใช้จ่ายได้พร้อมกัน ใบที่ออกทีหลังจึงเขียนทับแผนของใบก่อน ถ้าลูกค้า
+     * จ่ายใบก่อน ใบจองจะขึ้น "มัดจำ" ทั้งที่จ่ายเต็มแล้ว (เคสจริง 2026-11-07)
+     *
+     * ผ่อน/แบ่งจ่ายไม่ซ่อมที่นี่ — จำนวนงวด/ส่วนแบ่งอยู่แค่ในคำขอที่ออก QR
+     */
+    private function syncRecordedPlan(Booking $booking, string $purpose): void
+    {
+        $booking->refresh();
+
+        $mismatch = match ($purpose) {
+            Payment::PURPOSE_FULL => $booking->payment_type !== 'full',
+            Payment::PURPOSE_DEPOSIT => $booking->payment_type !== 'deposit'
+                || $booking->splitShares()->exists(),
+            default => false,
+        };
+
+        if (! $mismatch) {
+            return;
+        }
+
+        Log::info('Beam: booking plan re-synced to the charge being paid', [
+            'booking_ref' => $booking->booking_ref,
+            'recorded' => $booking->payment_type,
+            'purpose' => $purpose,
+        ]);
+
+        DB::transaction(fn () => $this->settlement->record($booking, $purpose, ['payment_method' => 'beam']));
     }
 
     /**
@@ -463,6 +504,10 @@ class BeamPaymentService
 
             return;
         }
+
+        // เงินเข้าก้อนไหน ใบจองต้องเป็นแผนนั้น — ไม่ใช่แผนของ QR ใบล่าสุดที่ลูกค้ากดดู
+        $this->syncRecordedPlan($booking, $payment->purpose);
+        $booking = $booking->fresh(['schedule', 'seats']);
 
         $this->settlement->confirm(
             $booking,

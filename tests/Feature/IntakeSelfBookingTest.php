@@ -10,10 +10,12 @@ use App\Models\BookingTermAcceptance;
 use App\Models\CustomerIntake;
 use App\Models\FcmToken;
 use App\Models\IntakeLink;
+use App\Models\Payment;
 use App\Models\SmsLog;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\BeamPaymentService;
 use App\Services\BookingDocumentService;
 use App\Services\BookingService;
 use App\Services\IntakeBookingService;
@@ -22,8 +24,10 @@ use App\Support\MediaDisk;
 use App\Support\TripDocumentRequirements;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -480,6 +484,138 @@ class IntakeSelfBookingTest extends TestCase
         $existing->refresh();
         $this->assertSame('Somchai Real', $existing->name);
         $this->assertSame('0800000000', $existing->phone);
+    }
+
+    public function test_paying_the_full_beam_qr_after_peeking_at_the_deposit_stays_a_full_payment(): void
+    {
+        config([
+            'payment.provider' => 'beam',
+            'payment.beam.merchant_id' => 'merchant_test',
+            'payment.beam.api_key' => 'key_test',
+        ]);
+        Http::fake(fn () => Http::response([
+            'chargeId' => 'ch_'.Str::random(8),
+            'actionRequired' => 'ENCODED_IMAGE',
+            'encodedImage' => [
+                'imageBase64Encoded' => 'iVBORw0KGgo=',
+                'expiry' => now()->addMinutes(15)->toIso8601ZuluString(),
+            ],
+        ], 200));
+
+        $intake = $this->completeGroup();
+        $this->book($intake);
+
+        // เปิดหน้า (QR เต็ม) → กดดูมัดจำ (QR มัดจำ) → กดกลับมาเต็ม (ใช้ QR เต็มใบเดิม)
+        $this->get("/g/{$intake->token}/pay")->assertOk();
+        $this->get("/g/{$intake->token}/pay?plan=deposit")->assertOk();
+        $this->get("/g/{$intake->token}/pay?plan=full")->assertOk();
+
+        $this->assertSame('full', Booking::firstOrFail()->payment_type);
+
+        // ลูกค้าสแกน QR เต็มจำนวน — เงินเข้า
+        $full = Payment::where('purpose', Payment::PURPOSE_FULL)->firstOrFail();
+        app(BeamPaymentService::class)->settle($full);
+
+        $booking = Booking::firstOrFail();
+        $this->assertSame('confirmed', $booking->status);
+        $this->assertSame('full', $booking->payment_type);
+        $this->assertEquals(7000.0, (float) $booking->paid_amount);
+        $this->assertNull($booking->balance_amount);
+    }
+
+    public function test_money_for_an_older_full_qr_overrides_a_later_deposit_qr(): void
+    {
+        config([
+            'payment.provider' => 'beam',
+            'payment.beam.merchant_id' => 'merchant_test',
+            'payment.beam.api_key' => 'key_test',
+        ]);
+        Http::fake(fn () => Http::response([
+            'chargeId' => 'ch_'.Str::random(8),
+            'actionRequired' => 'ENCODED_IMAGE',
+            'encodedImage' => [
+                'imageBase64Encoded' => 'iVBORw0KGgo=',
+                'expiry' => now()->addMinutes(15)->toIso8601ZuluString(),
+            ],
+        ], 200));
+
+        $intake = $this->completeGroup();
+        $this->book($intake);
+
+        // QR เต็มยังเปิดค้างอยู่อีกเครื่อง ขณะที่หน้านี้ไปเปิด QR มัดจำ (เขียนแผนมัดจำทับ)
+        $this->get("/g/{$intake->token}/pay")->assertOk();
+        $this->get("/g/{$intake->token}/pay?plan=deposit")->assertOk();
+        $this->assertSame('deposit', Booking::firstOrFail()->payment_type);
+
+        app(BeamPaymentService::class)->settle(Payment::where('purpose', Payment::PURPOSE_FULL)->firstOrFail());
+
+        $booking = Booking::firstOrFail();
+        $this->assertSame('confirmed', $booking->status);
+        $this->assertSame('full', $booking->payment_type);
+        $this->assertEquals(7000.0, (float) $booking->paid_amount);
+        $this->assertNull($booking->balance_amount);
+    }
+
+    public function test_a_full_amount_slip_sent_with_deposit_picked_is_recorded_as_paid_in_full(): void
+    {
+        $intake = $this->completeGroup();
+        $this->book($intake);
+
+        // ลูกค้าติ๊ก "มัดจำ" ค้างไว้ แต่โอนยอดเต็ม 7,000 มา
+        $this->mock(SlipOcrService::class, function ($mock) {
+            $mock->shouldReceive('verify')->andReturn([
+                'status' => SlipOcrService::STATUS_FAILED,
+                'reason' => 'amount_mismatch',
+                'raw' => ['status' => 'success', 'amount' => 7000],
+            ]);
+        });
+
+        $this->post("/g/{$intake->token}/pay", [
+            'payment_type' => 'deposit',
+            'slip_image' => UploadedFile::fake()->image('slip.jpg'),
+        ])->assertSessionHasNoErrors();
+
+        $booking = Booking::firstOrFail();
+        $this->assertSame('confirmed', $booking->status);
+        $this->assertSame('full', $booking->payment_type);
+        $this->assertEquals(7000.0, (float) $booking->paid_amount);
+        $this->assertEquals(0.0, (float) $booking->balance_amount);
+    }
+
+    public function test_a_slip_matching_neither_deposit_nor_full_is_still_held(): void
+    {
+        $intake = $this->completeGroup();
+        $this->book($intake);
+
+        $this->mock(SlipOcrService::class, function ($mock) {
+            $mock->shouldReceive('verify')->andReturn([
+                'status' => SlipOcrService::STATUS_FAILED,
+                'reason' => 'amount_mismatch',
+                'raw' => ['status' => 'success', 'amount' => 4500],
+            ]);
+        });
+
+        $this->post("/g/{$intake->token}/pay", [
+            'payment_type' => 'deposit',
+            'slip_image' => UploadedFile::fake()->image('slip.jpg'),
+        ]);
+
+        $booking = Booking::firstOrFail();
+        $this->assertSame('pending', $booking->status);
+        $this->assertSame(SlipOcrService::STATUS_FAILED, $booking->slip_ocr_status);
+    }
+
+    public function test_the_picked_plan_is_the_value_sent_with_the_slip(): void
+    {
+        $intake = $this->completeGroup();
+        $this->book($intake);
+
+        // ปุ่มเลือกแผนผูกกับฟอร์มสลิปโดยตรง ไม่มี hidden field แยกที่ค้างค่าเก่าได้
+        $this->get("/g/{$intake->token}/pay")
+            ->assertOk()
+            ->assertSee('name="payment_type" form="intake-pay-form" value="full"', false)
+            ->assertSee('name="payment_type" form="intake-pay-form" value="deposit"', false)
+            ->assertDontSee('type="hidden" name="payment_type"', false);
     }
 
     public function test_a_slip_whose_amount_does_not_match_is_held_for_the_team(): void
