@@ -403,6 +403,9 @@ class ChatService
             'pinned_by_id' => null,
         ])->save();
 
+        // คำแปลคือเนื้อหาเดิมอีกภาษา — ลบข้อความแล้วต้องไม่เหลือค้าง
+        app(ChatTranslationService::class)->forget($message);
+
         $message->load(['user', 'replyTo.user', 'reactions']);
         broadcast(new ChatMessageUpdated($message));
     }

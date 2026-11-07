@@ -48,6 +48,7 @@ use App\Http\Controllers\Api\V1\ChatPorterController;
 use App\Http\Controllers\Api\V1\ChatPrivateController;
 use App\Http\Controllers\Api\V1\ChatRestStopController;
 use App\Http\Controllers\Api\V1\ChatSocialController;
+use App\Http\Controllers\Api\V1\ChatTranslationController;
 use App\Http\Controllers\Api\V1\ChatSupplyController;
 use App\Http\Controllers\Api\V1\ChatTrailController;
 use App\Http\Controllers\Api\V1\ChatWellnessController;
@@ -463,6 +464,7 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'pin']);
         Route::delete('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'unpin']);
         Route::post('schedules/{id}/chat/messages/{messageId}/react', [ChatController::class, 'react']);
+        Route::post('schedules/{id}/chat/messages/{messageId}/translate', [ChatTranslationController::class, 'store'])->middleware('throttle:chat-translate');
         Route::post('schedules/{id}/chat/messages/{messageId}/ack-request', [ChatAckController::class, 'request']);
         Route::delete('schedules/{id}/chat/messages/{messageId}/ack-request', [ChatAckController::class, 'cancel']);
         Route::post('schedules/{id}/chat/messages/{messageId}/ack', [ChatAckController::class, 'ack'])->middleware('throttle:60,1');

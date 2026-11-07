@@ -122,6 +122,17 @@ return Application::configure(basePath: dirname(__DIR__))
             return Limit::perMinute(6)->by($key);
         });
 
+        // แปลข้อความแชท — ทุกครั้งที่ยังไม่มีในแคชคือค่า API จริง กดอ่านทีละข้อความ
+        // ไล่ห้องได้สบาย ๆ แต่กันสคริปต์/กดรัวไม่ให้ไล่แปลทั้งห้องทุกภาษา
+        RateLimiter::for('chat-translate', function (Request $request) {
+            $key = 'chat-translate:'.($request->user()?->id ?? $request->ip());
+
+            return [
+                Limit::perMinute(20)->by($key.':m'),
+                Limit::perDay(300)->by($key.':d'),
+            ];
+        });
+
         // General API — fallback สำหรับ public endpoints
         RateLimiter::for('api', function (Request $request) {
             return $request->user()

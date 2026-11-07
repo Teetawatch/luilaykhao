@@ -119,6 +119,8 @@ return [
         // รุ่นที่ใช้ตอบคำถาม "การจองของฉัน" — ใช้รุ่นแรงกว่า concierge เพราะคำตอบ
         // ผูกกับเงินและกำหนดการจริงของลูกค้า ตอบผิดแล้วเสียหายกว่าการแนะนำทริปผิด
         'assistant_model' => env('ANTHROPIC_ASSISTANT_MODEL', 'claude-opus-5'),
+        // รุ่นที่ใช้แปลข้อความแชท (กดแปลทีละข้อความ) — haiku พอและเร็ว ผู้ใช้รอดูผลอยู่
+        'translate_model' => env('ANTHROPIC_TRANSLATE_MODEL', 'claude-haiku-4-5'),
     ],
 
     'thaibulksms' => [

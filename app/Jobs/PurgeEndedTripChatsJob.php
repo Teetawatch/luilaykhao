@@ -9,6 +9,7 @@ use App\Models\ChatFoodRound;
 use App\Models\ChatMemberIntro;
 use App\Models\ChatMessage;
 use App\Models\ChatMessageAck;
+use App\Models\ChatMessageTranslation;
 use App\Models\ChatPoll;
 use App\Models\ChatPorterRound;
 use App\Models\ChatReaction;
@@ -93,6 +94,7 @@ class PurgeEndedTripChatsJob implements ShouldQueue
             // works regardless of FK enforcement.
             ChatReaction::whereIn('message_id', $messageIds)->delete();
             ChatMessageAck::whereIn('message_id', $messageIds)->delete();
+            ChatMessageTranslation::whereIn('message_id', $messageIds)->delete();
             // แนะนำตัว/วันเกิดเป็นของห้อง หายไปพร้อมห้อง (คอนแทคที่แลกกันแล้วอยู่ต่อ — เป็นของบัญชี)
             ChatMemberIntro::where('schedule_id', $scheduleId)->delete();
             ChatBirthdayGreeting::where('schedule_id', $scheduleId)->delete();
