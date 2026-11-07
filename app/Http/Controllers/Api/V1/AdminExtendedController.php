@@ -21,6 +21,7 @@ use App\Models\Vehicle;
 use App\Models\VehicleMaintenance;
 use App\Rules\ThaiName;
 use App\Services\BookingDocumentService;
+use App\Services\CoinService;
 use App\Services\PassengerCheckInService;
 use App\Services\PermitFormService;
 use App\Services\ScheduleDocumentService;
@@ -1238,6 +1239,12 @@ class AdminExtendedController extends Controller
         $review = Review::findOrFail($id);
         $review->update(['is_approved' => ! $review->is_approved]);
 
+        // ซ่อนรีวิว = ถอน Coin ที่ได้ไป, เปิดกลับ = ให้คืนตามเนื้อหา
+        $coins = app(CoinService::class);
+        $review->is_approved
+            ? $coins->syncReviewReward($review)
+            : $coins->revokeReviewReward($review, 'ทีมงานซ่อนรีวิวที่ไม่ตรงตามเงื่อนไข — ถอน Coin คืน');
+
         $msg = $review->is_approved ? 'อนุมัติรีวิวแล้ว' : 'ซ่อนรีวิวแล้ว';
 
         return $this->success(['is_approved' => $review->is_approved], $msg);
@@ -1245,7 +1252,9 @@ class AdminExtendedController extends Controller
 
     public function adminDeleteReview(int $id): JsonResponse
     {
-        Review::findOrFail($id)->delete();
+        $review = Review::findOrFail($id);
+        app(CoinService::class)->revokeReviewReward($review, 'ทีมงานลบรีวิว — ถอน Coin คืน');
+        $review->delete();
 
         return $this->success(null, 'ลบรีวิวสำเร็จ');
     }

@@ -10,8 +10,8 @@ class Review extends Model
 {
     protected $fillable = [
         'user_id', 'reviewer_name', 'booking_id', 'trip_id', 'rating',
-        'rating_guide', 'rating_vehicle', 'rating_food', 'rating_value', 'comment',
-        'images', 'videos', 'admin_reply', 'admin_replied_by', 'admin_replied_at', 'is_approved',
+        'rating_guide', 'rating_vehicle', 'rating_food', 'rating_value', 'comment', 'tags',
+        'images', 'videos', 'coins_awarded', 'admin_reply', 'admin_replied_by', 'admin_replied_at', 'is_approved',
     ];
 
     protected function casts(): array
@@ -19,6 +19,8 @@ class Review extends Model
         return [
             'images' => 'array',
             'videos' => 'array',
+            'tags' => 'array',
+            'coins_awarded' => 'integer',
             'is_approved' => 'boolean',
             'admin_replied_at' => 'datetime',
             'rating' => 'integer',

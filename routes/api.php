@@ -51,6 +51,7 @@ use App\Http\Controllers\Api\V1\ChatSocialController;
 use App\Http\Controllers\Api\V1\ChatSupplyController;
 use App\Http\Controllers\Api\V1\ChatTrailController;
 use App\Http\Controllers\Api\V1\ChatWellnessController;
+use App\Http\Controllers\Api\V1\CoinController;
 use App\Http\Controllers\Api\V1\ConciergeController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CountryController;
@@ -627,6 +628,8 @@ Route::prefix('v1')->group(function () {
 
         // Reviews (authenticated)
         Route::get('reviews/my', [ReviewController::class, 'myReviews']);
+        // ปุ่มคำรีวิว + กติกา Coin ของหน้าเขียนรีวิว
+        Route::get('reviews/compose-options', [ReviewController::class, 'composeOptions']);
         Route::post('reviews', [ReviewController::class, 'store']);
         Route::put('reviews/{id}', [ReviewController::class, 'update']);
         Route::delete('reviews/{id}', [ReviewController::class, 'destroy']);
@@ -735,6 +738,9 @@ Route::prefix('v1')->group(function () {
         Route::get('trip-alerts', [TripAlertController::class, 'index']);
         Route::post('trips/{slug}/alerts', [TripAlertController::class, 'store']);
         Route::delete('trips/{slug}/alerts', [TripAlertController::class, 'destroy']);
+
+        // กระเป๋า Coin (รางวัลรีวิว ใช้ลดค่าทริป)
+        Route::get('coins', [CoinController::class, 'show']);
 
         // Loyalty program
         Route::get('loyalty/account', [LoyaltyController::class, 'account']);

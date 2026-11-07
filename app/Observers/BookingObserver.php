@@ -8,6 +8,7 @@ use App\Jobs\SendTripBriefsJob;
 use App\Jobs\SyncTripActivityJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Services\CoinService;
 use App\Services\CustomerIntakeService;
 use App\Services\GiftVoucherService;
 use App\Services\LoyaltyService;
@@ -42,6 +43,7 @@ class BookingObserver
         private CustomerIntakeService $intakeService,
         private GiftVoucherService $giftVoucherService,
         private PartnerService $partnerService,
+        private CoinService $coinService,
     ) {}
 
     public function created(Booking $booking): void
@@ -103,6 +105,12 @@ class BookingObserver
         // ทริปที่ไม่มีอยู่แล้ว
         if (in_array($booking->status, self::REVERSING_STATUSES, true)) {
             SyncTripActivityJob::dispatch($booking->id);
+
+            // Coin ที่ใช้ลดค่าทริปใบนี้คืนเต็มจำนวน ทั้งใบที่ยังไม่จ่ายและใบที่คืนเงิน
+            // (Coin เป็นส่วนลด ไม่ใช่เงิน — ไม่มีนโยบายหักเปอร์เซ็นต์แบบบัตรของขวัญ)
+            if ((int) $booking->coins_used > 0) {
+                $this->coinService->restoreForBooking($booking);
+            }
 
             // คอมพาร์ทเนอร์คิดจากทริปที่เดินทางจริงเท่านั้น
             if ($booking->partner_id) {

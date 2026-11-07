@@ -45,6 +45,7 @@ class BookingService
         private ScheduleSeatNotifier $seatNotifier,
         private GiftVoucherService $giftVoucherService,
         private SeatLayoutGuard $seatLayoutGuard,
+        private CoinService $coinService,
     ) {}
 
     public function createBooking(
@@ -71,6 +72,7 @@ class BookingService
         bool $waivePayment = false,
         ?TermsConsent $termsConsent = null,
         ?string $giftVoucherCode = null,
+        int $coinsToUse = 0,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
@@ -95,7 +97,7 @@ class BookingService
             $promotionCode = null;
         }
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, $skipPayment, $giftVoucherCode, &$coveredByVoucher, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, $skipPayment, $giftVoucherCode, $coinsToUse, &$coveredByVoucher, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -503,6 +505,19 @@ class BookingService
                 }
             }
 
+            // Coin จากการรีวิว — เป็นส่วนลด (ต้นทุนการตลาด ไม่ใช่เงินที่จ่ายมาแล้ว)
+            // หักหลังโค้ดส่วนลดและก่อนบัตรของขวัญ เพดานคิดจากยอดหลังส่วนลด ขอเกิน
+            // เพดานถูกปัดลงเงียบ ๆ (แอปคิดเพดานเดียวกันจาก rules) ยอดที่ใช้บวกเข้า
+            // discount_amount ด้วย ใบเสร็จ/งบรอบ/คอมพาร์ทเนอร์จึงเห็นเป็นส่วนลดเอง
+            $coinsUsed = 0;
+            if ($coinsToUse > 0 && ! $skipPayment) {
+                $coinsUsed = min($coinsToUse, $this->coinService->maxSpendable($userId, (float) $totalAmount));
+                if ($coinsUsed > 0) {
+                    $totalAmount = round((float) $totalAmount - $coinsUsed, 2);
+                    $discountAmount = round((float) $discountAmount + $coinsUsed, 2);
+                }
+            }
+
             // บัตรของขวัญ — หักหลังส่วนลดทุกชนิด เพราะบัตรคือ "เงินที่จ่ายมาแล้ว" ไม่ใช่
             // ส่วนลด total_amount ที่เหลือคือยอดที่ยังต้องจ่ายเป็นเงิน PaymentQuote
             // (มัดจำ/งวด/แบ่งจ่าย) จึงคิดต่อจากยอดนี้ได้เองโดยไม่ต้องรู้จักบัตร
@@ -559,6 +574,7 @@ class BookingService
                 'promotion_id' => $promotionId,
                 'promotion_code' => ($promotionId || $redemption) ? $promotionCode : null,
                 'discount_amount' => $discountAmount,
+                'coins_used' => $coinsUsed,
                 'gift_voucher_id' => $voucher?->id,
                 'voucher_amount' => $voucherAmount,
                 'sale_campaign_id' => $saleCampaign?->id,
@@ -588,6 +604,12 @@ class BookingService
                     'is_used' => true,
                     'booking_id' => $booking->id,
                 ]);
+            }
+
+            // หัก Coin ใน transaction เดียวกัน — ยอดไม่พอ (กดจองพร้อมกันสองเครื่อง)
+            // โยนข้อผิดพลาด ใบจองทั้งใบจึงไม่เกิด
+            if ($coinsUsed > 0) {
+                $this->coinService->spendForBooking($booking, $coinsUsed);
             }
 
             // หักยอดจากบัตรใน transaction เดียวกัน — บัตรใบเดียวกดจองพร้อมกันสองหน้าต่าง

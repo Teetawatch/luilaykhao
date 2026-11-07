@@ -80,6 +80,7 @@ class BookingController extends Controller
                 waivePayment: $waivePayment,
                 termsConsent: $termsConsent,
                 giftVoucherCode: $request->gift_voucher_code,
+                coinsToUse: (int) $request->input('coins_to_use', 0),
             );
 
             if ($request->filled('partner_code')) {

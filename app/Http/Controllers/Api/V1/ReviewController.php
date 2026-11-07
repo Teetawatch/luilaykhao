@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Review;
+use App\Services\CoinService;
 use App\Services\ContentFilterService;
 use App\Services\ModerationService;
 use App\Support\MediaDisk;
@@ -13,6 +14,7 @@ use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ReviewController extends Controller
 {
@@ -24,7 +26,56 @@ class ReviewController extends Controller
     public function __construct(
         private ModerationService $moderation,
         private ContentFilterService $filter,
+        private CoinService $coins,
     ) {}
+
+    /**
+     * สิ่งที่หน้าเขียนรีวิวต้องรู้ — ปุ่มคำรีวิวสองชุด และกติกา Coin (ตัวเลขอยู่ที่
+     * config/coins.php ที่เดียว แอปไม่ต้องฮาร์ดโค้ด)
+     */
+    public function composeOptions(): JsonResponse
+    {
+        return $this->success([
+            'tags' => [
+                'positive' => array_values(config('coins.tags.positive', [])),
+                'improve' => array_values(config('coins.tags.improve', [])),
+            ],
+            'coins' => $this->coins->rules(),
+        ]);
+    }
+
+    /** @return array<int, string> */
+    private function allowedTags(): array
+    {
+        return array_values(array_unique(array_merge(
+            config('coins.tags.positive', []),
+            config('coins.tags.improve', []),
+        )));
+    }
+
+    /** @return array<string, array<int, mixed>> */
+    private function tagRules(): array
+    {
+        return [
+            'tags' => ['nullable', 'array', 'max:8'],
+            'tags.*' => ['string', Rule::in($this->allowedTags())],
+        ];
+    }
+
+    /**
+     * ผลรางวัลที่แนบไปกับคำตอบ — หน้าจอใช้บอก "ได้รับ +N Coin" และยอดล่าสุด
+     *
+     * @return array<string, mixed>
+     */
+    private function coinResult(Review $review, int $earned): array
+    {
+        return [
+            'coins_earned' => $earned,
+            'coins_awarded' => (int) $review->coins_awarded,
+            'coin_breakdown' => $this->coins->reviewBreakdown($review),
+            'coin_balance' => $this->coins->balance($review->user_id),
+        ];
+    }
 
     /**
      * id ของคนที่ผู้อ่านคนนี้บล็อกไว้ (หรือถูกบล็อก) — เส้นทางรีวิวอ่านได้
@@ -205,6 +256,7 @@ class ReviewController extends Controller
             'videos.*' => ['string'],
             // ผู้เดินทางที่แอดมินรีวิวแทน — ใช้เฉพาะใบที่แอดมินจองให้ลูกค้า
             'passenger_id' => ['nullable', 'integer'],
+            ...$this->tagRules(),
         ]);
 
         if ($rejected = $this->filter->check($validated['comment'] ?? null)) {
@@ -261,11 +313,19 @@ class ReviewController extends Controller
             'rating_food' => $validated['rating_food'] ?? null,
             'rating_value' => $validated['rating_value'] ?? null,
             'comment' => $validated['comment'] ?? null,
+            'tags' => array_values(array_unique($validated['tags'] ?? [])),
             'images' => $validated['images'] ?? [],
             'videos' => $validated['videos'] ?? [],
         ]);
 
-        return $this->success($this->formatReview($review->load(['user', 'trip'])), 'รีวิวสำเร็จแล้ว', 201);
+        $review->load(['user', 'trip', 'booking']);
+        $earned = $this->coins->syncReviewReward($review);
+
+        return $this->success(
+            [...$this->formatReview($review), ...$this->coinResult($review, $earned)],
+            $earned > 0 ? 'รีวิวสำเร็จแล้ว ได้รับ '.$earned.' Coin' : 'รีวิวสำเร็จแล้ว',
+            201,
+        );
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -285,15 +345,27 @@ class ReviewController extends Controller
             'images.*' => ['string'],
             'videos' => ['nullable', 'array', 'max:2'],
             'videos.*' => ['string'],
+            ...$this->tagRules(),
         ]);
 
         if ($rejected = $this->filter->check($validated['comment'] ?? null)) {
             return $this->error($rejected, 422);
         }
 
+        if (array_key_exists('tags', $validated)) {
+            $validated['tags'] = array_values(array_unique($validated['tags'] ?? []));
+        }
+
         $review->update($validated);
 
-        return $this->success($this->formatReview($review->fresh(['user', 'trip'])), 'อัปเดตรีวิวสำเร็จ');
+        // เพิ่มรูป/วิดีโอ/ข้อความทีหลังได้ Coin ส่วนที่ยังขาด — ลดเนื้อหาลงไม่ถูกหักคืน
+        $review = $review->fresh(['user', 'trip', 'booking']);
+        $earned = $this->coins->syncReviewReward($review);
+
+        return $this->success(
+            [...$this->formatReview($review), ...$this->coinResult($review, $earned)],
+            $earned > 0 ? 'อัปเดตรีวิวสำเร็จ ได้รับเพิ่ม '.$earned.' Coin' : 'อัปเดตรีวิวสำเร็จ',
+        );
     }
 
     public function destroy(Request $request, int $id): JsonResponse
@@ -360,12 +432,15 @@ class ReviewController extends Controller
             'rating_food' => $r->rating_food,
             'rating_value' => $r->rating_value,
             'comment' => $r->comment,
+            // ปุ่มคำรีวิวที่ผู้รีวิวกดเลือก — แสดงเป็นชิปใต้ดาว
+            'tags' => $r->tags ?? [],
             'images' => $r->images ?? [],
             'videos' => $r->videos ?? [],
             'admin_reply' => $r->admin_reply,
             'admin_replied_by' => $r->repliedBy?->name,
             'admin_replied_at' => $r->admin_replied_at?->toISOString(),
             'is_approved' => $r->is_approved,
+            'coins_awarded' => (int) $r->coins_awarded,
             'created_at' => $r->created_at?->toISOString(),
         ];
     }

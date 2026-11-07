@@ -233,6 +233,8 @@ class BookingResource extends JsonResource
             // ยอดที่จ่ายด้วยบัตรของขวัญ — หักออกจาก total_amount แล้ว (total_amount = ยอดที่
             // ยังต้องจ่ายเป็นเงิน) ค่าทริปเต็มของใบนี้คือ total_amount + voucher_amount
             'voucher_amount' => (float) $this->voucher_amount,
+            // Coin ที่ใช้ลดค่าทริป (1 Coin = 1 บาท) — รวมอยู่ใน discount_amount แล้ว
+            'coins_used' => (int) $this->coins_used,
             'gift_voucher' => $this->when((float) $this->voucher_amount > 0, fn () => [
                 'amount' => (float) $this->voucher_amount,
                 'restored_amount' => (float) $this->voucher_restored_amount,
