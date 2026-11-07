@@ -31,7 +31,7 @@
           <span class="material-symbols-rounded text-5xl text-red-300 mb-4">wifi_off</span>
           <h3 class="text-xl font-extrabold text-[var(--color-text-dark)] mb-2">โหลดภาพไม่สำเร็จ</h3>
           <p class="text-[var(--color-text-muted)] font-medium mb-6">{{ error }}</p>
-          <button @click="fetchImages" class="inline-flex items-center gap-2 px-6 py-3 bg-[var(--color-primary)] text-white rounded-full font-bold hover:bg-[var(--color-primary-mid)] transition-all">
+          <button @click="fetchImages" class="inline-flex items-center gap-2 px-6 py-3 bg-[var(--color-accent)] text-white rounded-full font-bold hover:bg-[var(--color-accent-mid)] transition-all">
             <span class="material-symbols-rounded text-[20px]">refresh</span>
             ลองใหม่
           </button>

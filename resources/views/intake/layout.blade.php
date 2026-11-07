@@ -51,9 +51,9 @@
         :root {
             --forest: #0D2B1E;
             --forest-mid: #1A3A2E;
-            --canopy: #2D7A4F;
-            --canopy-dark: #1A5732;
-            --leaf: #4CAF7D;
+            --canopy: #047857;
+            --canopy-dark: #065F46;
+            --leaf: #10B981;
             --ink: #0D2B1E;
             --body: #2C4A3A;
             --muted: #6B8F7A;

@@ -31,7 +31,7 @@
           <router-link
             v-if="e.status === 'offered'"
             :to="`/booking/${e.schedule_id}`"
-            class="text-center px-3 py-1.5 rounded-full bg-[var(--color-primary)] text-white text-xs font-extrabold hover:bg-[var(--color-accent)] transition">
+            class="text-center px-3 py-1.5 rounded-full bg-[var(--color-accent)] text-white text-xs font-extrabold hover:bg-[var(--color-accent-mid)] transition">
             จองเลย
           </router-link>
           <router-link

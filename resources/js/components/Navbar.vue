@@ -1512,13 +1512,14 @@ async function handleLogout() {
   font-size: 14px;
   font-weight: 700;
   color: #fff;
-  background-color: var(--color-primary);
-  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--color-primary) 65%, transparent);
+  background-color: var(--color-accent);
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--color-accent) 65%, transparent);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .cta-btn:hover {
+  background-color: var(--color-accent-mid);
   transform: translateY(-1px);
-  box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--color-primary) 75%, transparent);
+  box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--color-accent) 75%, transparent);
 }
 .cta-btn:active {
   transform: translateY(0) scale(0.98);
@@ -1708,7 +1709,7 @@ async function handleLogout() {
   line-height: 1;
 }
 .sheet-social:hover {
-  background-color: var(--color-primary);
+  background-color: var(--color-accent);
   color: #fff;
 }
 .sheet-social:active {

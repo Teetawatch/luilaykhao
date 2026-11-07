@@ -276,8 +276,8 @@ useHead({
 }
 .cat-btn--active,
 .cat-btn--active:hover:not(:disabled) {
-  background-color: var(--color-primary) !important;
-  border-color: var(--color-primary);
+  background-color: var(--color-accent) !important;
+  border-color: var(--color-accent);
   color: #fff;
 }
 

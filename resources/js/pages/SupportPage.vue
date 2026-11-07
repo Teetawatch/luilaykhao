@@ -47,7 +47,7 @@
                   <span class="material-symbols-rounded text-primary text-[18px]">support_agent</span>
                 </div>
                 <div class="max-w-[78%] rounded-2xl px-4 py-2.5"
-                  :class="m.is_mine ? 'bg-primary text-white' : 'bg-sand/70 text-text-dark'">
+                  :class="m.is_mine ? 'bg-accent text-white' : 'bg-sand/70 text-text-dark'">
                   <button v-if="m.image_url" type="button" @click="lightbox = m.image_url" class="block mb-1.5">
                     <img :src="m.image_url" alt="รูปที่แนบมา" class="rounded-xl max-h-64 w-auto" />
                   </button>
@@ -82,7 +82,7 @@
               @keydown.enter.exact.prevent="send"
               class="flex-1 resize-none px-4 py-3 bg-sand/30 border border-sand-dark/40 rounded-2xl text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors max-h-32"></textarea>
             <button type="submit" :disabled="sending || (!draft.trim() && !pendingImage)"
-              class="w-11 h-11 rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all shrink-0">
+              class="w-11 h-11 rounded-xl bg-accent text-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all shrink-0">
               <span v-if="sending" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
               <span v-else class="material-symbols-rounded text-[20px]">send</span>
             </button>

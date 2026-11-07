@@ -31,7 +31,7 @@
                 </div>
                 <label
                   for="avatar-upload"
-                  class="absolute bottom-0.5 right-0.5 w-10 h-10 rounded-full ring-4 ring-white bg-[var(--color-accent)] hover:bg-[var(--color-primary)] text-white flex items-center justify-center cursor-pointer transition-colors"
+                  class="absolute bottom-0.5 right-0.5 w-10 h-10 rounded-full ring-4 ring-white bg-[var(--color-accent)] hover:bg-[var(--color-accent-mid)] text-white flex items-center justify-center cursor-pointer transition-colors"
                   :title="avatarFile ? 'เลือกรูปอื่น' : 'เปลี่ยนรูปโปรไฟล์'"
                 >
                   <span class="material-symbols-rounded text-[20px]">photo_camera</span>
@@ -149,7 +149,7 @@
             role="tab"
             :aria-selected="activeTab === tab.key"
             class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-colors"
-            :class="activeTab === tab.key ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-mid)]'"
+            :class="activeTab === tab.key ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-mid)]'"
             @click="openTab(tab.key)"
           >
             <span class="material-symbols-rounded text-[18px]">{{ tab.icon }}</span>
@@ -1051,10 +1051,10 @@ onMounted(() => {
   font-size: 0.875rem;
   font-weight: 700;
   color: #fff;
-  background-color: var(--color-primary);
+  background-color: var(--color-accent);
   transition: background-color 0.2s ease, opacity 0.2s ease;
 }
-.btn-primary:hover:not(:disabled) { background-color: var(--color-accent); }
+.btn-primary:hover:not(:disabled) { background-color: var(--color-accent-mid); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-ghost {
@@ -1125,7 +1125,7 @@ onMounted(() => {
 }
 .side-tab:hover { background-color: var(--color-sand); }
 .side-tab--active,
-.side-tab--active:hover { background-color: var(--color-primary); color: #fff; }
+.side-tab--active:hover { background-color: var(--color-accent); color: #fff; }
 
 .side-link {
   display: flex;

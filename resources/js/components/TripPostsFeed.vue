@@ -96,7 +96,7 @@
       <button
         type="button"
         :disabled="loadingMore"
-        class="inline-flex items-center gap-2 px-8 py-3 rounded-full border-2 border-[var(--color-primary)] text-[var(--color-primary)] font-extrabold hover:bg-[var(--color-primary)] hover:text-white transition-colors disabled:opacity-50"
+        class="inline-flex items-center gap-2 px-8 py-3 rounded-full border-2 border-[var(--color-accent)] text-[var(--color-accent)] font-extrabold hover:bg-[var(--color-accent-mid)] hover:text-white transition-colors disabled:opacity-50"
         @click="loadMore"
       >
         <span

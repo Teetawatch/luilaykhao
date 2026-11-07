@@ -726,7 +726,7 @@ watch(tripQuery, () => {
   flex-shrink: 0;
   padding: 0.9rem 1.5rem;
   border-radius: 1.25rem;
-  background: var(--color-primary);
+  background: var(--color-accent);
   color: #fff;
   font-weight: 700;
   font-size: 1.0625rem;
@@ -734,7 +734,7 @@ watch(tripQuery, () => {
   transition: background-color 0.25s ease;
 }
 .hs-cta:hover {
-  background: var(--color-accent);
+  background: var(--color-accent-mid);
 }
 @media (min-width: 768px) {
   .hs-cta {

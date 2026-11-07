@@ -53,7 +53,7 @@
             <button
               type="submit"
               :disabled="busy || !seatCount"
-              class="flex-1 rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-bold text-white disabled:opacity-40"
+              class="flex-1 rounded-xl bg-[var(--color-accent)] py-2.5 text-sm font-bold text-white disabled:opacity-40"
             >
               {{ busy ? 'กำลังสร้าง...' : 'สร้างกลุ่ม' }}
             </button>

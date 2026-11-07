@@ -642,10 +642,10 @@ onBeforeUnmount(() => {
   font-size: 0.875rem;
   font-weight: 700;
   color: #fff;
-  background-color: var(--color-primary);
+  background-color: var(--color-accent);
   transition: background-color 0.2s ease;
 }
-.btn-primary:hover { background-color: var(--color-accent); }
+.btn-primary:hover { background-color: var(--color-accent-mid); }
 
 .btn-ghost {
   display: inline-flex;
@@ -693,8 +693,8 @@ onBeforeUnmount(() => {
 .chip:disabled { opacity: 0.4; cursor: not-allowed; }
 .chip--active,
 .chip--active:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
   color: #fff;
 }
 .chip-count {
@@ -725,8 +725,8 @@ onBeforeUnmount(() => {
 .page-btn--active,
 .page-btn--active:disabled {
   opacity: 1;
-  border-color: var(--color-primary);
-  background-color: var(--color-primary);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
   color: #fff;
   cursor: default;
 }

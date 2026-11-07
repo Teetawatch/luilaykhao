@@ -184,7 +184,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocPointer));
   font-family: 'DB Heavent', 'Anuphan', sans-serif;
 }
 .vs-control input:focus {
-  border-color: #2d7a4f;
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 3px rgba(45, 122, 79, 0.08);
 }
 .vs-control input::placeholder { color: #9ca3af; }
@@ -222,7 +222,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocPointer));
 }
 .vs-item.is-active { background: #f0f7f3; }
 .vs-item.is-selected .vs-item-name,
-.vs-item--empty.is-selected { color: #2d7a4f; font-weight: 700; }
+.vs-item--empty.is-selected { color: var(--color-accent); font-weight: 700; }
 .vs-item--empty { font-size: 13px; color: #6b7280; }
 .vs-item-icon { font-size: 18px; color: #6b7280; flex-shrink: 0; }
 .vs-item-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }

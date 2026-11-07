@@ -29,7 +29,7 @@
             แชทผ่าน LINE
           </a>
           <a :href="supportPhoneHref()"
-             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid active:scale-[0.98] transition-all">
+             class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-accent text-white rounded-2xl font-bold text-lg hover:bg-accent-mid active:scale-[0.98] transition-all">
             <span class="material-symbols-rounded">call</span>
             โทร {{ supportPhone() }}
           </a>
@@ -118,7 +118,7 @@
               <div class="flex gap-4">
                 <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
                   :aria-label="social.label"
-                  class="w-12 h-12 rounded-xl bg-white border border-sand-dark flex items-center justify-center text-text-mid hover:text-white hover:bg-primary hover:border-primary transition-all duration-300">
+                  class="w-12 h-12 rounded-xl bg-white border border-sand-dark flex items-center justify-center text-text-mid hover:text-white hover:bg-accent hover:border-accent transition-all duration-300">
                   <i :class="social.icon" class="text-xl" aria-hidden="true"></i>
                 </a>
               </div>
@@ -231,7 +231,7 @@
 
                   <div class="pt-2">
                     <button type="submit" :disabled="submitting"
-                      class="w-full py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary-mid active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                      class="w-full py-4 bg-accent text-white rounded-2xl font-bold text-lg hover:bg-accent-mid active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                       <span v-if="submitting" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                       {{ submitting ? 'กำลังส่ง...' : 'ส่งข้อความ' }}
                     </button>
@@ -265,7 +265,7 @@
             แสดงแผนที่
           </button>
           <a href="https://maps.google.com/?q=บางนา+กรุงเทพ" target="_blank" rel="noopener"
-            class="bg-primary text-white px-6 py-3 rounded-full font-bold hover:bg-primary-mid transition-colors flex items-center gap-2">
+            class="bg-accent text-white px-6 py-3 rounded-full font-bold hover:bg-accent-mid transition-colors flex items-center gap-2">
             <span class="material-symbols-rounded text-[20px]">open_in_new</span>
             เปิดใน Google Maps
           </a>

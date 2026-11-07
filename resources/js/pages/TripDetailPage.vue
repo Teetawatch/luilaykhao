@@ -345,7 +345,7 @@
                     type="button"
                     @click="scrollToSector(sIdx)"
                     class="sector-tab-btn px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all flex items-center gap-2"
-                    :class="activeSector === sIdx ? 'bg-[var(--color-primary)] text-white' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'"
+                    :class="activeSector === sIdx ? 'bg-[var(--color-accent)] text-white' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'"
                   >
                     <span class="material-symbols-rounded text-lg" v-if="activeSector === sIdx">location_on</span>
                     {{ sector.sector || `ช่วงที่ ${sIdx + 1}` }}
@@ -564,13 +564,13 @@
 
               <div class="grid grid-cols-1 md:grid-cols-2 rounded-[2rem] border border-gray-100 bg-white overflow-hidden">
                 <div class="p-7 md:p-9 md:border-r border-gray-100">
-                  <h4 class="text-lg font-black mb-6 flex items-center gap-2.5 text-[#2D7A4F]">
+                  <h4 class="text-lg font-black mb-6 flex items-center gap-2.5 text-[var(--color-accent)]">
                     <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 1">check_circle</span>
                     รวมในราคาแล้ว
                   </h4>
                   <ul class="space-y-3.5 text-[15px] md:text-base font-medium text-[var(--color-text-dark)]">
                     <li v-for="(item, i) in trip.inclusions" :key="i" class="flex items-start gap-3">
-                      <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-[#E8F5EC] text-[#2D7A4F] flex items-center justify-center"><span class="material-symbols-rounded text-[14px]">check</span></span>
+                      <span class="w-5 h-5 mt-0.5 shrink-0 rounded-full bg-[var(--color-accent-tint)] text-[var(--color-accent)] flex items-center justify-center"><span class="material-symbols-rounded text-[14px]">check</span></span>
                       <span>{{ item }}</span>
                     </li>
                   </ul>
@@ -702,13 +702,13 @@
                   v-for="(tier, i) in trip.cancellation_policy.tiers"
                   :key="i"
                   class="flex items-center gap-4 p-4 md:p-5 rounded-2xl border"
-                  :class="tier.percent >= 100 ? 'bg-[#E8F5EC] border-[#2D7A4F]/20'
+                  :class="tier.percent >= 100 ? 'bg-[var(--color-accent-tint)] border-[var(--color-accent)]/20'
                     : tier.percent > 0 ? 'bg-[#FFF8EE] border-[#C8963E]/25'
                     : 'bg-gray-50 border-gray-200'"
                 >
                   <div
                     class="shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center font-black leading-none"
-                    :class="tier.percent >= 100 ? 'bg-[#2D7A4F] text-white'
+                    :class="tier.percent >= 100 ? 'bg-[var(--color-accent)] text-white'
                       : tier.percent > 0 ? 'bg-[#C8963E] text-white'
                       : 'bg-gray-300 text-white'"
                   >
@@ -821,9 +821,9 @@
                 </div>
 
                 <!-- ผ่อนชำระ: ยอดต่องวดที่ต่ำที่สุดเท่าที่รอบนี้ผ่อนได้จริง -->
-                <div v-if="installmentPlan" class="mb-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E8F5EC] border border-[#2D7A4F]/20">
-                  <span class="material-symbols-rounded text-[#2D7A4F]" style="font-size:18px;">credit_card</span>
-                  <span class="text-[13px] font-black text-[#2D7A4F]">
+                <div v-if="installmentPlan" class="mb-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-accent-tint)] border border-[var(--color-accent)]/20">
+                  <span class="material-symbols-rounded text-[var(--color-accent)]" style="font-size:18px;">credit_card</span>
+                  <span class="text-[13px] font-black text-[var(--color-accent)]">
                     ผ่อน 0% ได้ {{ installmentPlan.count }} งวด · งวดละ ฿{{ installmentPlan.perInstallment.toLocaleString() }}
                   </span>
                 </div>
@@ -838,19 +838,19 @@
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-bold">
                     <div class="px-3 py-2 rounded-lg border"
                       :class="!isTrekking || selectedRegion
-                        ? 'bg-[#E8F5EC] border-[#2D7A4F]/20 text-[#2D7A4F]'
+                        ? 'bg-[var(--color-accent-tint)] border-[var(--color-accent)]/20 text-[var(--color-accent)]'
                         : 'bg-white border-gray-200 text-[var(--color-text-muted)]'">
                       1) {{ isTrekking ? 'เลือกภูมิภาค' : 'เลือกวันเดินทาง' }}
                     </div>
                     <div class="px-3 py-2 rounded-lg border"
                       :class="selectedSchedule
-                        ? 'bg-[#E8F5EC] border-[#2D7A4F]/20 text-[#2D7A4F]'
+                        ? 'bg-[var(--color-accent-tint)] border-[var(--color-accent)]/20 text-[var(--color-accent)]'
                         : 'bg-white border-gray-200 text-[var(--color-text-muted)]'">
                       2) เลือกรอบเดินทาง
                     </div>
                     <div class="px-3 py-2 rounded-lg border"
                       :class="selectedSchedule && (!isTrekking || selectedPickup || (isJoinTrip && selectedSchedule?.join_trip_enabled))
-                        ? 'bg-[#E8F5EC] border-[#2D7A4F]/20 text-[#2D7A4F]'
+                        ? 'bg-[var(--color-accent-tint)] border-[var(--color-accent)]/20 text-[var(--color-accent)]'
                         : 'bg-white border-gray-200 text-[var(--color-text-muted)]'">
                       3) ดำเนินการจอง
                     </div>
@@ -900,14 +900,14 @@
                     </button>
                   </div>
 
-                  <div v-if="selectedRegion" class="mt-4 p-3 rounded-xl bg-[#E8F5EC] border border-[#2D7A4F]/20 flex items-center justify-between gap-3">
-                    <p class="text-xs font-bold text-[#2D7A4F] flex items-center gap-1.5">
+                  <div v-if="selectedRegion" class="mt-4 p-3 rounded-xl bg-[var(--color-accent-tint)] border border-[var(--color-accent)]/20 flex items-center justify-between gap-3">
+                    <p class="text-xs font-bold text-[var(--color-accent)] flex items-center gap-1.5">
                       <span class="material-symbols-rounded text-[16px]">check_circle</span>
                       เลือกแล้ว: {{ regionOptions.find(r => r.region === selectedRegion)?.region_label || selectedRegion }}
                     </p>
                     <button
                       @click="selectRegion(null)"
-                      class="text-[11px] font-black text-[#2D7A4F] hover:text-[var(--color-accent)] transition-colors"
+                      class="text-[11px] font-black text-[var(--color-accent)] hover:text-[var(--color-accent-mid)] transition-colors"
                     >
                       เปลี่ยนภูมิภาค
                     </button>
@@ -1399,14 +1399,14 @@
                 ฿{{ originalDisplayPrice.toLocaleString() }}
               </span>
             </div>
-            <p v-if="installmentPlan" class="mt-0.5 text-[11px] font-black text-[#2D7A4F] truncate">
+            <p v-if="installmentPlan" class="mt-0.5 text-[11px] font-black text-[var(--color-accent)] truncate">
               ผ่อน 0% {{ installmentPlan.count }} งวด · งวดละ ฿{{ installmentPlan.perInstallment.toLocaleString() }}
             </p>
           </div>
           <router-link
             v-if="canBookNow"
             :to="{ path: `/booking/${selectedSchedule.id}`, query: bookingQuery }"
-            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-primary)] text-white px-6 py-3.5 rounded-full font-extrabold text-base active:scale-95 transition-transform"
+            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-accent)] text-white px-6 py-3.5 rounded-full font-extrabold text-base active:scale-95 transition-transform"
           >
             <span class="material-symbols-rounded text-[20px]">event_available</span>
             จองเลย
@@ -1414,7 +1414,7 @@
           <button
             v-else
             @click="scrollToBooking"
-            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-primary)] text-white px-6 py-3.5 rounded-full font-extrabold text-base active:scale-95 transition-transform"
+            class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-accent)] text-white px-6 py-3.5 rounded-full font-extrabold text-base active:scale-95 transition-transform"
           >
             {{ selectedSchedule ? 'เลือกให้ครบ' : 'เลือกวันเดินทาง' }}
             <span class="material-symbols-rounded text-[20px]">arrow_upward</span>
@@ -1428,7 +1428,7 @@
       </div>
       <h3 class="text-[var(--color-text-dark)] text-2xl font-extrabold mb-3">ไม่พบข้อมูลทริป</h3>
       <p class="text-[var(--color-text-muted)] text-base font-medium mb-8">ทริปที่คุณค้นหาอาจถูกลบหรือไม่มีอยู่ในระบบ</p>
-      <router-link to="/trips" class="inline-flex items-center gap-2 bg-[var(--color-primary)] text-white px-8 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 hover:-translate-y-1">
+      <router-link to="/trips" class="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-8 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent-mid)] transition-all duration-300 hover:-translate-y-1">
         <span class="material-symbols-rounded text-[20px]">arrow_back</span>
         กลับไปหน้ากิจกรรมทั้งหมด
       </router-link>
@@ -1507,7 +1507,7 @@
 
             <!-- Footer -->
             <footer class="shrink-0 px-5 py-4 sm:px-7 border-t border-gray-100 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <button @click="closeMustKnow" class="w-full bg-[var(--color-primary)] text-white font-extrabold py-3.5 rounded-xl hover:bg-[var(--color-accent)] active:scale-[0.99] transition-all text-sm sm:text-base">
+              <button @click="closeMustKnow" class="w-full bg-[var(--color-accent)] text-white font-extrabold py-3.5 rounded-xl hover:bg-[var(--color-accent-mid)] active:scale-[0.99] transition-all text-sm sm:text-base">
                 เข้าใจแล้ว ดูวันเดินทาง
               </button>
             </footer>
@@ -1653,7 +1653,7 @@
                   <button 
                     @click="selectedModalRegion = null"
                     class="px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all border"
-                    :class="!selectedModalRegion ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
+                    :class="!selectedModalRegion ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
                   >
                     ทุกภาค
                   </button>
@@ -1662,7 +1662,7 @@
                     :key="reg.region"
                     @click="selectedModalRegion = reg.region"
                     class="px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all border flex items-center gap-2"
-                    :class="selectedModalRegion === reg.region ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
+                    :class="selectedModalRegion === reg.region ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
                   >
                     {{ reg.region_label }}
                     <span class="text-[10px] opacity-60 bg-black/10 px-1.5 py-0.5 rounded-full">{{ reg.schedule_count }}</span>
@@ -1718,7 +1718,7 @@
                     v-if="isScheduleBookable(s)"
                     :to="{ path: `/booking/${s.id}`, query: s.join_trip_enabled && !hasAvailableSeats(s) && !joinTripFull(s) ? { join_trip: 1 } : {} }"
                     @click="showAvailabilityModal = false"
-                    class="bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-6 py-2.5 rounded-xl text-sm font-black transition-all hover:-translate-y-0.5 text-center active:scale-95"
+                    class="bg-[var(--color-accent)] hover:bg-[var(--color-accent-mid)] text-white px-6 py-2.5 rounded-xl text-sm font-black transition-all hover:-translate-y-0.5 text-center active:scale-95"
                   >
                     จองรอบนี้
                   </router-link>
@@ -1866,7 +1866,7 @@
                   v-if="seatMapPreviewSchedule && isScheduleBookable(seatMapPreviewSchedule)"
                   :to="{ path: `/booking/${seatMapPreviewSchedule.id}`, query: seatMapPreviewSchedule.join_trip_enabled && !hasAvailableSeats(seatMapPreviewSchedule) && !joinTripFull(seatMapPreviewSchedule) ? { join_trip: 1 } : {} }"
                   @click="showSeatMapModal = false"
-                  class="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white font-black text-sm transition-all active:scale-95"
+                  class="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-mid)] text-white font-black text-sm transition-all active:scale-95"
                 >
                   <span class="material-symbols-rounded text-[18px]">shopping_bag</span>
                   จองรอบนี้
@@ -2377,7 +2377,7 @@ const pickupForSelection = computed(() => {
 });
 
 const typeMap = {
-  trekking:   { label: 'เดินป่า',    class: 'bg-[#2D7A4F]' },
+  trekking:   { label: 'เดินป่า',    class: 'bg-[var(--color-accent)]' },
   diving:     { label: 'ดำน้ำ',      class: 'bg-[#1A5F8A]' },
   snorkeling: { label: 'ดำน้ำตื้น', class: 'bg-[#3B9DD4]' },
   climbing:   { label: 'รถตู้',      class: 'bg-[#C8963E]' },
@@ -3474,34 +3474,13 @@ async function fetchAlbumPhotos() {
   font-size: 1.125rem;
   font-weight: 800;
   color: #fff;
-  background-color: var(--color-primary);
-  box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--color-primary) 60%, transparent);
+  background-color: var(--color-accent);
+  box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--color-accent) 60%, transparent);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 .book-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--color-primary) 75%, transparent);
-}
-.book-cta:active {
-  transform: translateY(0) scale(0.99);
-}
-
-/* Book-now: solid single-colour fill for a cleaner, more professional look */
-.book-cta {
-  display: block;
-  text-align: center;
-  padding: 1rem;
-  border-radius: 9999px;
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: #fff;
-  background-color: var(--color-primary);
-  box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--color-primary) 60%, transparent);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.book-cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--color-primary) 75%, transparent);
+  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--color-accent) 75%, transparent);
 }
 .book-cta:active {
   transform: translateY(0) scale(0.99);
@@ -3709,7 +3688,7 @@ async function fetchAlbumPhotos() {
 
 /* ── มื้ออาหาร ── */
 .meal-summary { display: flex; align-items: flex-start; gap: 14px; padding: 24px 28px; border-bottom: 1px solid #f3f4f6; }
-.meal-summary .meal-summary-icon { font-size: 22px; width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: #E8F5EC; color: #2D7A4F; flex-shrink: 0; }
+.meal-summary .meal-summary-icon { font-size: 22px; width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: var(--color-accent-tint); color: var(--color-accent); flex-shrink: 0; }
 .meal-summary-text { font-size: 1.2rem; font-weight: 900; color: var(--color-text-dark); line-height: 1.4; }
 .meal-summary-hint { margin-top: 2px; font-size: 14px; font-weight: 500; color: var(--color-text-muted); }
 .meal-table { padding: 8px 28px 20px; }
@@ -3723,7 +3702,7 @@ async function fetchAlbumPhotos() {
 .meal-cell--none { background: #F9FAFB; border-color: #F3F4F6; }
 .meal-cell-meal { display: none; font-size: 12px; font-weight: 800; color: var(--color-text-muted); }
 .meal-cell-status { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 800; }
-.meal-cell--included .meal-cell-status { color: #2D7A4F; }
+.meal-cell--included .meal-cell-status { color: var(--color-accent); }
 .meal-cell--self .meal-cell-status { color: #B45309; }
 .meal-cell--none .meal-cell-status { color: #9CA3AF; font-weight: 700; }
 .meal-cell-status .meal-cell-icon { font-size: 17px; }

@@ -81,7 +81,7 @@
           <!-- actions -->
           <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
             <button @click="viewAll"
-              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[var(--color-primary)] text-white px-8 py-4 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-all duration-300 hover:-translate-y-1 cursor-pointer">
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[var(--color-accent)] text-white px-8 py-4 rounded-full text-base font-extrabold hover:bg-[var(--color-accent-mid)] transition-all duration-300 hover:-translate-y-1 cursor-pointer">
               <span class="material-symbols-rounded text-[20px]">grid_view</span> ดูทั้งหมดในหน้าทริป
             </button>
             <button @click="restart"

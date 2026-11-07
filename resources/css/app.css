@@ -13,15 +13,24 @@
     --font-anuphan:  'DB Heavent', 'Anuphan', sans-serif;
     --font-playfair: 'Playfair Display', serif;
 
-    /* ── Primary Forest Colors ─────────────────────────────── */
-    --color-primary:       #0D2B1E;   /* Deep Forest  — Navbar, footer bg   */
+    /* ── Forest: dark brand surfaces only ──────────────────── */
+    /* Hero, dark CTA panels, popup headers, avatars. Never a button fill:
+       it is the same ink as the headings, so a forest button reads as a black
+       block and a forest link vanishes into the body copy. Buttons, links and
+       selected states use --color-accent. */
+    --color-primary:       #0D2B1E;   /* Deep Forest  — Hero, dark panels    */
     --color-primary-mid:   #1A3A2E;   /* Dark Pine    — Hero, dark cards     */
     --color-primary-light: #2D5A3D;   /* Forest Mid   — Section backgrounds  */
 
-    /* ── Accent / CTA Colors ───────────────────────────────── */
-    --color-accent:        #2D7A4F;   /* Canopy       — Primary buttons      */
-    --color-accent-mid:    #1A5732;   /* Dark Canopy  — Button hover         */
-    --color-accent-light:  #4CAF7D;   /* Leaf Bright  — CTA accent, badges   */
+    /* ── Accent: the action colour, shared with the mobile app ─ */
+    /* Same values as AppTheme in luilaykhao-app/lib/theme/app_theme.dart —
+       change both together. Emerald 700, not 600: white on #059669 is 3.8:1
+       and fails WCAG AA for body-size text; #047857 is 5.5:1 both as a button
+       fill under white text and as green text on white. */
+    --color-accent:        #047857;   /* Emerald 700  — Buttons, links, selected */
+    --color-accent-mid:    #065F46;   /* Emerald 800  — Button hover / pressed   */
+    --color-accent-light:  #10B981;   /* Emerald 500  — Graphics only, never text */
+    --color-accent-tint:   #ECFDF5;   /* Emerald 50   — Selected backgrounds     */
 
     /* ── Category: Ocean / Snorkeling ──────────────────────── */
     --color-ocean:         #1A5F8A;   /* Deep Ocean   — Snorkeling category  */
@@ -50,10 +59,10 @@
     /* ── Legacy aliases kept for compatibility ──────────────── */
     --color-forest:       #0D2B1E;
     --color-forest-mid:   #2D5A3D;
-    --color-forest-light: #4CAF7D;
+    --color-forest-light: #10B981;
 
-    --color-lime:         #4CAF7D;
-    --color-lime-dark:    #2D7A4F;
+    --color-lime:         #10B981;
+    --color-lime-dark:    #047857;
 }
 
 body {

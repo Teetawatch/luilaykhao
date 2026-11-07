@@ -51,7 +51,7 @@
             <span v-if="tabCount(tab.value) !== null"
               class="shrink-0 text-[10px] sm:text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-full"
               :class="tripsStore.filters.destination === tab.value
-                ? 'bg-[var(--color-primary)] text-white'
+                ? 'bg-[var(--color-accent)] text-white'
                 : 'bg-gray-200/70 text-[var(--color-text-muted)]'">
               {{ tabCount(tab.value) }}
             </span>
@@ -182,7 +182,7 @@
               {{ emptyHint }}
             </p>
             <button @click="clearAndFetch"
-              class="inline-flex items-center gap-2 bg-[var(--color-primary)] text-white px-7 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent)] transition-colors duration-300 cursor-pointer">
+              class="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-7 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent-mid)] transition-colors duration-300 cursor-pointer">
               <span class="material-symbols-rounded text-[20px]">refresh</span>
               ล้างตัวกรองและดูทั้งหมด
             </button>
@@ -276,7 +276,7 @@
           </div>
           <div class="px-6 py-4 border-t border-gray-100 shrink-0">
             <button type="button" @click="filtersOpen = false"
-              class="w-full bg-[var(--color-primary)] text-white py-4 rounded-full text-base font-extrabold cursor-pointer">
+              class="w-full bg-[var(--color-accent)] text-white py-4 rounded-full text-base font-extrabold cursor-pointer">
               ดู {{ resultCount.toLocaleString() }} ทริป
             </button>
           </div>

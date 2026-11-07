@@ -401,7 +401,7 @@
         <div class="text-center mt-16">
           <router-link
             to="/trips"
-            class="inline-flex items-center gap-2 bg-[var(--color-primary)] hover:bg-[var(--color-accent)] text-white px-10 py-4 rounded-full font-bold text-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+            class="inline-flex items-center gap-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-mid)] text-white px-10 py-4 rounded-full font-bold text-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer"
           >
             ค้นหากิจกรรมทั้งหมด
             <span class="material-symbols-rounded text-[24px]">explore</span>
@@ -904,8 +904,8 @@ const FALLBACK_CATEGORIES = [
     ctaText: 'ดูเส้นทางเดินป่า',
     image: '/images/hiking_show.webp',
     icon: 'hiking',
-    color: '#2D7A4F',
-    bgColor: '#E8F5EC',
+    color: '#047857',
+    bgColor: '#ECFDF5',
     isPopular: false,
   },
   {
@@ -954,8 +954,8 @@ function mapCategoryToCard(c) {
     ctaText: c.cta_text || 'ดูทริปทั้งหมด',
     image: c.image_url,
     icon: c.icon || 'explore',
-    color: c.color || '#2D7A4F',
-    bgColor: c.bg_color || '#E8F5EC',
+    color: c.color || '#047857',
+    bgColor: c.bg_color || '#ECFDF5',
     isPopular: !!c.is_popular,
   };
 }
@@ -1004,7 +1004,7 @@ const trustItems = [
 
 /* Category color mapping */
 const typeMap = {
-  trekking:   { label: 'เดินป่า',    class: 'bg-[#2D7A4F] text-white' },
+  trekking:   { label: 'เดินป่า',    class: 'bg-[var(--color-accent)] text-white' },
   diving:     { label: 'ดำน้ำ',      class: 'bg-[#1A5F8A] text-white' },
   snorkeling: { label: 'ดำน้ำตื้น', class: 'bg-[#3B9DD4] text-white' },
   climbing:   { label: 'รถตู้',      class: 'bg-[#C8963E] text-white' },
@@ -1302,7 +1302,7 @@ onMounted(async () => {
   transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
 .cat-nav:hover {
-  background: var(--color-primary);
+  background: var(--color-accent);
   color: white;
   box-shadow: 0 16px 36px rgba(45, 122, 79, 0.35);
 }

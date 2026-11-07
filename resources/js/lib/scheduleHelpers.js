@@ -68,7 +68,7 @@ export function scheduleAvailabilityBadgeClass(schedule) {
   if (bookableSeats(schedule) <= 5) {
     return 'bg-amber-50 text-amber-600 border-amber-200';
   }
-  return 'bg-[#E8F5EC] text-[#2D7A4F] border-[#2D7A4F]/20';
+  return 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] border-[var(--color-accent)]/20';
 }
 
 export function scheduleAvailabilityTextClass(schedule) {

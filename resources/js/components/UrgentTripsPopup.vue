@@ -71,7 +71,7 @@
           <!-- footer -->
           <div class="px-4 pb-4 pt-1">
             <router-link to="/trips" @click="goBook"
-              class="flex items-center justify-center gap-2 w-full bg-[var(--color-primary)] text-white py-3 rounded-full text-sm font-extrabold hover:bg-[var(--color-accent)] transition-colors">
+              class="flex items-center justify-center gap-2 w-full bg-[var(--color-accent)] text-white py-3 rounded-full text-sm font-extrabold hover:bg-[var(--color-accent-mid)] transition-colors">
               ดูทริปทั้งหมด
               <span class="material-symbols-rounded text-[18px]">arrow_forward</span>
             </router-link>

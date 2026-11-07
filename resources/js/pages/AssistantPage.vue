@@ -28,7 +28,7 @@
       <div class="space-y-6 mb-8">
         <div v-for="(turn, i) in turns" :key="i">
           <div v-if="turn.role === 'user'" class="flex justify-end">
-            <p class="max-w-[85%] bg-[var(--color-primary)] text-white rounded-2xl rounded-br-md px-4 py-3 font-medium">
+            <p class="max-w-[85%] bg-[var(--color-accent)] text-white rounded-2xl rounded-br-md px-4 py-3 font-medium">
               {{ turn.content }}
             </p>
           </div>
@@ -76,7 +76,7 @@
         <button
           type="submit"
           :disabled="loading || !draft.trim()"
-          class="px-6 py-3.5 rounded-2xl bg-[var(--color-primary)] text-white font-bold disabled:opacity-50 shrink-0"
+          class="px-6 py-3.5 rounded-2xl bg-[var(--color-accent)] text-white font-bold disabled:opacity-50 shrink-0"
         >
           ถาม
         </button>

@@ -45,7 +45,7 @@
         </div>
         <router-link
           :to="`/booking/${scheduleId}`"
-          class="block text-center py-3 rounded-full bg-[var(--color-primary)] text-white font-extrabold text-base hover:bg-[var(--color-accent)] transition">
+          class="block text-center py-3 rounded-full bg-[var(--color-accent)] text-white font-extrabold text-base hover:bg-[var(--color-accent-mid)] transition">
           จองที่นั่งเลย
         </router-link>
         <button @click="leave" :disabled="submitting" class="w-full text-xs font-bold text-gray-400 hover:text-red-500 transition">
