@@ -31,6 +31,7 @@ use App\Services\ChatSupplyService;
 use App\Services\ChatTodoService;
 use App\Services\ContentFilterService;
 use App\Services\ModerationService;
+use App\Services\PickupPromptService;
 use App\Services\ScheduleItineraryService;
 use App\Services\ScheduleRoomService;
 use App\Services\TripActivityService;
@@ -727,6 +728,22 @@ class ChatController extends Controller
         }
 
         return $this->success(['items' => app(ChatTodoService::class)->forUser($user, $schedule)]);
+    }
+
+    /**
+     * แถบ "คุณอยู่ไหนแล้ว" เหนือช่องพิมพ์ — โผล่เฉพาะช่วงใกล้เวลารถมารับจุดของ
+     * ผู้ใช้คนนี้ ({@see PickupPromptService}) ทีมงานที่ไม่มีใบจองได้ visible=false
+     */
+    public function pickupPrompt(Request $request, int $scheduleId): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $user = $request->user();
+
+        if (! $this->chatService->canAccess($user, $schedule)) {
+            return $this->error('คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้', 403);
+        }
+
+        return $this->success(app(PickupPromptService::class)->forUser($user, $schedule));
     }
 
     public function unreadCount(Request $request, int $scheduleId): JsonResponse

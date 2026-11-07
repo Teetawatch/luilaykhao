@@ -83,6 +83,7 @@ use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PassportPinController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PickupMatesController;
 use App\Http\Controllers\Api\V1\PermitSignatureController;
 use App\Http\Controllers\Api\V1\PhotoController;
 use App\Http\Controllers\Api\V1\PickupVehicleClassController;
@@ -365,6 +366,10 @@ Route::prefix('v1')->group(function () {
         // เรื่อย ๆ ตามสถานการณ์จริง แต่ไม่ถี่จนกลายเป็นช่องยิงแจ้งเตือนใส่สตาฟ
         Route::post('bookings/{ref}/pickup-status', [BookingController::class, 'reportPickupStatus'])
             ->middleware('throttle:20,10');
+        // เพื่อนรอรถจุดเดียวกัน — ใครอีกบ้างที่รออยู่จุดเดียวกับเรา + จุดสังเกตของตัวเอง
+        Route::get('bookings/{ref}/pickup-mates', [PickupMatesController::class, 'show']);
+        Route::put('bookings/{ref}/pickup-mates/me', [PickupMatesController::class, 'updateMine'])
+            ->middleware('throttle:20,10');
         Route::get('bookings/{ref}/photos', [BookingController::class, 'photos']);
         Route::get('bookings/{ref}/recap', [BookingController::class, 'recap']);
         // ใบเสร็จดิจิทัล — คืนลิงก์หน้าตรวจสอบ/PDF ของใบที่ออกไปแล้ว
@@ -447,6 +452,8 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/read', [ChatController::class, 'markRead']);
         Route::get('schedules/{id}/chat/unread-count', [ChatController::class, 'unreadCount']);
         Route::get('schedules/{id}/chat/todos', [ChatController::class, 'todos'])->middleware('throttle:60,1');
+        // แถบ "คุณอยู่ไหนแล้ว" — เฉพาะช่วงใกล้เวลารถมารับจุดของคนนั้น
+        Route::get('schedules/{id}/chat/pickup-prompt', [ChatController::class, 'pickupPrompt'])->middleware('throttle:60,1');
         Route::get('schedules/{id}/chat/search', [ChatBrowseController::class, 'search'])->middleware('throttle:60,1');
         Route::get('schedules/{id}/chat/media', [ChatBrowseController::class, 'media'])->middleware('throttle:60,1');
         Route::get('schedules/{id}/chat/intro', [ChatSocialController::class, 'myIntro']);

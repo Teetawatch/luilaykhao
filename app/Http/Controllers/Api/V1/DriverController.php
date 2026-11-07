@@ -1358,15 +1358,25 @@ class DriverController extends Controller
                 ->where('status', 'confirmed')
                 ->whereNotNull('user_id')
                 ->where('pickup_point_id', $next->id)
-                ->get(['id', 'booking_ref', 'user_id']);
+                ->get(['id', 'booking_ref', 'user_id', 'pickup_status', 'pickup_status_at']);
 
             foreach ($bookings as $booking) {
+                $body = "รถทริป \"{$tripTitle}\" กำลังมุ่งหน้าไปยังจุดรับ \"{$nextLabel}\" กรุณาเตรียมตัวให้พร้อม";
+                $data = ['booking_ref' => $booking->booking_ref, 'schedule_id' => $schedule->id];
+
+                // ยังไม่ได้บอกทีมงานว่าอยู่ไหน — ชวนกดในแชท (แถบรออยู่เหนือช่องพิมพ์)
+                // แตะแล้วแอปพาเข้าห้องแชทแทนใบจอง ไม่ยิง push เพิ่มเพื่อถามแยก
+                if ($booking->freshPickupStatus() === null) {
+                    $body .= ' · กดบอกทีมงานในแชทได้ว่าคุณอยู่ไหน';
+                    $data['ask_status'] = '1';
+                }
+
                 SmartNotification::send(
                     $booking->user_id,
                     'pickup_approaching',
                     'รถกำลังมารับคุณ 🚐',
-                    "รถทริป \"{$tripTitle}\" กำลังมุ่งหน้าไปยังจุดรับ \"{$nextLabel}\" กรุณาเตรียมตัวให้พร้อม",
-                    ['booking_ref' => $booking->booking_ref, 'schedule_id' => $schedule->id],
+                    $body,
+                    $data,
                 );
                 $notified++;
             }

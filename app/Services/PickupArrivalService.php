@@ -377,7 +377,7 @@ class PickupArrivalService
      *
      * @return array<int, int>
      */
-    private function recipientsOf(Booking $booking): array
+    public function recipientsOf(Booking $booking): array
     {
         $ids = $booking->user_id ? [(int) $booking->user_id] : [];
 

@@ -55,6 +55,7 @@ class PickupStatusService
 
         $previousStatus = $booking->pickup_status;
         $previousEta = $booking->pickup_status_eta_minutes;
+        $previousFresh = $booking->freshPickupStatus();
 
         $booking->update([
             'pickup_status' => $status,
@@ -67,6 +68,14 @@ class PickupStatusService
         if ($status === Booking::PICKUP_STATUS_LATE
             && ($previousStatus !== $status || $previousEta !== $eta)) {
             $this->notifyStaffOfDelay($booking, $schedule, $eta);
+        }
+
+        // "เพื่อนรอรถจุดเดียวกัน" — การ์ดในห้องแชท + บอกคนที่กำลังมาว่ามีคนรออยู่แล้ว
+        // เป็นของแถม: พังตรงนั้นต้องไม่ทำให้ปุ่มบอกทีมงานพังตาม
+        try {
+            app(PickupMatesService::class)->statusReported($booking, $previousFresh);
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         return $booking;
@@ -105,8 +114,15 @@ class PickupStatusService
 
         $today = now(TripSchedule::REVIEW_AVAILABLE_TIMEZONE)->toDateString();
 
+        // รอบที่รถออกคืนก่อน (departs_at = คืนวันก่อนวันทริป) ยังแวะจุดหลังเที่ยงคืนได้
+        // — ปิดเมื่อพ้น "วันทริป" ไม่ใช่พ้นวันที่รถออก ไม่งั้นจุดตีครึ่งกดอะไรไม่ได้เลย
+        $last = $departure->toDateString();
+        if ($schedule->departure_date && $schedule->departure_date->toDateString() > $last) {
+            $last = $schedule->departure_date->toDateString();
+        }
+
         return $today >= $departure->copy()->subDay()->toDateString()
-            && $today <= $departure->toDateString();
+            && $today <= $last;
     }
 
     /** ข้อความสั้นของสถานะ ใช้ทั้งในแจ้งเตือนและในรายชื่อของสตาฟ */

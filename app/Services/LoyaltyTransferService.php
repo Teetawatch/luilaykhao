@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\LoyaltyPointTransfer;
 use App\Models\SmartNotification;
 use App\Models\User;
+use App\Support\MaskedName;
 use App\Support\PhoneNumber;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -206,21 +207,7 @@ class LoyaltyTransferService
     /** "สมชาย ก." — ชื่อต้น + อักษรแรกของนามสกุล. */
     public function maskedName(?User $user): string
     {
-        $parts = preg_split('/\s+/u', trim((string) $user?->name)) ?: [];
-        $parts = array_values(array_filter($parts, fn ($p) => $p !== ''));
-
-        if ($parts === []) {
-            return 'สมาชิก';
-        }
-
-        // คำนำหน้าชื่อไม่ใช่ชื่อ — "นาย ก." บอกอะไรผู้โอนไม่ได้เลย
-        if (count($parts) > 1 && in_array($parts[0], ['นาย', 'นาง', 'นางสาว', 'น.ส.', 'ด.ช.', 'ด.ญ.', 'Mr.', 'Mrs.', 'Ms.', 'Miss'], true)) {
-            array_shift($parts);
-        }
-
-        $first = $parts[0];
-
-        return isset($parts[1]) ? $first.' '.mb_substr($parts[1], 0, 1).'.' : $first;
+        return MaskedName::of($user?->name);
     }
 
     /** ชื่อผู้โอนที่ผู้รับเห็น — ชื่อเล่นถ้ามี (เพื่อนรู้จักกันด้วยชื่อเล่น) ไม่งั้นชื่อแบบย่อ. */
