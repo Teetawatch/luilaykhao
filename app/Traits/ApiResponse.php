@@ -4,6 +4,11 @@ namespace App\Traits;
 
 use Illuminate\Http\JsonResponse;
 
+/**
+ * ข้อความใน response ผ่าน `__()` เสมอ — ข้อความไทยที่มีคำแปลใน lang/en.json
+ * ออกเป็นภาษาอังกฤษเมื่อแอปขอ (ดู App\Support\AppLocale) ไม่ว่าจะถูก throw
+ * มาจาก service ไหน ข้อความที่ยังไม่มีคำแปลออกเป็นไทยเหมือนเดิม
+ */
 trait ApiResponse
 {
     protected function success($data = null, string $message = 'สำเร็จ', int $code = 200, array $meta = []): JsonResponse
@@ -11,7 +16,7 @@ trait ApiResponse
         $response = [
             'success' => true,
             'data' => $data,
-            'message' => $message,
+            'message' => __($message),
         ];
 
         if (! empty($meta)) {
@@ -26,7 +31,7 @@ trait ApiResponse
         $response = [
             'success' => false,
             'data' => null,
-            'message' => $message,
+            'message' => __($message),
         ];
 
         if ($errors) {
@@ -45,7 +50,7 @@ trait ApiResponse
         return response()->json([
             'success' => true,
             'data' => $paginator->items(),
-            'message' => $message,
+            'message' => __($message),
             'meta' => array_merge([
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),

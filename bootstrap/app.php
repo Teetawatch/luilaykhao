@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Middleware\SetAppLocale;
+use App\Support\AppLocale;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 use Sentry\Laravel\Integration;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -19,6 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // ภาษาของข้อความที่ API สร้าง — ตาม X-App-Language ที่แอปส่ง (AppLocale)
+        $middleware->api(append: [SetAppLocale::class]);
+
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
@@ -27,6 +33,25 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         // Report unhandled exceptions to Sentry (no-op when SENTRY_LARAVEL_DSN is unset).
         Integration::handles($exceptions);
+
+        // ข้อความ validation ของ FormRequest เขียนเป็นไทย — แอปภาษาอังกฤษได้คำแปล
+        // จาก lang/en.json (ไม่มีคำแปล = ไทยเหมือนเดิม) ภาษาไทยปล่อยให้ Laravel
+        // render ตามเดิมทุกตัวอักษร
+        $exceptions->render(function (ValidationException $e, Request $request) {
+            if (! $request->expectsJson() || app()->getLocale() === AppLocale::THAI) {
+                return null;
+            }
+
+            $errors = array_map(
+                fn (array $messages) => array_map(fn ($message) => __($message), $messages),
+                $e->errors()
+            );
+
+            return response()->json([
+                'message' => collect($errors)->flatten()->first() ?? __('The given data was invalid.'),
+                'errors' => $errors,
+            ], $e->status);
+        });
     })
     ->booted(function (): void {
         // Auth endpoints — ป้องกัน brute-force

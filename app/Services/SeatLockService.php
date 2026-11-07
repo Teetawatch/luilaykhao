@@ -106,7 +106,7 @@ class SeatLockService
 
                 return [
                     'locked' => false,
-                    'message' => "ที่นั่ง {$seatId} ถูกล็อคอยู่แล้ว",
+                    'message' => __('ที่นั่ง :seat ถูกล็อคอยู่แล้ว', ['seat' => $seatId]),
                     'failed_seat' => $seatId,
                 ];
             }

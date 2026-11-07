@@ -5,8 +5,8 @@ namespace App\Http\Requests\Booking;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Rules\ThaiName;
+use App\Support\AppLocale;
 use App\Support\Countries;
-use App\Support\ThaiDate;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -277,6 +277,7 @@ class CreateBookingRequest extends FormRequest
             }
 
             $this->validateThaiPhones($validator);
+            $this->validateForeignerInsuranceDocuments($validator, $schedule->trip);
             $this->validateBorderPass($validator, $schedule->trip);
             $this->validatePassportValidity($validator, $schedule);
 
@@ -392,9 +393,46 @@ class CreateBookingRequest extends FormRequest
                 if (! preg_match('/^[0-9]{10}$/', (string) $value)) {
                     $validator->errors()->add(
                         "passengers.{$index}.{$field}",
-                        "{$label}ต้องเป็นตัวเลข 10 หลัก"
+                        __(':labelต้องเป็นตัวเลข 10 หลัก', ['label' => __($label)])
                     );
                 }
+            }
+        }
+    }
+
+    /**
+     * ชาวต่างชาติในทริปในประเทศต้องให้ชื่ออังกฤษและเลขพาสปอร์ตไว้ทำประกัน
+     *
+     * คนไทยทำประกันจากชื่อไทย + เลขบัตรประชาชน ชาวต่างชาติไม่มีทั้งสองอย่าง
+     * (เลขบัตรบังคับเฉพาะสัญชาติไทย) ถ้าไม่ดักไว้ตรงนี้ ใบจองของเขาจะไม่มีเอกสาร
+     * อะไรให้ส่งประกันเลย ทริปต่างประเทศมีกฎพาสปอร์ตของตัวเองอยู่แล้ว (passportRule)
+     *
+     * ช่องทางเดิมทั้งหมดไม่ส่งสัญชาติมา (= ไทย) จึงไม่โดนกฎนี้
+     */
+    private function validateForeignerInsuranceDocuments(Validator $validator, Trip $trip): void
+    {
+        if ($trip->isInternational() || $this->boolean('is_gift')) {
+            return;
+        }
+
+        foreach ($this->input('passengers', []) as $index => $passenger) {
+            if (! is_array($passenger)
+                || ($passenger['nationality'] ?? Countries::HOME) === Countries::HOME) {
+                continue;
+            }
+
+            if (blank($passenger['name_en'] ?? null)) {
+                $validator->errors()->add(
+                    "passengers.{$index}.name_en",
+                    'กรุณากรอกชื่อ-สกุลภาษาอังกฤษให้ตรงกับหน้าพาสปอร์ต'
+                );
+            }
+
+            if (blank($passenger['passport_no'] ?? null)) {
+                $validator->errors()->add(
+                    "passengers.{$index}.passport_no",
+                    'กรุณากรอกเลขที่พาสปอร์ต (ใช้ทำประกันการเดินทาง)'
+                );
             }
         }
     }
@@ -455,8 +493,9 @@ class CreateBookingRequest extends FormRequest
             if ($expiry->lt($minimumExpiry)) {
                 $validator->errors()->add(
                     "passengers.{$index}.passport_expires_at",
-                    'พาสปอร์ตต้องมีอายุเหลืออย่างน้อย 6 เดือนนับจากวันเดินทาง '
-                        .'(หมดอายุหลัง '.ThaiDate::short($minimumExpiry).')'
+                    __('พาสปอร์ตต้องมีอายุเหลืออย่างน้อย 6 เดือนนับจากวันเดินทาง (หมดอายุหลัง :date)', [
+                        'date' => AppLocale::shortDate($minimumExpiry),
+                    ])
                 );
             }
         }

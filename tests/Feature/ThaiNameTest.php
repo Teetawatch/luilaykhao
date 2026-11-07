@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BookingPassenger;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -55,10 +56,34 @@ class ThaiNameTest extends TestCase
     {
         $this->book([
             'name' => 'John Smith',
+            'name_en' => 'JOHN SMITH',
+            'nationality' => 'US',
+            'id_card' => null,
+            'passport_no' => 'X1234567',
+            'phone' => '+14155550100',
+        ])->assertCreated();
+
+        $passenger = BookingPassenger::firstOrFail();
+        $this->assertSame('US', $passenger->nationality);
+        $this->assertSame('X1234567', $passenger->passport_no);
+    }
+
+    public function test_a_foreigner_on_a_domestic_trip_needs_a_passport_for_insurance(): void
+    {
+        // ไม่มีชื่อไทยและเลขบัตรประชาชน — ถ้าไม่เก็บพาสปอร์ต ใบจองจะไม่มีอะไรส่งประกัน
+        $this->book([
+            'name' => 'John Smith',
             'nationality' => 'US',
             'id_card' => null,
             'phone' => '+14155550100',
-        ])->assertCreated();
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['passengers.0.passport_no', 'passengers.0.name_en']);
+    }
+
+    public function test_thai_travellers_still_book_without_a_passport(): void
+    {
+        $this->book(['name' => 'สมชาย ใจดี', 'nationality' => 'TH'])->assertCreated();
     }
 
     /**

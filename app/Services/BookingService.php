@@ -17,6 +17,7 @@ use App\Models\ScheduleVehicleOption;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\AppLocale;
 use App\Support\CustomPickupPricing;
 use App\Support\LegalPolicy;
 use App\Support\PaymentQuote;
@@ -106,10 +107,10 @@ class BookingService
             if (! $schedule->isBookableBy($userId)) {
                 $opensAt = $schedule->bookingOpensAtFor($userId);
 
-                throw new \Exception(
-                    'รอบนี้ยังไม่เปิดจอง จะเปิดให้คุณจองได้วันที่ '
-                    .ThaiDate::short($opensAt).' เวลา '.$opensAt->timezone('Asia/Bangkok')->format('H:i').' น.'
-                );
+                throw new \Exception(__('รอบนี้ยังไม่เปิดจอง จะเปิดให้คุณจองได้วันที่ :date เวลา :time น.', [
+                    'date' => AppLocale::shortDate($opensAt),
+                    'time' => $opensAt->timezone('Asia/Bangkok')->format('H:i'),
+                ]));
             }
 
             if ($isJoinTrip && ! $schedule->join_trip_enabled) {
@@ -145,7 +146,10 @@ class BookingService
             if ($isJoinTrip && ! $schedule->canFitJoinTrip($participantCount)) {
                 throw new \Exception(
                     $schedule->join_trip_available_seats > 0
-                        ? 'จอยทริปรอบนี้เหลือ '.$schedule->join_trip_available_seats.' ที่ ไม่พอสำหรับ '.$participantCount.' ท่าน'
+                        ? __('จอยทริปรอบนี้เหลือ :left ที่ ไม่พอสำหรับ :count ท่าน', [
+                            'left' => $schedule->join_trip_available_seats,
+                            'count' => $participantCount,
+                        ])
                         : 'จอยทริปรอบนี้เต็มแล้ว'
                 );
             }
@@ -217,13 +221,13 @@ class BookingService
                     $seatLabels = $alreadyBookedSeats->pluck('seat_id')->unique()->values()->join(', ');
 
                     if ($ownBooking && $alreadyBookedSeats->every(fn (BookingSeat $seat) => (int) $seat->booking?->user_id === (int) $userId)) {
-                        throw new \Exception(
-                            'ที่นั่ง '.$seatLabels.' อยู่ในการจอง '.$ownBooking->booking_ref
-                            .' ของคุณอยู่แล้ว หากต้องการเพิ่มผู้เดินทาง กรุณาเลือกที่นั่งอื่น'
-                        );
+                        throw new \Exception(__('ที่นั่ง :seats อยู่ในการจอง :ref ของคุณอยู่แล้ว หากต้องการเพิ่มผู้เดินทาง กรุณาเลือกที่นั่งอื่น', [
+                            'seats' => $seatLabels,
+                            'ref' => $ownBooking->booking_ref,
+                        ]));
                     }
 
-                    throw new \Exception('ที่นั่ง '.$seatLabels.' ถูกจองไปแล้ว กรุณาเลือกที่นั่งอื่น');
+                    throw new \Exception(__('ที่นั่ง :seats ถูกจองไปแล้ว กรุณาเลือกที่นั่งอื่น', ['seats' => $seatLabels]));
                 }
             }
 

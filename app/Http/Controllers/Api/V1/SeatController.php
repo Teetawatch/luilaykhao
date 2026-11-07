@@ -69,7 +69,9 @@ class SeatController extends Controller
         // ที่นั่งที่ไม่มีอยู่แล้วไปจองได้
         $unknown = $this->seatLayoutGuard->unknownSeatIds($schedule, $option ?: null, $seatIds);
         if ($unknown !== []) {
-            return $this->error('ไม่มีที่นั่ง '.implode(', ', $unknown).' ในผังที่นั่งของรถคันนี้ กรุณาโหลดผังใหม่แล้วเลือกอีกครั้ง', 422);
+            return $this->error(__('ไม่มีที่นั่ง :seats ในผังที่นั่งของรถคันนี้ กรุณาโหลดผังใหม่แล้วเลือกอีกครั้ง', [
+                'seats' => implode(', ', $unknown),
+            ]), 422);
         }
 
         // กันตั้งแต่ล็อกที่นั่ง ไม่งั้นคนที่ยังไม่ถึงคิวจะล็อกที่นั่งกันคนอื่นไว้ได้
