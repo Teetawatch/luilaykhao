@@ -100,4 +100,65 @@ class TripVideoTest extends TestCase
             ])
             ->assertStatus(422);
     }
+
+    private function updatePayload(Trip $trip, array $extra): array
+    {
+        return array_merge([
+            'title' => $trip->title,
+            'type' => 'trekking',
+            'location' => $trip->location,
+            'region' => $trip->region,
+            'difficulty' => 'easy',
+            'duration_days' => 1,
+            'max_participants' => 8,
+            'price_per_person' => 1000,
+        ], $extra);
+    }
+
+    public function test_admin_can_pick_a_cover_video(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $clip = 'https://media.luilaykhao.com/media/cover.mp4';
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/trips/{$trip->id}", $this->updatePayload($trip, [
+                'videos' => [$clip],
+                'cover_video' => $clip,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('data.cover_video', $clip);
+
+        $this->assertSame($clip, $trip->fresh()->cover_video);
+
+        $this->getJson("/api/v1/trips/{$trip->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.cover_video', $clip);
+    }
+
+    public function test_clearing_the_cover_video_falls_back_to_the_cover_image(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $trip->update(['cover_video' => 'https://media.luilaykhao.com/media/cover.mp4']);
+
+        // แอดมินส่งสตริงว่างตอนเอาวิดีโอหน้าปกออก
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/trips/{$trip->id}", $this->updatePayload($trip, [
+                'cover_video' => '',
+            ]))
+            ->assertOk()
+            ->assertJsonPath('data.cover_video', null);
+
+        $this->assertNull($trip->fresh()->cover_video);
+    }
+
+    public function test_trip_without_a_cover_video_sends_null(): void
+    {
+        $trip = $this->makeTrip();
+
+        $this->getJson("/api/v1/trips/{$trip->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.cover_video', null);
+    }
 }

@@ -792,6 +792,7 @@
             <span class="media-count" v-if="form.videos.length">{{ form.videos.length }} คลิป</span>
           </div>
           <p class="media-hint">แสดงในแอปถัดจากรูปภาพ — ลากการ์ดเพื่อสลับลำดับ, รองรับ mp4, mov (สูงสุด 200MB ต่อไฟล์)</p>
+          <p class="media-hint">กด <span class="material-symbols-rounded inline-icon">star</span> ที่คลิปเพื่อใช้เป็น<b>วิดีโอหน้าปก</b> — แอปจะเล่นวนแบบปิดเสียงแทนรูปปก แนะนำคลิปสั้น 10–30 วินาที ไม่เกิน ~20MB เพราะลูกค้าส่วนใหญ่ดูผ่านเน็ตมือถือ</p>
 
           <div class="gallery-grid-editor mt-4" v-if="form.videos.length">
             <div
@@ -808,9 +809,18 @@
               <video :src="vid" muted playsinline preload="metadata"></video>
               <span class="video-play-badge"><span class="material-symbols-rounded">play_arrow</span></span>
               <span class="media-index">{{ idx + 1 }}</span>
+              <span v-if="form.cover_video === vid" class="cover-video-badge">หน้าปก</span>
               <div class="media-actions">
                 <button type="button" title="เลื่อนไปทางซ้าย" :disabled="idx === 0" @click="moveItem('videos', idx, -1)">
                   <span class="material-symbols-rounded">chevron_left</span>
+                </button>
+                <button
+                  type="button"
+                  :class="{ 'is-cover': form.cover_video === vid }"
+                  :title="form.cover_video === vid ? 'เลิกใช้เป็นวิดีโอหน้าปก' : 'ใช้เป็นวิดีโอหน้าปก'"
+                  @click="toggleCoverVideo(vid)"
+                >
+                  <span class="material-symbols-rounded">{{ form.cover_video === vid ? 'star' : 'star_outline' }}</span>
                 </button>
                 <button type="button" class="danger" title="ลบวิดีโอนี้" @click="removeItem('videos', idx)">
                   <span class="material-symbols-rounded">delete</span>
@@ -822,6 +832,11 @@
             </div>
           </div>
           <p v-else class="media-empty">ยังไม่มีวิดีโอ</p>
+          <p v-if="coverVideoIndex >= 0" class="cover-video-note">
+            <span class="material-symbols-rounded">star</span>
+            วิดีโอหน้าปก: คลิปที่ {{ coverVideoIndex + 1 }}
+            <button type="button" class="link-btn" @click="form.cover_video = ''">เลิกใช้</button>
+          </p>
 
           <div class="video-upload-panel" v-if="videoUploading && videoUploads.length">
             <div class="video-upload-head">
@@ -1241,7 +1256,7 @@ const form = reactive({
   destination_type: 'domestic', country_code: '', timezone: '', travel_document_mode: 'passport',
   difficulty: 'medium', duration_days: 1, distance_km: null, elevation_gain_m: null, max_participants: 10,
   medal_name: '', medal_icon: '', medal_color: '', medal_image: '',
-  price_per_person: 0, departure_point: '', status: 'active', cover_image: '', thumbnail_image: '',
+  price_per_person: 0, departure_point: '', status: 'active', cover_image: '', cover_video: '', thumbnail_image: '',
   latitude: null, longitude: null, is_featured: false, is_women_only: false,
   gallery: [], videos: [], inclusions: [], exclusions: [],
   highlights: [],
@@ -1489,6 +1504,8 @@ const buildTripPayload = () => {
     description: form.description ?? '',
     departure_point: String(form.departure_point || '').trim(),
     cover_image: form.cover_image || '',
+    // ส่งเฉพาะคลิปที่ยังอยู่ในรายการ — ลบคลิปไปแล้วหน้าปกต้องกลับเป็นรูป
+    cover_video: normalizeArray(form.videos).includes(form.cover_video) ? form.cover_video : '',
     thumbnail_image: form.thumbnail_image || '',
     gallery: compactStringArray(form.gallery),
     videos: compactStringArray(form.videos),
@@ -1979,6 +1996,14 @@ const onListBackspace = (field, idx, event) => {
   removeListItem(field, idx, true);
 };
 
+// วิดีโอหน้าปก = หนึ่งในคลิปของทริป กดซ้ำที่คลิปเดิมเพื่อเลิกใช้
+const coverVideoIndex = computed(() =>
+  form.cover_video ? normalizeArray(form.videos).indexOf(form.cover_video) : -1,
+);
+const toggleCoverVideo = (url) => {
+  form.cover_video = form.cover_video === url ? '' : url;
+};
+
 const removeItem = (field, index) => {
   if (field === 'must_know_items') {
     form.must_know.items.splice(index, 1);
@@ -2321,6 +2346,7 @@ const initData = async () => {
       form.longitude = trip.longitude || null;
       form.gallery = normalizeArray(trip.gallery);
       form.videos = normalizeArray(trip.videos);
+      form.cover_video = trip.cover_video || '';
       form.inclusions = normalizeArray(trip.inclusions);
       form.exclusions = normalizeArray(trip.exclusions);
       form.highlights = normalizeArray(trip.highlights);
@@ -3213,7 +3239,8 @@ onMounted(() => {
   inset: auto 0 0 0;
   display: flex;
   justify-content: center;
-  gap: 2px;
+  /* 0 ไม่ใช่ 2 — การ์ดวิดีโอมี 4 ปุ่ม (รวมดาวหน้าปก) ต้องพอดีการ์ดกว้าง 120 */
+  gap: 0;
   padding: 6px 4px;
   background: rgba(17, 24, 39, 0.72);
   opacity: 0;
@@ -3358,6 +3385,48 @@ onMounted(() => {
   .media-add-row {
     flex-direction: column;
   }
+}
+
+.cover-video-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #047857;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+.media-actions button.is-cover {
+  color: #fbbf24;
+}
+.cover-video-note {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #374151;
+}
+.cover-video-note .material-symbols-rounded {
+  font-size: 18px;
+  color: #f59e0b;
+}
+.cover-video-note .link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #b91c1c;
+  font-weight: 600;
+  cursor: pointer;
+}
+.media-hint .inline-icon {
+  font-size: 15px;
+  vertical-align: -3px;
 }
 
 .video-play-badge {

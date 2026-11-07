@@ -95,6 +95,8 @@ class TripResource extends JsonResource
             'longitude' => $this->longitude,
             'status' => $this->status,
             'cover_image' => $this->cover_image,
+            // คลิปที่แอปเล่นวนแบบปิดเสียงแทนรูปปก — null = ใช้รูปปก
+            'cover_video' => $this->cover_video ?: null,
             'thumbnail_image' => $this->thumbnail_image,
             'gallery' => $this->gallery ?? [],
             'videos' => $this->videos ?? [],

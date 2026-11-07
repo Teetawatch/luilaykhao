@@ -36,7 +36,7 @@ class Trip extends Model
         'difficulty', 'duration_days', 'distance_km', 'elevation_gain_m', 'max_participants',
         'medal_name', 'medal_icon', 'medal_color', 'medal_image',
         'price_per_person', 'departure_point', 'latitude', 'longitude',
-        'status', 'cover_image', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
+        'status', 'cover_image', 'cover_video', 'thumbnail_image', 'gallery', 'videos', 'inclusions', 'exclusions', 'is_featured',
         'highlights', 'is_women_only', 'must_know', 'itinerary', 'preparations', 'faqs', 'rental_items',
         'document_requirements', 'checkin_bring', 'meal_plan',
         'route_track', 'permit_form_id',
