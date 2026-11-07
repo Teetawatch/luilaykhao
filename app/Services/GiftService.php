@@ -46,6 +46,8 @@ class GiftService
                 'slug' => $trip->slug,
                 'location' => $trip->location,
                 'cover_image' => $trip->cover_image,
+                // แอปใช้รูปประจำทริปก่อน ไม่มีค่อยใช้รูปปก
+                'thumbnail_image' => $trip->thumbnail_image,
                 'duration_days' => $trip->duration_days,
             ] : null,
         ];
