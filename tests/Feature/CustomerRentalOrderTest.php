@@ -2,15 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendRentalOrderRemindersJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\BookingRentalHandout;
 use App\Models\BookingRentalOrder;
+use App\Models\Setting;
 use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\RentalOrderService;
+use App\Support\SiteSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -20,7 +23,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * ลูกค้าเช่าอุปกรณ์เพิ่มเองหลังจอง แล้วจ่ายผ่านยอดเพิ่มเติม — ปิดรับ 2 วันก่อนเดินทาง
+ * ลูกค้าเช่าอุปกรณ์เพิ่มเองหลังจอง แล้วจ่ายผ่านยอดเพิ่มเติม — ปิดรับ N วันก่อนเดินทาง (ค่าเริ่มต้น 3)
  */
 class CustomerRentalOrderTest extends TestCase
 {
@@ -95,7 +98,7 @@ class CustomerRentalOrderTest extends TestCase
             ->getJson("/api/v1/bookings/{$booking->booking_ref}/rentals")
             ->assertOk()
             ->assertJsonPath('data.open', true)
-            ->assertJsonPath('data.last_day', '2026-10-29')
+            ->assertJsonPath('data.last_day', '2026-10-28')
             ->assertJsonCount(2, 'data.catalog') // ของฟรีไม่ขายผ่านแอป
             ->assertJsonPath('data.catalog.0.key', 'tent')
             ->assertJsonPath('data.catalog.0.parts.0.name', 'เต็นท์');
@@ -145,14 +148,14 @@ class CustomerRentalOrderTest extends TestCase
             ->assertJsonPath('data.booking.extra_due.amount', 300);
     }
 
-    public function test_ordering_closes_two_days_before_departure(): void
+    public function test_ordering_closes_three_days_before_departure_by_default(): void
     {
-        // ออก 23 ต.ค. — วันนี้ 21 คือ D-2 ยังสั่งได้
-        $booking = $this->booking([], $this->schedule('2026-10-23'));
+        // ออก 24 ต.ค. — วันนี้ 21 คือ D-3 ยังสั่งได้
+        $booking = $this->booking([], $this->schedule('2026-10-24'));
         $this->order($booking, [['key' => 'bag', 'quantity' => 1]])->assertCreated();
 
-        // ออก 22 ต.ค. — วันนี้คือ D-1 ปิดแล้ว
-        $late = $this->booking([], $this->schedule('2026-10-22'));
+        // ออก 23 ต.ค. — วันนี้คือ D-2 ปิดแล้ว
+        $late = $this->booking([], $this->schedule('2026-10-23'));
         $this->order($late, [['key' => 'bag', 'quantity' => 1]])
             ->assertStatus(422)
             ->assertJsonPath('message', fn ($m) => str_contains($m, 'ปิดรับ'));
@@ -256,7 +259,7 @@ class CustomerRentalOrderTest extends TestCase
 
     public function test_unpaid_orders_are_removed_once_ordering_closes(): void
     {
-        $booking = $this->booking([], $this->schedule('2026-10-23'));
+        $booking = $this->booking([], $this->schedule('2026-10-24'));
         $this->order($booking, [['key' => 'tent', 'quantity' => 1]])->assertCreated();
         BookingRentalHandout::create(['booking_id' => $booking->id, 'item_name' => 'เต็นท์ 2 คน', 'handed_out_at' => now()]);
 
@@ -276,7 +279,7 @@ class CustomerRentalOrderTest extends TestCase
 
     public function test_an_order_settled_outside_the_app_counts_as_paid_at_closing(): void
     {
-        $booking = $this->booking([], $this->schedule('2026-10-23'));
+        $booking = $this->booking([], $this->schedule('2026-10-24'));
         $this->order($booking, [['key' => 'bag', 'quantity' => 1]])->assertCreated();
 
         // แอดมินรับเงินสดให้แล้วแก้ยอดรับเอง
@@ -295,7 +298,119 @@ class CustomerRentalOrderTest extends TestCase
             ->getJson("/api/v1/bookings/{$booking->booking_ref}")
             ->assertOk()
             ->assertJsonPath('data.rental_ordering.open', true)
-            ->assertJsonPath('data.rental_ordering.last_day', '2026-10-29')
+            ->assertJsonPath('data.rental_ordering.last_day', '2026-10-28')
             ->assertJsonPath('data.rental_ordering.item_count', 2);
+    }
+
+    public function test_admin_can_move_the_cutoff_and_the_app_sees_it(): void
+    {
+        Setting::put(SiteSettings::KEY, ['rental_cutoff_days' => 2]);
+        // ออก 23 ต.ค. — ตั้งเป็น 2 วัน วันนี้ (21) คือวันสุดท้ายที่สั่งได้
+        $booking = $this->booking([], $this->schedule('2026-10-23'));
+
+        $this->actingAs($booking->user, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/rentals")
+            ->assertOk()
+            ->assertJsonPath('data.open', true)
+            ->assertJsonPath('data.cutoff_days', 2)
+            ->assertJsonPath('data.last_day', '2026-10-21');
+    }
+
+    public function test_settings_page_saves_the_cutoff_and_old_forms_keep_it(): void
+    {
+        $admin = User::factory()->create();
+        Role::findOrCreate('admin', 'web');
+        $admin->assignRole('admin');
+        $base = [
+            'guarantee_min_seats' => 8, 'low_seat_threshold' => 3, 'underfilled_min_seats' => 8,
+            'waitlist_offer_ttl_minutes' => 15, 'quiet_hours_enabled' => true,
+            'quiet_start_hour' => 21, 'quiet_end_hour' => 8, 'licence_no' => '11/13855',
+        ];
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $base + ['rental_cutoff_days' => 5])
+            ->assertOk();
+        $this->assertSame(5, RentalOrderService::cutoffDays());
+
+        // ฟอร์มรุ่นก่อนไม่มีช่องนี้ — บันทึกแล้วต้องไม่ล้างค่ากลับเป็นค่าเริ่มต้น
+        $this->actingAs($admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $base)
+            ->assertOk();
+        $this->assertSame(5, RentalOrderService::cutoffDays());
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/site', $base + ['rental_cutoff_days' => 0])
+            ->assertStatus(422);
+    }
+
+    public function test_the_last_ordering_day_reminds_bookings_that_rented_nothing(): void
+    {
+        // ออก 24 ต.ค. — วันนี้ (21) คือวันสุดท้ายที่สั่งได้
+        $schedule = $this->schedule('2026-10-24');
+        $schedule->forceFill(['departure_confirmed_at' => now()])->save();
+        $plain = $this->booking([], $schedule);
+        $rented = $this->booking([
+            'selected_rentals' => [['key' => 'bag', 'name' => 'ถุงนอน', 'unit_price' => 150, 'quantity' => 1, 'total_price' => 150]],
+        ], $schedule);
+        $pending = $this->booking(['status' => 'pending', 'paid_amount' => 0], $schedule);
+
+        // ออก 25 ต.ค. — ยังไม่ถึงวันสุดท้าย
+        $early = $this->schedule('2026-10-25');
+        $early->forceFill(['departure_confirmed_at' => now()])->save();
+        $notYet = $this->booking([], $early);
+
+        // รอบที่ยังไม่ครบขั้นต่ำ — ไม่ชวนจ่ายเพิ่ม
+        $underfilled = $this->booking([], $this->schedule('2026-10-24'));
+
+        (new SendRentalOrderRemindersJob)->handle(app(RentalOrderService::class));
+        (new SendRentalOrderRemindersJob)->handle(app(RentalOrderService::class));
+
+        $reminded = SmartNotification::where('type', 'rental_order_reminder')->get();
+        $this->assertSame([$plain->user_id], $reminded->pluck('user_id')->all());
+        $this->assertSame('rentals', $reminded->first()->data['route']);
+        $this->assertSame($plain->booking_ref, $reminded->first()->data['booking_ref']);
+        $this->assertNotNull($plain->fresh()->rental_reminder_sent_at);
+        foreach ([$rented, $pending, $notYet, $underfilled] as $other) {
+            $this->assertNull($other->fresh()->rental_reminder_sent_at);
+        }
+    }
+
+    public function test_admin_sees_every_order_customers_placed_in_the_app(): void
+    {
+        $admin = User::factory()->create();
+        Role::findOrCreate('admin', 'web');
+        $admin->assignRole('admin');
+
+        $paid = $this->booking();
+        $this->order($paid, [['key' => 'tent', 'quantity' => 1]])->assertCreated();
+        BookingRentalOrder::where('booking_id', $paid->id)->update(['status' => BookingRentalOrder::STATUS_PAID, 'paid_at' => now()]);
+        $waiting = $this->booking();
+        $this->order($waiting, [['key' => 'bag', 'quantity' => 2]])->assertCreated();
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/rentals/orders')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.booking_ref', $waiting->booking_ref)
+            ->assertJsonPath('data.0.status', 'awaiting_payment')
+            ->assertJsonPath('data.0.items.0.quantity', 2)
+            ->assertJsonPath('data.0.trip_title', 'Rental Trip')
+            ->assertJsonPath('meta.summary.awaiting_payment.orders', 1)
+            ->assertJsonPath('meta.summary.paid.amount', 300)
+            ->assertJsonPath('meta.cutoff_days', 3);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/rentals/orders?status=paid')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.booking_ref', $paid->booking_ref);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/rentals/orders?q='.$paid->booking_ref)
+            ->assertJsonCount(1, 'data');
+
+        // ลูกค้าเปิดหน้านี้ไม่ได้
+        $this->actingAs($paid->user, 'sanctum')
+            ->getJson('/api/v1/admin/rentals/orders')
+            ->assertForbidden();
     }
 }

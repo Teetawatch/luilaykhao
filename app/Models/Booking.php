@@ -133,6 +133,7 @@ class Booking extends Model
             'refunded_at' => 'datetime',
             'checked_in_at' => 'datetime',
             'attendance_asked_at' => 'datetime',
+            'rental_reminder_sent_at' => 'datetime',
             'attendance_confirmed_at' => 'datetime',
             'pickup_status_at' => 'datetime',
             'pickup_note_at' => 'datetime',

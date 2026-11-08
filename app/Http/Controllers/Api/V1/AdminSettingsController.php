@@ -40,6 +40,9 @@ class AdminSettingsController extends Controller
             'underfilled_min_seats' => ['required', 'integer', 'min:1', 'max:50'],
             // สั้นกว่า 5 นาทีลูกค้าแทบไม่ทันเปิดแอป ยาวเกิน 3 ชั่วโมงที่นั่งก็จมอยู่กับคนเดียว
             'waitlist_offer_ttl_minutes' => ['required', 'integer', 'min:5', 'max:180'],
+            // nullable: ฟอร์มรุ่นก่อนไม่มีช่องนี้ — Setting::put เขียนทับทั้งก้อน
+            // 1 วัน = สั่งได้ถึงวันก่อนออก, เกิน 14 วันก็เท่ากับปิดรับตั้งแต่จองเสร็จ
+            'rental_cutoff_days' => ['nullable', 'integer', 'min:1', 'max:14'],
             'quiet_hours_enabled' => ['required', 'boolean'],
             'quiet_start_hour' => ['required', 'integer', 'min:0', 'max:23'],
             'quiet_end_hour' => ['required', 'integer', 'min:0', 'max:23'],
@@ -92,6 +95,8 @@ class AdminSettingsController extends Controller
         if (! array_key_exists('van_card_image', $data)) {
             $data['van_card_image'] = SiteSettings::get('van_card_image') ?: null;
         }
+
+        $data['rental_cutoff_days'] = (int) ($data['rental_cutoff_days'] ?? SiteSettings::int('rental_cutoff_days'));
 
         $data['finance_close_grace_days'] = (int) ($data['finance_close_grace_days'] ?? SiteSettings::financeCloseGraceDays());
 

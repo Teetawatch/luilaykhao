@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\BookingRentalOrder;
 use App\Models\TripSchedule;
+use App\Services\RentalOrderService;
 use App\Services\RentalPickListService;
 use App\Support\ThaiDate;
 use App\Traits\ApiResponse;
@@ -26,7 +28,10 @@ class AdminRentalController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private RentalPickListService $pickList) {}
+    public function __construct(
+        private RentalPickListService $pickList,
+        private RentalOrderService $orders,
+    ) {}
 
     /**
      * รอบที่มีคนเช่าอุปกรณ์ — ตั้งต้นเฉพาะรอบที่ยังไม่ออกเดินทาง
@@ -67,5 +72,67 @@ class AdminRentalController extends Controller
         $filename = 'rental-picklist-'.$schedule->id.'-'.($schedule->departure_date?->toDateString() ?? 'round').'.pdf';
 
         return $pdf->download($filename);
+    }
+
+    /**
+     * รายการที่ลูกค้าสั่งเช่าเพิ่มเองในแอปหลังจอง (booking_rental_orders)
+     *
+     * ใบเตรียมของด้านบนรวมของที่ "อยู่บนใบจอง" ซึ่งรวมก้อนที่ยังไม่จ่ายด้วย — หน้านี้
+     * แยกให้เห็นว่าก้อนไหนสั่งเอง จ่ายแล้วหรือยัง และก้อนไหนถูกยกเลิกเพราะไม่จ่าย
+     */
+    public function orders(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['nullable', 'in:awaiting_payment,paid,cancelled'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
+        ]);
+
+        $query = BookingRentalOrder::query()
+            ->with(['booking.schedule.trip', 'booking.user'])
+            ->when($data['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
+            ->when(trim($data['q'] ?? ''), function ($q, $term) {
+                $like = '%'.$term.'%';
+                $q->whereHas('booking', fn ($b) => $b
+                    ->where('booking_ref', 'like', $like)
+                    ->orWhereHas('user', fn ($u) => $u->where('name', 'like', $like)->orWhere('phone', 'like', $like))
+                    ->orWhereHas('schedule.trip', fn ($t) => $t->where('title', 'like', $like)));
+            })
+            ->latest('id');
+
+        $page = $query->paginate($data['per_page'] ?? 30);
+        $page->setCollection($page->getCollection()->map(function (BookingRentalOrder $order) {
+            $booking = $order->booking;
+            $schedule = $booking?->schedule;
+            $closesAt = $booking ? $this->orders->closesAt($booking) : null;
+
+            return [
+                ...$this->orders->present($order),
+                'booking_ref' => $booking?->booking_ref,
+                'booking_status' => $booking?->status,
+                'customer_name' => $booking?->user?->name,
+                'customer_phone' => $booking?->user?->phone,
+                'trip_title' => $schedule?->trip?->title,
+                'schedule_id' => $schedule?->id,
+                'departure_date' => $schedule?->departure_date?->toDateString(),
+                'departure_date_thai' => $schedule?->departure_date ? ThaiDate::full($schedule->departure_date) : null,
+                'closes_at' => $closesAt?->toIso8601String(),
+            ];
+        }));
+
+        $summary = BookingRentalOrder::query()
+            ->selectRaw('status, count(*) as orders, coalesce(sum(amount), 0) as amount')
+            ->groupBy('status')
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->status => ['orders' => (int) $row->orders, 'amount' => (float) $row->amount]]);
+
+        return $this->paginated($page, 'สำเร็จ', [
+            'summary' => [
+                'awaiting_payment' => $summary[BookingRentalOrder::STATUS_AWAITING] ?? ['orders' => 0, 'amount' => 0.0],
+                'paid' => $summary[BookingRentalOrder::STATUS_PAID] ?? ['orders' => 0, 'amount' => 0.0],
+                'cancelled' => $summary[BookingRentalOrder::STATUS_CANCELLED] ?? ['orders' => 0, 'amount' => 0.0],
+            ],
+            'cutoff_days' => RentalOrderService::cutoffDays(),
+        ]);
     }
 }

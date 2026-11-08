@@ -94,6 +94,37 @@
         </div>
       </section>
 
+      <!-- ── เช่าอุปกรณ์เพิ่ม ── -->
+      <section class="setting-card">
+        <div class="card-head">
+          <span class="material-symbols-rounded">backpack</span>
+          <div>
+            <h2>เช่าอุปกรณ์เพิ่มหลังจอง</h2>
+            <p>ลูกค้าสั่งเช่าเต็นท์ ถุงนอน ฯลฯ เพิ่มเองในแอปได้จนถึงวันที่ตั้งไว้</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>ปิดรับก่อนเดินทาง</label>
+          <div class="input-row">
+            <input v-model.number="form.rental_cutoff_days" type="number" min="1" max="14" />
+            <span class="unit">วัน</span>
+            <button
+              v-if="isChanged('rental_cutoff_days')"
+              class="reset-link"
+              @click="reset('rental_cutoff_days')"
+            >
+              คืนค่าเดิม ({{ defaults.rental_cutoff_days }})
+            </button>
+          </div>
+          <span class="help">
+            สั่งได้ถึงสิ้นวัน "N วันก่อนเดินทาง" เช่น 3 = รอบออกวันเสาร์ สั่งได้ถึงวันพุธ
+            เช้าวันสุดท้ายระบบส่ง push ชวนเช่าให้ใบจองที่ยังไม่ได้เช่าอะไร
+            <br />ตั้งได้ 1–14 วัน · รายการที่ยังไม่จ่ายจะถูกยกเลิกหลังปิดรับ 1 ชั่วโมง
+          </span>
+        </div>
+      </section>
+
       <!-- ── ช่วงเวลางดรบกวน ── -->
       <section class="setting-card">
         <div class="card-head">
@@ -424,6 +455,7 @@ const form = reactive({
   low_seat_threshold: 3,
   underfilled_min_seats: 8,
   waitlist_offer_ttl_minutes: 15,
+  rental_cutoff_days: 3,
   quiet_hours_enabled: true,
   quiet_start_hour: 21,
   quiet_end_hour: 8,

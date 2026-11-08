@@ -5,8 +5,6 @@ use App\Jobs\AnnounceDepartedTripsJob;
 use App\Jobs\AnnounceSaleCampaignJob;
 use App\Jobs\ApprovePartnerCommissionsJob;
 use App\Jobs\AskTripAttendanceJob;
-use App\Jobs\RemindPermitSignaturesJob;
-use App\Jobs\SendBookingDocumentRemindersJob;
 use App\Jobs\AwardTripMedalsJob;
 use App\Jobs\BroadcastLowSeatsJob;
 use App\Jobs\ClearEndedTripDriverPinsJob;
@@ -25,18 +23,21 @@ use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PruneSosPhotosJob;
 use App\Jobs\PruneVehicleLocationsJob;
 use App\Jobs\PurgeBorderPassDocumentsJob;
-use App\Jobs\PurgePermitSignaturesJob;
 use App\Jobs\PurgeEndedTripChatsJob;
 use App\Jobs\PurgeExpiredSchedulePhotosJob;
+use App\Jobs\PurgePermitSignaturesJob;
 use App\Jobs\PurgeStaleCustomerIntakesJob;
 use App\Jobs\ReconcileBeamChargesJob;
 use App\Jobs\ReleaseEndedTripStaffJob;
 use App\Jobs\ReleaseForceMajeureHoldsJob;
+use App\Jobs\RemindPermitSignaturesJob;
 use App\Jobs\RemindStaffToShareLocationJob;
+use App\Jobs\SendBookingDocumentRemindersJob;
 use App\Jobs\SendCheckInRemindersJob;
 use App\Jobs\SendDepartureSoonRemindersJob;
 use App\Jobs\SendFinanceCloseRemindersJob;
 use App\Jobs\SendForceMajeureRemindersJob;
+use App\Jobs\SendRentalOrderRemindersJob;
 use App\Jobs\SendReviewInvitesJob;
 use App\Jobs\SendSafeTravelsJob;
 use App\Jobs\SendStaffShiftRemindersJob;
@@ -146,6 +147,8 @@ Schedule::command('seats:audit')->dailyAt('07:30')->timezone('Asia/Bangkok')->wi
 Schedule::job(new ExpireWaitlistOffersJob)->everyFiveMinutes()->withoutOverlapping();
 // อุปกรณ์ที่ลูกค้าสั่งเช่าเองแต่ไม่จ่ายก่อนปิดรับ (2 วันก่อนเดินทาง) — ถอดออกจากใบจอง
 Schedule::job(new ExpireRentalOrdersJob)->everyFifteenMinutes()->withoutOverlapping();
+// วันสุดท้ายที่ยังเช่าอุปกรณ์เพิ่มได้ — เช้าพอให้มีทั้งวันตัดสินใจและโอน
+Schedule::job(new SendRentalOrderRemindersJob)->dailyAt('09:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // คอมพาร์ทเนอร์ของรอบที่กลับมาแล้วและจ่ายครบ → รอโอน
 Schedule::job(new ApprovePartnerCommissionsJob)->dailyAt('06:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new ReleaseForceMajeureHoldsJob)->everyFiveMinutes()->withoutOverlapping();

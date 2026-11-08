@@ -48,9 +48,9 @@ use App\Http\Controllers\Api\V1\ChatPorterController;
 use App\Http\Controllers\Api\V1\ChatPrivateController;
 use App\Http\Controllers\Api\V1\ChatRestStopController;
 use App\Http\Controllers\Api\V1\ChatSocialController;
-use App\Http\Controllers\Api\V1\ChatTranslationController;
 use App\Http\Controllers\Api\V1\ChatSupplyController;
 use App\Http\Controllers\Api\V1\ChatTrailController;
+use App\Http\Controllers\Api\V1\ChatTranslationController;
 use App\Http\Controllers\Api\V1\ChatWellnessController;
 use App\Http\Controllers\Api\V1\CoinController;
 use App\Http\Controllers\Api\V1\ConciergeController;
@@ -83,9 +83,9 @@ use App\Http\Controllers\Api\V1\PassportController;
 use App\Http\Controllers\Api\V1\PassportPinController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\PaymentController;
-use App\Http\Controllers\Api\V1\PickupMatesController;
 use App\Http\Controllers\Api\V1\PermitSignatureController;
 use App\Http\Controllers\Api\V1\PhotoController;
+use App\Http\Controllers\Api\V1\PickupMatesController;
 use App\Http\Controllers\Api\V1\PickupVehicleClassController;
 use App\Http\Controllers\Api\V1\PlaceController;
 use App\Http\Controllers\Api\V1\PromotionController;
@@ -1054,6 +1054,8 @@ Route::prefix('v1')->group(function () {
         Route::get('rentals/schedules', [AdminRentalController::class, 'schedules']);
         Route::get('rentals/schedules/{id}', [AdminRentalController::class, 'show'])->whereNumber('id');
         Route::get('rentals/schedules/{id}/pdf', [AdminRentalController::class, 'pdf'])->whereNumber('id');
+        // ของที่ลูกค้าสั่งเช่าเพิ่มเองในแอปหลังจอง — จ่ายแล้ว/รอจ่าย/ถูกยกเลิก
+        Route::get('rentals/orders', [AdminRentalController::class, 'orders']);
 
         // แบบฟอร์มขออนุญาตของอุทยาน — เติมข้อมูลผู้เดินทางลง PDF ต่อคน
         Route::get('permit-forms', [AdminPermitFormController::class, 'index']);

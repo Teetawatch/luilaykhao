@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingRentalOrder;
 use App\Models\SmartNotification;
 use App\Models\User;
+use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use App\Support\TripRentalItems;
 use Illuminate\Support\Carbon;
@@ -24,8 +25,14 @@ use Illuminate\Support\Facades\Log;
  */
 class RentalOrderService
 {
-    /** สั่งได้ถึงสิ้นวัน "2 วันก่อนเดินทาง" (ออกวันเสาร์ = สั่งได้ถึงพฤหัสฯ) */
-    public const CUTOFF_DAYS = 2;
+    /**
+     * สั่งได้ถึงสิ้นวัน "N วันก่อนเดินทาง" — แอดมินตั้งที่ /admin/settings
+     * (ค่าเริ่มต้น 3: ออกวันเสาร์ = สั่งได้ถึงพุธ)
+     */
+    public static function cutoffDays(): int
+    {
+        return max(1, SiteSettings::int('rental_cutoff_days'));
+    }
 
     /** ก้อนที่สั่งตอนใกล้ปิด ยังมีเวลาโอนก่อนถูกถอดออก */
     public const PAYMENT_GRACE_MINUTES = 60;
@@ -41,7 +48,7 @@ class RentalOrderService
         }
 
         return Carbon::parse($date->toDateString(), self::TIMEZONE)
-            ->subDays(self::CUTOFF_DAYS - 1)
+            ->subDays(self::cutoffDays() - 1)
             ->startOfDay();
     }
 
@@ -66,7 +73,7 @@ class RentalOrderService
 
         $closesAt = $this->closesAt($booking);
         if (! $closesAt || now(self::TIMEZONE)->greaterThanOrEqualTo($closesAt)) {
-            return 'ปิดรับเช่าอุปกรณ์ในแอปแล้ว (เช่าได้ถึง '.self::CUTOFF_DAYS.' วันก่อนเดินทาง) ทักทีมงานในแชทได้หากยังต้องการ';
+            return 'ปิดรับเช่าอุปกรณ์ในแอปแล้ว (เช่าได้ถึง '.self::cutoffDays().' วันก่อนเดินทาง) ทักทีมงานในแชทได้หากยังต้องการ';
         }
 
         return null;
@@ -116,7 +123,7 @@ class RentalOrderService
             'closes_at' => $closesAt?->toIso8601String(),
             'last_day' => $closesAt?->copy()->subDay()->toDateString(),
             'last_day_label' => $closesAt ? ThaiDate::full($closesAt->copy()->subDay()) : null,
-            'cutoff_days' => self::CUTOFF_DAYS,
+            'cutoff_days' => self::cutoffDays(),
             'catalog' => array_map(fn (array $item) => [
                 'key' => $item['key'],
                 'name' => $item['name'],
