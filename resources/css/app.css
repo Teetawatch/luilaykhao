@@ -156,6 +156,19 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* ขนาดไอคอน — text-[Npx] ใช้กับไอคอนไม่ได้ เพราะกฎ 24px ข้างบนอยู่นอก cascade layer จึงชนะ utility ของ Tailwind เสมอ
+   หน้าที่รีดีไซน์ใช้คลาสพวกนี้แทน (สองคลาส = specificity สูงกว่ากฎข้างบน) */
+.material-symbols-rounded.icon-14 { font-size: 14px; }
+.material-symbols-rounded.icon-16 { font-size: 16px; }
+.material-symbols-rounded.icon-18 { font-size: 18px; }
+.material-symbols-rounded.icon-20 { font-size: 20px; }
+.material-symbols-rounded.icon-22 { font-size: 22px; }
+.material-symbols-rounded.icon-28 { font-size: 28px; }
+.material-symbols-rounded.icon-32 { font-size: 32px; }
+.material-symbols-rounded.icon-40 { font-size: 40px; }
+.material-symbols-rounded.icon-48 { font-size: 48px; }
+.material-symbols-rounded.icon-64 { font-size: 64px; }
+
 /* Until the icon font has loaded (app.blade.php adds .icons-ready), an icon is
    just its ligature name in a fallback font — "airline_seat_recline_normal"
    spilling across the card. Keep it invisible and icon-sized instead. */

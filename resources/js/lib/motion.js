@@ -8,6 +8,7 @@ import { nextTick } from 'vue';
  * - `v-reveal.stagger`    ใส่ที่กล่องแม่ ลูกทุกตัว (รวมที่วาดเพิ่มทีหลัง เช่น "ดูเพิ่มเติม") โผล่ไล่กัน
  * - `v-parallax="0.25"`   เลื่อนช้ากว่าหน้า (ใช้คุณสมบัติ `translate` จึงไม่ชนกับ animation ที่ใช้ `transform`)
  *                         `v-parallax.center` สำหรับภาพกลางหน้า — ภาพต้องสูงกว่ากรอบพอให้ขยับได้
+ * - `v-count-up="1250"`   ตัวเลขนับขึ้นจาก 0 เมื่อเลื่อนมาถึง — element ต้องว่าง (directive เป็นเจ้าของข้อความเอง)
  * - `installViewTransitions(router)`  เปลี่ยนหน้าแบบจางเข้า แทนการกระพริบ
  *
  * ทุกอย่างปิดตัวเองเมื่อผู้ใช้ตั้ง "ลดการเคลื่อนไหว" หรือเบราว์เซอร์ไม่รองรับ และซ่อนของได้
@@ -140,6 +141,64 @@ export const vParallax = {
   },
 };
 
+/* ── Count-up ─────────────────────────────────────────────── */
+
+function formatCount(value, decimals) {
+  return Number(value).toLocaleString('th-TH', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function decimalsOf(value) {
+  const text = String(value);
+  return text.includes('.') ? Math.min(2, text.split('.')[1].length) : 0;
+}
+
+let countObserver = null;
+
+function runCount(el) {
+  const target = Number(el._countTarget);
+  const decimals = decimalsOf(el._countTarget);
+  const start = performance.now();
+  const duration = 1100;
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 4);
+    el.textContent = formatCount(target * eased, decimals);
+    if (t < 1) el._countFrame = requestAnimationFrame(step);
+  };
+  el._countFrame = requestAnimationFrame(step);
+}
+
+export const vCountUp = {
+  mounted(el, binding) {
+    el._countTarget = binding.value;
+    const value = Number(binding.value);
+    if (!Number.isFinite(value) || !motionEnabled()) {
+      el.textContent = Number.isFinite(value) ? formatCount(value, decimalsOf(binding.value)) : (binding.value ?? '');
+      return;
+    }
+    el.textContent = formatCount(0, decimalsOf(binding.value));
+    countObserver ??= new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        countObserver.unobserve(entry.target);
+        runCount(entry.target);
+      });
+    }, { threshold: 0.4 });
+    countObserver.observe(el);
+  },
+  updated(el, binding) {
+    if (binding.value === binding.oldValue) return;
+    el._countTarget = binding.value;
+    cancelAnimationFrame(el._countFrame);
+    const value = Number(binding.value);
+    el.textContent = Number.isFinite(value) ? formatCount(value, decimalsOf(binding.value)) : (binding.value ?? '');
+  },
+  beforeUnmount(el) {
+    cancelAnimationFrame(el._countFrame);
+    countObserver?.unobserve(el);
+  },
+};
+
 /* ── Page transitions ─────────────────────────────────────── */
 
 /**
@@ -163,8 +222,8 @@ export function installViewTransitions(router) {
         document.startViewTransition(
           () =>
             new Promise((done) => {
-              // กันค้าง: ถ้าการนำทางถูกยกเลิกกลางทาง afterEach ก็ยังถูกเรียก แต่เผื่อไว้อีกชั้น
-              const timer = setTimeout(done, 1200);
+              // กันค้าง: ถ้าการนำทางถูกยกเลิกกลางทาง afterEach ก็ยังถูกเรียก แต่เผื่อไว้อีกชั้น — สั้นไว้ จอแช่อยู่ตลอดช่วงนี้
+              const timer = setTimeout(done, 400);
               finish = () => {
                 clearTimeout(timer);
                 done();
@@ -182,14 +241,18 @@ export function installViewTransitions(router) {
     if (!finish) return;
     const f = finish;
     finish = null;
+    // รอแค่ให้ Vue วาดหน้าใหม่ลง DOM แล้วปล่อยทันที — ห้ามรอ requestAnimationFrame:
+    // ระหว่าง view transition เบราว์เซอร์หยุดวาดจอ rAF จึงไม่ทำงานเลย ต้องรอ timer สำรองหมด
+    // หน้าเว็บค้างจออยู่หน้าเดิม ~1.6 วินาทีทุกครั้งที่กดลิงก์ (เจอ 2026-11-08)
     await nextTick();
-    requestAnimationFrame(() => f());
+    f();
   });
 }
 
 export function installMotion(app, router) {
   app.directive('reveal', vReveal);
   app.directive('parallax', vParallax);
+  app.directive('count-up', vCountUp);
   if (motionEnabled()) document.documentElement.classList.add('motion-ok');
   if (router) installViewTransitions(router);
 }

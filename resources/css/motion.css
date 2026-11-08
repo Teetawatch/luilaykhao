@@ -29,6 +29,15 @@ html.motion-ok [data-reveal].is-revealed {
     filter: none;
 }
 
+/* พิมพ์หน้า (เช่นเช็คลิสต์) — ของที่ยังไม่ได้เลื่อนไปถึงต้องไม่หายจากกระดาษ */
+@media print {
+    html.motion-ok [data-reveal] {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
+}
+
 /* ── เปลี่ยนหน้า (View Transitions) ────────────────────────── */
 ::view-transition-old(root) {
     animation: vt-fade-out 160ms ease-in both;

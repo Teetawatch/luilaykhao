@@ -3,14 +3,16 @@
        พื้นเขียวป่า รูปจาง ไล่เงาจากซ้าย ตัวอักษรขาวชิดซ้าย -->
   <section class="relative overflow-hidden bg-[var(--color-primary)]">
     <div class="absolute inset-0">
-      <img :src="image" alt="" class="w-full h-full object-cover opacity-45" />
+      <!-- ภาพยื่นขึ้นไปเหนือกรอบ 10% ไว้ให้ parallax เลื่อนลงได้โดยไม่เห็นขอบ -->
+      <img v-parallax="0.25" :src="image" alt="" class="absolute inset-x-0 -top-[10%] w-full h-[110%] object-cover opacity-45" />
       <div class="absolute inset-0 bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-primary)]/85 to-[var(--color-primary)]/30"></div>
     </div>
 
     <div class="page-hero-content relative z-10 max-w-6xl mx-auto px-4 sm:px-6 md:px-8" :class="compact ? 'pt-16 pb-12 md:pt-20 md:pb-16' : 'pt-20 pb-16 md:pt-28 md:pb-24'">
       <div class="max-w-2xl">
         <template v-if="title">
-          <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-[1.15] tracking-tight">
+          <!-- มือถือ 30px — ภาษาไทยไม่มีช่องว่างให้ตัดบรรทัด หัวข้อยาว ๆ ที่ 36px จะถูกตัดกลางคำ -->
+          <h1 class="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white leading-[1.15] tracking-tight">
             <slot name="title">{{ title }}</slot>
           </h1>
           <p v-if="subtitle" class="mt-5 text-lg md:text-xl text-white/80 leading-relaxed whitespace-pre-line">
