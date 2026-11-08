@@ -16,7 +16,8 @@
           :src="trip.cover_image"
           :alt="trip.title"
           fetchpriority="high"
-          class="hero-img absolute inset-0 h-full w-full object-cover"
+          v-parallax="0.25"
+          class="hero-img absolute inset-x-0 -top-[10%] h-[110%] w-full object-cover"
           @error="coverFailed = true"
         />
         <!-- pb keeps the glyph above the heavy end of the bottom scrim -->
@@ -145,19 +146,24 @@
       <!-- In-page section nav (editorial jump bar, scroll-spy) -->
       <div class="page-nav sticky top-16 z-40 border-b border-gray-100 bg-white/85 supports-[backdrop-filter]:backdrop-blur-xl">
         <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8">
-          <nav class="flex gap-1 overflow-x-auto no-scrollbar" aria-label="ส่วนต่าง ๆ ของหน้า">
+          <nav ref="pageNavEl" class="relative flex gap-1 overflow-x-auto no-scrollbar" aria-label="ส่วนต่าง ๆ ของหน้า">
             <button
               v-for="s in pageSections"
               :key="s.id"
               type="button"
               class="page-nav__link"
               :class="{ 'is-active': activePageSection === s.id }"
+              :data-section="s.id"
               @click="scrollToPageSection(s.id)"
             >
               {{ s.label }}
             </button>
+            <!-- เส้นใต้แท็บเดียว เลื่อนตามไปหาแท็บที่กำลังอ่าน แทนการกระโดดไปมา -->
+            <span class="page-nav__ink" :style="pageNavInk" aria-hidden="true"></span>
           </nav>
         </div>
+        <!-- อ่านไปถึงไหนแล้วของทั้งหน้า -->
+        <div class="page-nav__progress" :style="{ transform: `scaleX(${readProgress})` }" aria-hidden="true"></div>
       </div>
 
       <!-- Content Grid -->
@@ -249,7 +255,7 @@
               </div>
             </section>
 
-            <section id="overview" class="description-section scroll-mt-32 bg-white p-6 md:p-12 rounded-[2rem] border border-gray-100">
+            <section id="overview" v-reveal class="description-section scroll-mt-32 bg-white p-6 md:p-12 rounded-[2rem] border border-gray-100">
               <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
                 <header class="ed-head">
                   <span class="ed-kicker">ภาพรวม</span>
@@ -373,10 +379,13 @@
                   <div class="timeline relative pl-14 md:pl-24">
                     <!-- Continuous rail the day nodes sit on -->
                     <div class="absolute left-[1.375rem] md:left-9 top-4 bottom-4 w-px bg-gradient-to-b from-[var(--color-accent)]/40 via-gray-200 to-transparent"></div>
+                    <!-- เส้นเขียวไหลลงตามที่เลื่อนอ่าน (เบราว์เซอร์ที่รองรับ scroll-driven animation เท่านั้น) -->
+                    <div class="timeline-fill absolute left-[1.375rem] md:left-9 top-4 bottom-4 w-[2px] -ml-px rounded-full bg-[var(--color-accent)]" aria-hidden="true"></div>
 
                     <div
                       v-for="(item, idx) in sector.items"
                       :key="idx"
+                      v-reveal
                       class="timeline-item relative pb-6 md:pb-8 last:pb-0"
                     >
                       <!-- Day node on the rail — กดได้ด้วยเมาส์ ส่วนปุ่มจริงสำหรับคีย์บอร์ดคือหัวการ์ด -->
@@ -430,8 +439,9 @@
             </section>
 
             <!-- Editorial photo spread — a magazine-style rhythm break -->
-            <figure v-if="spreadImage" class="spread-band relative overflow-hidden rounded-[2.5rem] aspect-[16/9] sm:aspect-[16/7]">
-              <img :src="spreadImage" :alt="trip.title" loading="lazy" class="absolute inset-0 w-full h-full object-cover" @error="spreadImageFailed = true" />
+            <figure v-if="spreadImage" v-reveal:scale class="spread-band relative overflow-hidden rounded-[2.5rem] aspect-[16/9] sm:aspect-[16/7]">
+              <!-- ภาพสูงกว่ากรอบ 24% แล้วเลื่อนช้ากว่าหน้า — เห็นเป็นหน้าต่างมองออกไปข้างนอก -->
+              <img v-parallax.center="0.07" :src="spreadImage" :alt="trip.title" loading="lazy" class="absolute inset-x-0 -top-[12%] w-full h-[124%] object-cover" @error="spreadImageFailed = true" />
               <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/10"></div>
               <figcaption class="absolute inset-x-0 bottom-0 p-6 md:p-10">
                 <p class="flex items-center gap-1.5 text-white/80 text-[13px] font-bold mb-1.5">
@@ -450,7 +460,7 @@
                 <h2 class="ed-title">สิ่งที่ต้องเตรียม</h2>
               </header>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div v-reveal.stagger class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div v-for="(item, idx) in trip.preparations" :key="idx"
                   class="flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-gray-100 hover:border-[var(--color-accent)]/25 transition-colors">
                   <span class="w-7 h-7 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] flex items-center justify-center shrink-0 mt-0.5">
@@ -462,7 +472,7 @@
             </section>
 
             <!-- Highlights -->
-            <section v-if="highlights.length" id="highlights" class="scroll-mt-32">
+            <section v-if="highlights.length" id="highlights" v-reveal class="scroll-mt-32">
               <header class="ed-head mb-8">
                 <span class="ed-kicker">ไฮไลต์</span>
                 <h2 class="ed-title">จุดเด่นของทริป</h2>
@@ -515,7 +525,7 @@
               มื้ออาหาร — ลูกค้าถามสามข้อเสมอ: กี่มื้อ มื้อไหน ต้องจ่ายเองไหม
               ทั้งคำและตัวเลขมาจากเซิร์ฟเวอร์ (TripMealPlan) หน้านี้แค่วาด
             -->
-            <section v-if="trip.meals" id="meals" class="scroll-mt-32">
+            <section v-if="trip.meals" id="meals" v-reveal class="scroll-mt-32">
               <header class="ed-head mb-8">
                 <span class="ed-kicker">อาหารระหว่างทริป</span>
                 <h2 class="ed-title">มื้ออาหาร</h2>
@@ -556,7 +566,7 @@
             </section>
 
             <!-- Inclusions / Exclusions -->
-            <section id="included" class="scroll-mt-32">
+            <section id="included" v-reveal class="scroll-mt-32">
               <header class="ed-head mb-8">
                 <span class="ed-kicker">รายละเอียดราคา</span>
                 <h2 class="ed-title">สิ่งที่รวมและไม่รวม</h2>
@@ -597,7 +607,7 @@
               "ต้องขอวีซ่าไหม" คือคำถามแรกที่ตัดสินว่าลูกค้าจองรอบนี้ทันหรือไม่ และเป็น
               คำถามที่หน้านี้เคยไม่ตอบเลย ทีมงานจึงต้องตอบซ้ำในแชททุกคน
             -->
-            <section v-if="trip.is_international" class="bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
+            <section v-if="trip.is_international" v-reveal class="bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-2">
                 <span class="ed-kicker">ก่อนตัดสินใจ</span>
                 <h2 class="ed-title">เอกสารและข้อควรรู้</h2>
@@ -683,7 +693,7 @@
             </section>
 
             <!-- Cancellation / refund policy -->
-            <section v-if="trip.cancellation_policy" class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
+            <section v-if="trip.cancellation_policy" v-reveal class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-2">
                 <span class="ed-kicker">ความยืดหยุ่น</span>
                 <h2 class="ed-title">นโยบายการยกเลิกและคืนเงิน</h2>
@@ -729,7 +739,7 @@
             </section>
 
             <!-- FAQ -->
-            <section v-if="trip.faqs && trip.faqs.length" class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
+            <section v-if="trip.faqs && trip.faqs.length" v-reveal class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-6">
                 <span class="ed-kicker">คำถามที่พบบ่อย</span>
                 <h2 class="ed-title">เรื่องที่คนถามบ่อยก่อนไป</h2>
@@ -1227,6 +1237,7 @@
           <!-- Photo Album — every image from every review, in one gallery -->
           <div
             v-if="albumPhotos.length > 0"
+            v-reveal
             class="mb-12 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100"
           >
             <div class="flex items-center gap-3.5 mb-6">
@@ -1237,7 +1248,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-3">
+            <div v-reveal.stagger:scale class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 md:gap-3">
               <div
                 v-for="(photo, idx) in displayedAlbumPhotos"
                 :key="`${photo.review_id}-${idx}`"
@@ -1274,8 +1285,9 @@
           </div>
 
           <div v-else-if="reviews.length > 0">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div v-for="review in displayedReviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 transition-all h-full flex flex-col">
+            <!-- items-start: รีวิวบรรทัดเดียวเป็นการ์ดเตี้ย ไม่ยืดสูงตามการ์ดข้าง ๆ จนเหลือพื้นขาวโล่ง -->
+            <div v-reveal.stagger class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start">
+              <div v-for="review in displayedReviews" :key="review.id" class="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 flex flex-col">
                 <div class="flex justify-between items-start gap-3 mb-6">
                   <div class="flex items-center gap-4 min-w-0">
                     <div class="w-12 h-12 shrink-0 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-1 ring-gray-100">
@@ -1379,7 +1391,7 @@
               <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
             </router-link>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
+          <div v-reveal.stagger class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
             <TripCard v-for="t in relatedTrips" :key="t.id" :trip="t" />
           </div>
         </section>
@@ -1957,7 +1969,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import { useHead } from '@unhead/vue';
@@ -2611,6 +2623,42 @@ const pageSections = computed(() => {
   return out;
 });
 
+// เส้นใต้แท็บที่เลื่อนตามแท็บที่กำลังอ่าน + เลื่อนแถบแท็บให้แท็บนั้นอยู่ในจอเสมอ (มือถือแท็บล้นจอ)
+const pageNavEl = ref(null);
+const pageNavInk = ref({ opacity: 0 });
+const PAGE_NAV_INK_INSET = 17.6; // = padding ซ้าย/ขวาของ .page-nav__link (1.1rem)
+
+function updatePageNavInk() {
+  const nav = pageNavEl.value;
+  const btn = nav?.querySelector(`[data-section="${activePageSection.value}"]`);
+  if (!btn) {
+    pageNavInk.value = { opacity: 0 };
+    return;
+  }
+  pageNavInk.value = {
+    width: `${Math.max(0, btn.offsetWidth - PAGE_NAV_INK_INSET * 2)}px`,
+    transform: `translateX(${btn.offsetLeft + PAGE_NAV_INK_INSET}px)`,
+    opacity: 1,
+  };
+  if (nav.scrollWidth > nav.clientWidth) {
+    nav.scrollTo({ left: btn.offsetLeft - (nav.clientWidth - btn.offsetWidth) / 2, behavior: 'smooth' });
+  }
+}
+// ไม่ watch pageSections ตรงนี้ — มันอ่าน highlights ที่ประกาศทีหลัง (TDZ) ชุดแท็บจัดที่ setTimeout หลังโหลดแล้ว
+watch(activePageSection, () => nextTick(updatePageNavInk));
+
+// อ่านไปถึงไหนแล้ว — 0 ถึง 1 ของความสูงทั้งหน้า
+const readProgress = ref(0);
+let readProgressFrame = 0;
+function onReadProgressScroll() {
+  if (readProgressFrame) return;
+  readProgressFrame = requestAnimationFrame(() => {
+    readProgressFrame = 0;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    readProgress.value = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+  });
+}
+
 function scrollToPageSection(id) {
   const el = document.getElementById(id);
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2975,7 +3023,10 @@ onMounted(async () => {
     setTimeout(() => {
       setupSectorObserver();
       setupPageNavObserver();
+      updatePageNavInk();
     }, 1000);
+    window.addEventListener('scroll', onReadProgressScroll, { passive: true });
+    window.addEventListener('resize', updatePageNavInk, { passive: true });
   } catch (e) {
     console.error(e);
   } finally {
@@ -2986,6 +3037,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('scroll', onReadProgressScroll);
+  window.removeEventListener('resize', updatePageNavInk);
+  if (readProgressFrame) cancelAnimationFrame(readProgressFrame);
   if (sectorObserver) sectorObserver.disconnect();
   if (pageNavObserver) pageNavObserver.disconnect();
   if (schedulePoll) clearInterval(schedulePoll);
@@ -3451,15 +3505,25 @@ async function fetchAlbumPhotos() {
 }
 .page-nav__link:hover { color: var(--color-text-dark); }
 .page-nav__link.is-active { color: var(--color-primary); }
-.page-nav__link.is-active::after {
-  content: '';
+.page-nav__ink {
   position: absolute;
-  left: 1.1rem;
-  right: 1.1rem;
-  bottom: -1px;
+  left: 0;
+  bottom: 0;
   height: 2.5px;
   border-radius: 3px;
   background-color: var(--color-accent);
+  pointer-events: none;
+  transition: transform 0.45s var(--ease-out), width 0.45s var(--ease-out), opacity 0.2s ease;
+}
+.page-nav__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-accent-light) 55%, transparent), color-mix(in srgb, var(--color-accent) 55%, transparent));
+  pointer-events: none;
 }
 
 /* Highlight card icon must beat the unlayered 24px icon rule */
@@ -3534,9 +3598,32 @@ async function fetchAlbumPhotos() {
   text-wrap: balance;
 }
 
-.hero-content {
-  animation: heroContentIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  animation-delay: 0.1s;
+/* ป้าย → ชื่อทริป → ข้อมูลย่อย ไล่กันขึ้นมาทีละแถว */
+.hero-content > * {
+  animation: heroContentIn 0.8s var(--ease-out) backwards;
+}
+.hero-content > :nth-child(1) { animation-delay: 0.08s; }
+.hero-content > :nth-child(2) { animation-delay: 0.18s; }
+.hero-content > :nth-child(3) { animation-delay: 0.28s; }
+
+/* เส้นแผนการเดินทางเติมสีเขียวลงมาตามที่เลื่อนอ่าน — เบราว์เซอร์ที่ไม่รองรับจะไม่เห็นเส้นนี้เลย */
+.timeline-fill { display: none; }
+@supports (animation-timeline: view()) {
+  .timeline { view-timeline-name: --itinerary; }
+  .timeline-fill {
+    display: block;
+    transform-origin: top;
+    animation: timelineFill linear both;
+    animation-timeline: --itinerary;
+    animation-range: cover 20% cover 80%;
+  }
+  @keyframes timelineFill {
+    from { transform: scaleY(0); }
+    to   { transform: scaleY(1); }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timeline-fill { display: none !important; }
 }
 
 @keyframes heroContentIn {
@@ -3677,7 +3764,7 @@ async function fetchAlbumPhotos() {
   .animate-fade-in,
   .animate-fade-in-up,
   .stagger-in,
-  .hero-content,
+  .hero-content > *,
   img {
     animation: none !important;
     transition: none !important;

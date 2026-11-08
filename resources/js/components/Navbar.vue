@@ -1,5 +1,5 @@
 <template>
-  <header class="sticky top-0 z-50 w-full">
+  <header class="site-nav sticky top-0 z-50 w-full">
     <!-- Trust Bar (Top Bar) -->
     <div
       class="w-full bg-gradient-to-r from-primary via-primary-mid to-primary text-white overflow-hidden transform-gpu"

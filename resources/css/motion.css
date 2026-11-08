@@ -1,0 +1,129 @@
+/* ── ระบบการเคลื่อนไหวกลาง (คู่กับ resources/js/lib/motion.js) ─────────────
+   ทุกอย่างที่ซ่อนก่อนโผล่ ซ่อนเฉพาะใต้ html.motion-ok ซึ่ง motion.js ใส่ให้
+   เมื่อผู้ใช้ไม่ได้ตั้ง "ลดการเคลื่อนไหว" — ไม่มีคลาสนี้ = เห็นทุกอย่างทันที */
+
+:root {
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --reveal-duration: 800ms; /* ต้องตรงกับ REVEAL_MS ใน motion.js */
+    --reveal-distance: 28px;
+}
+
+/* ── v-reveal ───────────────────────────────────────────────── */
+html.motion-ok [data-reveal] {
+    opacity: 0;
+    transition:
+        opacity var(--reveal-duration) var(--ease-out),
+        transform var(--reveal-duration) var(--ease-out),
+        filter var(--reveal-duration) var(--ease-out);
+    transition-delay: var(--reveal-delay, 0ms);
+}
+html.motion-ok [data-reveal='up']    { transform: translateY(var(--reveal-distance)); }
+html.motion-ok [data-reveal='left']  { transform: translateX(calc(var(--reveal-distance) * -1)); }
+html.motion-ok [data-reveal='right'] { transform: translateX(var(--reveal-distance)); }
+html.motion-ok [data-reveal='scale'] { transform: scale(0.94); }
+html.motion-ok [data-reveal='blur']  { filter: blur(10px); transform: translateY(12px); }
+html.motion-ok [data-reveal].is-revealed {
+    opacity: 1;
+    transform: none;
+    filter: none;
+}
+
+/* ── เปลี่ยนหน้า (View Transitions) ────────────────────────── */
+::view-transition-old(root) {
+    animation: vt-fade-out 160ms ease-in both;
+}
+::view-transition-new(root) {
+    animation: vt-rise-in 380ms var(--ease-out) both;
+}
+/* แถบเมนูบนสุดนิ่งอยู่กับที่ระหว่างเปลี่ยนหน้า ไม่จางตามเนื้อหา */
+::view-transition-old(site-nav),
+::view-transition-new(site-nav) {
+    animation: none;
+}
+.site-nav {
+    view-transition-name: site-nav;
+}
+@keyframes vt-fade-out {
+    to { opacity: 0; }
+}
+@keyframes vt-rise-in {
+    from { opacity: 0; transform: translateY(14px); }
+}
+
+/* ── ปุ่มยุบตัวตอนกด / ยกตัวตอนชี้ ─────────────────────────── */
+.press {
+    transition: transform 160ms var(--ease-out);
+}
+.press:active {
+    transform: scale(0.97);
+}
+
+/* การ์ดรูป: ภาพซูมช้า ๆ ใต้กรอบเดิม ไม่ใช่การ์ดทั้งใบเด้งขึ้น (หน้าเรียบ ไม่มีเงา) */
+.zoom-media {
+    overflow: hidden;
+    isolation: isolate;
+}
+.zoom-media img,
+.zoom-media video {
+    transition: transform 900ms var(--ease-out), filter 600ms ease;
+}
+@media (hover: hover) {
+    .group:hover .zoom-media img,
+    .zoom-media:hover img {
+        transform: scale(1.06);
+    }
+}
+
+/* ── หัวใจเต้นตอนกดถูกใจ ─────────────────────────────────── */
+.heart-pop {
+    animation: heart-pop 480ms var(--ease-spring);
+}
+@keyframes heart-pop {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.35); }
+    60%  { transform: scale(0.92); }
+    100% { transform: scale(1); }
+}
+
+/* ── โครงรอโหลด: แสงวิ่งผ่าน แทนการกระพริบ ─────────────────── */
+.shimmer {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-sand-dark);
+}
+.shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+    animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+    to { transform: translateX(100%); }
+}
+
+/* ── แถบความคืบหน้าการอ่าน (บนสุดของหน้า) ───────────────────── */
+.read-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 3px;
+    z-index: 60;
+    transform-origin: 0 50%;
+    transform: scaleX(var(--read-progress, 0));
+    background: linear-gradient(90deg, var(--color-accent-light), var(--color-accent));
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+    }
+    .press:active { transform: none; }
+    .zoom-media img,
+    .zoom-media video { transition: none; }
+    .heart-pop,
+    .shimmer::after { animation: none; }
+}

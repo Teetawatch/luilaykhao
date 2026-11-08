@@ -4,10 +4,10 @@
        หน้ารวมมีหลายสิบใบ ถ้าทุกใบตะโกนพร้อมกัน มันอ่านเป็นแคตตาล็อกขายของ -->
   <router-link :to="`/trips/${trip.slug}`" class="group flex flex-col h-full">
 
-    <div class="relative overflow-hidden aspect-[4/5] rounded-2xl bg-[var(--color-sand-dark)] shrink-0">
+    <div class="zoom-media relative aspect-[4/5] rounded-2xl bg-[var(--color-sand-dark)] shrink-0">
       <img v-if="trip.thumbnail_image || trip.cover_image" :src="trip.thumbnail_image || trip.cover_image" :alt="trip.title"
         loading="lazy"
-        class="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+        class="w-full h-full object-cover"
         @error="(e) => e.target.style.display='none'" />
       <div v-else class="w-full h-full flex items-center justify-center">
         <span class="material-symbols-rounded text-gray-300 text-5xl">landscape</span>
@@ -24,7 +24,7 @@
       <button @click.prevent="toggleFav" :aria-label="isFav ? 'นำออกจากรายการโปรด' : 'บันทึกรายการโปรด'"
         class="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-white cursor-pointer z-10 transition-colors duration-200"
         :class="isFav ? 'text-red-500' : 'text-[var(--color-text-dark)] hover:text-red-500'">
-        <span class="material-symbols-rounded text-[19px] leading-none"
+        <span class="material-symbols-rounded text-[19px] leading-none" :class="{ 'heart-pop': popping }" @animationend="popping = false"
           :style="isFav ? 'font-variation-settings:\'FILL\' 1,\'wght\' 400' : 'font-variation-settings:\'FILL\' 0,\'wght\' 500'">favorite</span>
       </button>
     </div>
@@ -74,7 +74,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useWishlistStore } from '../stores/wishlist';
 import { tripSeatsLeft, tripScarcityLevel } from '../lib/scheduleHelpers';
 import { thaiDayMonth } from '../lib/thaiDate';
@@ -85,7 +85,10 @@ const props = defineProps({
 
 const wishlist = useWishlistStore();
 const isFav = computed(() => wishlist.isFavorite(props.trip.id));
+// หัวใจเด้งเฉพาะตอนกดถูกใจ (ไม่ใช่ตอนเอาออก) — บอกว่ากดติดแล้ว โดยไม่ต้องมี toast
+const popping = ref(false);
 function toggleFav() {
+  popping.value = !isFav.value;
   wishlist.toggleFavorite(props.trip);
 }
 
