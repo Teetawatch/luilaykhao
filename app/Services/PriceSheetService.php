@@ -178,10 +178,11 @@ class PriceSheetService
         $onFlashSale = $schedule->flashSaleActive();
 
         $points = ($pickups[$schedule->id] ?? collect())
-            ->map(function (SchedulePickupPoint $p) use ($price) {
+            ->map(function (SchedulePickupPoint $p) use ($price, $schedule) {
                 // ราคาจุดรับคือ "ราคาเต็มของจุดนั้น" ไม่ใช่ส่วนต่าง (ดู SchedulePickupPoint)
                 // จุดที่ปล่อยเป็น 0 ไว้คือจุดที่คิดราคารอบตามปกติ
-                $pointPrice = (float) $p->price > 0 ? $this->money($p->price) : $price;
+                // flash sale/แคมเปญลดจุดรับด้วย (ดู TripSchedule::pickupPriceFor())
+                $pointPrice = (float) $p->price > 0 ? $this->money($schedule->pickupPriceFor((float) $p->price)) : $price;
 
                 return [
                     'id' => $p->id,

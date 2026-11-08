@@ -274,7 +274,7 @@ class BookingService
                     // ถามผ่านรอบเพื่อไม่ต้องยิง query หารอบกลับ
                     $pickupPoint->setRelation('schedule', $schedule);
                     $defaultPrice = $pickupPoint->effective_price;
-                    $defaultOriginalPrice = (float) $pickupPoint->price;
+                    $defaultOriginalPrice = $schedule->pickupPriceWithoutCampaign((float) $pickupPoint->price);
                     $pickupRegion = $pickupPoint->region;
                 } elseif (self::hasCustomPin($customPickup)) {
                     // หมุดที่ปักเองไม่มีราคาของตัวเอง ราคาจึงเคยร่วงกลับไปเป็นราคาฐาน
@@ -293,7 +293,7 @@ class BookingService
                     );
                     $defaultOriginalPrice = max(
                         $schedule->priceWithoutCampaign(),
-                        (float) ($nearestPoint?->price ?? 0),
+                        $nearestPoint ? $schedule->pickupPriceWithoutCampaign((float) $nearestPoint->price) : 0.0,
                     );
                 }
 
@@ -412,7 +412,7 @@ class BookingService
                     $passengerPickupPoints
                 ));
                 $passengersSubtotalBeforeCampaign = array_sum(array_map(
-                    fn ($pp) => (float) ($pp?->price ?? $defaultOriginalPrice),
+                    fn ($pp) => $pp ? $schedule->pickupPriceWithoutCampaign((float) $pp->price) : $defaultOriginalPrice,
                     $passengerPickupPoints
                 ));
             }

@@ -2,12 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Http\Resources\SchedulePickupPointResource;
 use App\Jobs\StartScheduledFlashSalesJob;
 use App\Models\BroadcastDispatch;
+use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Models\User;
+use App\Services\BookingService;
 use App\Services\BroadcastNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -206,5 +212,72 @@ class ScheduleFlashSaleTest extends TestCase
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.slug', $soon->slug)   // soonest-ending first
             ->assertJsonPath('data.1.slug', $later->slug);
+    }
+
+    private function makePickupPoint(TripSchedule $schedule, float $price, string $region = 'bkk'): SchedulePickupPoint
+    {
+        return SchedulePickupPoint::create([
+            'schedule_id' => $schedule->id, 'region' => $region, 'region_label' => strtoupper($region),
+            'pickup_location' => "จุดรับ {$region}", 'price' => $price, 'sort_order' => 0,
+        ]);
+    }
+
+    public function test_pickup_point_price_drops_by_the_flash_discount(): void
+    {
+        $trip = $this->makeTrip(); // ราคารอบ 3000
+        $schedule = $this->makeSchedule($trip, [
+            'flash_sale_enabled' => true, 'flash_sale_price' => 2500, // ลด 500
+            'flash_sale_ends_at' => now()->addDay(),
+        ]);
+        $same = $this->makePickupPoint($schedule, 3000, 'bkk');
+        $far = $this->makePickupPoint($schedule, 3400, 'kor');
+
+        // ลดเท่ากับที่ราคารอบลด ส่วนต่างจุดไกล (+400) ยังอยู่ครบ
+        $this->assertSame(2500.0, $same->fresh()->effective_price);
+        $this->assertSame(2900.0, $far->fresh()->effective_price);
+
+        // ราคาที่ส่งให้แอป/เว็บ: ราคาจริง + ราคาก่อนลดไว้ขีดฆ่า
+        $json = (new SchedulePickupPointResource($far->fresh()))->toArray(request());
+        $this->assertSame(2900.0, $json['price']);
+        $this->assertSame(3400.0, $json['original_price']);
+    }
+
+    public function test_pickup_point_keeps_its_price_without_an_active_flash_sale(): void
+    {
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, [
+            'flash_sale_enabled' => true, 'flash_sale_price' => 2500,
+            'flash_sale_ends_at' => now()->subMinute(), // หมดเวลาแล้ว
+        ]);
+        $point = $this->makePickupPoint($schedule, 3400);
+
+        $this->assertSame(3400.0, $point->fresh()->effective_price);
+    }
+
+    public function test_booking_at_a_priced_pickup_point_charges_the_flash_price(): void
+    {
+        Mail::fake();
+        Queue::fake();
+
+        $trip = $this->makeTrip();
+        $schedule = $this->makeSchedule($trip, [
+            'flash_sale_enabled' => true, 'flash_sale_price' => 2500,
+            'flash_sale_ends_at' => now()->addDay(),
+        ]);
+        $far = $this->makePickupPoint($schedule, 3400, 'kor');
+
+        $booking = app(BookingService::class)->createBooking(
+            userId: User::factory()->create()->id,
+            scheduleId: $schedule->id,
+            passengers: [
+                ['title' => 'Mr.', 'name' => 'Traveler 1', 'phone' => '0810000001', 'email' => 't1@example.test'],
+                ['title' => 'Mr.', 'name' => 'Traveler 2', 'phone' => '0810000002', 'email' => 't2@example.test'],
+            ],
+            pickupPointId: $far->id,
+        );
+
+        $this->assertSame(5800.0, (float) $booking->total_amount); // 2 × 2900
+        // flash sale ไม่ใช่ส่วนลดแคมเปญ — ห้ามบันทึกเป็น campaign discount
+        $this->assertSame(0.0, (float) ($booking->campaign_discount ?? 0));
     }
 }

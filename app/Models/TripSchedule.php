@@ -761,6 +761,51 @@ class TripSchedule extends Model
     }
 
     /**
+     * flash sale รายรอบลดไปกี่บาทต่อคน (0 เมื่อไม่มีดีล) — คิดจากราคารอบ
+     * ก่อนลด ลบราคา flash ที่แอดมินกรอก
+     */
+    public function flashSaleDiscount(): float
+    {
+        if (! $this->flashSaleActive()) {
+            return 0.0;
+        }
+
+        return max(0.0, (float) $this->original_price - (float) $this->flash_sale_price);
+    }
+
+    /**
+     * ราคาจุดขึ้นรถหลัง flash sale แต่ก่อนแคมเปญวันพิเศษ
+     *
+     * ราคาจุดรับเป็นราคาเต็มต่อคน (ไม่ใช่ส่วนต่าง) เดิมมันจึงทับราคา flash
+     * ทิ้ง — ลูกค้าที่เลือกจุดรับจ่ายราคาเต็มทั้งที่รอบนี้กำลังลดราคา ตอนนี้
+     * ลดจุดรับด้วยจำนวนบาทเดียวกับที่ราคารอบลด ส่วนต่างระหว่างจุดใกล้/ไกล
+     * ที่แอดมินตั้งไว้จึงยังอยู่ครบ (คู่กับ priceWithoutCampaign())
+     */
+    public function pickupPriceWithoutCampaign(float $price): float
+    {
+        if ($price <= 0) {
+            return $price;
+        }
+
+        return max(0.0, $price - $this->flashSaleDiscount());
+    }
+
+    /**
+     * ราคาที่ลูกค้าจ่ายจริงเมื่อขึ้นจุดรับราคา $price — กติกาเดียวกับ
+     * effective_price: flash sale กับแคมเปญไม่ทบกัน เอาราคาที่ถูกกว่า
+     */
+    public function pickupPriceFor(float $price): float
+    {
+        $campaignPrice = $this->campaignPriceFor($price);
+
+        if ($price > 0 && $this->flashSaleDiscount() > 0) {
+            return min($this->pickupPriceWithoutCampaign($price), $campaignPrice);
+        }
+
+        return $campaignPrice;
+    }
+
+    /**
      * ราคาจอยทริปหลังหักแคมเปญ — join_trip_price เป็นราคาเต็มต่อคนของตัวเอง
      * (ไม่ใช่ส่วนต่าง) แคมเปญจึงต้องลดมันด้วย ไม่งั้นคนจอยจ่ายเท่าเดิมทั้งที่
      * หน้าเว็บประกาศว่า "ลดทั้งเว็บ"

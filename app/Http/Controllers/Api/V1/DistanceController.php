@@ -78,7 +78,9 @@ class DistanceController extends Controller
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->orderBy('sort_order')
-            ->get();
+            ->get()
+            // ราคาจุดรับถามผ่านรอบ (flash sale/แคมเปญ) — ตั้งไว้ก่อนกัน query ซ้ำทีละจุด
+            ->each(fn ($pt) => $pt->setRelation('schedule', $schedule));
 
         if ($pickupPoints->isEmpty()) {
             return $this->success([], 'ไม่มีจุดรับที่มีพิกัด');
@@ -105,7 +107,7 @@ class DistanceController extends Controller
                 'region' => $pt->region,
                 'region_label' => $pt->region_label,
                 'pickup_location' => $pt->pickup_location,
-                'price' => $pt->price,
+                'price' => $pt->effective_price,
                 'latitude' => $pt->latitude,
                 'longitude' => $pt->longitude,
                 'distance' => $distInfo['distance'] ?? null,
@@ -180,7 +182,9 @@ class DistanceController extends Controller
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->orderBy('sort_order')
-            ->get();
+            ->get()
+            // ราคาจุดรับถามผ่านรอบ (flash sale/แคมเปญ) — ตั้งไว้ก่อนกัน query ซ้ำทีละจุด
+            ->each(fn ($pt) => $pt->setRelation('schedule', $schedule));
 
         if ($pickupPoints->isEmpty()) {
             return $this->success([], 'ไม่มีจุดรับที่มีพิกัด');

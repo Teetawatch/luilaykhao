@@ -50,14 +50,15 @@ class SchedulePickupPoint extends Model
     /**
      * ราคาที่ลูกค้าจ่ายจริงเมื่อเลือกจุดนี้ — price เป็นราคาเต็มต่อคน (ไม่ใช่
      * ค่าส่วนต่าง) แคมเปญวันพิเศษจึงต้องลดมันด้วย ไม่งั้นลูกค้าที่เลือกจุดขึ้นรถ
-     * จะไม่ได้ส่วนลดเลยทั้งที่หน้าเว็บบอกว่าลดทั้งเว็บ
+     * จะไม่ได้ส่วนลดเลยทั้งที่หน้าเว็บบอกว่าลดทั้งเว็บ — flash sale รายรอบ
+     * ก็ลดจุดนี้ด้วยเหตุผลเดียวกัน (ดู TripSchedule::pickupPriceFor())
      *
      * ผู้เรียกควร setRelation('schedule', ...) ไว้ก่อนเมื่ออยู่ในลูป — ตัวรอบรู้
      * อยู่แล้วว่าจุดนี้เป็นของมัน ไม่ต้องยิง query ซ้ำทีละจุด
      */
     public function getEffectivePriceAttribute(): float
     {
-        return $this->schedule?->campaignPriceFor((float) $this->price) ?? (float) $this->price;
+        return $this->schedule?->pickupPriceFor((float) $this->price) ?? (float) $this->price;
     }
 
     protected static function booted(): void

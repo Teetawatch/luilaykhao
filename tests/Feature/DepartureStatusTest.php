@@ -15,7 +15,7 @@ use Tests\TestCase;
 
 /**
  * ระบบสถานะการันตีออกเดินทาง (Trip Status) — สถานะ 3 ระดับตามที่นั่งที่จองแล้ว
- * + การยิง push/เปิดส่วนลดอัตโนมัติเมื่อรอบข้ามแถบขึ้น
+ * + การยิง push เมื่อรอบข้ามแถบขึ้น (ไม่เปิด flash sale ให้เอง — แอดมินเปิดเท่านั้น)
  */
 class DepartureStatusTest extends TestCase
 {
@@ -94,7 +94,7 @@ class DepartureStatusTest extends TestCase
         $this->assertSame(5, $array['almost_ready_min_seats']);
     }
 
-    public function test_booking_into_almost_ready_band_blasts_and_opens_auto_discount(): void
+    public function test_booking_into_almost_ready_band_blasts_without_opening_a_flash_sale(): void
     {
         Mail::fake();
         Queue::fake();
@@ -114,11 +114,11 @@ class DepartureStatusTest extends TestCase
             'dedupe_key' => "almost_ready:{$schedule->id}",
         ]);
 
-        // เปิดส่วนลดอัตโนมัติ (flash sale รายรอบ) จริง
+        // flash sale เป็นงานของแอดมิน — ระบบต้องไม่เปิดลดราคาให้เอง
         $schedule->refresh();
-        $this->assertTrue((bool) $schedule->flash_sale_enabled);
-        $this->assertNotNull($schedule->flash_sale_price);
-        $this->assertLessThan((float) $schedule->original_price, (float) $schedule->flash_sale_price);
+        $this->assertFalse((bool) $schedule->flash_sale_enabled);
+        $this->assertNull($schedule->flash_sale_price);
+        $this->assertFalse($schedule->flashSaleActive());
     }
 
     public function test_booking_into_guaranteed_band_blasts_guaranteed(): void

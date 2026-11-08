@@ -2888,7 +2888,7 @@ class AdminController extends Controller
             ? ($schedule->effective_join_trip_price ?? $schedule->effective_price) * $participantCount
             : array_sum(array_map(
                 fn ($point) => $point
-                    ? $schedule->campaignPriceFor((float) $point->price)
+                    ? $schedule->pickupPriceFor((float) $point->price)
                     : (float) $schedule->effective_price,
                 $passengerPickups,
             )) + ((float) ($vehicleOption?->price_adjustment ?? 0) * $participantCount);

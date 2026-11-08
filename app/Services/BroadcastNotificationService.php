@@ -39,16 +39,6 @@ class BroadcastNotificationService
     public const LOW_SEAT_THRESHOLD = 3;
 
     /**
-     * ส่วนลดอัตโนมัติที่เปิดให้ทันทีเมื่อรอบเดินทางขยับเป็น 🟡 Almost Ready —
-     * เป็นแรงจูงใจให้คนที่ลังเลรีบจองปิดรอบให้ครบการันตี (ผูกกับ flash sale
-     * รายรอบที่มีอยู่แล้ว จึงได้ระบบราคาตัด/นับถอยหลังมาฟรี)
-     */
-    public const ALMOST_READY_DISCOUNT_PERCENT = 5;
-
-    /** ระยะเวลาที่ดีลอัตโนมัติของสถานะ Almost Ready มีผล (ชั่วโมง). */
-    public const ALMOST_READY_DEAL_HOURS = 48;
-
-    /**
      * Time-critical events that must reach customers immediately — they are
      * exempt from quiet-hours deferral (a held flash-sale/last-seats push is
      * useless once the round fills up or the sale ends overnight).
@@ -316,8 +306,8 @@ class BroadcastNotificationService
 
     /**
      * ระบบสถานะการันตีออกเดินทาง — ยิงเมื่อรอบขยับขึ้นเป็น 🟡 Almost Ready
-     * (จอง 5-7 ที่นั่ง ขาดอีกนิดเดียวรถออกชัวร์) พร้อม "เปิดส่วนลดอัตโนมัติ"
-     * เพื่อกระตุ้นให้ปิดรอบครบการันตี ยิงครั้งเดียวต่อรอบ (dedupe ledger)
+     * (จอง 5-7 ที่นั่ง ขาดอีกนิดเดียวรถออกชัวร์) ยิงครั้งเดียวต่อรอบ (dedupe ledger)
+     * ไม่เปิดส่วนลดให้เอง — flash sale รายรอบเป็นงานของแอดมินเท่านั้น
      * self-guarding — เรียกจากการจองได้ทันที
      */
     public function broadcastAlmostReady(TripSchedule $schedule): void
@@ -331,10 +321,6 @@ class BroadcastNotificationService
         if ($schedule->departureStatus() !== TripSchedule::STATUS_ALMOST_READY) {
             return;
         }
-
-        // เปิดส่วนลดอัตโนมัติ (ถ้ายังไม่มีดีลอยู่) — ราคาใหม่ไปโผล่ที่หน้าทริป
-        // เอง ไม่ต้องโฆษณาในข้อความ push
-        $this->applyAlmostReadyDiscount($schedule);
 
         $seatsLeft = $schedule->seatsToGuarantee();
 
@@ -388,42 +374,6 @@ class BroadcastNotificationService
                 'schedule_id' => $schedule->id,
             ],
         );
-    }
-
-    /**
-     * เปิดส่วนลดอัตโนมัติสำหรับรอบที่ขยับเป็น Almost Ready — ผูกกับ flash sale
-     * รายรอบที่มีอยู่แล้ว แต่บันทึกแบบเงียบ (saveQuietly) เพื่อไม่ให้ observer
-     * ยิง broadcastFlashSale ซ้ำ (push ของ almost_ready โฆษณาดีลนี้ให้แล้ว)
-     * เคารพดีลของแอดมินที่เปิดไว้ก่อน — ไม่ override
-     */
-    private function applyAlmostReadyDiscount(TripSchedule $schedule): void
-    {
-        if ($schedule->flash_sale_enabled) {
-            return;
-        }
-
-        $base = $schedule->original_price;
-        if ($base <= 0) {
-            return;
-        }
-
-        $salePrice = floor($base * (100 - self::ALMOST_READY_DISCOUNT_PERCENT) / 100);
-        if ($salePrice <= 0 || $salePrice >= $base) {
-            return;
-        }
-
-        $endsAt = CarbonImmutable::now(self::TIMEZONE)->addHours(self::ALMOST_READY_DEAL_HOURS);
-        $departsAt = $schedule->effectiveDepartsAt();
-        if ($departsAt !== null && $endsAt->greaterThan($departsAt)) {
-            $endsAt = $departsAt;
-        }
-
-        $schedule->forceFill([
-            'flash_sale_enabled' => true,
-            'flash_sale_price' => $salePrice,
-            'flash_sale_ends_at' => $endsAt,
-        ])->saveQuietly();
-        $schedule->refresh();
     }
 
     /**
