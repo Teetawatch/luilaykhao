@@ -102,637 +102,335 @@
           </div>
         </div>
 
-        <!-- ── Payment Type Selection (show only if installment or deposit available) ── -->
-        <section v-if="installmentAvailable || installmentNotAvailable || depositAvailable" class="bg-white rounded-3xl p-5 sm:p-8 border border-gray-100 pay-rise" style="--d: 180ms">
-          <!-- Section Header -->
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
-            <div class="flex items-center gap-3">
-              <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shrink-0">
-                <span class="material-symbols-rounded text-white text-[22px]">credit_card</span>
-              </div>
-              <div>
-                <h2 class="text-lg sm:text-xl font-black text-gray-900 leading-tight">เลือกรูปแบบการชำระเงิน</h2>
-                <p class="text-xs text-gray-500 font-medium">เลือกแบบที่สะดวกที่สุดสำหรับท่าน</p>
-              </div>
-            </div>
-            <span class="text-[10px] font-black text-teal-700 bg-teal-50 border border-teal-100 px-3 py-1.5 rounded-full uppercase tracking-widest self-start sm:self-auto">
-              {{ payOptionsCount }} ตัวเลือก
-            </span>
-          </div>
+        <!-- ── รูปแบบการชำระ (ขึ้นเฉพาะตอนมีให้เลือกมากกว่าจ่ายเต็ม) ──
+             รายการแถวเดียวกับแอป: เลือกแล้วแถวนั้นกางรายละเอียดของตัวเองออกมาข้างใต้ -->
+        <section v-if="installmentAvailable || installmentNotAvailable || depositAvailable" class="bg-white rounded-3xl px-5 pt-5 pb-1 sm:px-8 sm:pt-7 border border-gray-100 pay-rise" style="--d: 180ms">
+          <h2 class="pay-section-title">
+            <span class="pay-section-icon"><span class="material-symbols-rounded icon-20" style="font-variation-settings:'FILL' 1">credit_card</span></span>
+            รูปแบบการชำระ
+          </h2>
 
-          <!-- Payment Type Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          <div class="divide-y divide-gray-100" role="radiogroup" aria-label="รูปแบบการชำระ">
+            <PayMethodRow icon="payments" title="ชำระเต็มจำนวน"
+              :subtitle="`ยอดชำระ ฿${money(booking.total_amount)} · จบในครั้งเดียว ยืนยันที่นั่งทันที`"
+              :selected="paymentType === 'full'" @select="paymentType = 'full'" />
 
-            <!-- Full Payment -->
-            <button @click="paymentType = 'full'"
-              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden active:scale-[0.99]"
-              :class="paymentType === 'full'
-                ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50/50 scale-[1.01]'
-                : 'border-gray-100 bg-white hover:border-emerald-200 hover:bg-emerald-50/30 hover:-translate-y-0.5'">
-
-              <!-- Recommended Ribbon -->
-              <div v-if="paymentType !== 'full'" class="absolute top-0 right-0 bg-emerald-500 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
-                ⭐ แนะนำ
-              </div>
-              <!-- Selected check -->
-              <div v-if="paymentType === 'full'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center ring-4 ring-emerald-100 pay-pop">
-                <span class="material-symbols-rounded text-white text-[18px]">check</span>
-              </div>
-
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0"
-                  :class="paymentType === 'full' ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-emerald-100 group-hover:text-emerald-600'">
-                  <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">payments</span>
-                </div>
-                <div>
-                  <p class="font-black text-base" :class="paymentType === 'full' ? 'text-emerald-900' : 'text-gray-900'">ชำระเต็มจำนวน</p>
-                  <p class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest">ครั้งเดียวจบ</p>
-                </div>
-              </div>
-
-              <div class="border-t border-dashed pt-3 mt-1" :class="paymentType === 'full' ? 'border-emerald-200' : 'border-gray-100'">
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">ยอดที่ต้องชำระ</p>
-                <p class="text-2xl font-black leading-none" :class="paymentType === 'full' ? 'text-emerald-700' : 'text-gray-900'">
-                  ฿{{ Number(booking.total_amount).toLocaleString() }}
-                </p>
-              </div>
-
-              <ul class="text-[12px] text-gray-600 space-y-1 mt-1">
-                <li class="flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-emerald-500 text-[14px]">check_circle</span>
-                  จบในครั้งเดียว ไม่ต้องจำกำหนด
-                </li>
-                <li class="flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-emerald-500 text-[14px]">check_circle</span>
-                  ยืนยันที่นั่งทันที
-                </li>
-              </ul>
-            </button>
-
-            <!-- Deposit Payment -->
-            <button v-if="depositAvailable" @click="paymentType = 'deposit'"
-              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden active:scale-[0.99]"
-              :class="paymentType === 'deposit'
-                ? 'border-teal-600 bg-gradient-to-br from-teal-50 to-cyan-50/50 scale-[1.01]'
-                : 'border-gray-100 bg-white hover:border-teal-200 hover:bg-teal-50/30 hover:-translate-y-0.5'">
-
-              <div v-if="paymentType !== 'deposit'" class="absolute top-0 right-0 bg-teal-600 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
-                🔥 ยอดนิยม
-              </div>
-              <div v-if="paymentType === 'deposit'" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-teal-600 flex items-center justify-center ring-4 ring-teal-100 pay-pop">
-                <span class="material-symbols-rounded text-white text-[18px]">check</span>
-              </div>
-
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0"
-                  :class="paymentType === 'deposit' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-teal-100 group-hover:text-teal-700'">
-                  <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">savings</span>
-                </div>
-                <div>
-                  <p class="font-black text-base" :class="paymentType === 'deposit' ? 'text-teal-900' : 'text-gray-900'">จ่ายมัดจำ</p>
-                  <p class="text-[11px] font-bold text-teal-600 uppercase tracking-widest">จ่าย 2 ครั้ง</p>
-                </div>
-              </div>
-
-              <div class="border-t border-dashed pt-3 mt-1" :class="paymentType === 'deposit' ? 'border-teal-200' : 'border-gray-100'">
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">มัดจำตอนนี้</p>
-                <p class="text-2xl font-black leading-none" :class="paymentType === 'deposit' ? 'text-teal-700' : 'text-gray-900'">
-                  ฿{{ depositAmount.toLocaleString() }}
-                </p>
-                <p class="text-[11px] font-bold text-amber-700 mt-1.5">
-                  + ส่วนที่เหลือ ฿{{ balanceAmount.toLocaleString() }}
-                </p>
-              </div>
-
-              <ul class="text-[12px] text-gray-600 space-y-1 mt-1">
-                <li class="flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-teal-500 text-[14px]">check_circle</span>
-                  จ่ายส่วนที่เหลือก่อนเดินทาง {{ POLICY.balanceDueDays }} วัน
-                </li>
-                <li class="flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-teal-500 text-[14px]">check_circle</span>
-                  มี SMS/อีเมล แจ้งเตือนอัตโนมัติ
-                </li>
-              </ul>
-            </button>
-
-            <!-- Installment Payment -->
-            <button v-if="installmentAvailable || installmentNotAvailable" @click="!installmentNotAvailable && (paymentType = 'installment')"
-              class="group relative flex flex-col gap-3 p-5 border-2 rounded-2xl text-left transition-all duration-300 overflow-hidden active:scale-[0.99]"
-              :class="installmentNotAvailable
-                ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
-                : paymentType === 'installment'
-                  ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50/50 scale-[1.01]'
-                  : 'border-gray-100 bg-white hover:border-amber-200 hover:bg-amber-50/30 hover:-translate-y-0.5'">
-
-              <div v-if="installmentNotAvailable" class="absolute top-0 right-0 bg-gray-400 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
-                ไม่พร้อมใช้
-              </div>
-              <div v-else-if="paymentType !== 'installment'" class="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-black px-2.5 py-1 rounded-bl-xl uppercase tracking-wider">
-                💳 ผ่อน 0%
-              </div>
-              <div v-if="paymentType === 'installment' && !installmentNotAvailable" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center ring-4 ring-amber-100 pay-pop">
-                <span class="material-symbols-rounded text-white text-[18px]">check</span>
-              </div>
-
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0"
-                  :class="paymentType === 'installment' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-amber-100 group-hover:text-amber-600'">
-                  <span class="material-symbols-rounded text-[26px]" style="font-variation-settings:'FILL' 1">calendar_month</span>
-                </div>
-                <div>
-                  <p class="font-black text-base" :class="installmentNotAvailable ? 'text-gray-400' : paymentType === 'installment' ? 'text-amber-900' : 'text-gray-900'">ผ่อนชำระ</p>
-                  <p class="text-[11px] font-bold uppercase tracking-widest" :class="installmentNotAvailable ? 'text-gray-400' : 'text-amber-600'">
-                    <template v-if="installmentNotAvailable">ทริปใกล้เกินไป</template>
-                    <template v-else>{{ availableInstallmentOptions[0] }}–{{ availableInstallmentOptions[availableInstallmentOptions.length - 1] || 6 }} งวด</template>
-                  </p>
-                </div>
-              </div>
-
-              <div class="border-t border-dashed pt-3 mt-1" :class="paymentType === 'installment' ? 'border-amber-200' : 'border-gray-100'">
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">งวดละประมาณ</p>
-                <p class="text-2xl font-black leading-none" :class="paymentType === 'installment' ? 'text-amber-700' : 'text-gray-900'">
-                  ฿{{ minPerInstallmentPreview.toLocaleString() }}
-                </p>
-                <p class="text-[11px] font-bold text-gray-500 mt-1.5">
-                  ทุก ~{{ installmentIntervalDays }} วัน · ไม่มีดอกเบี้ย
-                </p>
-              </div>
-
-              <ul class="text-[12px] text-gray-600 space-y-1 mt-1">
-                <li class="flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-amber-500 text-[14px]">check_circle</span>
-                  ระบบแบ่งงวดให้จากวันเดินทาง
-                </li>
-                <li class="flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-amber-500 text-[14px]">check_circle</span>
-                  ยอดรวมคงเดิม ไม่มีดอกเบี้ย
-                </li>
-              </ul>
-            </button>
-          </div>
-
-          <!-- Installment not available warning -->
-          <Transition name="fade">
-            <div v-if="installmentWarningMessage" class="mt-4 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-              <span class="material-symbols-rounded text-amber-500 text-xl shrink-0">warning</span>
-              <p class="text-sm font-medium text-amber-800 leading-relaxed">{{ installmentWarningMessage }}</p>
-            </div>
-          </Transition>
-
-          <!-- Deposit details + cancellation clause -->
-          <Transition name="fade">
-          <div v-if="paymentType === 'deposit'" class="mt-6 space-y-4">
-            <!-- Summary breakdown -->
-            <div class="bg-gradient-to-br from-teal-50 via-white to-cyan-50/50 border-2 border-teal-100 rounded-3xl p-5 sm:p-6">
-              <div class="flex items-center gap-2 mb-4">
-                <span class="material-symbols-rounded text-teal-600 text-xl" style="font-variation-settings:'FILL' 1">savings</span>
-                <h3 class="font-black text-teal-900 text-sm uppercase tracking-tight">สรุปยอดมัดจำ</h3>
-              </div>
-
-              <!-- Three Steps Visual -->
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 relative">
-                <!-- Step 1: Total -->
-                <div class="bg-white rounded-2xl p-4 border border-gray-100">
-                  <div class="flex items-center gap-2 mb-2">
-                    <div class="w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-[11px] font-black">1</div>
-                    <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest">ยอดรวมทั้งหมด</p>
+            <PayMethodRow v-if="depositAvailable" icon="savings"
+              :title="`จ่ายมัดจำ ฿${money(depositAmount)}`"
+              :subtitle="`ส่วนที่เหลือ ฿${money(balanceAmount)} · ภายใน ${balanceDueDateText}`"
+              :selected="paymentType === 'deposit'" @select="paymentType = 'deposit'">
+              <div class="space-y-3">
+                <!-- สรุปยอดมัดจำ -->
+                <div class="rounded-2xl bg-gray-50 p-4 space-y-2.5">
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <span class="flex items-center gap-2.5 text-gray-500 font-medium"><span class="pay-step">1</span>ยอดรวมทั้งหมด</span>
+                    <span class="font-bold text-gray-900 tabular-nums">฿{{ money(booking.total_amount) }}</span>
                   </div>
-                  <p class="text-xl font-black text-gray-900">฿{{ Number(booking.total_amount).toLocaleString() }}</p>
-                  <p class="text-[11px] text-gray-500 mt-1">ราคารวมทั้งหมดของทริปนี้</p>
-                </div>
-
-                <!-- Step 2: Deposit (highlight) -->
-                <div class="bg-white rounded-2xl p-4 border-2 border-teal-500 relative">
-                  <div class="absolute -top-2.5 left-4 bg-teal-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">ชำระตอนนี้</div>
-                  <div class="flex items-center gap-2 mb-2 mt-1">
-                    <div class="w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-[11px] font-black">2</div>
-                    <p class="text-[10px] font-black text-teal-700 uppercase tracking-widest">มัดจำ</p>
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <span class="flex items-center gap-2.5 text-gray-900 font-bold"><span class="pay-step is-now">2</span>มัดจำ ชำระตอนนี้</span>
+                    <span class="text-base font-black text-accent tabular-nums">฿{{ money(depositAmount) }}</span>
                   </div>
-                  <p class="text-2xl font-black text-teal-700">฿{{ depositAmount.toLocaleString() }}</p>
-                  <p class="text-[11px] text-teal-600 mt-1 font-bold">
-                    {{ depositPercentText }}
+                  <div class="flex items-center justify-between gap-3 text-sm">
+                    <span class="flex items-center gap-2.5 text-gray-500 font-medium"><span class="pay-step is-later">3</span>ส่วนที่เหลือ ภายใน {{ balanceDueDateText }}</span>
+                    <span class="font-bold text-amber-700 tabular-nums">฿{{ money(balanceAmount) }}</span>
+                  </div>
+                  <p v-if="depositPercentText" class="pl-[34px] text-[12px] font-semibold text-accent">{{ depositPercentText }}</p>
+                  <p class="flex items-start gap-2 pt-1 text-[12px] text-gray-500 font-medium leading-relaxed">
+                    <span class="material-symbols-rounded icon-16 text-gray-400 shrink-0 mt-px">notifications_active</span>
+                    เราจะส่ง SMS + อีเมล แจ้งเตือนล่วงหน้า 5 วัน, 2 วัน และวันครบกำหนด
                   </p>
                 </div>
 
-                <!-- Step 3: Balance -->
-                <div class="bg-white rounded-2xl p-4 border border-amber-200">
-                  <div class="flex items-center gap-2 mb-2">
-                    <div class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[11px] font-black">3</div>
-                    <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest">ส่วนที่เหลือ</p>
-                  </div>
-                  <p class="text-xl font-black text-amber-700">฿{{ balanceAmount.toLocaleString() }}</p>
-                  <p class="text-[11px] text-amber-600 mt-1 font-bold">
-                    <span class="material-symbols-rounded text-[12px] align-middle">event</span>
-                    ภายใน {{ balanceDueDateText }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- Timeline note -->
-              <div class="mt-4 flex items-center gap-2 bg-white/70 rounded-xl p-3 border border-teal-100">
-                <span class="material-symbols-rounded text-teal-600 text-[18px]" style="font-variation-settings:'FILL' 1">notifications_active</span>
-                <p class="text-[12px] text-teal-800 font-medium leading-snug">
-                  เราจะส่ง <strong>SMS + อีเมล</strong> แจ้งเตือนล่วงหน้า <strong>5 วัน, 2 วัน และวันครบกำหนด</strong> เพื่อให้ท่านไม่พลาดการชำระ
-                </p>
-              </div>
-            </div>
-
-            <!-- No-refund Cancellation Clause -->
-            <div class="bg-gradient-to-br from-red-50 to-rose-50/50 border-2 border-red-200 rounded-3xl p-5 sm:p-6">
-              <div class="flex flex-col sm:flex-row gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center shrink-0 self-start">
-                  <span class="material-symbols-rounded text-white text-[26px]" style="font-variation-settings:'FILL' 1">gavel</span>
-                </div>
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-2">
-                    <p class="font-black text-base text-red-900 uppercase tracking-tight">เงื่อนไขสำคัญ</p>
-                    <span class="text-[10px] font-black text-red-700 bg-red-100 border border-red-200 px-2 py-0.5 rounded-full uppercase tracking-widest">กรุณาอ่าน</span>
-                  </div>
-                  <p class="text-[13px] sm:text-sm text-red-800 leading-relaxed">
-                    กรณีขอยกเลิกการเดินทางเอง ทางทริปขอสงวนสิทธิ์ <strong class="text-red-900 underline decoration-wavy decoration-red-400 underline-offset-4">ไม่คืนเงินมัดจำ</strong>
-                    เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้า
-                    เลื่อนวันเดินทางได้ {{ POLICY.postponeTimes }} ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย {{ POLICY.postponeNoticeDays }} วัน
-                    (<router-link to="/terms" class="font-bold underline">เงื่อนไขฉบับเต็ม</router-link>)
-                  </p>
-                  <div class="mt-3 flex items-start gap-2 bg-white/70 rounded-xl p-3 border border-red-100">
-                    <span class="material-symbols-rounded text-red-500 text-[18px] shrink-0 mt-0.5">schedule</span>
-                    <p class="text-[12px] text-red-800 font-medium leading-snug">
+                <!-- เงื่อนไขมัดจำ — ข้อที่ลูกค้าต้องรู้ก่อนจ่าย จึงอยู่ติดกับตัวเลือก -->
+                <div class="rounded-2xl border border-red-200 bg-red-50/60 p-4 flex gap-3">
+                  <span class="material-symbols-rounded icon-22 text-red-600 shrink-0" style="font-variation-settings:'FILL' 1">gavel</span>
+                  <div class="text-[13px] text-red-800 leading-relaxed">
+                    <p class="font-black text-red-900 mb-1">เงื่อนไขสำคัญ</p>
+                    <p>
+                      กรณีขอยกเลิกการเดินทางเอง ทางทริปขอสงวนสิทธิ์ <strong class="text-red-900">ไม่คืนเงินมัดจำ</strong>
+                      เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้า
+                      เลื่อนวันเดินทางได้ {{ POLICY.postponeTimes }} ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย {{ POLICY.postponeNoticeDays }} วัน
+                      (<router-link to="/terms" class="font-bold underline">เงื่อนไขฉบับเต็ม</router-link>)
+                    </p>
+                    <p class="mt-2">
                       ต้องชำระยอดส่วนที่เหลือ <strong class="text-red-900">ก่อนเดินทาง {{ POLICY.balanceDueDays }} วัน</strong> (ภายในวันที่ <strong>{{ balanceDueDateText }}</strong>) มิฉะนั้นถือว่าสละสิทธิ์การเดินทาง
                     </p>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          </Transition>
+            </PayMethodRow>
 
-          <!-- Installment Count Selector -->
-          <div v-if="paymentType === 'installment'" class="mt-6 p-5 bg-amber-50/50 border border-amber-100 rounded-2xl">
-            <label class="block text-sm font-black text-amber-900 mb-3 flex items-center gap-2">
-              <span class="material-symbols-rounded text-amber-500 text-lg">tune</span>
-              แบ่งได้ถึง {{ maxInstallmentCount }} งวด — เลือกได้ตามสะดวก
-            </label>
-            <!-- สูงสุด 6 ปุ่มในแถวเดียวแคบเกินบนมือถือ — จอเล็กเรียงเป็นตาราง 3 คอลัมน์ -->
-            <div class="grid grid-cols-3 gap-2 sm:flex">
-              <button v-for="n in availableInstallmentOptions" :key="n" @click="selectedInstallmentCount = n"
-                class="flex-1 py-3 px-2 rounded-xl border-2 text-center transition-all font-black text-sm"
-                :class="selectedInstallmentCount === n
-                  ? 'border-amber-500 bg-amber-500 text-white'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-amber-300'">
-                {{ n }} งวด
-              </button>
-            </div>
-            <div class="mt-3 flex flex-wrap justify-between items-center gap-1 text-xs text-amber-700">
-              <span>งวดละ <strong class="text-amber-900">฿{{ perInstallment.toLocaleString() }}</strong></span>
-              <span v-if="installmentFinalDueDate">ปิดยอด <strong>{{ formatDate(installmentFinalDueDate) }}</strong> (ก่อนเดินทาง {{ installmentLeadDays }} วัน)</span>
-            </div>
-          </div>
+            <!-- ผ่อนไม่ทันก่อนเดินทาง — ยังโชว์แถวไว้ (จาง) พร้อมเหตุผล -->
+            <PayMethodRow v-if="installmentNotAvailable" icon="calendar_month" title="ผ่อนชำระ"
+              :subtitle="installmentWarningMessage" :available="false">
+              <template #below>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-bold text-gray-500">
+                  <span class="material-symbols-rounded icon-14">event_busy</span>ไม่พร้อมใช้
+                </span>
+              </template>
+            </PayMethodRow>
 
-          <!-- Installment Schedule Table -->
-          <div v-if="paymentType === 'installment'" class="mt-8">
-             <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-                <h3 class="font-bold text-gray-900 tracking-tight">ตารางการผ่อนชำระ</h3>
-                <span class="text-[11px] font-black text-amber-600 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-tighter">ยอดรวมคงเดิม ไม่มีดอกเบี้ย</span>
-             </div>
-            <!-- 4 คอลัมน์กว้างกว่าจอมือถือ — เดิม overflow-hidden ตัดคอลัมน์ยอดเงิน/สถานะทิ้ง
-                 จึงให้เลื่อนแนวนอนได้ และลดช่องว่างบนจอเล็ก -->
-            <div class="overflow-x-auto rounded-2xl border border-gray-100">
-              <table class="w-full text-sm whitespace-nowrap">
-                <thead>
-                  <tr class="bg-gray-50">
-                    <th class="text-left px-3 sm:px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">งวดที่</th>
-                    <th class="text-left px-3 sm:px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">ครบกำหนด</th>
-                    <th class="text-right px-3 sm:px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">จำนวนเงิน</th>
-                    <th class="text-center px-3 sm:px-5 py-4 font-bold text-gray-600 uppercase tracking-widest text-[10px]">สถานะ</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                  <tr v-for="inst in installmentSchedule" :key="inst.no"
-                    class="transition-colors"
-                    :class="inst.no === 1 ? 'bg-amber-50/20' : 'hover:bg-gray-50'">
-                    <td class="px-3 sm:px-5 py-4 text-gray-700 font-bold">งวดที่ {{ inst.no }}</td>
-                    <td class="px-3 sm:px-5 py-4 text-gray-600">{{ formatDate(inst.dueDate) }}</td>
-                    <td class="px-3 sm:px-5 py-4 text-right font-black text-gray-900 border-r border-gray-50">฿{{ inst.amount.toLocaleString() }}</td>
-                    <td class="px-3 sm:px-5 py-4 text-center">
-                      <span v-if="inst.no === 1"
-                        class="text-[10px] font-black px-3 py-1.5 rounded-full bg-teal-600 text-white uppercase tracking-tighter">
-                        ชำระงวดแรก
+            <PayMethodRow v-else-if="installmentAvailable" icon="calendar_month"
+              :title="`ผ่อนชำระ ${selectedInstallmentCount} งวด`"
+              :subtitle="`งวดละ ฿${money(perInstallment)}${installmentFinalDueDate ? ` · ปิดยอด ${formatDate(installmentFinalDueDate)}` : ''} · ไม่มีดอกเบี้ย`"
+              :selected="paymentType === 'installment'" @select="paymentType = 'installment'">
+              <div class="space-y-4">
+                <!-- เลือกจำนวนงวด — การ์ด "3 × ฿1,200" เห็นยอดต่องวดของทุกตัวเลือกพร้อมกัน -->
+                <div v-if="installmentOptions.length > 1">
+                  <p class="mb-2 text-[13px] font-semibold text-gray-500">แบ่งเป็นกี่งวด</p>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <button v-for="opt in installmentOptions" :key="opt.count" type="button"
+                      @click="selectedInstallmentCount = opt.count"
+                      class="pay-count text-left rounded-xl px-3.5 py-3 border-[1.5px] transition-colors"
+                      :class="selectedInstallmentCount === opt.count
+                        ? 'bg-accent-tint border-accent'
+                        : 'bg-gray-50 border-transparent hover:border-gray-200'"
+                      :aria-pressed="selectedInstallmentCount === opt.count">
+                      <span class="block text-base font-black tabular-nums whitespace-nowrap"
+                        :class="selectedInstallmentCount === opt.count ? 'text-accent' : 'text-gray-900'">
+                        {{ opt.count }} × ฿{{ money(opt.per_amount) }}
                       </span>
-                      <span v-else
-                        class="text-[10px] font-black px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 uppercase tracking-tighter">
-                        รอชำระ
+                      <span v-if="opt.due_dates?.length" class="block mt-0.5 text-[12px] text-gray-500 font-medium truncate">
+                        ปิดยอด {{ thaiShort(opt.due_dates[opt.due_dates.length - 1]) }}
                       </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                    </button>
+                  </div>
+                </div>
 
-            <!-- No-refund Warning -->
-            <div class="flex gap-4 p-5 bg-red-50/50 border border-red-100 rounded-2xl mt-6">
-              <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                <span class="material-symbols-rounded text-red-600 text-[24px]">priority_high</span>
+                <!-- ตารางงวด -->
+                <ol class="rounded-2xl bg-gray-50 divide-y divide-gray-100 overflow-hidden">
+                  <li v-for="inst in installmentSchedule" :key="inst.no" class="flex items-center gap-3 px-4 py-3">
+                    <span class="pay-step" :class="inst.no === 1 ? 'is-now' : ''">{{ inst.no }}</span>
+                    <span class="flex-1 min-w-0">
+                      <span class="block text-sm font-bold text-gray-900">งวดที่ {{ inst.no }}</span>
+                      <span class="block text-[12px] text-gray-500 font-medium">{{ inst.dueDate ? formatDate(inst.dueDate) : '-' }}</span>
+                    </span>
+                    <span class="text-right">
+                      <span class="block text-sm font-black tabular-nums" :class="inst.no === 1 ? 'text-accent' : 'text-gray-900'">฿{{ money(inst.amount) }}</span>
+                      <span class="block text-[11px] font-bold" :class="inst.no === 1 ? 'text-accent' : 'text-gray-400'">{{ inst.no === 1 ? 'ชำระตอนนี้' : 'รอชำระ' }}</span>
+                    </span>
+                  </li>
+                </ol>
+
+                <p class="flex items-start gap-2 text-[12px] text-gray-500 font-medium leading-relaxed">
+                  <span class="material-symbols-rounded icon-16 text-gray-400 shrink-0 mt-px">auto_awesome</span>
+                  {{ installmentWarningMessage }} · ยอดรวมคงเดิม ไม่มีดอกเบี้ย
+                </p>
+
+                <div class="rounded-2xl border border-red-200 bg-red-50/60 p-4 flex gap-3">
+                  <span class="material-symbols-rounded icon-22 text-red-600 shrink-0">priority_high</span>
+                  <p class="text-[13px] text-red-800 leading-relaxed">
+                    <strong class="text-red-900">เงื่อนไขการยกเลิก:</strong> หากไม่ชำระตามตารางภายในวันครบกำหนด ลุยเลเขาขอสงวนสิทธิ์ยกเลิกทริปและไม่คืนเงินทุกกรณี เพื่อความมั่นใจของเพื่อนร่วมทริปท่านอื่น
+                  </p>
+                </div>
               </div>
-              <div class="text-[13px] text-red-700 leading-relaxed">
-                <p class="font-black mb-1 text-sm uppercase tracking-tight">สำคัญมาก: เงื่อนไขการยกเลิก</p>
-                <p>หากท่านไม่ชำระเงินตามตารางผ่อนชำระที่เลือกไว้ภายในวันครบกำหนด <strong>ลุยเลเขาขอสงวนสิทธิ์ในการยกเลิกทริปและไม่คืนเงินทุกกรณี</strong> เพื่อความมั่นใจในการเดินทางของเพื่อนร่วมทริปท่านอื่น</p>
-              </div>
-            </div>
+            </PayMethodRow>
           </div>
         </section>
 
-        <!-- ── Payment Method ── -->
-        <section class="bg-white rounded-3xl p-5 sm:p-8 border border-gray-100 pay-rise" style="--d: 240ms">
-          <h2 class="text-xl font-extrabold mb-6 sm:mb-8 text-gray-900 flex items-center gap-2">
-            <span class="material-symbols-rounded text-teal-600">account_balance_wallet</span>
-            เลือกช่องทางชำระเงิน
+        <!-- ── ช่องทางชำระเงิน ──
+             แถวที่เลือกกางรายละเอียดของตัวเองข้างใต้ (QR ใต้ QR PromptPay, เลขบัญชีใต้โอนธนาคาร)
+             โหมดเกตเวย์: QR เลือกไว้เสมอ บัตร/วอลเล็ต/ผ่อนเป็นแถวลูกศรไปหน้าของ Beam
+             และแอปธนาคารพับไว้เป็นแถบโลโก้ท้ายรายการ -->
+        <section class="bg-white rounded-3xl px-5 pt-5 pb-1 sm:px-8 sm:pt-7 border border-gray-100 pay-rise" style="--d: 240ms">
+          <h2 class="pay-section-title">
+            <span class="pay-section-icon"><span class="material-symbols-rounded icon-20" style="font-variation-settings:'FILL' 1">account_balance_wallet</span></span>
+            ช่องทางชำระเงิน
           </h2>
 
-          <div class="grid grid-cols-1 gap-4 mb-10" :class="checkoutAvailable ? 'sm:grid-cols-3' : 'sm:grid-cols-2'">
-            <button @click="paymentMethod = 'promptpay'"
-              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all duration-300 h-full active:scale-[0.98]"
-              :class="paymentMethod === 'promptpay'
-                ? 'border-teal-600 bg-teal-50/30'
-                : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
-              <div class="bg-white p-4 rounded-2xl border border-gray-100 group-hover:scale-105 transition-transform">
-                <img src="/images/qr_promptpay.webp" alt="พร้อมเพย์" class="h-12 w-auto object-contain" />
-              </div>
-              <div class="text-center">
-                <p class="font-black text-gray-900 tracking-tight">QR PromptPay</p>
-                <p class="text-[11px] text-gray-500 font-medium tracking-tight">ชำระผ่าน Mobile Banking ได้ทันที</p>
-              </div>
-            </button>
-            
-            <button @click="paymentMethod = 'mobile_banking'"
-              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all duration-300 h-full active:scale-[0.98]"
-              :class="paymentMethod === 'mobile_banking'
-                ? 'border-teal-600 bg-teal-50/30'
-                : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
-              <div class="bg-white p-4 rounded-2xl border border-gray-100 group-hover:scale-105 transition-transform">
-                <img src="/images/pay_bank.webp" alt="โมบายแบงก์กิ้ง" class="h-12 w-auto object-contain" />
-              </div>
-              <div class="text-center">
-                <p class="font-black text-gray-900 tracking-tight">{{ useBeam ? 'เปิดแอปธนาคาร' : 'โอนผ่านบัญชีธนาคาร' }}</p>
-                <p class="text-[11px] text-gray-500 font-medium tracking-tight">{{ useBeam ? 'เด้งเข้าแอปธนาคารของคุณโดยตรง' : 'แนบสลิปผ่านทางหน้านี้' }}</p>
-              </div>
-            </button>
-
-            <!-- หน้าชำระเงินของ Beam — บัตร / Apple Pay / Google Pay / ผ่อน / e-Wallet -->
-            <button v-if="checkoutAvailable" @click="paymentMethod = 'card'"
-              class="group flex flex-col items-center justify-center gap-3 p-6 border-2 rounded-3xl transition-all duration-300 h-full active:scale-[0.98]"
-              :class="paymentMethod === 'card'
-                ? 'border-teal-600 bg-teal-50/30'
-                : 'border-gray-50 bg-gray-50/50 hover:bg-gray-100 text-gray-500'">
-              <div class="bg-white p-3 rounded-2xl border border-gray-100 group-hover:scale-105 transition-transform h-20 grid grid-cols-2 gap-1.5 place-content-center">
-                <img v-for="b in ['visa', 'mastercard', 'applepay', 'truemoney']" :key="b" :src="`/images/pay/${b}.svg`" alt=""
-                  class="h-[22px] w-[34px]" width="34" height="22" />
-              </div>
-              <div class="text-center">
-                <p class="font-black text-gray-900 tracking-tight">บัตร · ผ่อน · e-Wallet</p>
-                <p class="text-[11px] text-gray-500 font-medium tracking-tight">Apple Pay · Google Pay · TrueMoney</p>
-              </div>
-            </button>
-          </div>
-
-          <!-- PromptPay QR -->
-          <div v-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-5 py-10 bg-gray-50/50 rounded-3xl border border-gray-100 pay-swap">
-             <!-- Thai QR Logo Header -->
-             <div class="bg-white px-6 py-3 rounded-2xl border border-gray-100 flex items-center justify-center pay-pop">
-               <img src="/images/Thai_QR_Payment_Logo-01.jpg" alt="Thai QR Payment" class="h-10 w-auto object-contain" />
-             </div>
-
-             <div class="text-center space-y-1">
-                <p class="text-base font-bold text-gray-900">เปิดแอปธนาคารแล้วสแกน QR นี้</p>
-                <p class="text-xs text-gray-500 px-4">
-                  {{ useBeam ? 'จ่ายแล้วระบบจะยืนยันที่นั่งให้อัตโนมัติ ไม่ต้องแนบสลิป' : 'ระบบจะคำนวณยอดชำระเบื้องต้นให้โดยอัตโนมัติ' }}
-                </p>
-             </div>
-
-            <!-- QR จากเกตเวย์ — เงินเข้าแล้วรู้ทันที ไม่ต้องให้ใครมาตรวจสลิป -->
-            <template v-if="useBeam">
-              <!-- ธนาคารตอบว่าไม่ผ่าน — บอกให้ชัดแทนที่จะปล่อยให้ QR ใบตายค้างอยู่ -->
-              <div v-if="beamFailed" class="w-full max-w-sm px-4">
-                <div class="rounded-3xl border border-red-100 bg-red-50/60 p-7 text-center">
-                  <span class="material-symbols-rounded text-red-500 text-4xl">credit_card_off</span>
-                  <p class="mt-3 text-base font-black text-gray-900">การชำระเงินไม่สำเร็จ</p>
-                  <p class="mt-1.5 text-xs text-gray-500 font-medium leading-relaxed">
-                    ธนาคารแจ้งว่ารายการนี้ไม่ผ่าน ยังไม่มีการตัดเงิน · สร้างรายการใหม่แล้วลองอีกครั้งได้เลย
-                  </p>
-                  <button @click="createBeamCharge('QR_PROMPT_PAY')"
-                    class="mt-5 px-5 py-2.5 bg-teal-600 text-white text-xs font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all">
-                    สร้าง QR ใหม่
-                  </button>
-                </div>
-              </div>
-
-              <!--
-                จ่ายแล้วแต่ webhook ยังไม่มา — เดิมช่วงนี้หน้าจอค้างอยู่กับ QR ใบเดิม
-                จนลูกค้าไม่แน่ใจว่าจ่ายผ่านไหม เอา QR ออกไปเลยระหว่างนี้ กันจ่ายซ้ำ
-              -->
-              <div v-else-if="beamSettling" class="w-full max-w-sm px-4">
-                <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow">
-                  <template #actions>
-                    <button @click="resumeBeamWaiting"
-                      class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4">
-                      ยังไม่ได้จ่าย · กลับไปสแกน QR
-                    </button>
-                  </template>
-                </PaymentSettlingPanel>
-              </div>
-
-              <template v-else>
-                <div class="relative group">
-                  <div class="relative p-2 bg-white rounded-3xl border border-teal-100 overflow-hidden min-h-[280px] min-w-[280px] flex items-center justify-center">
-                    <img v-if="beamQrSrc && !beamExpired" :key="`qr-${beamPayment?.payment_id}`" :src="beamQrSrc" alt="QR พร้อมเพย์"
-                      class="block rounded-2xl w-full max-w-[280px] h-auto mx-auto pay-qr" />
-                    <span v-if="beamQrSrc && !beamExpired" :key="`scan-${beamPayment?.payment_id}`" class="pay-scan" aria-hidden="true"></span>
-
-                    <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-3xl">
-                      <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
-                    </div>
-
-                    <!-- QR หมดอายุก่อนที่นั่งจะถูกคืน ลูกค้าจึงยังกดออกใบใหม่ได้ -->
-                    <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-3xl px-6 text-center">
-                      <span class="material-symbols-rounded text-4xl text-gray-300">qr_code_2</span>
-                      <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
+          <div class="divide-y divide-gray-100" role="radiogroup" aria-label="ช่องทางชำระเงิน">
+            <PayMethodRow badge="thaiqr.png" title="QR PromptPay"
+              :subtitle="useBeam ? 'จ่ายแล้วระบบยืนยันที่นั่งให้อัตโนมัติ ไม่ต้องแนบสลิปและไม่ต้องรอเจ้าหน้าที่ตรวจ' : 'สแกนจ่ายผ่านแอปธนาคารหรือ e-Wallet ได้ทันที'"
+              :selected="paymentMethod === 'promptpay'" @select="paymentMethod = 'promptpay'">
+              <div class="flex flex-col items-center gap-4 rounded-3xl bg-gray-50 px-4 py-6 sm:py-8">
+                <!-- QR จากเกตเวย์ — เงินเข้าแล้วรู้ทันที ไม่ต้องให้ใครมาตรวจสลิป -->
+                <template v-if="useBeam">
+                  <!-- ธนาคารตอบว่าไม่ผ่าน — บอกให้ชัดแทนที่จะปล่อยให้ QR ใบตายค้างอยู่ -->
+                  <div v-if="beamFailed" class="w-full max-w-sm">
+                    <div class="rounded-3xl border border-red-100 bg-white p-7 text-center">
+                      <span class="material-symbols-rounded text-red-500 text-4xl">credit_card_off</span>
+                      <p class="mt-3 text-base font-black text-gray-900">การชำระเงินไม่สำเร็จ</p>
+                      <p class="mt-1.5 text-xs text-gray-500 font-medium leading-relaxed">
+                        ธนาคารแจ้งว่ารายการนี้ไม่ผ่าน ยังไม่มีการตัดเงิน · สร้างรายการใหม่แล้วลองอีกครั้งได้เลย
+                      </p>
                       <button @click="createBeamCharge('QR_PROMPT_PAY')"
-                        class="px-5 py-2.5 bg-teal-600 text-white text-xs font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all">
+                        class="mt-5 px-5 py-2.5 bg-accent text-white text-xs font-black rounded-2xl hover:bg-accent-mid active:scale-95 transition-all">
                         สร้าง QR ใหม่
                       </button>
                     </div>
                   </div>
-                </div>
 
-                <div v-if="beamPayment && !beamExpired" class="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-teal-100">
-                  <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>
-                  <p class="text-xs font-bold text-gray-700">
-                    กำลังรอการชำระเงิน · QR หมดอายุใน <span class="text-teal-600 tabular-nums">{{ beamCountdownText }}</span>
-                  </p>
-                </div>
+                  <!--
+                    จ่ายแล้วแต่ webhook ยังไม่มา — เดิมช่วงนี้หน้าจอค้างอยู่กับ QR ใบเดิม
+                    จนลูกค้าไม่แน่ใจว่าจ่ายผ่านไหม เอา QR ออกไปเลยระหว่างนี้ กันจ่ายซ้ำ
+                  -->
+                  <div v-else-if="beamSettling" class="w-full max-w-sm">
+                    <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow">
+                      <template #actions>
+                        <button @click="resumeBeamWaiting"
+                          class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4">
+                          ยังไม่ได้จ่าย · กลับไปสแกน QR
+                        </button>
+                      </template>
+                    </PaymentSettlingPanel>
+                  </div>
 
-                <!--
-                  ขั้นตอนอยู่ตรงนี้ตั้งแต่ยังไม่จ่าย ไม่ต้องรอให้ใครกดปุ่มก่อน — แถวที่กำลัง
-                  ทำงานอยู่หมุนตลอด หน้าจอจึงไม่มีวินาทีไหนที่ดูเหมือนค้าง และพอลูกค้าออกไป
-                  จ่ายแล้วกลับเข้ามา การ์ดนี้จะเลื่อนไปขั้นถัดไปเอง
-                -->
-                <div v-if="beamPayment && !beamExpired" class="w-full max-w-sm px-4">
-                  <PaymentSettlingPanel stage="waiting" />
-                </div>
-              </template>
+                  <template v-else>
+                    <div class="relative p-2 bg-white rounded-3xl border border-gray-100 overflow-hidden w-full max-w-[280px] aspect-square flex items-center justify-center">
+                      <img v-if="beamQrSrc && !beamExpired" :key="`qr-${beamPayment?.payment_id}`" :src="beamQrSrc" alt="QR พร้อมเพย์"
+                        class="block rounded-2xl w-full h-auto mx-auto pay-qr" />
+                      <span v-if="beamQrSrc && !beamExpired" :key="`scan-${beamPayment?.payment_id}`" class="pay-scan" aria-hidden="true"></span>
 
-              <p v-if="beamError" class="text-xs font-bold text-red-600 px-6 text-center">{{ beamError }}</p>
-            </template>
+                      <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-3xl">
+                        <div class="w-10 h-10 rounded-full border-4 border-accent-tint border-t-accent animate-spin"></div>
+                      </div>
 
-            <div v-else class="relative group">
-               <div class="absolute -inset-4 bg-teal-600/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-               <div class="relative p-2 bg-white rounded-3xl border border-teal-100 overflow-hidden">
-                <canvas ref="qrCanvas" class="block rounded-2xl w-full max-w-[320px] h-auto mx-auto" :class="{ 'pay-qr': qrGenerated }"></canvas>
-                <span v-if="qrGenerated" class="pay-scan" aria-hidden="true"></span>
-                <div v-if="!qrGenerated" class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-3xl">
-                  <div class="w-10 h-10 rounded-full border-4 border-teal-100 border-t-teal-600 animate-spin"></div>
-                </div>
-              </div>
-            </div>
+                      <!-- QR หมดอายุก่อนที่นั่งจะถูกคืน ลูกค้าจึงยังกดออกใบใหม่ได้ -->
+                      <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-3xl px-6 text-center">
+                        <span class="material-symbols-rounded text-4xl text-gray-300">qr_code_2</span>
+                        <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
+                        <button @click="createBeamCharge('QR_PROMPT_PAY')"
+                          class="px-5 py-2.5 bg-accent text-white text-xs font-black rounded-2xl hover:bg-accent-mid active:scale-95 transition-all">
+                          สร้าง QR ใหม่
+                        </button>
+                      </div>
+                    </div>
 
-            <div class="flex flex-col items-center gap-4 w-full px-6 mt-6">
-                <!-- Save QR Button moved up -->
-                <div class="flex items-center gap-3">
-                  <button v-if="qrGenerated && !useBeam" @click="saveQR"
-                    class="flex items-center gap-2.5 px-6 py-3 bg-teal-600 text-white text-sm font-black rounded-2xl hover:bg-teal-700 active:scale-95 transition-all">
-                    <span class="material-symbols-rounded text-[18px]">download</span> บันทึก QR Code
+                    <div class="flex items-center justify-between gap-3 w-full max-w-xs bg-white px-4 py-3 rounded-2xl border border-gray-100">
+                      <div>
+                        <p class="text-[11px] font-bold text-gray-500">ยอดที่ต้องชำระ</p>
+                        <p class="text-lg font-black text-accent tabular-nums leading-tight">฿{{ money(currentPayAmount) }}</p>
+                      </div>
+                      <p v-if="beamPayment && !beamExpired" class="flex items-center gap-1.5 text-xs font-bold text-gray-700">
+                        <span class="w-2 h-2 rounded-full bg-accent-light animate-pulse"></span>
+                        รอชำระ · <span class="tabular-nums">{{ beamCountdownText }}</span>
+                      </p>
+                    </div>
+
+                    <!--
+                      ขั้นตอนอยู่ตรงนี้ตั้งแต่ยังไม่จ่าย ไม่ต้องรอให้ใครกดปุ่มก่อน — แถวที่กำลัง
+                      ทำงานอยู่หมุนตลอด หน้าจอจึงไม่มีวินาทีไหนที่ดูเหมือนค้าง และพอลูกค้าออกไป
+                      จ่ายแล้วกลับเข้ามา การ์ดนี้จะเลื่อนไปขั้นถัดไปเอง
+                    -->
+                    <div v-if="beamPayment && !beamExpired" class="w-full max-w-sm">
+                      <PaymentSettlingPanel stage="waiting" />
+                    </div>
+                  </template>
+
+                  <p v-if="beamError" class="text-xs font-bold text-red-600 text-center">{{ beamError }}</p>
+                </template>
+
+                <template v-else>
+                  <div class="relative p-2 bg-white rounded-3xl border border-gray-100 overflow-hidden w-full max-w-[280px]">
+                    <canvas ref="qrCanvas" class="block rounded-2xl w-full h-auto mx-auto" :class="{ 'pay-qr': qrGenerated }"></canvas>
+                    <span v-if="qrGenerated" class="pay-scan" aria-hidden="true"></span>
+                    <div v-if="!qrGenerated" class="absolute inset-0 flex items-center justify-center bg-white/80 rounded-3xl">
+                      <div class="w-10 h-10 rounded-full border-4 border-accent-tint border-t-accent animate-spin"></div>
+                    </div>
+                  </div>
+
+                  <div class="w-full max-w-xs bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100">
+                    <div class="flex items-center justify-between gap-3 px-4 py-3">
+                      <div>
+                        <p class="text-[11px] font-bold text-gray-500">ยอดที่ต้องชำระ</p>
+                        <p class="text-lg font-black text-accent tabular-nums leading-tight">฿{{ money(currentPayAmount) }}</p>
+                      </div>
+                      <button @click="copyAmount"
+                        class="flex items-center gap-1 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-xl active:scale-95 transition-all">
+                        <span class="material-symbols-rounded icon-16">content_copy</span>คัดลอก
+                      </button>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 px-4 py-3">
+                      <div>
+                        <p class="text-[11px] font-bold text-gray-500">พร้อมเพย์ / e-Wallet</p>
+                        <p class="text-sm font-bold text-gray-900 tabular-nums">004-99923936-2071</p>
+                      </div>
+                      <button @click="copyAccount"
+                        class="flex items-center gap-1 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-xl active:scale-95 transition-all">
+                        <span class="material-symbols-rounded icon-16">content_copy</span>คัดลอก
+                      </button>
+                    </div>
+                  </div>
+
+                  <button v-if="qrGenerated" @click="saveQR"
+                    class="w-full max-w-xs flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-200 text-accent text-sm font-black rounded-2xl hover:border-accent active:scale-[0.98] transition-all">
+                    <span class="material-symbols-rounded icon-18">download</span> บันทึก QR Code
                   </button>
-                </div>
+                </template>
+              </div>
+            </PayMethodRow>
 
-                <!-- Payment Details -->
-                <div class="flex items-center justify-between w-full max-w-xs bg-white p-3 rounded-2xl border border-gray-100">
-                   <div class="flex flex-col">
-                      <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ยอดเงินที่ต้องชำระ</span>
-                      <span class="text-lg font-black text-teal-600">฿{{ currentPayAmount.toLocaleString() }}</span>
-                   </div>
-                    <button @click="copyAmount" class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-xl transition-colors active:scale-95">
-                      <span class="material-symbols-rounded text-base">content_copy</span>
-                      คัดลอกยอด
+            <!-- โอนเข้าบัญชีแล้วแนบสลิป — โหมดเกตเวย์ไม่มีแถวนี้ (แอปธนาคารอยู่ท้ายรายการแทน) -->
+            <PayMethodRow v-if="!useBeam" badge="kbank" title="โอนผ่านบัญชีธนาคาร"
+              subtitle="กสิกรไทย · โอนแล้วแนบสลิปผ่านทางหน้านี้"
+              :selected="paymentMethod === 'mobile_banking'" @select="paymentMethod = 'mobile_banking'">
+              <div class="rounded-3xl bg-gray-50 p-4 sm:p-5 space-y-2.5">
+                <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100">
+                  <span class="text-xs font-bold text-gray-500">ธนาคาร</span>
+                  <span class="text-sm font-bold text-gray-900">กสิกรไทย (KBANK)</span>
+                </div>
+                <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100">
+                  <span class="text-xs font-bold text-gray-500">ชื่อบัญชี</span>
+                  <span class="text-sm font-bold text-gray-900">ลุยเลเขา</span>
+                </div>
+                <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100">
+                  <span class="text-xs font-bold text-gray-500">เลขที่บัญชี</span>
+                  <span class="flex items-center gap-2">
+                    <span class="text-base font-black text-gray-900 tracking-wider tabular-nums">230-1-39095-8</span>
+                    <button @click="copyBankAccount" aria-label="คัดลอกเลขบัญชี"
+                      class="p-1.5 rounded-lg bg-accent-tint text-accent hover:bg-emerald-100 transition-colors active:scale-90">
+                      <span class="material-symbols-rounded icon-18">content_copy</span>
                     </button>
+                  </span>
                 </div>
-            </div>
-             
-             <div class="flex items-center gap-2 py-2 px-4 rounded-full bg-white border border-gray-100">
-                <span class="material-symbols-rounded text-teal-600 text-sm" style="font-variation-settings:'FILL' 1">verified_user</span>
-                <p class="text-[11px] text-gray-500 font-bold">e-Wallet: <span class="text-gray-900">004-99923936-2071</span></p>
-             </div>
-          </div>
+                <p class="flex items-start gap-2 pt-1 text-[12px] text-gray-600 font-medium leading-relaxed">
+                  <span class="material-symbols-rounded icon-16 text-amber-500 shrink-0 mt-px">info</span>
+                  <span>โอนยอด <strong class="text-gray-900">฿{{ money(currentPayAmount) }}</strong> ให้ครบถ้วน แล้วอัปโหลดสลิปด้านล่าง ระบบจะตรวจยอดและยืนยันให้อัตโนมัติ</span>
+                </p>
+              </div>
+            </PayMethodRow>
 
-          <!--
-            ไปจ่ายบนหน้าของ Beam แล้วกลับมาที่ /payment/return — ช่องทางที่ขึ้นจริงขึ้นกับ
-            เครื่อง (Apple Pay เฉพาะ Safari, Google Pay เฉพาะ Chrome/Android)
-          -->
-          <div v-else-if="useBeam && paymentMethod === 'card'" class="bg-gray-50/60 rounded-3xl p-5 sm:p-6 space-y-4 border border-gray-100 pay-swap">
-            <div>
-              <p class="text-base font-black text-gray-900 flex items-center gap-2">
-                <span class="material-symbols-rounded text-teal-600 text-[22px]">credit_card</span>
-                จ่ายด้วยบัตร ผ่อนบัตร หรือ e-Wallet
-              </p>
-              <p class="mt-1 text-xs text-gray-500 font-medium leading-relaxed">
-                เลือกช่องทางบนหน้าชำระเงินที่ปลอดภัยของ Beam จ่ายเสร็จที่นั่งจะถูกยืนยันให้อัตโนมัติ
-              </p>
-            </div>
-            <PaymentCheckoutMethods
+            <!--
+              ไปจ่ายบนหน้าของ Beam แล้วกลับมาที่ /payment/return — ช่องทางที่ขึ้นจริงขึ้นกับ
+              เครื่อง (Apple Pay เฉพาะ Safari, Google Pay เฉพาะ Chrome/Android)
+            -->
+            <PaymentCheckoutMethods v-if="checkoutAvailable"
               :amount="currentPayAmount"
               :installment-min="installmentMin"
               :loading="beamLoading"
-              :error="beamError || ''"
               @open="createBeamCharge('CHECKOUT')" />
-          </div>
 
-          <!-- โหมดเกตเวย์: เด้งเข้าแอปธนาคารโดยตรง ไม่ต้องจดเลขบัญชีหรือแนบสลิป -->
-          <div v-else-if="useBeam" class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100 pay-swap">
-            <p class="text-sm font-black text-teal-900 flex items-center gap-2">
-              <span class="material-symbols-rounded text-teal-600 text-[20px]">smartphone</span>
-              เลือกแอปธนาคารของคุณ
-            </p>
-            <p class="text-xs text-teal-800/80 font-medium leading-relaxed">
-              ระบบจะพาไปที่แอปธนาคารพร้อมยอด ฿{{ currentPayAmount.toLocaleString() }} จ่ายเสร็จแล้วกลับมาหน้านี้ได้เลย ที่นั่งจะถูกยืนยันให้อัตโนมัติ
-            </p>
-
-            <div class="grid grid-cols-2 gap-3">
-              <button v-for="app in bankApps" :key="app.type"
-                @click="createBeamCharge(app.type)"
-                :disabled="beamLoading"
-                class="flex flex-col items-start gap-1 p-4 bg-white rounded-2xl border border-teal-100/50 hover:border-teal-600 transition-colors text-left active:scale-95 disabled:opacity-50">
-                <span class="text-sm font-black text-gray-900">{{ app.label }}</span>
-                <span class="text-[11px] text-gray-500 font-medium">{{ app.bank }}</span>
+            <!-- แอปธนาคาร — พับไว้เป็นแถบโลโก้ คนส่วนใหญ่สแกน QR อยู่แล้ว -->
+            <div v-if="useBeam && bankApps.length">
+              <button type="button" @click="showBankApps = !showBankApps" :aria-expanded="showBankApps"
+                class="w-full flex items-center gap-1.5 py-4 text-left group">
+                <img v-for="app in bankApps" :key="app.type" :src="`/images/pay/${app.badge}.svg`" :alt="app.label"
+                  class="h-[22px] w-[34px]" width="34" height="22" />
+                <span class="flex-1 text-right text-sm font-bold text-gray-900 group-hover:text-accent transition-colors">เปิดแอปธนาคารโดยตรง</span>
+                <span class="material-symbols-rounded icon-22 text-gray-400 transition-transform duration-200" :class="showBankApps ? 'rotate-90' : ''">chevron_right</span>
               </button>
-            </div>
-
-            <p v-if="!bankApps.length" class="text-xs font-bold text-gray-500">
-              ยังไม่เปิดรับการจ่ายผ่านแอปธนาคาร กรุณาใช้ QR PromptPay
-            </p>
-            <p v-if="beamError" class="text-xs font-bold text-red-600">{{ beamError }}</p>
-          </div>
-
-          <!-- Bank Transfer info -->
-          <div v-else class="bg-teal-50/50 rounded-3xl p-6 space-y-5 border border-teal-100 pay-swap">
-            <p class="text-sm font-black text-teal-900 flex items-center gap-2">
-              <span class="material-symbols-rounded text-teal-600 text-[20px]">account_balance</span>
-              ข้อมูลบัญชีธนาคาร
-            </p>
-            <div class="space-y-3">
-              <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-100/50">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center shrink-0">
-                      <span class="material-symbols-rounded text-white text-xl">account_balance</span>
-                    </div>
-                    <div>
-                      <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ธนาคาร</p>
-                      <p class="text-sm font-bold text-gray-900">กสิกรไทย (KBANK)</p>
-                    </div>
-                  </div>
+              <div v-if="showBankApps" class="divide-y divide-gray-100 border-t border-gray-100 pay-swap">
+                <PayMethodRow v-for="app in bankApps" :key="app.type" trail="chevron"
+                  :badge="app.badge" :title="app.label" :subtitle="`ธนาคาร${app.bank}`"
+                  :disabled="beamLoading" :busy="beamLoading && pendingBankApp === app.type"
+                  @select="openBankApp(app.type)" />
+                <p class="flex items-start gap-2 py-4 text-[12px] text-gray-500 font-medium leading-relaxed">
+                  <span class="material-symbols-rounded icon-16 text-gray-400 shrink-0 mt-px">info</span>
+                  ระบบจะพาไปที่แอปธนาคารพร้อมยอด ฿{{ money(currentPayAmount) }} จ่ายเสร็จแล้วกลับมาหน้านี้ได้เลย ที่นั่งจะถูกยืนยันให้อัตโนมัติ
+                </p>
               </div>
-              <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-100/50 relative group">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
-                      <span class="material-symbols-rounded text-teal-600 text-xl">person</span>
-                    </div>
-                    <div>
-                      <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">ชื่อบัญชี</p>
-                      <p class="text-sm font-bold text-gray-900">ลุยเลเขา</p>
-                    </div>
-                  </div>
-              </div>
-               <div class="flex items-center justify-between p-4 bg-white rounded-2xl border border-teal-600/30 relative group">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-                      <span class="material-symbols-rounded text-teal-600 text-xl">numbers</span>
-                    </div>
-                    <div>
-                      <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">เลขที่บัญชี</p>
-                      <p class="text-lg font-black text-gray-900 tracking-wider">230-1-39095-8</p>
-                    </div>
-                  </div>
-                  <button @click="copyAccount" class="p-2.5 rounded-xl bg-teal-50 text-teal-600 hover:bg-teal-100 transition-colors active:scale-90">
-                    <span class="material-symbols-rounded text-xl">content_copy</span>
-                  </button>
-              </div>
-            </div>
-            
-            <div class="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-start gap-3">
-               <span class="material-symbols-rounded text-amber-500 text-xl font-bold">info</span>
-               <p class="text-xs text-amber-800 font-medium leading-relaxed">
-                  กรุณาโอนยอด <strong class="text-amber-900">฿{{ currentPayAmount.toLocaleString() }}</strong> ให้ครบถ้วน แล้วอัปโหลดสลิป ระบบจะตรวจยอดและยืนยันให้อัตโนมัติ
-               </p>
             </div>
           </div>
 
           <!-- Divider -->
-          <div v-if="!useBeam" class="flex items-center gap-4 my-10">
+          <div v-if="!useBeam" class="flex items-center gap-4 mt-6 mb-8">
             <div class="flex-1 h-[2px] bg-gray-50"></div>
             <span class="text-[11px] text-gray-400 font-black uppercase tracking-[0.2em]">หลักฐานการโอนเงิน</span>
             <div class="flex-1 h-[2px] bg-gray-50"></div>
           </div>
 
           <!-- Slip Upload — โหมดเกตเวย์ไม่ต้องใช้ เงินเข้าแล้วระบบรู้เอง -->
-          <div v-if="!useBeam" class="space-y-6">
+          <div v-if="!useBeam" class="space-y-6 pb-5 sm:pb-7">
             <div class="flex items-center justify-between">
                <label class="block text-sm font-black text-gray-900">อัปโหลดสลิปการโอนเงินที่นี่ <span class="text-red-500 font-normal">*</span></label>
                <span v-if="slipFile" class="text-xs font-bold text-teal-600 flex items-center gap-1">
@@ -985,7 +683,7 @@
                 <div v-else class="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse mt-1.5 shrink-0"></div>
                 <div class="space-y-1">
                   <p class="text-sm font-black text-teal-900">
-                    {{ beamSettling ? 'กำลังตรวจสอบการชำระเงิน' : paymentMethod === 'card' ? 'จ่ายบนหน้าชำระเงินของ Beam' : 'สแกน QR แล้วรอสักครู่' }}
+                    {{ beamSettling ? 'กำลังตรวจสอบการชำระเงิน' : 'สแกน QR หรือเลือกช่องทางอื่น แล้วรอสักครู่' }}
                   </p>
                   <p class="text-xs text-teal-800/80 font-medium leading-relaxed">
                     {{ beamSettling
@@ -1106,6 +804,7 @@ import { useSeatsStore } from '../stores/seats';
 import CountdownTimer from '../components/CountdownTimer.vue';
 import PaymentSettlingPanel from '../components/PaymentSettlingPanel.vue';
 import PaymentCheckoutMethods from '../components/PaymentCheckoutMethods.vue';
+import PayMethodRow from '../components/PayMethodRow.vue';
 import { useSwal } from '../lib/swal';
 import { addPaymentInfo } from '../lib/analytics';
 import { useBeamCharge } from '../composables/useBeamCharge';
@@ -1280,6 +979,14 @@ function copyAmount() {
   swal.success('คัดลอกยอดเงินแล้ว', `฿${amount.toLocaleString()}`);
 }
 
+function copyBankAccount() {
+  navigator.clipboard.writeText('2301390958');
+  swal.success('คัดลอกเลขบัญชีแล้ว', 'กสิกรไทย 230-1-39095-8');
+}
+
+// ยอดเงินบาท — เต็มบาทไม่มีทศนิยม มีสตางค์โชว์ไม่เกินสองตำแหน่ง (แบบเดียวกับแอป)
+const money = (n) => Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+
 function copyAccount() {
   navigator.clipboard.writeText('004999239362071');
   swal.success('คัดลอกเลข e-Wallet แล้ว', '004-99923936-2071');
@@ -1302,12 +1009,21 @@ const gateway = computed(() => booking.value?.payment_gateway || { provider: 'ma
 const useBeam = computed(() => gateway.value.provider === 'beam');
 
 // แอปธนาคารที่เปิดรับ — กรองด้วยรายการที่เซิร์ฟเวอร์บอกมา ไม่ hardcode
+// badge = ป้ายใน public/images/pay (สัญลักษณ์ธนาคารจาก omise/banks-logo ชุดเดียวกับแอป)
 const ALL_BANK_APPS = [
-  { type: 'KPLUS', label: 'K PLUS', bank: 'กสิกรไทย' },
-  { type: 'SCB_EASY', label: 'SCB EASY', bank: 'ไทยพาณิชย์' },
-  { type: 'KRUNGSRI_APP', label: 'Krungsri', bank: 'กรุงศรีอยุธยา' },
-  { type: 'BANGKOK_BANK_APP', label: 'Bualuang', bank: 'กรุงเทพ' },
+  { type: 'KPLUS', label: 'K PLUS', bank: 'กสิกรไทย', badge: 'kbank' },
+  { type: 'SCB_EASY', label: 'SCB EASY', bank: 'ไทยพาณิชย์', badge: 'scb' },
+  { type: 'KRUNGSRI_APP', label: 'Krungsri', bank: 'กรุงศรีอยุธยา', badge: 'bay' },
+  { type: 'BANGKOK_BANK_APP', label: 'Bualuang', bank: 'กรุงเทพ', badge: 'bbl' },
 ];
+
+// แถบ "เปิดแอปธนาคารโดยตรง" กางอยู่ไหม + แอปที่เพิ่งกด (ให้วงหมุนขึ้นตรงแถวนั้น)
+const showBankApps = ref(false);
+const pendingBankApp = ref('');
+function openBankApp(type) {
+  pendingBankApp.value = type;
+  createBeamCharge(type);
+}
 const bankApps = computed(() =>
   ALL_BANK_APPS.filter((app) => gateway.value.methods?.includes(app.type))
 );
@@ -1385,9 +1101,6 @@ const installmentAvailable = computed(() => !!installmentQuote.value?.available)
 const maxInstallmentCount = computed(() =>
   Math.max(installmentQuote.value?.max_count || 0, 2)
 );
-const installmentIntervalDays = computed(() =>
-  installmentQuote.value?.interval_days ?? 15
-);
 // ต้องปิดยอดก่อนเดินทางกี่วัน + งวดสุดท้ายตรงกับวันไหน (เซิร์ฟเวอร์เป็นคนกำหนด)
 const installmentLeadDays = computed(() => installmentQuote.value?.lead_days ?? 15);
 const installmentFinalDueDate = computed(() => {
@@ -1433,6 +1146,8 @@ const selectedInstallmentOption = computed(() =>
   ) || null
 );
 const perInstallment = computed(() => Number(selectedInstallmentOption.value?.per_amount || 0));
+// ตัวเลือกจำนวนงวด (การ์ด "3 × ฿1,200") — ยอดต่องวดและวันปิดยอดของแต่ละตัวเลือกมาจากเซิร์ฟเวอร์
+const installmentOptions = computed(() => installmentQuote.value?.options || []);
 
 // ยอดที่ต้องจ่ายตอนนี้ (กล่องสรุปด้านขวา) — สลับเต็ม/มัดจำ/ผ่อนแล้วตัวเลขเลื่อนไปหาค่าใหม่
 // ให้เห็นว่ายอดเปลี่ยนไปเท่าไหร่ แทนที่จะกระโดดเงียบ ๆ
@@ -1478,23 +1193,6 @@ const currentPayAmount = computed(() => {
   if (paymentType.value === 'installment') return perInstallment.value || total;
   if (paymentType.value === 'deposit') return depositAmount.value || total;
   return total;
-});
-
-const payOptionsCount = computed(() => {
-  let n = 1;
-  if (depositAvailable.value) n++;
-  if (installmentAvailable.value) n++;
-  return n;
-});
-
-const minPerInstallmentPreview = computed(() => {
-  const options = installmentQuote.value?.options || [];
-  if (options.length) return Number(options[options.length - 1].per_amount || 0);
-  // ผ่อนไม่ได้แล้ว (ทริปใกล้เกินไป) — การ์ดที่จางลงยังโชว์ยอดคร่าว ๆ ตามจำนวนงวดของรอบ
-  const total = Number(booking.value?.total_amount || 0);
-  // จำนวนงวดของรอบมาจากเซิร์ฟเวอร์แล้ว (ผ่านเพดานของ PaymentQuote) ไม่ต้องจำเลขซ้ำที่นี่
-  const scheduleMax = Number(booking.value?.schedule?.installment_count || 2);
-  return Math.round(total / Math.max(2, scheduleMax));
 });
 
 // วันครบกำหนดมาจากเซิร์ฟเวอร์ (due_dates) ไม่คำนวณเองอีกแล้ว — งวดไม่ได้ห่างกัน
@@ -1860,6 +1558,51 @@ onBeforeUnmount(() => {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-6px);
+}
+
+/* หัวข้อการ์ดรายการชำระเงิน — ไอคอนบนพื้นเขียวอ่อน + ชื่อ แบบเดียวกับแอป */
+.pay-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  font-size: 1.125rem;
+  font-weight: 900;
+  color: #111827;
+}
+.pay-section-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--color-accent-tint);
+  color: var(--color-accent);
+}
+
+/* เลขขั้น/เลขงวดในวงกลม — งวดที่จ่ายตอนนี้เป็นวงเขียวทึบ ยอดที่ค้างไว้ทีหลังเป็นอำพัน */
+.pay-step {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 900;
+  background: #e5e7eb;
+  color: #4b5563;
+}
+.pay-step.is-now {
+  background: var(--color-accent);
+  color: #fff;
+}
+.pay-step.is-later {
+  background: #fef3c7;
+  color: #b45309;
 }
 
 /*

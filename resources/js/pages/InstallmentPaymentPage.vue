@@ -117,117 +117,100 @@
           </div>
         </div>
 
-        <!-- Payment Method -->
-        <div v-if="!useBeam" class="mb-6">
-          <label class="text-sm font-black text-gray-700 mb-3 block">เลือกช่องทางชำระ</label>
-          <div class="grid grid-cols-2 gap-3">
-            <button @click="paymentMethod = 'promptpay'"
-              class="p-4 border-2 rounded-2xl transition-all text-center"
-              :class="paymentMethod === 'promptpay' ? 'border-amber-500 bg-amber-50/30' : 'border-gray-100 hover:border-amber-200'">
-              <span class="text-sm font-black" :class="paymentMethod === 'promptpay' ? 'text-amber-900' : 'text-gray-600'">QR PromptPay</span>
-            </button>
-            <button @click="paymentMethod = 'mobile_banking'"
-              class="p-4 border-2 rounded-2xl transition-all text-center"
-              :class="paymentMethod === 'mobile_banking' ? 'border-amber-500 bg-amber-50/30' : 'border-gray-100 hover:border-amber-200'">
-              <span class="text-sm font-black" :class="paymentMethod === 'mobile_banking' ? 'text-amber-900' : 'text-gray-600'">โอนธนาคาร</span>
-            </button>
-          </div>
-        </div>
+        <!-- ช่องทางชำระ — รายการแถวเดียวกับหน้าจ่ายเงินหลักและแอป แถวที่เลือกกางรายละเอียดข้างใต้ -->
+        <div class="mb-6">
+          <p class="text-sm font-black text-gray-700">ช่องทางชำระ</p>
+          <div class="divide-y divide-gray-100 border-b border-gray-100" role="radiogroup" aria-label="ช่องทางชำระ">
+            <PayMethodRow badge="thaiqr.png" title="QR PromptPay"
+              :subtitle="useBeam ? 'จ่ายแล้วระบบตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป' : 'สแกนจ่ายผ่านแอปธนาคารหรือ e-Wallet'"
+              :selected="useBeam || paymentMethod === 'promptpay'" @select="paymentMethod = 'promptpay'">
+              <!-- จ่ายแล้วแต่ผลยังไม่กลับมา — เก็บ QR ไปก่อน หน้าจอต้องบอกว่ากำลังรออะไรอยู่ -->
+              <div v-if="useBeam && beamSettling">
+                <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow" final-step="ตัดงวดที่ชำระให้อัตโนมัติ">
+                  <template #actions>
+                    <button @click="resumeBeamWaiting"
+                      class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4">
+                      ยังไม่ได้จ่าย · กลับไปสแกน QR
+                    </button>
+                  </template>
+                </PaymentSettlingPanel>
+              </div>
 
-        <!-- QR จากเกตเวย์ — จ่ายแล้วระบบตัดงวดให้เอง ไม่ต้องแนบสลิป -->
-        <!-- จ่ายแล้วแต่ผลยังไม่กลับมา — เก็บ QR ไปก่อน หน้าจอต้องบอกว่ากำลังรออะไรอยู่ -->
-        <div v-if="useBeam && beamSettling" class="mb-6">
-          <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow" final-step="ตัดงวดที่ชำระให้อัตโนมัติ">
-            <template #actions>
-              <button @click="resumeBeamWaiting"
-                class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4">
-                ยังไม่ได้จ่าย · กลับไปสแกน QR
-              </button>
-            </template>
-          </PaymentSettlingPanel>
-        </div>
+              <!-- QR จากเกตเวย์ — จ่ายแล้วระบบตัดงวดให้เอง ไม่ต้องแนบสลิป -->
+              <div v-else-if="useBeam" class="flex flex-col items-center gap-4 py-6 px-4 bg-gray-50 rounded-2xl">
+                <div class="relative p-2 bg-white rounded-2xl border border-gray-100 w-full max-w-[260px] aspect-square flex items-center justify-center">
+                  <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" alt="QR พร้อมเพย์"
+                    class="block rounded-xl w-full h-auto mx-auto" />
 
-        <div v-else-if="useBeam" class="flex flex-col items-center gap-4 py-6 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
-          <p class="text-sm font-bold text-gray-700">สแกน QR เพื่อชำระ ฿{{ Number(nextInstallment.amount).toLocaleString() }}</p>
+                  <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-2xl">
+                    <div class="w-9 h-9 rounded-full border-4 border-accent-tint border-t-accent animate-spin"></div>
+                  </div>
 
-          <div class="relative p-2 bg-white rounded-2xl border border-gray-100 min-h-[260px] min-w-[260px] flex items-center justify-center">
-            <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" alt="QR พร้อมเพย์"
-              class="block rounded-xl w-full max-w-[260px] h-auto mx-auto" />
+                  <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-2xl px-6 text-center">
+                    <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
+                    <button @click="createBeamCharge()"
+                      class="px-5 py-2.5 bg-accent text-white text-xs font-black rounded-xl hover:bg-accent-mid active:scale-95 transition-all">
+                      สร้าง QR ใหม่
+                    </button>
+                  </div>
+                </div>
 
-            <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-2xl">
-              <div class="w-9 h-9 rounded-full border-4 border-amber-100 border-t-amber-500 animate-spin"></div>
-            </div>
+                <p class="text-sm font-bold text-gray-700">ยอดงวดนี้ <span class="text-accent tabular-nums">฿{{ Number(nextInstallment.amount).toLocaleString() }}</span></p>
+                <div v-if="beamPayment && !beamExpired" class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-accent-light animate-pulse"></div>
+                  <p class="text-xs font-bold text-gray-600">
+                    รอชำระ · QR หมดอายุใน <span class="text-accent tabular-nums">{{ beamCountdownText }}</span>
+                  </p>
+                </div>
 
-            <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-2xl px-6 text-center">
-              <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
-              <button @click="createBeamCharge()"
-                class="px-5 py-2.5 bg-amber-500 text-white text-xs font-black rounded-xl hover:bg-amber-600 active:scale-95 transition-all">
-                สร้าง QR ใหม่
-              </button>
-            </div>
-          </div>
+                <!-- ขั้นตอนอยู่ตรงนี้ตั้งแต่ยังไม่จ่าย แล้วเลื่อนไปขั้นถัดไปเองเมื่อลูกค้ากลับเข้ามา -->
+                <div v-if="beamPayment && !beamExpired" class="w-full">
+                  <PaymentSettlingPanel stage="waiting" final-step="ตัดงวดที่ชำระให้อัตโนมัติ" />
+                </div>
 
-          <div v-if="beamPayment && !beamExpired" class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-            <p class="text-xs font-bold text-gray-600">
-              รอชำระ · QR หมดอายุใน <span class="text-amber-600 tabular-nums">{{ beamCountdownText }}</span>
-            </p>
-          </div>
+                <p v-if="beamError" class="text-xs font-bold text-red-600 text-center">{{ beamError }}</p>
+              </div>
 
-          <!-- ขั้นตอนอยู่ตรงนี้ตั้งแต่ยังไม่จ่าย แล้วเลื่อนไปขั้นถัดไปเองเมื่อลูกค้ากลับเข้ามา -->
-          <div v-if="beamPayment && !beamExpired" class="w-full px-4">
-            <PaymentSettlingPanel stage="waiting" final-step="ตัดงวดที่ชำระให้อัตโนมัติ" />
-          </div>
+              <div v-else class="flex flex-col items-center gap-3 py-6 px-4 bg-gray-50 rounded-2xl">
+                <div class="relative p-2 bg-white rounded-2xl border border-gray-100 w-full max-w-[280px]">
+                  <canvas ref="qrCanvas" class="block rounded-xl w-full h-auto mx-auto"></canvas>
+                </div>
+                <p class="text-sm font-bold text-gray-700">ยอดงวดนี้ <span class="text-accent tabular-nums">฿{{ Number(nextInstallment.amount).toLocaleString() }}</span></p>
+                <p class="text-xs font-medium text-gray-500">พร้อมเพย์ / e-Wallet <span class="font-bold text-gray-900 tabular-nums">004-99923936-2071</span></p>
+              </div>
+            </PayMethodRow>
 
-          <p v-if="beamError" class="text-xs font-bold text-red-600 px-6 text-center">{{ beamError }}</p>
-          <p class="text-xs font-bold text-gray-400 px-6 text-center">จ่ายแล้วระบบจะตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป</p>
+            <PayMethodRow v-if="!useBeam" badge="kbank" title="โอนผ่านบัญชีธนาคาร"
+              subtitle="กสิกรไทย · โอนแล้วแนบสลิปด้านล่าง"
+              :selected="paymentMethod === 'mobile_banking'" @select="paymentMethod = 'mobile_banking'">
+              <div class="bg-gray-50 rounded-2xl p-4 space-y-2.5">
+                <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-xl border border-gray-100 text-sm">
+                  <span class="text-xs font-bold text-gray-500">ธนาคาร</span>
+                  <span class="font-bold text-gray-900">กสิกรไทย (KBANK)</span>
+                </div>
+                <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-xl border border-gray-100 text-sm">
+                  <span class="text-xs font-bold text-gray-500">ชื่อบัญชี</span>
+                  <span class="font-bold text-gray-900">ลุยเลเขา</span>
+                </div>
+                <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-xl border border-gray-100 text-sm">
+                  <span class="text-xs font-bold text-gray-500">เลขที่บัญชี</span>
+                  <span class="flex items-center gap-2">
+                    <span class="font-black text-gray-900 text-base tracking-wider tabular-nums">230-1-39095-8</span>
+                    <button @click="copyAccount" aria-label="คัดลอกเลขบัญชี"
+                      class="p-1.5 rounded-lg bg-accent-tint text-accent hover:bg-emerald-100 active:scale-90 transition-all">
+                      <span class="material-symbols-rounded icon-18">{{ accountCopied ? 'check' : 'content_copy' }}</span>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </PayMethodRow>
 
-          <!-- ไม่สะดวกสแกน — ไปหน้าชำระเงินของ Beam สำหรับงวดเดียวกัน -->
-          <div v-if="checkoutAvailable" class="w-full px-4 space-y-3">
-            <div class="flex items-center gap-3 text-[11px] font-bold text-gray-400">
-              <div class="flex-1 h-px bg-gray-200"></div>หรือ<div class="flex-1 h-px bg-gray-200"></div>
-            </div>
-            <p class="text-sm font-black text-gray-900 flex items-center gap-2">
-              <span class="material-symbols-rounded text-amber-600 text-[20px]">credit_card</span>
-              จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet
-            </p>
-            <PaymentCheckoutMethods
-              accent="amber"
+            <!-- ไม่สะดวกสแกน — ไปหน้าชำระเงินของ Beam สำหรับงวดเดียวกัน -->
+            <PaymentCheckoutMethods v-if="checkoutAvailable"
               :amount="Number(nextInstallment.amount)"
               :installment-min="Number(gateway.installment_min_amount || 0)"
               :loading="beamLoading"
               @open="createBeamCharge('CHECKOUT')" />
-          </div>
-        </div>
-
-        <!-- QR Code -->
-        <div v-else-if="paymentMethod === 'promptpay'" class="flex flex-col items-center gap-4 py-6 bg-gray-50 rounded-2xl border border-gray-100 mb-6">
-          <p class="text-sm font-bold text-gray-700">สแกน QR เพื่อชำระ ฿{{ Number(nextInstallment.amount).toLocaleString() }}</p>
-          <div class="relative p-2 bg-white rounded-2xl border border-gray-100">
-            <canvas ref="qrCanvas" class="block rounded-xl w-full max-w-[280px] h-auto mx-auto"></canvas>
-          </div>
-          <p class="text-xs font-bold text-gray-400">e-Wallet: 004-99923936-2071</p>
-        </div>
-
-        <!-- Bank info -->
-        <div v-else class="bg-amber-50/50 rounded-2xl p-5 space-y-3 border border-amber-100 mb-6">
-          <p class="text-sm font-black text-amber-900">ข้อมูลบัญชีธนาคาร</p>
-          <div class="p-3 bg-white rounded-xl border border-amber-100 text-sm">
-            <p class="text-gray-500 text-xs font-bold">ธนาคาร</p>
-            <p class="font-black text-gray-900">กสิกรไทย (KBANK)</p>
-          </div>
-          <div class="p-3 bg-white rounded-xl border border-amber-100 text-sm">
-            <p class="text-gray-500 text-xs font-bold">ชื่อบัญชี</p>
-            <p class="font-black text-gray-900">ลุยเลเขา</p>
-          </div>
-          <div class="p-3 bg-white rounded-xl border border-amber-200 text-sm flex justify-between items-center">
-            <div>
-              <p class="text-gray-500 text-xs font-bold">เลขที่บัญชี</p>
-              <p class="font-black text-gray-900 text-lg tracking-wider">230-1-39095-8</p>
-            </div>
-            <button @click="copyAccount" class="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100">
-              <span class="material-symbols-rounded text-lg">content_copy</span>
-            </button>
           </div>
         </div>
 
@@ -301,6 +284,7 @@ import QRCode from 'qrcode';
 import api from '../lib/axios';
 import PaymentSettlingPanel from '../components/PaymentSettlingPanel.vue';
 import PaymentCheckoutMethods from '../components/PaymentCheckoutMethods.vue';
+import PayMethodRow from '../components/PayMethodRow.vue';
 import { useBeamCharge } from '../composables/useBeamCharge';
 
 const route = useRoute();
@@ -390,8 +374,12 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// ปุ่มอยู่ข้าง "เลขที่บัญชี" — เดิมคัดลอกเลขพร้อมเพย์ไปแทน ลูกค้าวางในแอปธนาคารแล้วได้คนละเลข
+const accountCopied = ref(false);
 function copyAccount() {
-  navigator.clipboard.writeText('004999239362071');
+  navigator.clipboard.writeText('2301390958');
+  accountCopied.value = true;
+  setTimeout(() => { accountCopied.value = false; }, 1800);
 }
 
 function onSlipChange(e) {
