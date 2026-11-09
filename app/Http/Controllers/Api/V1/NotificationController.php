@@ -16,9 +16,22 @@ class NotificationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            // หน้าถัดไปของ "เลื่อนโหลดเพิ่ม" — ต่อจาก id สุดท้ายที่มีแล้ว แทนเลขหน้า
+            // แจ้งเตือนใหม่ที่เข้ามาระหว่างเลื่อนดันทุกแถวลงหนึ่งช่อง ถ้าใช้ page=2
+            // จะได้แถวซ้ำ (และลบแถวหนึ่งระหว่างเลื่อนจะทำแถวหล่นหาย) ส่วน cursor ไม่
+            'before_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+
         $notifications = SmartNotification::where('user_id', $request->user()->id)
+            ->when(
+                isset($validated['before_id']),
+                fn ($query) => $query->where('id', '<', $validated['before_id']),
+            )
             ->orderByDesc('created_at')
-            ->paginate($request->get('per_page', 20));
+            ->orderByDesc('id')
+            ->paginate($validated['per_page'] ?? 20);
 
         return $this->paginated($notifications->through(fn ($n) => [
             'id' => $n->id,
