@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use App\Models\TripAlert;
+use App\Services\TripAlertService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,7 @@ class TripAlertController extends Controller
         return $this->success($alerts);
     }
 
-    public function store(Request $request, string $slug): JsonResponse
+    public function store(Request $request, string $slug, TripAlertService $service): JsonResponse
     {
         $trip = Trip::where('slug', $slug)->firstOrFail();
 
@@ -41,8 +42,18 @@ class TripAlertController extends Controller
                 'alert_price_drop' => true,
                 'alert_new_schedule' => true,
                 'alert_low_seats' => true,
-            ], $validated),
+            ], $validated, [
+                // กดกระดิ่งเองแล้วเป็นของผู้ใช้ — เอาหัวใจออกทีหลังก็ไม่ปิดตาม
+                'source' => TripAlert::SOURCE_MANUAL,
+            ]),
         );
+
+        if ($alert->last_notified_price === null) {
+            $baseline = $service->currentMinPrice($trip);
+            if ($baseline !== null) {
+                $alert->update(['last_notified_price' => $baseline]);
+            }
+        }
 
         return $this->success($this->format($alert->load('trip')), 'เปิดการแจ้งเตือนทริปนี้แล้ว', 201);
     }
@@ -69,6 +80,7 @@ class TripAlertController extends Controller
             'alert_new_schedule' => $alert->alert_new_schedule,
             'alert_low_seats' => $alert->alert_low_seats,
             'low_seat_threshold' => $alert->low_seat_threshold,
+            'source' => $alert->source ?? TripAlert::SOURCE_MANUAL,
             'created_at' => $alert->created_at?->toISOString(),
         ];
     }

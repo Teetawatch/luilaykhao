@@ -320,6 +320,19 @@ class TripAlertService
         );
     }
 
+    /**
+     * ราคาต่อคนที่ถูกที่สุดในรอบที่ยังเปิดจองอยู่ — null = ไม่มีรอบให้จอง
+     *
+     * ใช้ตั้งฐานราคาตอนเปิดกระดิ่ง (ไม่งั้นรอบกวาดแรกแค่จดราคา ราคาที่ลดก่อนนั้น
+     * หลุดไป) และโชว์ราคาในรายการทริปที่ถูกใจ
+     */
+    public function currentMinPrice(Trip $trip): ?float
+    {
+        $trip->loadMissing('schedules');
+
+        return $this->minBookablePrice($trip);
+    }
+
     private function minBookablePrice(Trip $trip): ?float
     {
         $prices = $trip->schedules

@@ -101,6 +101,7 @@
         <div class="flex-1 min-w-0">
           <p class="text-[12px] font-bold text-teal-600">เพิ่มเข้ารายการที่ชอบแล้ว</p>
           <p class="text-[13px] font-bold text-gray-900 truncate">{{ wishlistStore.lastAdded.title || `ทริป #${wishlistStore.lastAdded.id}` }}</p>
+          <p v-if="wishlistStore.lastAddedAlertOn" class="text-[11px] font-semibold text-gray-500">จะแจ้งเตือนเมื่อเปิดรอบใหม่หรือราคาลด</p>
         </div>
         <span class="material-symbols-rounded text-[22px] text-red-500 shrink-0" style="font-variation-settings:'FILL' 1">favorite</span>
       </div>

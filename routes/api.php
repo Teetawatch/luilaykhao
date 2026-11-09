@@ -124,6 +124,7 @@ use App\Http\Controllers\Api\V1\TripReadinessController;
 use App\Http\Controllers\Api\V1\TripTrackController;
 use App\Http\Controllers\Api\V1\VehicleTrackingController;
 use App\Http\Controllers\Api\V1\WaitlistController;
+use App\Http\Controllers\Api\V1\WishlistController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
@@ -742,6 +743,12 @@ Route::prefix('v1')->group(function () {
         Route::post('group-plans/{code}/leave', [GroupPlanController::class, 'leave']);
         Route::post('group-plans/{code}/checkout', [GroupPlanController::class, 'checkout']);
         Route::delete('group-plans/{code}', [GroupPlanController::class, 'cancel']);
+
+        // ทริปที่ถูกใจ (หัวใจ) ผูกกับบัญชี — กดหัวใจแล้วเปิดกระดิ่งแจ้งเตือนให้ด้วย
+        Route::get('wishlist', [WishlistController::class, 'index']);
+        Route::post('wishlist/merge', [WishlistController::class, 'merge'])->middleware('throttle:10,1');
+        Route::post('trips/{slug}/wishlist', [WishlistController::class, 'store'])->middleware('throttle:60,1');
+        Route::delete('trips/{slug}/wishlist', [WishlistController::class, 'destroy'])->middleware('throttle:60,1');
 
         // Trip price & availability alerts (per-trip bell)
         Route::get('trip-alerts', [TripAlertController::class, 'index']);
