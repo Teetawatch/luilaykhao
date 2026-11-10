@@ -239,6 +239,15 @@ final class TripShell
                 $title = trim((string) ($day['title'] ?? ''));
                 $body = trim(strip_tags((string) ($day['description'] ?? '')));
 
+                // จุดแวะต่อท้ายย่อหน้าของวัน บรรทัดละจุด — "08:30 ดอยอินทนนท์ — ชมทะเลหมอก"
+                foreach (TripItinerary::stops($day) as $stop) {
+                    $line = trim(($stop['time'] ?? '').' '.strip_tags($stop['title']));
+                    if ($stop['detail'] !== null) {
+                        $line .= ' — '.trim(strip_tags($stop['detail']));
+                    }
+                    $body = trim($body."\n".$line);
+                }
+
                 if ($title === '' && $body === '') {
                     continue;
                 }

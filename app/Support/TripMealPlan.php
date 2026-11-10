@@ -332,6 +332,11 @@ class TripMealPlan
             $day = is_numeric($item['day'] ?? null) ? (int) $item['day'] : null;
             $text = trim((string) ($item['title'] ?? ''))."\n".trim((string) ($item['description'] ?? ''));
 
+            // จุดแวะ ("12:00 ร้านอาหารริมน้ำ — อาหารกลางวัน") เป็นที่ที่มื้ออาหารมักอยู่
+            foreach (TripItinerary::stops($item) as $stop) {
+                $text .= "\n".trim(($stop['time'] ?? '').' '.$stop['title'].' '.($stop['detail'] ?? ''));
+            }
+
             return [$day, $text];
         }, $items);
     }

@@ -211,7 +211,51 @@
                       <span class="material-symbols-rounded">delete</span>
                     </button>
                   </div>
-                  <textarea v-model="item.description" rows="3" placeholder="รายละเอียดกิจกรรมในวันนี้..." class="text-sm w-full bg-white px-4 py-3 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20"></textarea>
+                  <textarea v-model="item.description" rows="3" placeholder="ภาพรวมของวันนี้ (ไม่ต้องกรอกก็ได้ถ้าลงเป็นจุดแวะด้านล่าง)" class="text-sm w-full bg-white px-4 py-3 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20"></textarea>
+
+                  <!-- จุดแวะของวันนี้: เวลา + สถานที่ + รายละเอียด + รูปของสถานที่ -->
+                  <div class="itin-stops mt-4">
+                    <p class="text-[11px] font-black text-gray-400 tracking-wide mb-2">จุดแวะในวันนี้ <span class="font-bold">({{ (item.stops || []).length }})</span></p>
+                    <div v-for="(stop, stIdx) in (item.stops || [])" :key="stIdx" class="itin-stop bg-white border border-gray-200 rounded-xl p-3 mb-2">
+                      <div class="flex gap-2 items-start">
+                        <input v-model="stop.time" type="time" class="itin-stop-time w-[7.5rem] shrink-0 px-3 py-2 border rounded-lg text-sm font-bold" title="เวลา (ไม่บังคับ)" />
+                        <input v-model="stop.title" placeholder="ชื่อสถานที่ / กิจกรรม (เช่น จุดชมวิวกิ่วแม่ปาน)" class="flex-1 min-w-0 px-3 py-2 border rounded-lg text-sm font-bold" />
+                        <div class="flex shrink-0">
+                          <button type="button" class="p-1.5 text-gray-400 hover:text-[var(--color-accent)] disabled:opacity-30" :disabled="stIdx === 0" @click="moveStop(item, stIdx, -1)" title="เลื่อนขึ้น">
+                            <span class="material-symbols-rounded" style="font-size:18px;">arrow_upward</span>
+                          </button>
+                          <button type="button" class="p-1.5 text-gray-400 hover:text-[var(--color-accent)] disabled:opacity-30" :disabled="stIdx === item.stops.length - 1" @click="moveStop(item, stIdx, 1)" title="เลื่อนลง">
+                            <span class="material-symbols-rounded" style="font-size:18px;">arrow_downward</span>
+                          </button>
+                          <button type="button" class="p-1.5 text-red-400 hover:text-red-600" @click="item.stops.splice(stIdx, 1)" title="ลบจุดนี้">
+                            <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
+                          </button>
+                        </div>
+                      </div>
+                      <textarea v-model="stop.detail" rows="2" placeholder="รายละเอียดของจุดนี้ เช่น ทำอะไร อยู่นานแค่ไหน ควรเตรียมอะไร" class="mt-2 w-full px-3 py-2 border rounded-lg text-sm"></textarea>
+                      <div class="flex flex-wrap gap-2 mt-2">
+                        <div v-for="(url, imgIdx) in (stop.images || [])" :key="url + imgIdx" class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                          <img :src="url" alt="" class="w-full h-full object-cover" />
+                          <button type="button" @click="stop.images.splice(imgIdx, 1)" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/55 text-white flex items-center justify-center" title="ลบรูป">
+                            <span class="material-symbols-rounded" style="font-size:13px;">close</span>
+                          </button>
+                        </div>
+                        <button
+                          v-if="(stop.images || []).length < ITINERARY_STOP_MAX_IMAGES"
+                          type="button"
+                          class="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 text-gray-400 hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] flex flex-col items-center justify-center text-[10px] font-bold"
+                          :disabled="itineraryImageUploading"
+                          @click="triggerItineraryImages(stop)"
+                        >
+                          <span class="material-symbols-rounded" style="font-size:20px;">{{ itineraryImageUploading && itineraryImageTarget === stop ? 'hourglass_top' : 'add_photo_alternate' }}</span>
+                          รูปสถานที่
+                        </button>
+                      </div>
+                    </div>
+                    <button type="button" class="w-full py-2.5 border border-dashed border-gray-300 rounded-xl text-gray-500 text-sm font-bold hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] hover:bg-white flex items-center justify-center gap-1.5" @click="addStop(item)">
+                      <span class="material-symbols-rounded" style="font-size:18px;">add_location</span> เพิ่มจุดแวะ (เวลา · สถานที่ · รูป)
+                    </button>
+                  </div>
                 </div>
                 
                 <button type="button" class="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-bold hover:bg-white hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all flex items-center justify-center gap-2 group" @click="addItem('itinerary_item', sIdx)">
@@ -509,6 +553,7 @@
             </div>
 
             <input ref="mustKnowImageInput" type="file" accept="image/*" class="hidden-file-input" @change="handleMustKnowImageSelect" />
+            <input ref="itineraryImageInput" type="file" accept="image/*" multiple class="hidden-file-input" @change="handleItineraryImageSelect" />
           </div>
 
           <!-- Reusable image library picker -->
@@ -1578,8 +1623,18 @@ const buildTripPayload = () => {
             day: Number(item?.day || 0),
             title: String(item?.title || '').trim(),
             description: String(item?.description || '').trim(),
+            // จุดแวะ — ทิ้งแถวที่เพิ่มไว้แต่ไม่ได้กรอกอะไร ไม่ให้ติด validation ตอนบันทึก
+            stops: normalizeArray(item?.stops)
+              .map((stop) => ({
+                time: String(stop?.time || '').trim().slice(0, 5) || null,
+                title: String(stop?.title || '').trim(),
+                detail: String(stop?.detail || '').trim(),
+                images: normalizeArray(stop?.images).map((url) => String(url || '').trim()).filter(Boolean),
+              }))
+              .filter((stop) => stop.title || stop.detail || stop.images.length),
           }))
-          .filter((item) => item.title && item.description),
+          // วันที่ลงเป็นจุดแวะแล้วไม่ต้องมีย่อหน้าบรรยาย
+          .filter((item) => item.title && (item.description || item.stops.length)),
       }))
       .filter((sector) => sector.sector || sector.items.length),
   };
@@ -1752,6 +1807,59 @@ const handleMustKnowImageSelect = async (event) => {
     mustKnowImageUploading.value = false;
     mustKnowImageTargetIdx.value = null;
     if (mustKnowImageInput.value) mustKnowImageInput.value.value = '';
+  }
+};
+
+// ─── จุดแวะในแผนการเดินทาง ───────────────────────────────
+// ตรงกับ TripItinerary::MAX_IMAGES ฝั่งเซิร์ฟเวอร์
+const ITINERARY_STOP_MAX_IMAGES = 6;
+const itineraryImageInput = ref(null);
+const itineraryImageTarget = ref(null);
+const itineraryImageUploading = ref(false);
+
+const addStop = (item) => {
+  if (!Array.isArray(item.stops)) item.stops = [];
+  item.stops.push({ time: '', title: '', detail: '', images: [] });
+};
+
+const moveStop = (item, idx, delta) => {
+  const to = idx + delta;
+  if (!Array.isArray(item.stops) || to < 0 || to >= item.stops.length) return;
+  const [stop] = item.stops.splice(idx, 1);
+  item.stops.splice(to, 0, stop);
+};
+
+const triggerItineraryImages = (stop) => {
+  itineraryImageTarget.value = stop;
+  itineraryImageInput.value?.click();
+};
+
+const handleItineraryImageSelect = async (event) => {
+  const stop = itineraryImageTarget.value;
+  const files = Array.from(event.target.files || []);
+  if (itineraryImageInput.value) itineraryImageInput.value.value = '';
+  if (!stop || files.length === 0) return;
+  if (!Array.isArray(stop.images)) stop.images = [];
+
+  const room = ITINERARY_STOP_MAX_IMAGES - stop.images.length;
+  const picked = files.filter((file) => file.size <= 10 * 1024 * 1024).slice(0, Math.max(0, room));
+  if (picked.length < files.length) {
+    alert(`ใส่รูปได้สูงสุด ${ITINERARY_STOP_MAX_IMAGES} รูปต่อจุด และไฟล์ละไม่เกิน 10MB — บางไฟล์ถูกข้ามไป`);
+  }
+
+  itineraryImageUploading.value = true;
+  try {
+    for (const file of picked) {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/admin/upload-image', formData);
+      stop.images.push(res.data.data.url);
+    }
+  } catch (e) {
+    alert(e.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
+  } finally {
+    itineraryImageUploading.value = false;
+    itineraryImageTarget.value = null;
   }
 };
 

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ScheduleItineraryItem;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\TripItinerary;
 use Illuminate\Support\Collection;
 
 /**
@@ -184,8 +185,12 @@ class ScheduleItineraryService
     {
         $title = $this->firstFilled($data, ['title', 'name', 'activity']);
         $detail = $this->firstFilled($data, ['description', 'desc', 'detail', 'content']);
+        $stops = TripItinerary::stops($data);
 
         if ($title === '' && $detail === '') {
+            // วันที่ไม่มีหัวข้อแต่ลงจุดแวะไว้ ก็ยังต้องได้จุดแวะ
+            $this->pushTripStops($items, $schedule, $sector, $this->tripDayNumber($data), $stops);
+
             return;
         }
 
@@ -210,6 +215,8 @@ class ScheduleItineraryService
                 $this->pushPresentedTripItem($items, $schedule, $group, $day, $time, $stepTitle, null);
             }
 
+            $this->pushTripStops($items, $schedule, $group, $day, $stops);
+
             return;
         }
 
@@ -224,6 +231,39 @@ class ScheduleItineraryService
             $title,
             $detail !== '' ? $detail : null,
         );
+
+        $this->pushTripStops($items, $schedule, $sector, $day, $stops);
+    }
+
+    /**
+     * จุดแวะที่แอดมินลงไว้ในวันนั้น (เวลา + สถานที่ + รายละเอียด + รูป) — กลายเป็นจุด
+     * ในไทม์ไลน์ต่อจากหัวข้อของวัน กลุ่มเดียวกัน
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @param  array<int, array{time: ?string, title: string, detail: ?string, images: array<int, string>}>  $stops
+     */
+    private function pushTripStops(array &$items, TripSchedule $schedule, ?string $group, ?int $day, array $stops): void
+    {
+        foreach ($stops as $stop) {
+            $title = $stop['title'];
+            $detail = $stop['detail'];
+
+            // จุดที่มีแต่รูปหรือแต่รายละเอียด ใช้บรรทัดแรกของรายละเอียดเป็นชื่อแทน
+            if ($title === '') {
+                $title = $detail !== null ? trim(strtok($detail, "\n")) : 'จุดแวะ';
+            }
+
+            $this->pushPresentedTripItem(
+                $items,
+                $schedule,
+                $group,
+                $day,
+                $stop['time'],
+                $title,
+                $detail,
+                $stop['images'],
+            );
+        }
     }
 
     /**
@@ -237,6 +277,7 @@ class ScheduleItineraryService
         ?string $time,
         string $title,
         ?string $detail,
+        array $images = [],
     ): void {
         $items[] = [
             'id' => null,
@@ -247,6 +288,7 @@ class ScheduleItineraryService
             'time' => $time,
             'title' => $title,
             'detail' => $detail,
+            'images' => $images,
             'link' => null,
             'sort_order' => count($items),
             'reached_at' => null,

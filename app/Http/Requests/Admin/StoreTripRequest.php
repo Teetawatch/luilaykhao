@@ -6,6 +6,7 @@ use App\Models\Trip;
 use App\Rules\KnownCountry;
 use App\Support\MedalDesign;
 use App\Support\TripDocumentRequirements;
+use App\Support\TripItinerary;
 use App\Support\TripMealPlan;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -80,7 +81,15 @@ class StoreTripRequest extends FormRequest
             'itinerary.*.items' => ['required_with:itinerary', 'array'],
             'itinerary.*.items.*.day' => ['required', 'integer'],
             'itinerary.*.items.*.title' => ['required', 'string', 'max:255'],
-            'itinerary.*.items.*.description' => ['required', 'string'],
+            // วันที่แตกเป็นจุดแวะแล้วไม่จำเป็นต้องมีย่อหน้าบรรยายรวมอีก
+            'itinerary.*.items.*.description' => ['nullable', 'string'],
+            // จุดแวะในวันนั้น — เวลา + ชื่อสถานที่ + รายละเอียด + รูปของสถานที่
+            'itinerary.*.items.*.stops' => ['nullable', 'array', 'max:'.TripItinerary::MAX_STOPS],
+            'itinerary.*.items.*.stops.*.time' => ['nullable', 'date_format:H:i'],
+            'itinerary.*.items.*.stops.*.title' => ['required', 'string', 'max:255'],
+            'itinerary.*.items.*.stops.*.detail' => ['nullable', 'string', 'max:2000'],
+            'itinerary.*.items.*.stops.*.images' => ['nullable', 'array', 'max:'.TripItinerary::MAX_IMAGES],
+            'itinerary.*.items.*.stops.*.images.*' => ['string', 'max:2048'],
             'preparations' => ['nullable', 'array'],
             'preparations.*' => ['string'],
             'faqs' => ['nullable', 'array'],

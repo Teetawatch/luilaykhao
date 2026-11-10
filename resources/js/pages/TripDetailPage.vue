@@ -415,8 +415,8 @@
                         >
                           <div class="min-w-0">
                             <h4 class="text-base md:text-lg font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors leading-snug">{{ item.title }}</h4>
-                            <p v-if="!openDays.includes(sIdx + '-' + idx) && item.description" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1">
-                              {{ item.description }}
+                            <p v-if="!openDays.includes(sIdx + '-' + idx) && daySummary(item)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1">
+                              {{ daySummary(item) }}
                             </p>
                           </div>
                           <span class="w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[var(--color-sand)] group-hover:text-[var(--color-accent)] transition-all"
@@ -427,9 +427,33 @@
 
                         <div v-show="openDays.includes(sIdx + '-' + idx)" :id="`day-${sIdx}-${idx}`" class="px-4 pb-5 md:px-6 md:pb-7 animate-fade-in">
                           <div class="w-full h-px bg-gray-100 mb-4 md:mb-5"></div>
-                          <p class="text-[var(--color-text-mid)] leading-[1.85] text-[16px] md:text-[17px] font-medium whitespace-pre-line">
+                          <p v-if="item.description" class="text-[var(--color-text-mid)] leading-[1.85] text-[16px] md:text-[17px] font-medium whitespace-pre-line">
                             {{ item.description }}
                           </p>
+
+                          <!-- จุดแวะของวันนี้ — เวลา · สถานที่ · รายละเอียด · รูปของสถานที่ -->
+                          <ol v-if="dayStops(item).length" class="itin-stops" :class="{ 'mt-5': item.description }">
+                            <li v-for="(stop, stIdx) in dayStops(item)" :key="stIdx" class="itin-stop">
+                              <span class="itin-stop-time" :class="{ 'is-empty': !stop.time }">{{ stop.time || '' }}</span>
+                              <div class="itin-stop-body">
+                                <span class="itin-stop-dot" aria-hidden="true"></span>
+                                <h5 class="text-[15px] md:text-base font-extrabold text-[var(--color-text-dark)] leading-snug">{{ stop.title }}</h5>
+                                <p v-if="stop.detail" class="text-[15px] text-[var(--color-text-mid)] leading-[1.75] font-medium whitespace-pre-line mt-1">{{ stop.detail }}</p>
+                                <div v-if="stop.images.length" class="itin-stop-photos" :class="{ 'is-single': stop.images.length === 1 }">
+                                  <button
+                                    v-for="(url, imgIdx) in stop.images"
+                                    :key="imgIdx"
+                                    type="button"
+                                    class="itin-stop-photo"
+                                    :aria-label="`ดูรูป ${stop.title} ภาพที่ ${imgIdx + 1}`"
+                                    @click="openReviewImage(stop.images, imgIdx)"
+                                  >
+                                    <img :src="url" :alt="stop.title" loading="lazy" />
+                                  </button>
+                                </div>
+                              </div>
+                            </li>
+                          </ol>
                         </div>
                       </div>
                     </div>
@@ -2136,6 +2160,26 @@ const toggleDay = (key) => {
   }
 };
 
+/** จุดแวะของวัน (เวลา · สถานที่ · รายละเอียด · รูป) — ทริปเก่าไม่มี stops เลย */
+const dayStops = (item) =>
+  (Array.isArray(item?.stops) ? item.stops : [])
+    .map((stop) => ({
+      time: String(stop?.time || '').trim().slice(0, 5),
+      title: String(stop?.title || '').trim(),
+      detail: String(stop?.detail || '').trim(),
+      images: (Array.isArray(stop?.images) ? stop.images : []).map((url) => String(url || '').trim()).filter(Boolean),
+    }))
+    .filter((stop) => stop.title || stop.detail || stop.images.length);
+
+/** บรรทัดสรุปใต้หัวการ์ดตอนพับ — ย่อหน้าของวัน หรือรายชื่อจุดแวะถ้าไม่มี */
+const daySummary = (item) => {
+  const description = String(item?.description || '').trim();
+  if (description) return description;
+  return dayStops(item)
+    .map((stop) => [stop.time, stop.title].filter(Boolean).join(' '))
+    .join(' · ');
+};
+
 const allDayKeys = computed(() =>
   itinerarySectors.value.flatMap((sector, sIdx) => (sector.items || []).map((_, idx) => `${sIdx}-${idx}`)),
 );
@@ -3621,6 +3665,62 @@ async function fetchAlbumPhotos() {
     from { transform: scaleY(0); }
     to   { transform: scaleY(1); }
   }
+}
+
+/* จุดแวะในแต่ละวัน — คอลัมน์เวลาซ้าย, เส้นประเชื่อมจุด, รูปสถานที่ใต้รายละเอียด */
+.itin-stops { list-style: none; margin: 0; padding: 0; }
+.itin-stop { display: flex; gap: 0.75rem; }
+.itin-stop-time {
+  flex: 0 0 3.25rem;
+  padding-top: 0.1rem;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.itin-stop-body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 0 0 1.25rem 1.1rem;
+  border-left: 2px dashed rgb(229 231 235);
+}
+.itin-stop:last-child .itin-stop-body { border-left-color: transparent; padding-bottom: 0; }
+.itin-stop-dot {
+  position: absolute;
+  left: -7px;
+  top: 0.3rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--color-accent);
+}
+.itin-stop-photos {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.itin-stop-photos::-webkit-scrollbar { display: none; }
+.itin-stop-photo {
+  flex: 0 0 auto;
+  width: 9.5rem;
+  aspect-ratio: 3 / 2;
+  border-radius: 0.875rem;
+  overflow: hidden;
+  background: rgb(243 244 246);
+  cursor: zoom-in;
+}
+.itin-stop-photos.is-single .itin-stop-photo { width: min(100%, 26rem); aspect-ratio: 16 / 9; }
+.itin-stop-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+.itin-stop-photo:hover img { transform: scale(1.04); }
+@media (min-width: 768px) {
+  .itin-stop-time { flex-basis: 3.75rem; font-size: 14px; }
+  .itin-stop-photo { width: 11rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .timeline-fill { display: none !important; }
