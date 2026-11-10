@@ -397,8 +397,14 @@
                           ? 'bg-[var(--color-accent)] text-white'
                           : 'bg-white text-[var(--color-text-dark)] border border-gray-200 hover:border-[var(--color-accent)]/50'"
                       >
-                        <span class="text-[9px] md:text-[11px] font-bold leading-none opacity-75">วันที่</span>
-                        <span class="text-base md:text-2xl font-black leading-none mt-0.5 md:mt-1">{{ item.day }}</span>
+                        <template v-if="isEveDay(item)">
+                          <span class="text-[9px] md:text-[11px] font-bold leading-none opacity-75">คืนก่อน</span>
+                          <span class="material-symbols-rounded eve-icon leading-none mt-0.5 md:mt-1">bedtime</span>
+                        </template>
+                        <template v-else>
+                          <span class="text-[9px] md:text-[11px] font-bold leading-none opacity-75">วันที่</span>
+                          <span class="text-base md:text-2xl font-black leading-none mt-0.5 md:mt-1">{{ item.day }}</span>
+                        </template>
                       </div>
 
                       <!-- Day card -->
@@ -414,6 +420,7 @@
                           :aria-controls="`day-${sIdx}-${idx}`"
                         >
                           <div class="min-w-0">
+                            <p v-if="isEveDay(item)" class="text-[12px] font-black text-[var(--color-accent)] mb-0.5">คืนก่อนวันเดินทาง</p>
                             <h4 class="text-base md:text-lg font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors leading-snug">{{ item.title }}</h4>
                             <p v-if="!openDays.includes(sIdx + '-' + idx) && daySummary(item)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1">
                               {{ daySummary(item) }}
@@ -2160,6 +2167,9 @@ const toggleDay = (key) => {
   }
 };
 
+/** วันที่ 0 = คืนก่อนวันเดินทาง (ทริปที่รถออกตั้งแต่คืนก่อน) — ตรงกับ TripItinerary::EVE_DAY */
+const isEveDay = (item) => String(item?.day ?? '').trim() === '0';
+
 /** จุดแวะของวัน (เวลา · สถานที่ · รายละเอียด · รูป) — ทริปเก่าไม่มี stops เลย */
 const dayStops = (item) =>
   (Array.isArray(item?.stops) ? item.stops : [])
@@ -3666,6 +3676,10 @@ async function fetchAlbumPhotos() {
     to   { transform: scaleY(1); }
   }
 }
+
+/* ไอคอนพระจันทร์ในวงของ "คืนก่อนวันเดินทาง" — สองคลาสเพื่อชนะขนาดของฟอนต์ไอคอน */
+.material-symbols-rounded.eve-icon { font-size: 18px; }
+@media (min-width: 768px) { .material-symbols-rounded.eve-icon { font-size: 26px; } }
 
 /* จุดแวะในแต่ละวัน — คอลัมน์เวลาซ้าย, เส้นประเชื่อมจุด, รูปสถานที่ใต้รายละเอียด */
 .itin-stops { list-style: none; margin: 0; padding: 0; }

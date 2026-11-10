@@ -203,9 +203,16 @@
               <div class="space-y-4 ml-4 md:ml-8 border-l-2 border-dashed border-gray-100 pl-4 md:pl-8">
                 <div v-for="(item, idx) in sector.items" :key="idx" class="itinerary-item bg-gray-50 p-6 rounded-2xl border border-gray-100 relative group">
                   <div class="flex items-center gap-4 mb-4">
-                    <div class="day-badge bg-[var(--color-accent)] text-white px-4 py-1 rounded-full font-bold text-sm shrink-0">
-                      วันที่ {{ item.day }}
-                    </div>
+                    <!-- วันที่ 0 = คืนก่อนวันเดินทาง (ทริปที่รถออกตั้งแต่คืนก่อน) -->
+                    <select
+                      v-model.number="item.day"
+                      class="day-badge bg-[var(--color-accent)] text-white pl-4 pr-8 py-1 rounded-full font-bold text-sm shrink-0 border-none cursor-pointer"
+                      title="เลือกว่าเป็นวันไหนของทริป"
+                    >
+                      <option v-for="d in itineraryDayOptions(item.day)" :key="d" :value="d" class="text-gray-800 bg-white">
+                        {{ d === 0 ? 'คืนก่อนเดินทาง' : `วันที่ ${d}` }}
+                      </option>
+                    </select>
                     <input v-model="item.title" placeholder="หัวข้อของวันนี้ (เช่น เดินทางถึงจุดหมาย)" class="flex-1 font-bold bg-white px-4 py-2 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20" />
                     <button type="button" class="text-red-400 hover:text-red-600 p-2" @click="removeItem('itinerary_item', { sIdx, idx })">
                       <span class="material-symbols-rounded">delete</span>
@@ -2027,6 +2034,12 @@ const selectIcon = (idx, icon) => {
   activeIconPicker.value = null;
 };
 
+/** ตัวเลือกวันของกำหนดการ: 0 (คืนก่อนเดินทาง) ถึงจำนวนวันของทริป — รวมค่าที่ตั้งไว้แล้วเสมอ */
+const itineraryDayOptions = (current) => {
+  const last = Math.max(Number(form.duration_days) || 1, Number(current) || 0, 1);
+  return Array.from({ length: last + 1 }, (_, i) => i);
+};
+
 const addItem = (field, extra = null) => {
   if (field === 'highlights') {
     if (!form.highlights) form.highlights = [];
@@ -2037,7 +2050,8 @@ const addItem = (field, extra = null) => {
   } else if (field === 'itinerary_item') {
     const sIdx = extra;
     const sector = form.itinerary[sIdx];
-    let nextDay = 0;
+    // เริ่มวันที่ 1 — วันที่ 0 สงวนไว้ให้ "คืนก่อนเดินทาง" ที่แอดมินเลือกเองจากช่องวัน
+    let nextDay = 1;
     // Calculate next day based only on this sector
     sector.items.forEach(item => {
       if (item.day >= nextDay) nextDay = item.day + 1;

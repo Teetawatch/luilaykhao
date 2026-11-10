@@ -255,7 +255,9 @@ final class TripShell
                 $number = trim((string) ($day['day'] ?? ''));
 
                 $entries[] = [
-                    'title' => $number !== '' ? 'วันที่ '.$number.' · '.$title : $title,
+                    'title' => is_numeric($number)
+                        ? TripItinerary::dayLabel((int) $number).' · '.$title
+                        : ($number !== '' ? 'วันที่ '.$number.' · '.$title : $title),
                     'body' => $body,
                 ];
             }

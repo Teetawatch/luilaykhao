@@ -58,6 +58,24 @@ final class TripItinerary
     }
 
     /**
+     * วันที่ 0 = คืนก่อนวันเดินทาง — ทริปที่รถออกตั้งแต่คืนก่อน (เดินทางกลางคืน
+     * ไปถึงเช้าวันทริป) ลงจุดนัดของคืนนั้นไว้เป็นวันที่ 0 ไม่ใช่วันแรกของทริป
+     */
+    public const EVE_DAY = 0;
+
+    public const EVE_LABEL = 'คืนก่อนวันเดินทาง';
+
+    /** "คืนก่อนวันเดินทาง" / "วันที่ 2" — null เมื่อไม่ได้ระบุวัน */
+    public static function dayLabel(?int $day): ?string
+    {
+        if ($day === null) {
+            return null;
+        }
+
+        return $day === self::EVE_DAY ? self::EVE_LABEL : "วันที่ {$day}";
+    }
+
+    /**
      * "8.30" / "08:30" / "8:30 น." → "08:30" — อย่างอื่นถือว่าไม่ได้ระบุเวลา
      */
     public static function time(mixed $value): ?string

@@ -216,4 +216,41 @@ class TripItineraryStopsTest extends TestCase
         $this->assertSame(1, $plan['found']);
         $this->assertSame('included', $plan['meal_plan']['days'][0]['lunch']['status']);
     }
+
+    public function test_day_zero_is_the_night_before_departure(): void
+    {
+        $admin = $this->makeAdmin();
+        $trip = $this->makeTrip();
+        $schedule = TripSchedule::create([
+            'trip_id' => $trip->id,
+            'departure_date' => now()->addMonth()->toDateString(),
+            'return_date' => now()->addMonth()->addDay()->toDateString(),
+            'total_seats' => 8,
+            'booked_seats' => 0,
+            'transport_type' => 'van',
+            'status' => 'open',
+        ]);
+
+        $trip->update(['itinerary' => [
+            ['sector' => '', 'items' => [
+                ['day' => 0, 'title' => 'ขึ้นรถ', 'description' => '', 'stops' => [
+                    ['time' => '20:00', 'title' => 'BTS หมอชิต'],
+                ]],
+                ['day' => 1, 'title' => 'ขึ้นยอด', 'description' => 'เดินขึ้นยอดดอย'],
+            ]],
+        ]]);
+
+        // วันที่ 0 ไม่ถูกปัดไปชนวันที่ 1 อีกแล้ว — เป็นคืนก่อนวันออกเดินทางจริง ๆ
+        $this->actingAs($admin, 'sanctum')
+            ->getJson("/api/v1/schedules/{$schedule->id}/itinerary")
+            ->assertOk()
+            ->assertJsonPath('data.items.0.day', 0)
+            ->assertJsonPath('data.items.0.group', 'คืนก่อนวันเดินทาง')
+            ->assertJsonPath('data.items.0.item_date', $schedule->departure_date->copy()->subDay()->toDateString())
+            ->assertJsonPath('data.items.1.time', '20:00')
+            ->assertJsonPath('data.items.1.group', 'คืนก่อนวันเดินทาง')
+            ->assertJsonPath('data.items.2.day', 1)
+            ->assertJsonPath('data.items.2.group', 'วันที่ 1')
+            ->assertJsonPath('data.items.2.item_date', $schedule->departure_date->toDateString());
+    }
 }

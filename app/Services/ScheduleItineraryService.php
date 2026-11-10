@@ -282,7 +282,7 @@ class ScheduleItineraryService
         $items[] = [
             'id' => null,
             'source' => 'trip',
-            'group' => $group ?? ($day !== null ? "วันที่ {$day}" : 'แผนการเดินทาง'),
+            'group' => $group ?? TripItinerary::dayLabel($day) ?? 'แผนการเดินทาง',
             'day' => $day,
             'item_date' => $this->tripItemDate($schedule, $day),
             'time' => $time,
@@ -363,8 +363,8 @@ class ScheduleItineraryService
             if (preg_match('/\d+/', (string) $data[$key], $m)) {
                 $day = (int) $m[0];
 
-                // ตัวแก้ไขทริปเริ่มนับวันที่ 0 ในบางทริป จึงยอมรับ 0 แล้วเลื่อนเป็นวันที่ 1
-                return $day >= 1 ? $day : 1;
+                // 0 = คืนก่อนวันเดินทาง (TripItinerary::EVE_DAY) — วันที่ = วันออกเดินทาง − 1
+                return max(TripItinerary::EVE_DAY, $day);
             }
         }
 
