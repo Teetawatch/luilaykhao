@@ -31,6 +31,15 @@ class ChatService
     public const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
     /**
+     * การจองที่ยังนับว่า "อยู่ในทริปนี้" สำหรับป้าย "ออกจากทริปแล้ว" — ต่างจาก
+     * ACTIVE_BOOKING_STATUSES ตรงที่รวม completed ด้วย ทริปจบแล้วไม่ได้แปลว่าใครออก
+     */
+    private const STILL_IN_TRIP_STATUSES = ['pending', 'confirmed', 'completed'];
+
+    /** @var array<int, array<int, true>> scheduleId => set ของ user id ที่ยังอยู่ในทริป */
+    private array $tripPeopleCache = [];
+
+    /**
      * ผู้ใช้เข้าถึงห้องแชทของรอบเดินทางนี้ได้หรือไม่
      * - มีการจอง active (pending/confirmed) ในรอบนี้, หรือ
      * - เป็นสตาฟที่ถูก assign ในรอบนี้, หรือ
@@ -570,6 +579,9 @@ class ChatService
             // สติกเกอร์ — body ยังเป็นข้อความสำรอง "[สติกเกอร์] …" สำหรับไคลเอนต์ที่ไม่รู้จัก
             'sticker' => app(StickerService::class)->forMessage($message),
             'sender_role' => $message->sender_role,
+            // ลูกทริปที่ยกเลิกการจอง/ถูกถอดจากใบจองไปแล้ว — แอปต่อป้ายเทา ๆ
+            // "ออกจากทริปแล้ว" ที่ชื่อ ตั้งใจไม่ประกาศในห้องและไม่บอกเหตุผล
+            'sender_left' => $this->senderLeft($message),
             'is_mine' => $currentUserId !== null && $message->user_id === $currentUserId,
             'is_deleted' => $deleted,
             'edited_at' => $message->edited_at?->toISOString(),
@@ -602,6 +614,61 @@ class ChatService
             'is_pinned' => $message->pinned_at !== null,
             'created_at' => $message->created_at?->toISOString(),
         ];
+    }
+
+    /**
+     * คนส่งข้อความนี้ (ลูกทริป) ไม่ได้อยู่ในทริปแล้วหรือยัง — นับเฉพาะลูกทริป
+     * ทีมงาน/แอดมินมีทางเข้าออกรอบของตัวเอง (การ์ดแนะนำทีมงานถูกลบตอนถอดออก)
+     */
+    public function senderLeft(ChatMessage $message): bool
+    {
+        if ($message->sender_role !== 'customer' || ! $message->user_id) {
+            return false;
+        }
+
+        return ! isset($this->tripPeopleIds((int) $message->schedule_id)[(int) $message->user_id]);
+    }
+
+    /**
+     * ลืมรายชื่อที่จำไว้ — เรียกก่อนโหลดหน้าข้อความ เผื่อ instance นี้อยู่นาน
+     * (route เก็บ controller ตัวเดิมไว้ใช้ซ้ำ) จะได้ไม่เห็นรายชื่อของคำขอก่อน
+     */
+    public function forgetTripPeople(int $scheduleId): void
+    {
+        unset($this->tripPeopleCache[$scheduleId]);
+    }
+
+    /**
+     * user id ทุกคนที่ยังอยู่ในทริปนี้ (เจ้าของการจอง + เพื่อนที่ผูกใบจอง + ทีมงาน)
+     * จำไว้ต่อ instance — หนึ่งหน้าข้อความถามฐานข้อมูลครั้งเดียว ไม่ใช่ทุกข้อความ
+     *
+     * @return array<int, true>
+     */
+    private function tripPeopleIds(int $scheduleId): array
+    {
+        if (isset($this->tripPeopleCache[$scheduleId])) {
+            return $this->tripPeopleCache[$scheduleId];
+        }
+
+        $ownerIds = Booking::where('schedule_id', $scheduleId)
+            ->whereIn('status', self::STILL_IN_TRIP_STATUSES)
+            ->whereNotNull('user_id')
+            ->pluck('user_id');
+
+        $companionIds = BookingMember::where('status', BookingMember::STATUS_ACTIVE)
+            ->whereNotNull('user_id')
+            ->whereHas('booking', fn ($q) => $q
+                ->where('schedule_id', $scheduleId)
+                ->whereIn('status', self::STILL_IN_TRIP_STATUSES))
+            ->pluck('user_id');
+
+        $staffIds = TripSchedule::find($scheduleId)?->staff()->pluck('users.id') ?? collect();
+
+        return $this->tripPeopleCache[$scheduleId] = $ownerIds
+            ->merge($companionIds)
+            ->merge($staffIds)
+            ->mapWithKeys(fn ($id) => [(int) $id => true])
+            ->all();
     }
 
     /**

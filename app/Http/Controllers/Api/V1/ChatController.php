@@ -107,6 +107,9 @@ class ChatController extends Controller
         // ต้องไม่หลุดออกไปทุกเส้นทางที่อ่านห้องนี้
         $visible = fn ($query) => $this->chatService->scopeVisibleTo($query, $user);
 
+        // ป้าย "ออกจากทริปแล้ว" ต้องอิงสถานะการจองตอนนี้ ไม่ใช่ที่จำไว้จากคำขอก่อน
+        $this->chatService->forgetTripPeople($scheduleId);
+
         // Polling for live updates: return messages newer than $afterId, oldest-first.
         if ($afterId > 0) {
             $messages = ChatMessage::where('schedule_id', $scheduleId)
