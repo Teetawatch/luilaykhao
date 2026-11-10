@@ -26,7 +26,7 @@ class ChatMessage extends Model
     public const AUDIO_EXTENSIONS = ['m4a', 'mp4', 'aac', 'adts', 'mp3', 'wav', 'ogg', 'oga', 'weba', '3gp', '3gpp'];
 
     protected $fillable = [
-        'schedule_id', 'user_id', 'reply_to_id', 'sender_role', 'system_key', 'body', 'image_path',
+        'schedule_id', 'user_id', 'reply_to_id', 'sender_role', 'system_key', 'body', 'body_photos', 'image_path',
         'audio_path', 'audio_duration_ms', 'sticker_id',
         'pinned_at', 'pinned_by_id', 'edited_at', 'is_deleted', 'mentions',
         'ack_requested_at', 'ack_requested_by_id', 'ack_nudged_at',
@@ -41,6 +41,7 @@ class ChatMessage extends Model
             'edited_at' => 'datetime',
             'is_deleted' => 'boolean',
             'mentions' => 'array',
+            'body_photos' => 'array',
             'audio_duration_ms' => 'integer',
         ];
     }

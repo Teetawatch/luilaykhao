@@ -150,7 +150,7 @@ class TripChatTimelineService
             // ห้องต้องมีข้อความต้อนรับก่อน ไม่งั้นห้องจะเริ่มด้วยข้อความอัตโนมัติ
             $this->chatService->ensureWelcome($schedule);
 
-            $this->chatService->postSystem($schedule, $body, $key);
+            $this->chatService->postSystem($schedule, $body, $key, bodyPhotos: $this->bodyPhotos($key, $schedule));
             $posted[] = $key;
         }
 
@@ -244,6 +244,18 @@ class TripChatTimelineService
     /**
      * เนื้อข้อความของแต่ละคีย์ — null = ยังไม่มีข้อมูลพอ ให้ข้ามไปก่อน
      */
+    /**
+     * รูปที่แทรกในข้อความ — มีแค่กำหนดการ (รูปของแต่ละจุดแวะ) ข้อความอื่นไม่มีรูป
+     *
+     * @return array<int, array{after_line: int, caption: string, images: array<int, string>}>|null
+     */
+    private function bodyPhotos(string $key, TripSchedule $schedule): ?array
+    {
+        return $key === 'itinerary_2d'
+            ? ($this->facts->itineraryChatMessage($schedule)['photos'] ?? null)
+            : null;
+    }
+
     private function body(string $key, TripSchedule $schedule, CarbonImmutable $now): ?string
     {
         if (str_starts_with($key, self::DAY_BRIEF_PREFIX)) {

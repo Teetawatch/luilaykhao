@@ -154,16 +154,16 @@ class ChatAutoAnswerService
      * เพราะเป็นข้อความสำหรับทั้งห้อง จุดรับของแต่ละคนไม่เหมือนกันจึงต้องยกมา
      * ทั้งชุดอยู่แล้ว และการตอบครบรวดเดียวยังดักคำถามอีกสามข้อที่จะตามมาด้วย
      *
-     * @return array{kind: string, body: string}|null
+     * @return array{kind: string, body: string, photos?: array<int, array<string, mixed>>}|null
      */
     public function answerFor(TripSchedule $schedule, string $topic): ?array
     {
         if ($topic === 'itinerary') {
-            $body = $this->facts->itinerarySummaryText($schedule);
+            $itinerary = $this->facts->itineraryChatMessage($schedule);
 
-            return $body === null
+            return $itinerary === null
                 ? null
-                : ['kind' => self::KIND_ITINERARY, 'body' => $body];
+                : ['kind' => self::KIND_ITINERARY, 'body' => $itinerary['body'], 'photos' => $itinerary['photos']];
         }
 
         if ($topic === 'meals') {
@@ -259,9 +259,12 @@ class ChatAutoAnswerService
         );
     }
 
-    public function post(TripSchedule $schedule, string $body, string $key): ChatMessage
+    /**
+     * @param  array<int, array{after_line: int, caption: string, images: array<int, string>}>|null  $photos
+     */
+    public function post(TripSchedule $schedule, string $body, string $key, ?array $photos = null): ChatMessage
     {
-        return $this->chat->postSystem($schedule, $body, $key);
+        return $this->chat->postSystem($schedule, $body, $key, bodyPhotos: $photos);
     }
 
     /** ตัดช่องว่างทิ้ง เพราะคนไทยเว้นวรรคกลางคำได้ตามใจ */

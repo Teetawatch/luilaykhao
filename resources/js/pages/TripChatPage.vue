@@ -64,7 +64,22 @@
               <span class="text-[10px] text-[#A0B0B0]">{{ formatTime(m.created_at) }}</span>
             </div>
             <!-- v-html ปลอดภัย: escape ทั้งก้อนก่อน แล้วค่อยแปลงเฉพาะเบอร์โทรเป็นลิงก์ tel: -->
-            <p class="text-sm text-[#1a1c1c] leading-relaxed whitespace-pre-line" style="font-family:'DB Heavent', 'Anuphan',sans-serif;" v-html="systemBodyHtml(m.body)"></p>
+            <!-- กำหนดการที่มีรูปของจุดแวะ: ตัดเป็นท่อนตาม body_photos แล้วแทรกรูปเล็กใต้เวลานั้น -->
+            <template v-for="(chunk, ci) in systemChunks(m)" :key="ci">
+              <p v-if="chunk.text" class="text-sm text-[#1a1c1c] leading-relaxed whitespace-pre-line" style="font-family:'DB Heavent', 'Anuphan',sans-serif;" v-html="systemBodyHtml(chunk.text)"></p>
+              <div v-if="chunk.photo" class="sys-photo-strip">
+                <button
+                  v-for="(url, ii) in chunk.photo.images"
+                  :key="ii"
+                  type="button"
+                  class="sys-photo"
+                  :aria-label="`ดูรูป ${chunk.photo.caption} ภาพที่ ${ii + 1}`"
+                  @click="openImage(url, chunk.photo.caption)"
+                >
+                  <img :src="url" :alt="chunk.photo.caption" loading="lazy" />
+                </button>
+              </div>
+            </template>
             <!-- "รับทราบ" ใต้ประกาศของทีมงาน — แทนการพิมพ์ "รับทราบครับ" ตามกันทั้งห้อง -->
             <div v-if="m.ack" class="mt-2 flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <button v-if="m.ack.acked_by_me === false" @click="ackMessage(m)" :disabled="ackingId === m.id"
@@ -245,8 +260,9 @@
     />
 
     <!-- Lightbox -->
-    <div v-if="lightboxUrl" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" @click="lightboxUrl = null">
-      <img :src="lightboxUrl" class="max-w-full max-h-full rounded-xl object-contain" />
+    <div v-if="lightboxUrl" class="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center gap-3 p-4" @click="lightboxUrl = null">
+      <img :src="lightboxUrl" class="max-w-full min-h-0 flex-1 rounded-xl object-contain" />
+      <p v-if="lightboxCaption" class="shrink-0 text-white text-[15px] font-bold text-center" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ lightboxCaption }}</p>
     </div>
   </div>
 </template>
@@ -280,6 +296,7 @@ const fileInputEl = ref(null);
 const imageFile = ref(null);
 const imagePreview = ref(null);
 const lightboxUrl = ref(null);
+const lightboxCaption = ref('');
 
 const infoShortcuts = [
   { key: 'itinerary', label: 'กำหนดการ', icon: 'route' },
@@ -502,8 +519,42 @@ function clearImage() {
   if (fileInputEl.value) fileInputEl.value.value = '';
 }
 
-function openImage(url) {
+function openImage(url, caption = '') {
   lightboxUrl.value = url;
+  lightboxCaption.value = caption;
+}
+
+/**
+ * ข้อความระบบเป็นท่อน ๆ ตาม body_photos — [{text, photo}] ท่อนหนึ่งคือข้อความจนถึง
+ * บรรทัด after_line แล้วตามด้วยรูปของจุดแวะนั้น ข้อความที่ไม่มีรูปได้ท่อนเดียวทั้งก้อน
+ */
+function systemChunks(m) {
+  const lines = String(m.body || '').split('\n');
+  const byLine = new Map();
+  for (const photo of Array.isArray(m.body_photos) ? m.body_photos : []) {
+    const line = Number(photo?.after_line);
+    const images = (Array.isArray(photo?.images) ? photo.images : []).map((u) => String(u || '').trim()).filter(Boolean);
+    // บรรทัดหัวและบรรทัดที่เลยท้ายข้อความถือว่าชี้ผิด ข้ามทิ้ง
+    if (!Number.isInteger(line) || line < 1 || line >= lines.length || images.length === 0) continue;
+    byLine.set(line, { caption: String(photo?.caption || '').trim(), images });
+  }
+  if (byLine.size === 0) return [{ text: m.body, photo: null }];
+
+  const chunks = [];
+  let buffer = [];
+  const flush = (photo) => {
+    // ตัดบรรทัดว่างหัว/ท้ายของท่อน ไม่งั้นรูปจะลอยห่างจากบรรทัดของมัน
+    while (buffer.length && !buffer[0].trim()) buffer.shift();
+    while (buffer.length && !buffer[buffer.length - 1].trim()) buffer.pop();
+    chunks.push({ text: buffer.join('\n'), photo });
+    buffer = [];
+  };
+  lines.forEach((line, i) => {
+    buffer.push(line);
+    if (byLine.has(i)) flush(byLine.get(i));
+  });
+  flush(null);
+  return chunks;
 }
 
 function scrollToBottom(instant = false) {
@@ -598,6 +649,26 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* รูปเล็กของจุดแวะในข้อความกำหนดการ — แถวเลื่อนข้างได้ กดดูเต็มจอ */
+.sys-photo-strip {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0 8px;
+  padding-left: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sys-photo-strip::-webkit-scrollbar { display: none; }
+.sys-photo {
+  flex: 0 0 auto;
+  width: 92px;
+  height: 68px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgb(0 101 101 / 0.08);
+  cursor: zoom-in;
+}
+.sys-photo img { width: 100%; height: 100%; object-fit: cover; }
 /* app.css ตั้ง .material-symbols-rounded { font-size: 24px } ไว้นอก cascade layer
    utility อย่าง text-[16px] จึงแพ้เสมอ — ต้องชนะด้วย specificity สองคลาสแทน */
 .material-symbols-rounded.info-chip-icon {

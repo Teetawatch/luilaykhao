@@ -333,12 +333,18 @@ class ChatService
      *
      * $systemKey = คีย์ของข้อความอัตโนมัติตามไทม์ไลน์ (unique ต่อห้อง) ปล่อยว่าง
      * ได้สำหรับข้อความระบบทั่วไปที่โพสต์ซ้ำได้
+     *
+     * $bodyPhotos = รูปที่แทรกระหว่างบรรทัดของ body [{after_line, caption, images}]
+     * (ดู TripFactsService::itineraryChatMessage)
+     *
+     * @param  array<int, array{after_line: int, caption: string, images: array<int, string>}>|null  $bodyPhotos
      */
     public function postSystem(
         TripSchedule $schedule,
         string $body,
         ?string $systemKey = null,
         ?string $imagePath = null,
+        ?array $bodyPhotos = null,
     ): ChatMessage {
         $message = ChatMessage::create([
             'schedule_id' => $schedule->id,
@@ -346,6 +352,7 @@ class ChatService
             'sender_role' => 'system',
             'system_key' => $systemKey,
             'body' => $body,
+            'body_photos' => $bodyPhotos !== [] ? $bodyPhotos : null,
             'image_path' => $imagePath,
         ]);
 
@@ -573,6 +580,8 @@ class ChatService
             'id' => $message->id,
             'schedule_id' => $message->schedule_id,
             'body' => $deleted ? null : $message->body,
+            // รูปแทรกระหว่างบรรทัด (กำหนดการที่มีรูปของแต่ละจุดแวะ) — after_line ชี้บรรทัดของ body
+            'body_photos' => $deleted ? null : ($message->body_photos ?: null),
             'image_url' => $deleted ? null : $message->image_url,
             'audio_url' => $deleted ? null : $message->audio_url,
             'audio_duration_ms' => $deleted ? null : $message->audio_duration_ms,

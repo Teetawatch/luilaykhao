@@ -65,7 +65,7 @@ class PostChatAutoAnswerJob implements ShouldQueue
         }
 
         try {
-            $auto->post($schedule, $answer['body'], $key);
+            $auto->post($schedule, $answer['body'], $key, $answer['photos'] ?? null);
         } catch (QueryException) {
             // สองคนถามพร้อมกัน อีกงานหนึ่งชิงโพสต์ไปก่อน — unique key กันไว้ให้แล้ว
             return;

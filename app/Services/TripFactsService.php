@@ -134,6 +134,19 @@ class TripFactsService
      */
     public function itinerarySummaryText(TripSchedule $schedule, bool $updated = false): ?string
     {
+        return $this->itineraryChatMessage($schedule, $updated)['body'] ?? null;
+    }
+
+    /**
+     * กำหนดการสำหรับโพสต์ลงห้อง พร้อมรูปของแต่ละจุดแวะ — body คือข้อความเดียวกับ
+     * itinerarySummaryText() ทุกตัวอักษร ส่วน photos บอกว่ารูปชุดไหนต่อท้ายบรรทัด
+     * ที่เท่าไหร่ของ body (after_line นับจาก 0) แอป/เว็บจะได้วาดรูปเล็ก ๆ ใต้เวลา
+     * นั้นพอดี ส่วนที่ไม่รู้จัก photos (แจ้งเตือน, ไคลเอนต์เก่า) ก็ยังอ่าน body ได้
+     *
+     * @return array{body: string, photos: array<int, array{after_line: int, caption: string, images: array<int, string>}>}|null
+     */
+    public function itineraryChatMessage(TripSchedule $schedule, bool $updated = false): ?array
+    {
         $payload = $this->itineraryService->payload($schedule);
         $items = $payload['items'];
 
@@ -157,7 +170,13 @@ class TripFactsService
 
         // ส่งฉบับเต็ม — ลูกค้าที่อ่านจากห้องแชทไม่ควรต้องกดไปหน้าอื่นเพื่ออ่านส่วนที่เหลือ
         // (ตัดที่ขอบวันเฉพาะเมื่อชนเพดานของคอลัมน์ ซึ่งกำหนดการจริงไปไม่ถึง)
-        [$plan, $shownCount] = $this->packItineraryBlocks($this->itineraryBlocks($items));
+        [$plan, $shownCount, $planPhotos] = $this->packItineraryBlocks($this->itineraryBlocks($items));
+
+        $photos = [];
+        foreach ($planPhotos as $photo) {
+            $photo['after_line'] += count($lines);
+            $photos[] = $photo;
+        }
 
         $lines = array_merge($lines, $plan);
         $lines[] = '';
@@ -173,7 +192,7 @@ class TripFactsService
 
         $lines[] = 'เวลาอาจขยับได้ตามหน้างานและสภาพอากาศ ทีมงานจะแจ้งในห้องนี้ทุกครั้งครับ 🌿';
 
-        return implode("\n", $lines);
+        return ['body' => implode("\n", $lines), 'photos' => $photos];
     }
 
     /**
@@ -181,8 +200,10 @@ class TripFactsService
      * (📅 วันแรก) กับรายการใต้มัน เก็บแยกเป็น entry ละรายการเพื่อให้ขั้นตอนแพ็ค
      * รู้ว่าตัดตรงไหนได้บ้างโดยไม่ทำให้เหลือหัววันลอย ๆ ไม่มีรายการ
      *
+     * entry หนึ่งรายการ = บรรทัดของมัน + รูปของจุดนั้น (ถ้ามี) และคำบรรยายรูป
+     *
      * @param  array<int, array<string, mixed>>  $items
-     * @return array<int, array{heading: array<int, string>, entries: array<int, array<int, string>>}>
+     * @return array<int, array{heading: array<int, string>, entries: array<int, array{lines: array<int, string>, images: array<int, string>, caption: string}>}>
      */
     private function itineraryBlocks(array $items): array
     {
@@ -213,21 +234,33 @@ class TripFactsService
 
             $detail = $this->itineraryDetailLines((string) ($item['detail'] ?? ''));
 
+            // รูปของจุดแวะ (Trip.itinerary stops) — กำหนดการของรอบเองยังไม่มีรูป
+            $images = array_values(array_filter(
+                array_map(fn ($url) => is_scalar($url) ? trim((string) $url) : '', (array) ($item['images'] ?? [])),
+                fn (string $url) => $url !== '',
+            ));
+            $caption = trim(($time !== '' ? "{$time} น. " : '').$title);
+
             // หัวข้อที่ซ้ำกับหัวกลุ่มเป๊ะ ๆ ("📅 วันเดินทาง" แล้วต่อด้วย "• วันเดินทาง")
             // ไม่ได้บอกอะไรเพิ่ม — ยกรายละเอียดขึ้นมาเป็นบรรทัดหลักแทน
             if ($detail !== [] && $time === '' && $group !== null && $title === $group) {
-                $blocks[array_key_last($blocks)]['entries'][] = array_map(
-                    fn (string $line) => '• '.$line,
-                    $detail,
-                );
+                $blocks[array_key_last($blocks)]['entries'][] = [
+                    'lines' => array_map(fn (string $line) => '• '.$line, $detail),
+                    'images' => $images,
+                    'caption' => $caption,
+                ];
 
                 continue;
             }
 
-            $blocks[array_key_last($blocks)]['entries'][] = array_merge(
-                ['• '.($time !== '' ? "{$time} น. " : '').$title],
-                array_map(fn (string $line) => '  '.$line, $detail),
-            );
+            $blocks[array_key_last($blocks)]['entries'][] = [
+                'lines' => array_merge(
+                    ['• '.($time !== '' ? "{$time} น. " : '').$title],
+                    array_map(fn (string $line) => '  '.$line, $detail),
+                ),
+                'images' => $images,
+                'caption' => $caption,
+            ];
         }
 
         return $blocks;
@@ -238,25 +271,41 @@ class TripFactsService
      * ถือ "ทั้งวัน" เป็นหน่วยที่ตัดไม่ได้ วันที่โผล่มาครึ่งเดียวทำให้ลูกค้าเข้าใจว่า
      * ทริปจบตรงนั้น ยอมตัดกลางวันเฉพาะเมื่อวันแรกวันเดียวก็ล้นเพดานแล้ว
      *
-     * @param  array<int, array{heading: array<int, string>, entries: array<int, array<int, string>>}>  $blocks
-     * @return array{0: array<int, string>, 1: int}
+     * คืน [บรรทัด, จำนวนรายการที่ยกลง, รูปของรายการที่ยกลง] — after_line ของรูป
+     * นับจากบรรทัดแรกของส่วนกำหนดการ ผู้เรียกบวกจำนวนบรรทัดหัวข้อความเอง
+     *
+     * @param  array<int, array{heading: array<int, string>, entries: array<int, array{lines: array<int, string>, images: array<int, string>, caption: string}>}>  $blocks
+     * @return array{0: array<int, string>, 1: int, 2: array<int, array{after_line: int, caption: string, images: array<int, string>}>}
      */
     private function packItineraryBlocks(array $blocks): array
     {
         $lines = [];
+        $photos = [];
         $shown = 0;
         $budget = self::ITINERARY_CHAT_MAX_BYTES;
+
+        $append = function (array $entry) use (&$lines, &$photos): void {
+            $lines = array_merge($lines, $entry['lines']);
+
+            if ($entry['images'] !== []) {
+                $photos[] = [
+                    'after_line' => count($lines) - 1,
+                    'caption' => $entry['caption'],
+                    'images' => $entry['images'],
+                ];
+            }
+        };
 
         foreach ($blocks as $block) {
             $cost = $this->linesLength($block['heading']);
             foreach ($block['entries'] as $entry) {
-                $cost += $this->linesLength($entry);
+                $cost += $this->linesLength($entry['lines']);
             }
 
             if ($cost <= $budget) {
                 $lines = array_merge($lines, $block['heading']);
                 foreach ($block['entries'] as $entry) {
-                    $lines = array_merge($lines, $entry);
+                    $append($entry);
                 }
                 $shown += count($block['entries']);
                 $budget -= $cost;
@@ -273,13 +322,13 @@ class TripFactsService
             $budget -= $this->linesLength($block['heading']);
 
             foreach ($block['entries'] as $entry) {
-                $entryCost = $this->linesLength($entry);
+                $entryCost = $this->linesLength($entry['lines']);
 
                 if ($entryCost > $budget && $shown > 0) {
                     break;
                 }
 
-                $lines = array_merge($lines, $entry);
+                $append($entry);
                 $budget -= $entryCost;
                 $shown++;
             }
@@ -287,7 +336,7 @@ class TripFactsService
             break;
         }
 
-        return [$lines, $shown];
+        return [$lines, $shown, $photos];
     }
 
     /**

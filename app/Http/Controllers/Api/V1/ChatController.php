@@ -544,13 +544,17 @@ class ChatController extends Controller
             return $this->error('เฉพาะสตาฟหรือทีมงานเท่านั้นที่ส่งกำหนดการได้', 403);
         }
 
-        $body = $this->tripFacts->itinerarySummaryText($schedule);
+        $itinerary = $this->tripFacts->itineraryChatMessage($schedule);
 
-        if ($body === null) {
+        if ($itinerary === null) {
             return $this->error('รอบนี้ยังไม่มีกำหนดการให้ส่ง', 422);
         }
 
-        $message = $this->chatService->postSystem($schedule, $body);
+        $message = $this->chatService->postSystem(
+            $schedule,
+            $itinerary['body'],
+            bodyPhotos: $itinerary['photos'],
+        );
 
         $message->load($this->messageRelations());
 

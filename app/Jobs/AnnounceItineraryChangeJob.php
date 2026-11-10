@@ -53,13 +53,13 @@ class AnnounceItineraryChangeJob implements ShouldQueue
             return;
         }
 
-        $body = $facts->itinerarySummaryText($schedule, updated: true);
+        $itinerary = $facts->itineraryChatMessage($schedule, updated: true);
 
-        if ($body === null || $this->sameAsLastPosted($schedule, $body)) {
+        if ($itinerary === null || $this->sameAsLastPosted($schedule, $itinerary['body'])) {
             return;
         }
 
-        $chat->postSystem($schedule, $body);
+        $chat->postSystem($schedule, $itinerary['body'], bodyPhotos: $itinerary['photos']);
 
         Log::info('AnnounceItineraryChange: แจ้งกำหนดการที่ปรับแล้วเข้าห้อง', [
             'schedule_id' => $schedule->id,

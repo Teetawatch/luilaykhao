@@ -165,7 +165,21 @@
                       <button @click="removeMessage(m)" title="ลบข้อความ"><i class="fas fa-trash"></i></button>
                     </span>
                   </div>
-                  <div class="system-body">{{ m.body }}</div>
+                  <!-- กำหนดการที่มีรูปของจุดแวะ — แทรกรูปเล็กใต้เวลานั้น เหมือนที่ลูกค้าเห็น -->
+                  <template v-for="(chunk, ci) in systemChunks(m)" :key="ci">
+                    <div v-if="chunk.text" class="system-body">{{ chunk.text }}</div>
+                    <div v-if="chunk.photo" class="system-photos">
+                      <img
+                        v-for="(url, ii) in chunk.photo.images"
+                        :key="ii"
+                        :src="url"
+                        :alt="chunk.photo.caption"
+                        :title="chunk.photo.caption"
+                        loading="lazy"
+                        @click="lightbox = url"
+                      />
+                    </div>
+                  </template>
                   <div class="msg-time">{{ formatTime(m.created_at) }}</div>
                 </div>
               </div>
@@ -557,6 +571,37 @@ function memberAvatar(m) {
 
 function avatarFor(name) {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2D7A4F&color=fff`;
+}
+
+/**
+ * ข้อความระบบเป็นท่อนตาม body_photos (after_line = เลขบรรทัดของ body ที่รูปต่อท้าย)
+ * ตรงกับ systemChunks() ใน TripChatPage.vue และ _bodyWithPhotos ในแอป
+ */
+function systemChunks(m) {
+  const lines = String(m.body || '').split('\n');
+  const byLine = new Map();
+  for (const photo of Array.isArray(m.body_photos) ? m.body_photos : []) {
+    const line = Number(photo?.after_line);
+    const images = (Array.isArray(photo?.images) ? photo.images : []).filter(Boolean);
+    if (!Number.isInteger(line) || line < 1 || line >= lines.length || images.length === 0) continue;
+    byLine.set(line, { caption: String(photo?.caption || ''), images });
+  }
+  if (byLine.size === 0) return [{ text: m.body, photo: null }];
+
+  const chunks = [];
+  let buffer = [];
+  const flush = (photo) => {
+    while (buffer.length && !buffer[0].trim()) buffer.shift();
+    while (buffer.length && !buffer[buffer.length - 1].trim()) buffer.pop();
+    chunks.push({ text: buffer.join('\n'), photo });
+    buffer = [];
+  };
+  lines.forEach((line, i) => {
+    buffer.push(line);
+    if (byLine.has(i)) flush(byLine.get(i));
+  });
+  flush(null);
+  return chunks;
 }
 
 function isSystem(m) {
@@ -1310,6 +1355,8 @@ onBeforeUnmount(() => {
 .msg-actions-inline button { border: none; background: none; color: #1f513a; cursor: pointer; font-size: 11px; padding: 2px 5px; }
 .msg-actions-inline .fa-thumbtack.pinned { color: #d97706; }
 .system-body { font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.system-photos { display: flex; gap: 6px; margin: 6px 0 8px 10px; overflow-x: auto; }
+.system-photos img { flex: 0 0 auto; width: 84px; height: 62px; object-fit: cover; border-radius: 8px; cursor: zoom-in; }
 
 .read-receipt { text-align: right; font-size: 11px; color: #9ca3af; margin-top: 6px; padding-right: 4px; }
 .typing-line { padding: 4px 20px 0; font-size: 11.5px; color: #9ca3af; font-style: italic; }
