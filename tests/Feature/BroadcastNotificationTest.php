@@ -16,7 +16,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 class BroadcastNotificationTest extends TestCase
@@ -214,6 +216,99 @@ class BroadcastNotificationTest extends TestCase
         $this->assertSame('new_trip', $message['data']['type']);
         $this->assertSame('7', $message['data']['trip_id']);
         $this->assertSame('ทริปใหม่', $message['notification']['title']);
+    }
+
+    /**
+     * Fake FCM: answers per device token from [$plan] — a list of outcomes
+     * ('ok', 'ssl-timeout', 'read-timeout', 503, 404-dead) consumed one per
+     * attempt. Returns a counter of attempts per token.
+     *
+     * @param  array<string, list<string|int>>  $plan
+     */
+    private function fakeFcm(array $plan): \ArrayObject
+    {
+        config(['services.fcm.project_id' => 'demo-project']);
+        Cache::put('fcm_access_token', 'test-token', 60);
+        $attempts = new \ArrayObject;
+
+        Http::fake(function ($request) use ($plan, $attempts) {
+            $token = $request->data()['message']['token'] ?? '';
+            $n = $attempts[$token] = ($attempts[$token] ?? 0) + 1;
+            $outcome = $plan[$token][$n - 1] ?? 'ok';
+
+            return match ($outcome) {
+                'ssl-timeout' => Http::failedConnection('cURL error 28: SSL connection timeout (see https://curl.haxx.se/libcurl/c/libcurl-errors.html) for https://fcm.googleapis.com/v1/x')($request),
+                'read-timeout' => Http::failedConnection('cURL error 28: Operation timed out after 10001 milliseconds with 0 bytes received (see https://curl.haxx.se/libcurl/c/libcurl-errors.html)')($request),
+                '404-dead' => Http::response(['error' => ['status' => 'NOT_FOUND', 'details' => [['errorCode' => 'UNREGISTERED']]]], 404),
+                503 => Http::response(['error' => ['status' => 'UNAVAILABLE']], 503),
+                403 => Http::response(['error' => ['status' => 'PERMISSION_DENIED']], 403),
+                default => Http::response(['name' => 'ok']),
+            };
+        });
+
+        return $attempts;
+    }
+
+    private function tokenOf(User $user): string
+    {
+        return FcmToken::where('user_id', $user->id)->value('token');
+    }
+
+    public function test_devices_whose_connection_failed_or_fcm_was_unavailable_are_retried(): void
+    {
+        Sleep::fake();
+        Log::spy();
+        [$a, $b, $c] = [$this->userWithToken(), $this->userWithToken(), $this->userWithToken()];
+        $attempts = $this->fakeFcm([
+            $this->tokenOf($a) => ['ssl-timeout', 'ok'],
+            $this->tokenOf($b) => [503, 'ssl-timeout', 'ok'],
+        ]);
+
+        SmartNotification::sendMany([$a->id, $b->id, $c->id], 'new_trip', 'ทริปใหม่', 'มาแล้ว');
+
+        $this->assertSame(2, $attempts[$this->tokenOf($a)]);
+        $this->assertSame(3, $attempts[$this->tokenOf($b)]);
+        $this->assertSame(1, $attempts[$this->tokenOf($c)]);
+        // ส่งถึงครบทุกเครื่อง จึงไม่มี log ความล้มเหลว
+        $this->assertSame(3, FcmToken::whereNotNull('last_used_at')->count());
+        Log::shouldNotHaveReceived('warning');
+        Sleep::assertSleptTimes(2);
+    }
+
+    public function test_a_read_timeout_is_not_retried_and_failures_are_logged_once_as_a_summary(): void
+    {
+        Sleep::fake();
+        Log::spy();
+        [$a, $b, $c, $d] = [$this->userWithToken(), $this->userWithToken(), $this->userWithToken(), $this->userWithToken()];
+        $attempts = $this->fakeFcm([
+            // คำขออาจถึง FCM แล้ว — ส่งซ้ำอาจเด้งสองครั้ง
+            $this->tokenOf($a) => ['read-timeout'],
+            $this->tokenOf($b) => ['ssl-timeout', 'ssl-timeout', 'ssl-timeout'],
+            $this->tokenOf($c) => ['404-dead'],
+            $this->tokenOf($d) => [403],
+        ]);
+
+        SmartNotification::sendMany([$a->id, $b->id, $c->id, $d->id], 'new_trip', 'ทริปใหม่', 'มาแล้ว');
+
+        $this->assertSame(1, $attempts[$this->tokenOf($a)]);
+        $this->assertSame(FcmService::MAX_ATTEMPTS, $attempts[$this->tokenOf($b)]);
+        $this->assertSame(1, $attempts[$this->tokenOf($c)]);
+        $this->assertSame(1, $attempts[$this->tokenOf($d)]);
+        $this->assertFalse((bool) FcmToken::where('token', $this->tokenOf($c))->value('is_active'));
+        $this->assertSame(0, FcmToken::whereNotNull('last_used_at')->count());
+
+        Log::shouldHaveReceived('warning')->once()->with('FCM batch send had failures', \Mockery::on(
+            fn (array $context) => $context['devices'] === 4
+                && $context['delivered'] === 0
+                && $context['failed'] === 3
+                && $context['retired_tokens'] === 1
+                && $context['retried'] === 2
+                && $context['reasons']['cURL error 28: SSL connection timeout'] === 1
+                && $context['reasons']['HTTP 403 PERMISSION_DENIED'] === 1
+                && collect($context['reasons'])->keys()->contains(
+                    fn ($reason) => str_starts_with($reason, 'cURL error 28: Operation timed out'),
+                ),
+        ));
     }
 
     public function test_low_seats_sweep_blasts_once_per_round(): void

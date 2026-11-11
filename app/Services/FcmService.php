@@ -9,6 +9,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 
 class FcmService
@@ -24,6 +25,19 @@ class FcmService
 
     /** Requests in flight at once when pushing a batch — see [sendNotifications]. */
     public const POOL_SIZE = 20;
+
+    /** Tries per device in a batch: the first send plus retries of transient failures. */
+    public const MAX_ATTEMPTS = 3;
+
+    /** Pause before each retry round (ms) — FCM asks for backoff on 429/5xx. */
+    private const RETRY_DELAYS_MS = [1000, 3000];
+
+    /**
+     * No new retry round once a batch has run this long — a broadcast slice
+     * runs under Horizon's 60 s timeout, and a killed job loses its summary
+     * and the delivered/dead-token bookkeeping.
+     */
+    private const RETRY_BUDGET_SECONDS = 30;
 
     /**
      * channel ของคำขอจากลูกทริปที่ต้องปลุกทีมงาน (ห้องน้ำ ขอยา ขาดคนตอนออกรถ …)
@@ -68,6 +82,16 @@ class FcmService
      * with a device or two each ran past Horizon's 60 s timeout and was killed
      * partway (2026-10-12/13). Here the requests go out [POOL_SIZE] at a time.
      *
+     * All of a slice's requests go through ONE pool — one curl multi handle —
+     * over HTTP/2, so they share a single TLS connection. They used to go out in
+     * pools of 20 that each opened 20 fresh connections; with 10 Horizon workers
+     * on a broadcast that was ~200 handshakes at once, and most of every
+     * broadcast died with "cURL error 28: SSL connection timeout" (2026-11-11).
+     *
+     * A device whose request never reached FCM (connection failed) or that FCM
+     * asked us to retry (429/5xx) is tried again up to [MAX_ATTEMPTS] times.
+     * Failures are logged once per slice as a summary, not one line per device.
+     *
      * @param  iterable<SmartNotification>  $notifications
      */
     public function sendNotifications(iterable $notifications): void
@@ -111,27 +135,153 @@ class FcmService
             return;
         }
 
-        foreach (array_chunk($messages, self::POOL_SIZE) as $batch) {
-            $responses = Http::pool(fn (Pool $pool) => array_map(
-                fn (array $message) => $pool->withToken($accessToken)
+        $delivered = [];
+        $dead = [];
+        $failures = [];
+        $retried = 0;
+        $pending = $messages;
+        $startedAt = microtime(true);
+
+        for ($attempt = 1; $pending !== []; $attempt++) {
+            $results = $this->pushPool($projectId, $accessToken, $pending);
+            $retry = [];
+            $canRetry = $attempt < self::MAX_ATTEMPTS
+                && microtime(true) - $startedAt < self::RETRY_BUDGET_SECONDS;
+
+            foreach ($pending as $i => $message) {
+                $result = $results[$i] ?? null;
+
+                if ($result instanceof Response && $result->successful()) {
+                    $delivered[] = $message['token'];
+
+                    continue;
+                }
+
+                if ($canRetry && $this->isRetryable($result)) {
+                    $retry[] = $message;
+
+                    continue;
+                }
+
+                if ($result instanceof Response && $this->isDeadToken($result->json())) {
+                    $dead[] = $message['token'];
+
+                    continue;
+                }
+
+                $reason = $this->failureReason($result);
+                $failures[$reason] = ($failures[$reason] ?? 0) + 1;
+            }
+
+            if ($retry !== []) {
+                $retried += count($retry);
+                Sleep::usleep(1000 * self::RETRY_DELAYS_MS[min($attempt, count(self::RETRY_DELAYS_MS)) - 1]);
+            }
+
+            $pending = $retry;
+        }
+
+        // เขียนผลทีละก้อน แทนแถวละ UPDATE — ประกาศหนึ่งครั้งคือหลายพันเครื่อง
+        foreach (array_chunk(array_unique($delivered), 500) as $tokens) {
+            FcmToken::whereIn('token', $tokens)->update(['last_used_at' => now()]);
+        }
+        foreach (array_chunk(array_unique($dead), 500) as $tokens) {
+            FcmToken::whereIn('token', $tokens)->update(['is_active' => false]);
+        }
+
+        if ($failures !== []) {
+            arsort($failures);
+            Log::warning('FCM batch send had failures', [
+                'devices' => count($messages),
+                'delivered' => count($delivered),
+                'failed' => array_sum($failures),
+                'retried' => $retried,
+                'retired_tokens' => count($dead),
+                'reasons' => array_slice($failures, 0, 5, true),
+            ]);
+        }
+    }
+
+    /**
+     * Send [$messages] through one pool, [POOL_SIZE] in flight at a time.
+     *
+     * @param  list<array{token: string, payload: array}>  $messages
+     * @return array<int, Response|\Throwable>
+     */
+    private function pushPool(string $projectId, string $accessToken, array $messages): array
+    {
+        $messages = array_values($messages);
+        $options = $this->transportOptions();
+
+        return Http::pool(function (Pool $pool) use ($messages, $projectId, $accessToken, $options) {
+            foreach ($messages as $message) {
+                $pool->withToken($accessToken)
                     ->acceptJson()
+                    ->withOptions($options)
                     ->connectTimeout(self::CONNECT_TIMEOUT)
                     ->timeout(self::REQUEST_TIMEOUT)
-                    ->post($this->sendUrl($projectId), ['message' => $message['payload']]),
-                $batch,
-            ));
-
-            foreach ($batch as $i => $message) {
-                $response = $responses[$i] ?? null;
-                if ($response instanceof Response) {
-                    $this->recordResult($message['token'], $response);
-                } else {
-                    Log::warning('FCM send exception', [
-                        'message' => $response instanceof \Throwable ? $response->getMessage() : 'no response',
-                    ]);
-                }
+                    ->post($this->sendUrl($projectId), ['message' => $message['payload']]);
             }
+        }, self::POOL_SIZE);
+    }
+
+    /**
+     * HTTP/2 so every request in a pool multiplexes over one TLS connection;
+     * PIPEWAIT makes the requests started together wait for that connection
+     * instead of each opening its own. Without HTTP/2 in libcurl the pool still
+     * reuses its connections, just HTTP/1.1.
+     */
+    private function transportOptions(): array
+    {
+        if (! function_exists('curl_version') || ! defined('CURLOPT_PIPEWAIT') || ! defined('CURL_VERSION_HTTP2')) {
+            return [];
         }
+
+        if (((curl_version()['features'] ?? 0) & CURL_VERSION_HTTP2) === 0) {
+            return [];
+        }
+
+        return ['version' => 2.0, 'curl' => [CURLOPT_PIPEWAIT => 1]];
+    }
+
+    /**
+     * Worth sending again: the connection never came up (so FCM never saw the
+     * request and a retry can't double-deliver), or FCM answered 429/5xx, which
+     * its docs say to retry with backoff. A read timeout after the request went
+     * out is NOT retried — FCM may already have delivered it.
+     */
+    private function isRetryable(mixed $result): bool
+    {
+        if ($result instanceof Response) {
+            return in_array($result->status(), [429, 500, 502, 503, 504], true);
+        }
+
+        if (! $result instanceof \Throwable) {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/SSL connection timeout|Connection timed out|Failed to connect|Could not resolve|Couldn\'t resolve|Resolving timed out|Connection refused|SSL connect error/i',
+            $result->getMessage(),
+        );
+    }
+
+    /** Short, groupable reason for the summary log ("cURL error 28: SSL connection timeout", "HTTP 403 PERMISSION_DENIED"). */
+    private function failureReason(mixed $result): string
+    {
+        if ($result instanceof Response) {
+            $status = $result->json('error.status');
+
+            return trim('HTTP '.$result->status().' '.(is_string($status) ? $status : ''));
+        }
+
+        if ($result instanceof \Throwable) {
+            $message = preg_replace('/\s*\(see https?:\S+\).*$/s', '', $result->getMessage()) ?? '';
+
+            return Str::limit(trim($message), 120);
+        }
+
+        return 'no response';
     }
 
     private function notificationData(SmartNotification $notification): array
