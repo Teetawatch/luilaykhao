@@ -134,27 +134,68 @@
         </div>
 
         <div v-else class="trip-list">
-          <article v-for="trip in visibleTrips" :key="trip.trip_id" class="trip-block">
+          <article
+            v-for="trip in visibleTrips"
+            :key="trip.trip_id"
+            class="trip-block"
+            :class="{ excluded: isExcluded(trip) }"
+          >
             <header class="trip-block-head">
-              <div>
+              <label class="include-check" :title="isExcluded(trip) ? 'ไม่ได้ใส่ในข้อความ' : 'ใส่ในข้อความ'">
+                <input type="checkbox" :checked="!isExcluded(trip)" @change="toggleExcluded(trip)" />
+              </label>
+              <div class="trip-block-info">
                 <h2 class="trip-block-title">{{ trip.title }}</h2>
+                <div v-if="editingAlias === trip.trip_id" class="alias-edit">
+                  <input
+                    class="alias-input"
+                    type="text"
+                    :value="aliases[trip.trip_id] || ''"
+                    :placeholder="trip.title"
+                    @change="setAlias(trip, $event.target.value)"
+                    @keydown.enter="$event.target.blur(); editingAlias = null"
+                    @keydown.esc="editingAlias = null"
+                  />
+                  <button class="link-btn" type="button" @click="editingAlias = null">เสร็จ</button>
+                </div>
+                <button
+                  v-else
+                  class="alias-btn"
+                  type="button"
+                  title="ตั้งชื่อที่ใช้ในข้อความ (จำไว้ใช้ครั้งหน้า)"
+                  @click="editingAlias = trip.trip_id"
+                >
+                  <span class="material-symbols-rounded">edit</span>
+                  {{ aliases[trip.trip_id] ? `ในข้อความใช้ชื่อ “${aliases[trip.trip_id]}”` : 'ตั้งชื่อในข้อความ' }}
+                </button>
                 <p class="trip-block-meta">
                   <span v-if="trip.location">{{ trip.location }}</span>
                   <span v-if="trip.duration_days">{{ trip.duration_days }} วัน</span>
                   <span>{{ trip.schedules.length }} รอบ</span>
                   <span class="meta-seats">ว่าง {{ tripSeats(trip) }} ที่</span>
                 </p>
+                <div v-if="copy.priceAt === 'trip' && tripExtras(trip).length" class="round-prices head-extras">
+                  <span
+                    v-for="x in tripExtras(trip)"
+                    :key="x.kind + x.label"
+                    class="price-chip"
+                    :class="{ join: x.kind === 'join', ride: x.kind === 'ride' }"
+                  >{{ x.label }} {{ x.min === x.max ? formatBaht(x.min) : `${formatBaht(x.min)} – ${formatBaht(x.max)}` }}</span>
+                </div>
               </div>
               <strong class="trip-block-price">{{ tripPriceLabel(trip) }}</strong>
             </header>
 
-            <div class="round-rows">
+            <div class="round-rows" :class="{ compact: copy.priceAt === 'trip' }">
               <div v-for="s in trip.schedules" :key="s.id" class="round-row">
                 <div class="round-date">
                   <strong>{{ s.date_label }}</strong>
                   <span class="round-full">{{ s.date_full }}</span>
                 </div>
-                <div class="round-prices">
+                <div v-if="copy.priceAt === 'trip'" class="round-prices">
+                  <span v-if="s.on_flash_sale" class="price-chip sale">ลดราคา</span>
+                </div>
+                <div v-else class="round-prices">
                   <span class="price-chip main">
                     {{ formatBaht(s.price) }}
                     <em v-if="s.on_flash_sale" class="was">จาก {{ formatBaht(s.original_price) }}</em>
@@ -199,6 +240,36 @@
         </label>
 
         <div class="field">
+          <span class="field-label">แสดงราคา</span>
+          <div class="format-group" role="radiogroup" aria-label="แสดงราคาตรงไหน">
+            <button
+              v-for="opt in priceAtOptions"
+              :key="opt.value"
+              type="button"
+              class="segment"
+              :class="{ active: copy.priceAt === opt.value }"
+              :title="opt.hint"
+              @click="copy.priceAt = opt.value"
+            >{{ opt.label }}</button>
+          </div>
+          <p class="field-hint">{{ priceAtOptions.find((o) => o.value === copy.priceAt)?.hint }}</p>
+        </div>
+
+        <div v-if="copy.priceAt === 'trip'" class="field">
+          <span class="field-label">ถ้าแต่ละรอบราคาไม่เท่ากัน เขียนหัวทริปว่า</span>
+          <div class="format-group" role="radiogroup" aria-label="ราคาหัวทริป">
+            <button
+              v-for="opt in headPriceOptions"
+              :key="opt.value"
+              type="button"
+              class="segment"
+              :class="{ active: copy.headPrice === opt.value }"
+              @click="copy.headPrice = opt.value"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
+
+        <div class="field">
           <span class="field-label">รูปแบบรายการ</span>
           <div class="format-group" role="radiogroup" aria-label="รูปแบบข้อความ">
             <button
@@ -217,18 +288,66 @@
           <span class="field-label">ใส่รายละเอียด</span>
           <div class="toggle-grid">
             <label class="opt-check"><input type="checkbox" v-model="copy.showPickup" /><span>ราคาจุดรับ</span></label>
+            <label class="opt-check"><input type="checkbox" v-model="copy.showVehicle" /><span>ราคาตัวเลือกรถ</span></label>
             <label class="opt-check"><input type="checkbox" v-model="copy.showJoin" /><span>ราคาจอยทริป</span></label>
+            <label class="opt-check"><input type="checkbox" v-model="copy.showOriginal" /><span>ราคาก่อนลด</span></label>
             <label class="opt-check"><input type="checkbox" v-model="copy.showSeats" /><span>ที่นั่งว่าง</span></label>
             <label class="opt-check"><input type="checkbox" v-model="copy.showLocation" /><span>จังหวัด</span></label>
             <label class="opt-check"><input type="checkbox" v-model="copy.showDuration" /><span>จำนวนวัน</span></label>
-            <label class="opt-check"><input type="checkbox" v-model="copy.bullets" /><span>จุดนำหน้า</span></label>
           </div>
         </div>
+
+        <details class="more-opts">
+          <summary>
+            <span class="material-symbols-rounded">tune</span>
+            ปรับหน้าตาข้อความ
+          </summary>
+          <div class="more-grid">
+            <label class="field">
+              <span class="field-label">เขียนราคาแบบ</span>
+              <select v-model="copy.priceStyle" class="opt-select full">
+                <option v-for="o in priceStyleOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">คำหน้าราคา</span>
+              <input v-model="copy.pricePrefix" type="text" class="field-input" placeholder="เช่น ราคา / เพียง" />
+            </label>
+            <label class="field">
+              <span class="field-label">วันที่</span>
+              <select v-model="copy.dateStyle" class="opt-select full">
+                <option v-for="o in dateStyleOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">คั่นวันที่</span>
+              <select v-model="copy.dateSep" class="opt-select full">
+                <option v-for="o in dateSepOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">จุดนำหน้าชื่อทริป</span>
+              <select v-model="copy.bullet" class="opt-select full">
+                <option v-for="o in bulletOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+              </select>
+            </label>
+            <label class="opt-check gap-check">
+              <input type="checkbox" v-model="copy.tripGap" />
+              <span>เว้นบรรทัดระหว่างทริป</span>
+            </label>
+          </div>
+        </details>
 
         <label class="field">
           <span class="field-label">ข้อความปิดท้าย</span>
           <input v-model="copy.footer" type="text" class="field-input" placeholder="เช่น ทักแชทจองได้เลยครับ" />
         </label>
+
+        <p v-if="hiddenFromCopy" class="excluded-note">
+          <span class="material-symbols-rounded">visibility_off</span>
+          ไม่ใส่ในข้อความ {{ hiddenFromCopy }} ทริป
+          <button class="link-btn" type="button" @click="excluded = []">ใส่กลับทั้งหมด</button>
+        </p>
 
         <textarea
           v-model="text"
@@ -268,6 +387,52 @@ const formatOptions = [
   { value: 'short', label: 'แบบสั้น', hint: 'ทริปละบรรทัดเดียว — ชื่อทริปกับราคา' },
   { value: 'dates', label: 'มีวันเดินทาง', hint: 'รวมรอบที่ราคาเท่ากันไว้บรรทัดเดียว' },
   { value: 'full', label: 'แยกทุกรอบ', hint: 'ทุกรอบแยกบรรทัด พร้อมสถานะ' },
+];
+
+/**
+ * ราคาอยู่ตรงไหน — สื่อหลายแบบไม่อยากให้ราคาซ้ำทุกรอบ แค่บอกราคาครั้งเดียวที่หัวทริป
+ * แล้วตามด้วยวันเดินทาง ตัวเลือกนี้คุมทั้งรายการบนจอและข้อความที่ก๊อป
+ */
+const priceAtOptions = [
+  { value: 'round', label: 'ทุกรอบ', hint: 'ราคาอยู่กับแต่ละรอบ — รอบราคาเท่ากันรวมบรรทัดเดียว' },
+  { value: 'trip', label: 'หัวทริปอย่างเดียว', hint: 'บอกราคาครั้งเดียวต่อทริป ส่วนรอบเหลือแค่วันที่' },
+];
+
+/** หัวทริปที่รอบในช่วงนี้ราคาไม่เท่ากัน จะเขียนราคาอย่างไร */
+const headPriceOptions = [
+  { value: 'from', label: 'เริ่ม 990.-' },
+  { value: 'range', label: '990 – 1,290.-' },
+  { value: 'min', label: '990.-' },
+];
+
+const priceStyleOptions = [
+  { value: 'dash', label: '1,290.-' },
+  { value: 'baht', label: '1,290 บาท' },
+  { value: 'symbol', label: '฿1,290' },
+  { value: 'plain', label: '1,290' },
+];
+
+const dateStyleOptions = [
+  { value: 'short', label: 'สั้น (7–8 พ.ย.)' },
+  { value: 'full', label: 'เต็ม (มีปี)' },
+];
+
+const dateSepOptions = [
+  { value: ' / ', label: '7 พ.ย. / 14 พ.ย.' },
+  { value: ', ', label: '7 พ.ย., 14 พ.ย.' },
+  { value: ' | ', label: '7 พ.ย. | 14 พ.ย.' },
+  { value: ' · ', label: '7 พ.ย. · 14 พ.ย.' },
+];
+
+const bulletOptions = [
+  { value: '', label: 'ไม่มี' },
+  { value: '•', label: '•' },
+  { value: '-', label: '-' },
+  { value: '✅', label: '✅' },
+  { value: '📍', label: '📍' },
+  { value: '🔥', label: '🔥' },
+  { value: '⛰️', label: '⛰️' },
+  { value: '🌿', label: '🌿' },
 ];
 
 const seatFilters = [
@@ -359,15 +524,34 @@ const filters = reactive({
 
 const copy = reactive({
   format: 'dates',
+  priceAt: 'round',
+  headPrice: 'from',
   heading: '',
   footer: '',
   showPickup: true,
+  showVehicle: true,
   showJoin: true,
+  showOriginal: false,
   showSeats: false,
   showLocation: false,
   showDuration: false,
-  bullets: false,
+  priceStyle: 'dash',
+  pricePrefix: '',
+  dateStyle: 'short',
+  dateSep: ' / ',
+  bullet: '',
+  tripGap: true,
 });
+
+/** ทริปที่ไม่เอาลงข้อความรอบนี้ — ผูกกับสื่อชิ้นที่ทำอยู่ จึงไม่จำข้ามการเปิดหน้า */
+const excluded = ref([]);
+
+/**
+ * ชื่อเรียกในสื่อ เช่น "น้ำตกโกรกอีดก" แทนชื่อเต็มในระบบ — ตั้งครั้งเดียวใช้ได้ทุกครั้ง จึงจำไว้
+ * key คือ trip_id
+ */
+const aliases = reactive({});
+const editingAlias = ref(null);
 
 restorePrefs();
 
@@ -457,9 +641,41 @@ function formatBaht(value) {
   return `฿${Number(value || 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}`;
 }
 
-/** ราคาแบบที่ใช้ในสื่อโปรโมท — "1,290.-" */
+const plainNumber = (value) => Number(value || 0).toLocaleString('th-TH', { maximumFractionDigits: 0 });
+
+/** ราคาแบบที่ใช้ในสื่อโปรโมท ตามรูปแบบที่ทีมงานเลือก — "1,290.-" / "1,290 บาท" / "฿1,290" */
 function plainPrice(value) {
-  return `${Number(value || 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}.-`;
+  const n = plainNumber(value);
+  if (copy.priceStyle === 'baht') return `${n} บาท`;
+  if (copy.priceStyle === 'symbol') return `฿${n}`;
+  if (copy.priceStyle === 'plain') return n;
+  return `${n}.-`;
+}
+
+/**
+ * ราคาที่ต่างกันได้ระหว่างรอบ ย่อให้เหลือคำเดียว — "เริ่ม 990.-" หรือ "990 – 1,290.-"
+ * ราคาเท่ากันทุกรอบก็คือราคาเดียว ไม่ต้องมีคำว่าเริ่ม
+ */
+function spanPrice(min, max) {
+  if (min === max) return plainPrice(min);
+  if (copy.headPrice === 'range') {
+    return copy.priceStyle === 'symbol'
+      ? `${plainPrice(min)} – ${plainPrice(max)}`
+      : `${plainNumber(min)} – ${plainPrice(max)}`;
+  }
+  if (copy.headPrice === 'min') return plainPrice(min);
+  return `เริ่ม ${plainPrice(min)}`;
+}
+
+/** ราคาหลักพร้อมคำนำหน้าที่ตั้งไว้ เช่น "ราคา 1,290.-" */
+const withPrefix = (price) => (copy.pricePrefix.trim() ? `${copy.pricePrefix.trim()} ${price}` : price);
+
+/** ราคาก่อนลดของรอบที่ลดราคาอยู่ — ใส่ได้เฉพาะเมื่อทุกรอบในกลุ่มลดราคาทั้งหมด */
+function originalNote(schedules) {
+  if (!copy.showOriginal || !schedules.length) return '';
+  if (!schedules.every((s) => s.on_flash_sale && s.original_price)) return '';
+  const max = Math.max(...schedules.map((s) => s.original_price));
+  return ` (ปกติ ${plainPrice(max)})`;
 }
 
 function statusLabel(status) {
@@ -482,6 +698,60 @@ function tripPriceLabel(trip) {
   const max = Math.max(...prices);
   return min === max ? formatBaht(min) : `${formatBaht(min)} – ${formatBaht(max)}`;
 }
+
+/**
+ * ราคาทางเลือกของทั้งทริป (จุดรับ / ตัวเลือกรถ / จอยทริป) รวมจากทุกรอบที่เหลือหลังกรอง
+ * ชื่อเดียวกันข้ามรอบยุบเป็นรายการเดียว เก็บราคาต่ำสุด–สูงสุดไว้ให้หัวทริปเลือกเขียน
+ */
+function tripExtras(trip, { pickup = true, vehicle = true, join = true } = {}) {
+  const map = new Map();
+  const add = (kind, label, price) => {
+    const key = `${kind}|${label}`;
+    const found = map.get(key);
+    if (found) {
+      found.min = Math.min(found.min, price);
+      found.max = Math.max(found.max, price);
+      return;
+    }
+    map.set(key, { kind, label, min: price, max: price });
+  };
+
+  trip.schedules.forEach((s) => {
+    if (pickup) altPickups(s).forEach((p) => add('pickup', p.label, p.price));
+    if (vehicle) (s.vehicle_options || []).forEach((v) => add('ride', v.label, v.price));
+    if (join && s.join_trip_enabled) add('join', 'จอยทริป', s.join_trip_price);
+  });
+
+  // จอยทริปไว้ท้ายสุดเสมอ เหมือนในมุมมองรายรอบ
+  return [...map.values()].sort((a, b) => (a.kind === 'join') - (b.kind === 'join'));
+}
+
+const tripMaxPrice = (trip) => Math.max(0, ...trip.schedules.map((s) => s.price || 0));
+
+/** ชื่อที่ใช้ในข้อความ — ชื่อเรียกที่ตั้งไว้ก่อน ไม่มีก็ใช้ชื่อจริง */
+const displayName = (trip) => (aliases[trip.trip_id] || '').trim() || trip.title;
+
+const isExcluded = (trip) => excluded.value.includes(trip.trip_id);
+
+function toggleExcluded(trip) {
+  excluded.value = isExcluded(trip)
+    ? excluded.value.filter((id) => id !== trip.trip_id)
+    : [...excluded.value, trip.trip_id];
+}
+
+function setAlias(trip, value) {
+  const clean = value.trim();
+  if (!clean || clean === trip.title) {
+    delete aliases[trip.trip_id];
+  } else {
+    aliases[trip.trip_id] = clean;
+  }
+}
+
+/** ทริปที่จะลงข้อความจริง — ที่ผ่านตัวกรองและไม่ได้ถูกติ๊กออก */
+const copyTrips = computed(() => visibleTrips.value.filter((t) => !isExcluded(t)));
+
+const hiddenFromCopy = computed(() => visibleTrips.value.length - copyTrips.value.length);
 
 /* ── ช่วงเวลา ────────────────────────────────────────── */
 function applyPreset(id) {
@@ -527,6 +797,8 @@ function extraPrices(schedule) {
   const out = [];
   if (copy.showPickup) {
     altPickups(schedule).forEach((p) => out.push(`${p.label} ${plainPrice(p.price)}`));
+  }
+  if (copy.showVehicle) {
     (schedule.vehicle_options || []).forEach((v) => out.push(`${v.label} ${plainPrice(v.price)}`));
   }
   if (copy.showJoin && schedule.join_trip_enabled) {
@@ -540,7 +812,8 @@ function priceGroups(trip) {
   const groups = [];
   trip.schedules.forEach((s) => {
     const extras = extraPrices(s);
-    const key = `${s.price}|${extras.join('|')}`;
+    const sale = copy.showOriginal && s.on_flash_sale ? s.original_price : '';
+    const key = `${s.price}|${sale}|${extras.join('|')}`;
     const found = groups.find((g) => g.key === key);
     if (found) {
       found.schedules.push(s);
@@ -551,6 +824,24 @@ function priceGroups(trip) {
   return groups;
 }
 
+/** ราคาของกลุ่มรอบ (มุมมองรายรอบ) — ราคาหลัก + ราคาก่อนลด + ราคาทางเลือก */
+function groupPriceBits(group) {
+  return [withPrefix(plainPrice(group.price)) + originalNote(group.schedules), ...group.extras];
+}
+
+/** ราคาบนหัวทริป (มุมมองหัวทริป) — ราคาเดียวต่อทริป ราคาทางเลือกก็ยุบเหลือรายการละครั้ง */
+function tripPriceBits(trip) {
+  const prices = trip.schedules.map((s) => s.price).filter(Boolean);
+  if (!prices.length) return [];
+  const main = withPrefix(spanPrice(Math.min(...prices), tripMaxPrice(trip))) + originalNote(trip.schedules);
+  const extras = tripExtras(trip, {
+    pickup: copy.showPickup,
+    vehicle: copy.showVehicle,
+    join: copy.showJoin,
+  }).map((x) => `${x.label} ${spanPrice(x.min, x.max)}`);
+  return [main, ...extras];
+}
+
 /** ส่วนขยายท้ายชื่อทริป เช่น "(เพชรบูรณ์ · 2 วัน)" */
 function tripSuffix(trip) {
   const bits = [];
@@ -559,50 +850,88 @@ function tripSuffix(trip) {
   return bits.length ? ` (${bits.join(' · ')})` : '';
 }
 
+const dateText = (s) => (copy.dateStyle === 'full' ? s.date_full : s.date_label);
+
+/** วันเดินทางของหลายรอบในบรรทัดเดียว — ใส่ที่ว่างต่อรอบเมื่อเลือกโชว์ที่นั่ง */
+function datesLine(schedules, { seatsEach = false } = {}) {
+  return schedules
+    .map((s) => (seatsEach ? `${dateText(s)} (ว่าง ${s.available_seats})` : dateText(s)))
+    .join(copy.dateSep);
+}
+
 function buildText() {
-  const trips = visibleTrips.value;
+  const trips = copyTrips.value;
   if (!trips.length) return '';
 
-  const bullet = copy.bullets ? '• ' : '';
+  const bullet = copy.bullet ? `${copy.bullet} ` : '';
   const lines = [copy.heading.trim(), ''];
+  const gap = () => { if (copy.tripGap) lines.push(''); };
+  const atTrip = copy.priceAt === 'trip';
 
   trips.forEach((trip) => {
-    const name = `${trip.title}${tripSuffix(trip)}`;
+    const name = `${displayName(trip)}${tripSuffix(trip)}`;
+
+    if (atTrip) {
+      const priceBits = tripPriceBits(trip);
+
+      if (copy.format === 'short') {
+        const bits = [name, ...priceBits];
+        if (copy.showSeats) bits.push(`ว่าง ${tripSeats(trip)} ที่`);
+        lines.push(bullet + bits.join(' '));
+        gap();
+        return;
+      }
+
+      lines.push(bullet + [name, priceBits.join(' · ')].filter(Boolean).join(' '));
+
+      if (copy.format === 'dates') {
+        lines.push(datesLine(trip.schedules, { seatsEach: copy.showSeats }));
+      } else {
+        trip.schedules.forEach((s) => {
+          const bits = [];
+          if (copy.showSeats) bits.push(`ว่าง ${s.available_seats} ที่`);
+          if (s.status !== 'open') bits.push(statusLabel(s.status));
+          lines.push(bits.length ? `${dateText(s)} — ${bits.join(' · ')}` : dateText(s));
+        });
+      }
+      gap();
+      return;
+    }
 
     if (copy.format === 'short') {
       const groups = priceGroups(trip);
       groups.forEach((g) => {
         // ทริปที่รอบในช่วงนี้ราคาไม่เท่ากันต้องบอกวันด้วย ไม่งั้นอ่านไม่ออกว่าราคาไหนของรอบไหน
         const head = groups.length > 1
-          ? `${name} (${g.schedules.map((s) => s.date_label).join(', ')})`
+          ? `${name} (${g.schedules.map(dateText).join(', ')})`
           : name;
-        const bits = [head, plainPrice(g.price), ...g.extras];
+        const bits = [head, ...groupPriceBits(g)];
         if (copy.showSeats) bits.push(`ว่าง ${groupSeats(g)} ที่`);
         lines.push(bullet + bits.join(' '));
       });
+      gap();
       return;
     }
 
     if (copy.format === 'dates') {
       lines.push(bullet + name);
       priceGroups(trip).forEach((g) => {
-        const dates = g.schedules.map((s) => s.date_label).join(' / ');
-        const bits = [plainPrice(g.price), ...g.extras];
+        const bits = groupPriceBits(g);
         if (copy.showSeats) bits.push(`ว่าง ${groupSeats(g)} ที่`);
-        lines.push(`${dates} — ${bits.join(' · ')}`);
+        lines.push(`${datesLine(g.schedules)} — ${bits.join(' · ')}`);
       });
-      lines.push('');
+      gap();
       return;
     }
 
     lines.push(bullet + name);
     trip.schedules.forEach((s) => {
-      const bits = [plainPrice(s.price), ...extraPrices(s)];
+      const bits = [withPrefix(plainPrice(s.price)) + originalNote([s]), ...extraPrices(s)];
       if (copy.showSeats) bits.push(`ว่าง ${s.available_seats} ที่`);
       if (s.status !== 'open') bits.push(statusLabel(s.status));
-      lines.push(`${s.date_full} — ${bits.join(' · ')}`);
+      lines.push(`${dateText(s)} — ${bits.join(' · ')}`);
     });
-    lines.push('');
+    gap();
   });
 
   if (copy.footer.trim()) lines.push('', copy.footer.trim());
@@ -618,6 +947,7 @@ function regenerate() {
 }
 
 function resetFilters() {
+  excluded.value = [];
   filters.openOnly = false;
   filters.hideDeparted = false;
   filters.minSeats = 0;
@@ -636,6 +966,14 @@ function restorePrefs() {
     Object.keys(copy).forEach((k) => {
       if (k !== 'heading' && saved.copy?.[k] !== undefined) copy[k] = saved.copy[k];
     });
+    // ค่าที่จำไว้จากเวอร์ชันก่อน: "จุดนำหน้า" เคยเป็นติ๊กเปิด/ปิด และราคาจุดรับเคยรวมตัวเลือกรถไว้ด้วย
+    if (saved.copy?.bullet === undefined && saved.copy?.bullets) copy.bullet = '•';
+    if (saved.copy?.showVehicle === undefined && saved.copy?.showPickup !== undefined) {
+      copy.showVehicle = saved.copy.showPickup;
+    }
+    Object.entries(saved.aliases || {}).forEach(([id, name]) => {
+      if (typeof name === 'string' && name.trim()) aliases[id] = name;
+    });
   } catch {
     // โหมดส่วนตัว/ค่าเสีย — ใช้ค่าตั้งต้นไป
   }
@@ -646,6 +984,7 @@ function savePrefs() {
     localStorage.setItem(STORE_KEY, JSON.stringify({
       filters: { ...filters, search: '' },
       copy: { ...copy, heading: '' },
+      aliases: { ...aliases },
     }));
   } catch {
     // เขียนไม่ได้ก็ไม่เป็นไร ตัวเลือกยังใช้ได้ในรอบนี้
@@ -696,9 +1035,9 @@ watch(sheet, () => { copy.heading = autoHeading(); });
 
 // ข้อความสร้างใหม่ทุกครั้งที่ข้อมูล ตัวกรอง หรือตัวเลือกเปลี่ยน — ที่พิมพ์แก้เองจะหายไป
 // ซึ่งตรงกับที่คาดหวัง เพราะเนื้อหาที่แก้ไว้เป็นของชุดก่อนหน้า
-watch([sheet, filters, copy], () => { text.value = buildText(); }, { deep: true });
+watch([sheet, filters, copy, excluded, aliases], () => { text.value = buildText(); }, { deep: true });
 
-watch([filters, copy], savePrefs, { deep: true });
+watch([filters, copy, aliases], savePrefs, { deep: true });
 
 onMounted(load);
 </script>
@@ -896,7 +1235,51 @@ onMounted(load);
   border-bottom: 1px solid #f3f4f6;
 }
 
+.trip-block.excluded { opacity: 0.55; }
+.trip-block.excluded .trip-block-title { text-decoration: line-through; }
+
+.include-check { display: flex; padding-top: 3px; cursor: pointer; }
+.include-check input { width: 16px; height: 16px; cursor: pointer; }
+
+.trip-block-info { flex: 1; min-width: 0; }
+
 .trip-block-title { font-size: 16px; font-weight: 800; margin: 0; }
+
+.alias-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: none;
+  padding: 0;
+  margin-top: 2px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.alias-btn:hover { color: #2563eb; }
+.alias-btn .material-symbols-rounded { font-size: 13px; }
+
+.alias-edit { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+
+.alias-input {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.head-extras { margin-top: 8px; }
+
+.round-rows.compact .round-row { padding: 6px 16px; }
+.price-chip.sale { background: #fee2e2; color: #b91c1c; }
 
 .trip-block-meta {
   display: flex;
@@ -991,6 +1374,48 @@ onMounted(load);
 }
 
 .copy-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+.field-hint { font-size: 11px; color: #9ca3af; margin: 4px 0 0; }
+
+.more-opts {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  padding: 0 10px;
+  margin-bottom: 10px;
+}
+
+.more-opts summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+  list-style: none;
+}
+
+.more-opts summary::-webkit-details-marker { display: none; }
+.more-opts summary .material-symbols-rounded { font-size: 18px; color: #6b7280; }
+.more-opts[open] summary { border-bottom: 1px solid #f3f4f6; margin-bottom: 10px; }
+
+.more-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.more-grid .field { min-width: 0; }
+.opt-select.full { width: 100%; }
+.gap-check { grid-column: 1 / -1; margin-bottom: 10px; }
+
+.excluded-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 12px;
+  color: #b45309;
+  margin: 0 0 8px;
+}
+
+.excluded-note .material-symbols-rounded { font-size: 16px; }
 
 .empty-card {
   background: #fff;
