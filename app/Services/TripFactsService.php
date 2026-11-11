@@ -8,6 +8,7 @@ use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\ThaiDate;
+use App\Support\TripItinerary;
 use Carbon\CarbonImmutable;
 
 /**
@@ -217,9 +218,16 @@ class TripFactsService
 
         $blocks = [];
         $currentGroup = null;
+        $eveGroups = [];
 
         foreach ($items as $item) {
             $group = $this->itineraryGroupLabel($item, $datedGroups);
+
+            // คืนก่อนวันเดินทางคร่อมเที่ยงคืน (21:30 วันก่อน → 04:00 วันทริป) แต่เป็น
+            // คืนเดียวกัน — ทั้งคืนอยู่ใต้หัวข้อเดียว ลงวันที่ของคืนที่เริ่ม
+            if (($item['source'] ?? null) === 'trip' && ($item['day'] ?? null) === TripItinerary::EVE_DAY) {
+                $group = $eveGroups[(string) ($item['group'] ?? '')] ??= $group;
+            }
 
             if ($blocks === [] || ($group !== null && $group !== $currentGroup)) {
                 $currentGroup = $group;

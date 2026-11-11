@@ -218,6 +218,11 @@
                       <span class="material-symbols-rounded">delete</span>
                     </button>
                   </div>
+                  <!-- ตรงกับ ScheduleItineraryService::eveItemDate() -->
+                  <p v-if="item.day === 0" class="text-xs text-gray-500 -mt-2 mb-3 flex items-start gap-1.5">
+                    <span class="material-symbols-rounded text-base leading-none text-[var(--color-accent)]">bedtime</span>
+                    <span>ลงวันที่ตามวันที่รถออกจริงของแต่ละรอบ (ติ๊ก "รถออกคืนก่อนวันทริป" ในหน้ารอบเดินทาง) — เวลาก่อนเที่ยง เช่น 04:00 นับเป็นหลังเที่ยงคืน คือเช้าวันเดินทาง</span>
+                  </p>
                   <textarea v-model="item.description" rows="3" placeholder="ภาพรวมของวันนี้ (ไม่ต้องกรอกก็ได้ถ้าลงเป็นจุดแวะด้านล่าง)" class="text-sm w-full bg-white px-4 py-3 border rounded-xl focus:ring-2 ring-[var(--color-accent)]/20"></textarea>
 
                   <!-- จุดแวะของวันนี้: เวลา + สถานที่ + รายละเอียด + รูปของสถานที่ -->

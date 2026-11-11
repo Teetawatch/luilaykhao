@@ -347,7 +347,14 @@
                     <strong>{{ formDateLabel(form.departs_night_before ? shiftDateStr(form.departure_date, -1) : form.departure_date) }}
                       เวลา {{ form.departs_time }} น.</strong>
                   </p>
-                  <p class="sf-help" v-else>เว้นว่างได้ ระบบจะนับถอยหลังเป็นวันแทนชั่วโมง</p>
+                  <p class="sf-preview sf-preview--warn" v-if="isPreDawnNightBefore(form) && form.departure_date">
+                    <span class="material-symbols-rounded">warning</span>
+                    <span>
+                      ติ๊กคืนก่อนแล้วตั้ง {{ form.departs_time }} น. = รถออก<strong>เช้ามืดของ{{ formDateLabel(shiftDateStr(form.departure_date, -1)) }}</strong>
+                      เร็วกว่าวันทริปหนึ่งวันเต็ม ถ้าหมายถึงเช้ามืดของวันทริป ({{ formDateLabel(form.departure_date) }}) ให้เอาติ๊กออก
+                    </span>
+                  </p>
+                  <p class="sf-help" v-else-if="!form.departs_time">เว้นว่างได้ ระบบจะนับถอยหลังเป็นวันแทนชั่วโมง</p>
                 </div>
               </div>
             </section>
@@ -1349,6 +1356,13 @@
                   <button type="button" class="btn-sm btn-secondary" v-if="batchForm.departs_time"
                     @click="batchForm.departs_time = ''; batchForm.departs_night_before = false;">ล้าง</button>
                 </div>
+                <p class="sf-preview sf-preview--warn" v-if="isPreDawnNightBefore(batchForm)">
+                  <span class="material-symbols-rounded">warning</span>
+                  <span>
+                    ติ๊กคืนก่อนแล้วตั้ง {{ batchForm.departs_time }} น. = รถออก<strong>เช้ามืดของวันก่อนวันทริป</strong>
+                    เร็วไปหนึ่งวันเต็ม ถ้าหมายถึงเช้ามืดของวันทริปเอง ให้เอาติ๊กออก
+                  </span>
+                </p>
               </div>
             </div>
 
@@ -2516,6 +2530,11 @@ const shiftDateStr = (dateStr, days) => {
   const day = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${m}-${day}`;
 };
+
+// ติ๊ก "คืนก่อน" กับเวลาเที่ยงคืนถึงตีห้า — "ตี 4 คืนวันศุกร์" ในภาษาพูดคือเช้าวันเสาร์
+// แต่ระบบเก็บเป็นตี 4 ของวันศุกร์ ลูกค้าจะมาก่อนหนึ่งวันเต็ม เตือนให้ทวนก่อนบันทึก
+const isPreDawnNightBefore = (f) =>
+  !!f?.departs_night_before && !!f?.departs_time && f.departs_time < '06:00';
 
 const buildDepartsAt = (departureDate, time, nightBefore) => {
   if (!time || !departureDate) return null;
@@ -6749,6 +6768,9 @@ onMounted(async () => {
 
 .sf-preview .material-symbols-rounded { font-size: 16px; color: #6b7280; }
 .sf-preview strong { color: #111827; font-weight: 700; }
+.sf-preview--warn { align-items: flex-start; background: #fffbeb; color: #92400e; }
+.sf-preview--warn .material-symbols-rounded { color: #d97706; }
+.sf-preview--warn strong { color: #78350f; }
 
 /* ── Segmented control (radio) ── */
 .sf-seg {

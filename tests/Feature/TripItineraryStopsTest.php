@@ -6,8 +6,12 @@ use App\Models\Category;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\ScheduleItineraryService;
+use App\Services\TripFactsService;
+use App\Support\ThaiDate;
 use App\Support\TripItinerary;
 use App\Support\TripMealPlan;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -252,5 +256,105 @@ class TripItineraryStopsTest extends TestCase
             ->assertJsonPath('data.items.2.day', 1)
             ->assertJsonPath('data.items.2.group', 'วันที่ 1')
             ->assertJsonPath('data.items.2.item_date', $schedule->departure_date->toDateString());
+    }
+
+    /**
+     * @param  array<int, array{time: string, title: string}>  $eveStops
+     */
+    private function makeEveSchedule(Trip $trip, ?string $departsAt, array $eveStops): TripSchedule
+    {
+        $schedule = TripSchedule::create([
+            'trip_id' => $trip->id,
+            'departure_date' => '2026-12-05',
+            'return_date' => '2026-12-06',
+            'departs_at' => $departsAt,
+            'total_seats' => 8,
+            'booked_seats' => 0,
+            'transport_type' => 'van',
+            'status' => 'open',
+        ]);
+
+        $trip->update(['itinerary' => [
+            ['sector' => '', 'items' => [
+                ['day' => 0, 'title' => '', 'description' => '', 'stops' => $eveStops],
+                ['day' => 1, 'title' => 'ขึ้นยอด', 'description' => 'เดินขึ้นยอดดอย'],
+            ]],
+        ]]);
+
+        return $schedule->fresh();
+    }
+
+    /** @return array<string, ?string> title => item_date */
+    private function eveDates(TripSchedule $schedule): array
+    {
+        $items = app(ScheduleItineraryService::class)->fromTrip($schedule);
+
+        return collect($items)->where('day', 0)->mapWithKeys(fn ($i) => [$i['title'] => $i['item_date']])->all();
+    }
+
+    public function test_pre_dawn_stops_on_the_eve_land_on_the_departure_morning(): void
+    {
+        // เคสจริง: จุดนัด 04:00/04:40/05:10 ลงไว้ในคืนก่อน — ต้องเป็นเช้าวันเดินทาง
+        // ไม่ใช่ตี 4 ของวันก่อนหน้า (เร็วไปหนึ่งวันเต็ม)
+        $schedule = $this->makeEveSchedule($this->makeTrip(), null, [
+            ['time' => '04:00', 'title' => 'BTS แบริ่ง'],
+            ['time' => '04:40', 'title' => 'หมอชิต'],
+            ['time' => '05:10', 'title' => 'โลตัสรังสิต'],
+        ]);
+
+        $this->assertSame([
+            'BTS แบริ่ง' => '2026-12-05',
+            'หมอชิต' => '2026-12-05',
+            'โลตัสรังสิต' => '2026-12-05',
+        ], $this->eveDates($schedule));
+    }
+
+    public function test_eve_crossing_midnight_follows_the_night_before_round(): void
+    {
+        // ติ๊ก "รถออกคืนก่อนวันทริป" 22:00 — ก่อนเที่ยงคืนคือวันที่รถออก หลังเที่ยงคืนคือวันทริป
+        $schedule = $this->makeEveSchedule($this->makeTrip(), '2026-12-04 22:00:00', [
+            ['time' => '21:30', 'title' => 'นัดขึ้นรถ'],
+            ['time' => '23:30', 'title' => 'แวะปั๊ม'],
+            ['time' => '04:00', 'title' => 'ถึงตีนดอย'],
+        ]);
+
+        $this->assertSame([
+            'นัดขึ้นรถ' => '2026-12-04',
+            'แวะปั๊ม' => '2026-12-04',
+            'ถึงตีนดอย' => '2026-12-05',
+        ], $this->eveDates($schedule));
+
+        // หัวข้อในแชทเป็นคืนเดียว ไม่แตกเป็นสองหัวตามวันที่
+        $message = app(TripFactsService::class)->itineraryChatMessage($schedule);
+        $this->assertSame(1, substr_count($message['body'], 'คืนก่อนวันเดินทาง'));
+        $this->assertStringContainsString('📅 คืนก่อนวันเดินทาง · '.ThaiDate::short(CarbonImmutable::parse('2026-12-04')), $message['body']);
+    }
+
+    public function test_eve_follows_a_round_that_leaves_two_days_early(): void
+    {
+        $schedule = $this->makeEveSchedule($this->makeTrip(), '2026-12-03 20:00:00', [
+            ['time' => '19:30', 'title' => 'นัดขึ้นรถ'],
+            ['time' => '03:00', 'title' => 'แวะพัก'],
+        ]);
+
+        $this->assertSame([
+            'นัดขึ้นรถ' => '2026-12-03',
+            'แวะพัก' => '2026-12-04',
+        ], $this->eveDates($schedule));
+    }
+
+    public function test_eve_of_a_round_that_really_leaves_in_the_early_morning_keeps_its_day(): void
+    {
+        // รอบที่รถออก 04:00 ของวันก่อนวันทริปจริง ๆ (ขับยาวทั้งวัน) — จุดของคืนนั้นตั้งแต่
+        // ก่อนเวลารถออก 1 ชม. เป็นวันที่รถออก ไม่ถูกดันไปวันทริป
+        $schedule = $this->makeEveSchedule($this->makeTrip(), '2026-12-04 04:00:00', [
+            ['time' => '03:30', 'title' => 'นัดขึ้นรถ'],
+            ['time' => '04:40', 'title' => 'หมอชิต'],
+        ]);
+
+        $this->assertSame([
+            'นัดขึ้นรถ' => '2026-12-04',
+            'หมอชิต' => '2026-12-04',
+        ], $this->eveDates($schedule));
     }
 }

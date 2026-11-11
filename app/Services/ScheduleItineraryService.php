@@ -284,7 +284,7 @@ class ScheduleItineraryService
             'source' => 'trip',
             'group' => $group ?? TripItinerary::dayLabel($day) ?? 'แผนการเดินทาง',
             'day' => $day,
-            'item_date' => $this->tripItemDate($schedule, $day),
+            'item_date' => $this->tripItemDate($schedule, $day, $time),
             'time' => $time,
             'title' => $title,
             'detail' => $detail,
@@ -375,10 +375,14 @@ class ScheduleItineraryService
      * วันที่จริงของ "วันที่ N" ในรอบนี้ — ไม่คำนวณเมื่อเลยวันกลับของรอบ
      * (ทริปเดียวกันอาจมีแผนยาวกว่ารอบนี้) ให้แอปแสดงแค่ "วันที่ N" แทน
      */
-    private function tripItemDate(TripSchedule $schedule, ?int $day): ?string
+    private function tripItemDate(TripSchedule $schedule, ?int $day, ?string $time = null): ?string
     {
         if ($day === null || $schedule->departure_date === null) {
             return null;
+        }
+
+        if ($day === TripItinerary::EVE_DAY) {
+            return $this->eveItemDate($schedule, $time);
         }
 
         $date = $schedule->departure_date->copy()->addDays($day - 1);
@@ -388,6 +392,45 @@ class ScheduleItineraryService
         }
 
         return $date->toDateString();
+    }
+
+    /**
+     * วันที่ของจุดใน "คืนก่อนวันเดินทาง" (วันที่ 0) ของรอบนี้
+     *
+     * คืนเดียวคร่อมสองวันที่ — 21:30 นัดขึ้นรถยังเป็นวันก่อน แต่ 04:00 แวะจุดรับ
+     * คือหลังเที่ยงคืนแล้ว ถ้าลงทั้งคืนเป็นวันเดียวกัน ตี 4 จะไปตกเช้าวันก่อนหน้า
+     * เร็วไปหนึ่งวันเต็ม (เคยเกิดจริง: จุดนัด 04:00/04:40/05:10 ในวันที่ 0)
+     *
+     * - คืนนั้นเริ่มวันที่รถออกจริงของรอบ — ติ๊ก "รถออกคืนก่อนวันทริป" ไว้ก็ใช้วันของ
+     *   departs_at (ออกก่อนเกิน 1 วันก็ตามนั้น) ไม่งั้นคือวันก่อนวันเดินทาง
+     * - เวลาก่อนเที่ยงคือหลังเที่ยงคืน → วันถัดไป ยกเว้นรอบที่รถออกจริงก่อนเที่ยงของ
+     *   คืนนั้น: จุดตั้งแต่ก่อนเวลารถออก 1 ชม. ยังนับเป็นวันที่รถออก
+     *
+     * departs_at เก็บเวลาไทยในคอลัมน์ชนิด UTC — อ่านวัน/เวลาจากสตริงตรง ๆ ห้ามแปลงโซน
+     */
+    private function eveItemDate(TripSchedule $schedule, ?string $time): string
+    {
+        $departsEarly = $schedule->departsBeforeTripDay();
+        $night = $departsEarly
+            ? $schedule->departs_at->copy()->startOfDay()
+            : $schedule->departure_date->copy()->startOfDay()->subDay();
+
+        $time = TripItinerary::time($time);
+
+        if ($time === null) {
+            return $night->toDateString();
+        }
+
+        $cutoff = '12:00';
+
+        if ($departsEarly) {
+            $departs = $schedule->departs_at->copy();
+            $graceStart = $departs->copy()->subHour();
+            $leeway = $graceStart->isSameDay($departs) ? $graceStart->format('H:i') : '00:00';
+            $cutoff = min($cutoff, $leeway);
+        }
+
+        return ($time < $cutoff ? $night->addDay() : $night)->toDateString();
     }
 
     /**
