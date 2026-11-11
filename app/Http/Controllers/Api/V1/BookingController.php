@@ -21,6 +21,7 @@ use App\Services\ModerationService;
 use App\Services\PartnerService;
 use App\Services\PickupStatusService;
 use App\Services\WeatherService;
+use App\Support\ClientChannel;
 use App\Support\TermsConsent;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -78,6 +79,8 @@ class BookingController extends Controller
                 giftMessage: $request->gift_message,
                 skipPayment: $skipPayment,
                 waivePayment: $waivePayment,
+                // แอดมินข้ามขั้นชำระเงิน = จองให้ลูกค้า ไม่ใช่ลูกค้าจองผ่านเว็บเอง
+                source: $skipPayment ? ClientChannel::ADMIN : null,
                 termsConsent: $termsConsent,
                 giftVoucherCode: $request->gift_voucher_code,
                 coinsToUse: (int) $request->input('coins_to_use', 0),

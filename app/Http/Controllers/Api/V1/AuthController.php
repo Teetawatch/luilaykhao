@@ -12,6 +12,7 @@ use App\Services\MailService;
 use App\Services\ReferralService;
 use App\Support\AccountLinks;
 use App\Support\AppLinks;
+use App\Support\ClientChannel;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -57,7 +58,7 @@ class AuthController extends Controller
         // Attribute the signup to a referrer when an invite code was supplied.
         $this->referralService->attachReferrer($user, $request->referral_code);
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = ClientChannel::issueToken($user, ClientChannel::fromHeaders($request));
 
         // Welcome email doubles as the verification email — see MailService.
         $this->mailService->sendWelcomeEmail($user, AccountLinks::verifyEmail($user));
@@ -77,7 +78,7 @@ class AuthController extends Controller
         }
 
         $user->load('roles');
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = ClientChannel::issueToken($user, ClientChannel::fromHeaders($request));
 
         return $this->success([
             'user' => $this->formatUser($user),
@@ -290,7 +291,7 @@ class AuthController extends Controller
             );
 
             $user->load('roles');
-            $token = $user->createToken('auth-token')->plainTextToken;
+            $token = ClientChannel::issueToken($user, $mobileReturnTo ? ClientChannel::APP : ClientChannel::WEB);
 
             return $this->redirectSocialSuccess($frontendUrl, $mobileReturnTo, $token, $this->formatUser($user));
         } catch (\Throwable $e) {
@@ -357,7 +358,7 @@ class AuthController extends Controller
         }
 
         $user->load('roles');
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = ClientChannel::issueToken($user, ClientChannel::LIFF);
 
         return $this->success([
             'user' => $this->formatUser($user),
@@ -582,7 +583,7 @@ class AuthController extends Controller
         }
 
         $user->load('roles');
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $token = ClientChannel::issueToken($user, ClientChannel::APP);
 
         return $this->success([
             'user' => $this->formatUser($user),

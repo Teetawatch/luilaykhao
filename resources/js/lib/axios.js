@@ -1,11 +1,12 @@
 import axios from 'axios';
+import { API_BASE_URL, CLIENT_HEADERS } from './apiBase';
 
 const api = axios.create({
-  // แก้บรรทัดนี้: ให้ใช้ค่าจาก .env ตรงๆ ไม่ต้องบวกเพิ่ม
-  baseURL: import.meta.env.VITE_API_URL || '/api/v1', 
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    ...CLIENT_HEADERS,
   },
 });
 

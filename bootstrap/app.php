@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\SetAppLocale;
+use App\Http\Middleware\TrackApiClient;
 use App\Support\AppLocale;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Application;
@@ -23,7 +24,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // ภาษาของข้อความที่ API สร้าง — ตาม X-App-Language ที่แอปส่ง (AppLocale)
-        $middleware->api(append: [SetAppLocale::class]);
+        $middleware->api(append: [SetAppLocale::class, TrackApiClient::class]);
+
+        // อยู่หลัง CDN/load balancer เมื่อไหร่ ต้องบอก IP ของพร็อกซีไว้ใน TRUSTED_PROXIES
+        // (คั่นด้วย ,) ไม่อย่างนั้น request()->ip() จะเป็น IP ของพร็อกซี และ rate limit
+        // ที่นับตาม IP จะรวมลูกค้าทุกคนเป็นถังเดียว — ตอนนี้ nginx คุยกับ PHP-FPM ตรง
+        // จึงปล่อยว่างได้
+        $proxies = array_values(array_filter(array_map('trim', explode(',', (string) env('TRUSTED_PROXIES', '')))));
+        if ($proxies !== []) {
+            $middleware->trustProxies(at: $proxies === ['*'] ? '*' : $proxies);
+        }
 
         $middleware->alias([
             'role' => RoleMiddleware::class,
@@ -55,8 +65,17 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->booted(function (): void {
         // Auth endpoints — ป้องกัน brute-force
+        // นับตาม IP + บัญชีที่พยายามเข้า: คนที่ใช้เน็ตเดียวกัน (ออฟฟิศ, เน็ตมือถือที่แชร์
+        // IP) ไม่ล็อกกันเอง แต่การเดารหัสของบัญชีเดียวยังโดนที่ 10 ครั้ง/นาที และเพดาน
+        // ต่อ IP กันการไล่ลองหลายบัญชีจากที่เดียว
         RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(10)->by($request->ip());
+            $ip = (string) $request->ip();
+            $account = mb_strtolower(trim((string) ($request->input('email') ?? $request->input('login') ?? $request->input('phone') ?? '')));
+
+            return [
+                Limit::perMinute(10)->by('auth:'.$ip.'|'.$account),
+                Limit::perMinute(60)->by('auth-ip:'.$ip),
+            ];
         });
 
         // Payment charge — ป้องกัน duplicate submission

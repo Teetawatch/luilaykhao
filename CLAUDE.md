@@ -120,7 +120,8 @@ Trip (slug-routed)
 
 ### Auth & roles
 
-- Laravel Sanctum (Bearer token for both mobile and future web)
+- Laravel Sanctum Bearer tokens for web SPA, apps and LIFF — all on the same `/api/v1`. `App\Support\ClientChannel` decides which client a request is: token name first (`web` / `app` / `liff` / `driver-app-token`), then the `X-Client` (web|app|liff) / `X-Platform` headers; nothing = null, never guessed. Always issue tokens via `ClientChannel::issueToken()` — a request with no headers keeps the legacy `auth-token` name so old app builds stay signed in. Web tokens expire after `WEB_TOKEN_TTL_DAYS` idle days (sliding, extended by `TrackApiClient`); app/LIFF tokens never expire
+- `bookings.source` (web|app|liff|admin|intake, null = unknown/old) is filled server-side in `BookingObserver::creating`; the app also sends `X-App-Version`, recorded on `users.app_version` — `php artisan app:versions` shows who still runs which build before you change a response shape
 - Three user classes via Spatie Permission: `admin`, `operator`, `driver`
 - Drivers also authenticate via PIN (`driver_pin_hash` on User); the PIN login endpoint is unauthenticated (`/api/v1/driver/pin-login`)
 - Admin/operator routes live under `/api/v1/admin/` with `role:admin|operator` middleware

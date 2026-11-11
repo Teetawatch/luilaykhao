@@ -5,9 +5,8 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+import { API_BASE_URL, CLIENT_HEADERS } from './lib/apiBase';
 window.Pusher = Pusher;
-
-const apiBase = import.meta.env.VITE_API_URL || '/api/v1';
 
 window.Echo = new Echo({
     broadcaster: 'reverb',
@@ -22,10 +21,11 @@ window.Echo = new Echo({
         authorize: (socketId, callback) => {
             window.axios
                 .post(
-                    `${apiBase}/broadcasting/auth`,
+                    `${API_BASE_URL}/broadcasting/auth`,
                     { socket_id: socketId, channel_name: channel.name },
                     {
                         headers: {
+                            ...CLIENT_HEADERS,
                             Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
                         },
                     },

@@ -7,6 +7,7 @@ use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Models\User;
 use App\Services\AccountClaimService;
+use App\Support\ClientChannel;
 use App\Support\PhoneNumber;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -149,7 +150,7 @@ class AccountClaimController extends Controller
 
             return $this->success([
                 'user' => ['id' => $existing->id, 'name' => $existing->name, 'email' => $existing->email],
-                'token' => $existing->createToken('auth-token')->plainTextToken,
+                'token' => ClientChannel::issueToken($existing, ClientChannel::fromHeaders($request)),
                 'bookings_moved' => $moved,
                 'merged' => true,
             ], 'ย้ายการจอง '.$moved.' รายการเข้าบัญชีของคุณแล้ว');
@@ -163,7 +164,7 @@ class AccountClaimController extends Controller
 
         return $this->success([
             'user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email],
-            'token' => $user->createToken('auth-token')->plainTextToken,
+            'token' => ClientChannel::issueToken($user, ClientChannel::fromHeaders($request)),
             'bookings_moved' => $this->claims->bookingsOf($user)->count(),
             'merged' => false,
         ], 'เปิดใช้บัญชีเรียบร้อยแล้ว');

@@ -238,6 +238,7 @@ class IntakeSelfBookingTest extends TestCase
 
         $booking = Booking::with(['passengers', 'seats', 'user'])->firstOrFail();
         $this->assertSame('pending', $booking->status);
+        $this->assertSame('intake', $booking->source);
         $this->assertEquals(7000.0, (float) $booking->total_amount);
         $this->assertSame(['สมชาย ใจดี', 'มานี รักเรียน'], $booking->passengers->pluck('name')->all());
         $this->assertSame(['A1', 'A2'], $booking->seats->pluck('seat_id')->all());

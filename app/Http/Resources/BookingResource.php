@@ -102,6 +102,8 @@ class BookingResource extends JsonResource
             'group_name' => $this->group_name,
             'group_notes' => $this->group_notes,
             'is_join_trip' => (bool) $this->is_join_trip,
+            // ช่องทางที่จอง (ClientChannel) — web|app|liff|admin|intake, null = ไม่รู้/ใบจองเก่า
+            'source' => $this->source,
             'is_gift' => (bool) $this->is_gift,
             'gift' => $this->when((bool) $this->is_gift, function () use ($request) {
                 $viewerIsGiver = $request->user() && $this->giftGiverUserId() === $request->user()->id;

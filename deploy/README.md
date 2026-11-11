@@ -57,6 +57,7 @@ bash /var/www/luilaykhao/deploy/deploy.sh
 | Reverb (websocket) | supervisor `reverb` | `deploy/supervisor/reverb.conf` |
 | หมุนไฟล์ log | `/etc/logrotate.d/luilaykhao` | `deploy/logrotate/luilaykhao` |
 | nginx | `/etc/nginx/sites-available/luilaykhao` | `deploy/nginx/luilaykhao.conf` |
+| ขนาดอัปโหลด | `client_max_body_size 64m` (nginx) + `upload_max_filesize = 64M`, `post_max_size = 64M` ใน php.ini ของ FPM | วิดีโอรีวิวรับได้ถึง 50 MB ถ้าค่าใดต่ำกว่านี้ลูกค้าจะได้ 413 |
 
 ห้ามมี:
 - `schedule:run` ใน crontab ของ root หรือ user อื่น
@@ -169,3 +170,17 @@ ls -lh /var/www/luilaykhao/storage/logs/
 
 ถ้าจะเปิดคิวที่ตายมานาน **ล้างงานค้างก่อนเสมอ** (`php artisan queue:clear redis --queue=<ชื่อ> --force`)
 ไม่งั้นงานเก่าทั้งกองจะวิ่งพร้อมกันและส่งข้อความซ้ำหาลูกค้า
+
+## ยกเลิก token รุ่นเก่า (ครั้งเดียว หลังแยก token ตามช่องทาง)
+
+token ชื่อ `auth-token` ไม่มีวันหมดอายุ และแยกไม่ออกว่าเป็นของเว็บ (localStorage)
+หรือของแอป — `auth:revoke-legacy-tokens` ยกเลิกทั้งหมด ทุกคนที่ล็อกอินค้างไว้ต้อง
+ล็อกอินใหม่หนึ่งครั้ง (แอป/เว็บพาไปหน้าล็อกอินเองเมื่อได้ 401, LIFF ขอ token ใหม่จาก LINE)
+
+ลำดับ: deploy backend + เว็บที่ส่ง `X-Client` ก่อน → ปล่อยแอปเวอร์ชันที่ส่ง `X-Client: app`
+ให้คนอัปเดตสักพัก → แล้วค่อยรัน (คนที่ยังใช้แอปรุ่นเก่าล็อกอินใหม่ได้ปกติ แค่ได้ `auth-token` อีก)
+
+```bash
+php artisan auth:revoke-legacy-tokens            # นับให้ดูอย่างเดียว
+php artisan auth:revoke-legacy-tokens --force    # ยกเลิกจริง ย้อนกลับไม่ได้ — รันครั้งเดียว
+```

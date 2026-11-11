@@ -13,6 +13,7 @@ use App\Services\CustomerIntakeService;
 use App\Services\GiftVoucherService;
 use App\Services\LoyaltyService;
 use App\Services\PartnerService;
+use App\Support\ClientChannel;
 use Carbon\Carbon;
 
 /**
@@ -45,6 +46,20 @@ class BookingObserver
         private PartnerService $partnerService,
         private CoinService $coinService,
     ) {}
+
+    /**
+     * ช่องทางที่จอง (web/app/liff) ตัดสินฝั่งเซิร์ฟเวอร์จาก token/header ของ request
+     * ที่สร้างใบจอง — ทางที่รู้ตัวเองชัดกว่า (จองมือของแอดมิน, ลิงก์กรอกข้อมูล) ใส่
+     * source มาเองก่อนแล้ว งานเบื้องหลังที่ไม่มี request ปล่อยเป็น null
+     */
+    public function creating(Booking $booking): void
+    {
+        if (filled($booking->source) || ! request()->route()) {
+            return;
+        }
+
+        $booking->source = ClientChannel::fromRequest(request());
+    }
 
     public function created(Booking $booking): void
     {

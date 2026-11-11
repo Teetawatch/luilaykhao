@@ -62,6 +62,7 @@ use App\Services\SmsService;
 use App\Services\TripAlertService;
 use App\Services\TripBriefService;
 use App\Services\VehicleDriverService;
+use App\Support\ClientChannel;
 use App\Support\MediaDisk;
 use App\Support\PaymentQuote;
 use App\Support\Polyline;
@@ -1619,6 +1620,12 @@ class AdminController extends Controller
         if ($request->filled('custom_pickup_status')) {
             $query->where('custom_pickup_status', $request->custom_pickup_status);
         }
+        // ช่องทางที่จอง — 'unknown' = ใบจองก่อนมีการบันทึกช่องทาง
+        if ($request->filled('source')) {
+            $request->source === 'unknown'
+                ? $query->whereNull('source')
+                : $query->where('source', $request->source);
+        }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->whereLike('booking_ref', "%{$request->search}%")
@@ -2982,6 +2989,7 @@ class AdminController extends Controller
                     'booking_ref' => Booking::generateRef(),
                     'user_id' => $user->id,
                     'schedule_id' => $request->schedule_id,
+                    'source' => ClientChannel::ADMIN,
                     'pickup_region' => $pickupPoint?->region ?: $request->input('pickup_region'),
                     'pickup_point_id' => $pickupPoint?->id,
                     'vehicle_option_id' => $vehicleOption?->id,

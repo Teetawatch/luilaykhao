@@ -68,6 +68,8 @@ Schedule::command('ops:alert')->everyTenMinutes()->environments(['production'])-
 Schedule::job(new PingHeartbeatJob)->everyFiveMinutes()->when(fn () => filled(config('ops.heartbeat_url')));
 
 Schedule::command('installment:remind')->dailyAt('08:00')->timezone('Asia/Bangkok');
+// token เว็บหมดอายุเมื่อไม่ได้ใช้ (ClientChannel) — ลบแถวที่หมดอายุเกิน 1 วันทิ้ง
+Schedule::command('sanctum:prune-expired --hours=24')->dailyAt('04:20')->timezone('Asia/Bangkok');
 // สตาฟที่ยังถือเงินหน้างานของรอบที่จบแล้ว — เตือนทุกเช้าจนกว่าจะกดส่งเงิน
 Schedule::command('onsite-money:remind')->dailyAt('09:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::command('deposit:remind-balance')->dailyAt('08:10')->timezone('Asia/Bangkok');

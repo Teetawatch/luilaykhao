@@ -99,6 +99,11 @@
           <option value="installment">ผ่อนชำระ</option>
         </select>
 
+        <select v-model="filters.source" @change="fetchData()">
+          <option value="">ทุกช่องทาง</option>
+          <option v-for="opt in sourceOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
+
         <input v-model="filters.date" type="date" @change="fetchData()" />
 
         <select v-model="filters.refund_status" @change="fetchData()">
@@ -165,6 +170,7 @@
                   <div class="mini-badges">
                     <span class="mini-badge">{{ booking.is_join_trip ? 'จอยทริป' : 'จองปกติ' }}</span>
                     <span v-if="booking.is_group" class="mini-badge group">กรุ๊ป</span>
+                    <span v-if="booking.source" class="mini-badge source">{{ sourceLabel(booking.source) }}</span>
                     <span v-if="booking.payment_type === 'installment'" class="mini-badge installment">ผ่อนชำระ</span>
                     <span v-else-if="booking.payment_type === 'deposit'" class="mini-badge deposit">มัดจำ</span>
                     <span v-if="booking.is_gift" class="mini-badge gift">
@@ -498,6 +504,7 @@
               <InfoItem label="วันเดินทาง" :value="formatScheduleRange(detailBooking.schedule)" />
               <InfoItem label="พาหนะ" :value="vehicleName(detailBooking)" />
               <InfoItem label="ประเภทการจอง" :value="detailBooking.is_join_trip ? 'จอยทริป' : 'จองปกติ'" />
+              <InfoItem label="จองผ่าน" :value="detailBooking.source ? sourceLabel(detailBooking.source) : 'ไม่ทราบ (ใบจองเก่า)'" />
               <InfoItem label="QR เช็คอิน" :value="detailBooking.qr_code || '-'" />
               <InfoItem label="ใบเดินทาง" :value="briefStatusLabel(detailBooking)" wide />
               <InfoItem v-if="detailBooking.cancelled_at" label="วันที่ยกเลิก" :value="formatDateTime(detailBooking.cancelled_at)" />
@@ -2357,6 +2364,7 @@ const filters = reactive({
   date: '',
   booking_type: '',
   payment_type: '',
+  source: '',
   // คิวงาน "เงินคืนที่ต้องโอนให้ลูกค้า" ลิงก์มาด้วย ?refund_status=requested
   refund_status: '',
 });
@@ -2563,7 +2571,7 @@ const manualForm = reactive({
 });
 
 const bookings = computed(() => Array.isArray(admin.bookings.data) ? admin.bookings.data : []);
-const hasActiveFilters = computed(() => Boolean(filters.search || filters.status || filters.date || filters.booking_type || filters.payment_type || filters.refund_status));
+const hasActiveFilters = computed(() => Boolean(filters.search || filters.status || filters.date || filters.booking_type || filters.payment_type || filters.source || filters.refund_status));
 
 // ตัวเลือกประเภทการชำระในฟอร์มแก้ไข (full / deposit / installment)
 const paymentTypeOptions = [
@@ -2809,8 +2817,23 @@ function resetFilters() {
   filters.date = '';
   filters.booking_type = '';
   filters.payment_type = '';
+  filters.source = '';
   filters.refund_status = '';
   fetchData();
+}
+
+// ช่องทางที่จอง (bookings.source) — เซิร์ฟเวอร์ตัดสินจาก token ที่ใช้จอง
+const sourceOptions = [
+  { value: 'web', label: 'เว็บไซต์' },
+  { value: 'app', label: 'แอป' },
+  { value: 'liff', label: 'LINE' },
+  { value: 'admin', label: 'แอดมินจองให้' },
+  { value: 'intake', label: 'ลิงก์กรอกข้อมูล' },
+  { value: 'unknown', label: 'ไม่ทราบ' },
+];
+
+function sourceLabel(source) {
+  return sourceOptions.find((opt) => opt.value === source)?.label || source;
 }
 
 async function openDetail(booking) {
@@ -4815,6 +4838,12 @@ async function reverifySlip(bookingRef, slipType) {
   background: #eff6ff;
   color: #2563eb;
   border: 1px solid #bfdbfe;
+}
+
+.mini-badge.source {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
 }
 
 .mini-badge.installment {

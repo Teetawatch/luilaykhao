@@ -113,6 +113,7 @@
 import { ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { API_BASE_URL } from '../lib/apiBase';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -162,9 +163,7 @@ async function handleLogin() {
 }
 
 function loginWithSocial(provider) {
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  const baseUrl = apiUrl.replace(/\/api\/v1$/, '');
-  window.location.href = `${baseUrl}/api/v1/auth/${provider}/redirect`;
+  window.location.href = `${API_BASE_URL}/auth/${provider}/redirect`;
 }
 </script>
 

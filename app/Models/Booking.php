@@ -63,7 +63,7 @@ class Booking extends Model
     public const PICKUP_STATUS_TTL_HOURS = 12;
 
     protected $fillable = [
-        'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status',
+        'booking_ref', 'user_id', 'schedule_id', 'pickup_region', 'pickup_point_id', 'status', 'source',
         'vehicle_option_id', 'vehicle_option_label', 'vehicle_option_adjustment',
         'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note',
         'custom_pickup_status', 'custom_pickup_price', 'custom_pickup_reject_reason', 'custom_pickup_resolved_at',

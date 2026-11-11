@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\CustomerIntake;
 use App\Models\CustomerIntakePerson;
 use App\Models\TripSchedule;
+use App\Support\ClientChannel;
 use App\Support\TermsConsent;
 use App\Support\TripRentalItems;
 use Illuminate\Support\Carbon;
@@ -254,6 +255,7 @@ class IntakeBookingService
             verifySeatLocks: false,
             vehicleOptionId: $optionId,
             termsConsent: $consent,
+            source: ClientChannel::INTAKE,
         );
 
         // รูปบัตรประชาชน (Border Pass) ที่แนบมากับฟอร์ม — ใบจองต้องเห็นเหมือนแนบเอง

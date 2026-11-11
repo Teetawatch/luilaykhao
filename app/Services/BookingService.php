@@ -73,6 +73,8 @@ class BookingService
         ?TermsConsent $termsConsent = null,
         ?string $giftVoucherCode = null,
         int $coinsToUse = 0,
+        // ช่องทางที่จอง — ว่างไว้ = ให้ BookingObserver อ่านจาก request เอง
+        ?string $source = null,
     ): Booking {
         // Whether THIS booking is the one that sold out the schedule — drives
         // the "trip is now full" admin push sent after the transaction commits.
@@ -97,7 +99,7 @@ class BookingService
             $promotionCode = null;
         }
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, $skipPayment, $giftVoucherCode, $coinsToUse, &$coveredByVoucher, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, $skipPayment, $giftVoucherCode, $coinsToUse, $source, &$coveredByVoucher, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -587,6 +589,7 @@ class BookingService
                 // หลักฐานว่าลูกค้ากดยอมรับเงื่อนไขฉบับใด ณ เวลาใด — ช่องทางที่
                 // ยังไม่ได้ขอความยินยอม (แอดมินจองแทน, แอปรุ่นก่อน) ปล่อยว่างไว้
                 // ตามความจริง ดีกว่าประทับเวลาให้ทั้งที่ไม่มีใครกด
+                'source' => $source,
                 'terms_accepted_at' => $termsConsent ? now() : null,
                 'terms_version' => $termsConsent?->version,
             ]);

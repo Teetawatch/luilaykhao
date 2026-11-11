@@ -90,6 +90,8 @@ class AdminManualHoldBookingTest extends TestCase
         $this->assertEqualsWithDelta($holdUntil->timestamp, $booking->hold_until->timestamp, 60);
         $this->assertSame('ลูกค้าโทรมาจอง ขอโอนวันศุกร์', $booking->hold_note);
         $this->assertSame($this->admin->id, $booking->hold_by_id);
+        // จองมือฝั่งแอดมิน ไม่ใช่ลูกค้าจองผ่านเว็บเอง
+        $this->assertSame('admin', $booking->source);
         $this->assertEquals(0, (float) $booking->paid_amount);
         $this->assertNull($booking->slip_path);
 

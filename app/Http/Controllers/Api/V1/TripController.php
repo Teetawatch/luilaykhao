@@ -91,7 +91,9 @@ class TripController extends Controller
             default => $query->orderByDesc($bookedPassengersCount),
         };
 
-        $trips = $query->orderBy('created_at', 'desc')->paginate($request->per_page ?? 12);
+        // เพดาน 100 — หน้าแรกของเว็บดึงทริปทั้งหมดในครั้งเดียว (per_page=100)
+        // แต่ endpoint สาธารณะต้องไม่ยอมให้ใครขอทีละหลายพันแถว
+        $trips = $query->orderBy('created_at', 'desc')->paginate(min(max((int) ($request->per_page ?: 12), 1), 100));
         $trips->getCollection()->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
 
         return $this->paginated($trips->through(fn ($trip) => new TripResource($trip)));
