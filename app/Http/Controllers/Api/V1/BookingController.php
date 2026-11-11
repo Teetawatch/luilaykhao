@@ -303,6 +303,8 @@ class BookingController extends Controller
         if (! isset($data['per_page'])) {
             $bookings = $query->get();
             $this->attachNextTripWeather($bookings);
+            // ทริปที่ฝังในแต่ละใบนับยอดจอง/รีวิวรวดเดียว แทนใบละ 7 คิวรี
+            Trip::loadListStats($bookings->map(fn ($b) => $b->schedule?->trip));
 
             return $this->success(
                 $bookings->map(fn ($b) => new BookingResource($b))->values(),
@@ -312,6 +314,7 @@ class BookingController extends Controller
 
         $bookings = $query->paginate($data['per_page']);
         $this->attachNextTripWeather($bookings->getCollection());
+        Trip::loadListStats($bookings->getCollection()->map(fn ($b) => $b->schedule?->trip));
 
         return $this->paginated(
             $bookings->through(fn ($b) => new BookingResource($b)),

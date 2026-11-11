@@ -45,6 +45,9 @@ class TripResource extends JsonResource
 
         $seatsLeft = $this->lowestOpenSeats();
 
+        // คิวรีเดียว — หรือไม่มีเลยถ้ารายการนับไว้ทั้งหน้าแล้ว (Trip::loadListStats)
+        $reviewStats = $this->resource->reviewStats();
+
         return [
             'id' => $this->id,
             'title' => $this->title,
@@ -98,6 +101,8 @@ class TripResource extends JsonResource
             // คลิปที่แอปเล่นวนแบบปิดเสียงแทนรูปปก — null = ใช้รูปปก
             'cover_video' => $this->cover_video ?: null,
             'thumbnail_image' => $this->thumbnail_image,
+            // รูปการ์ดที่ย่อเหลือ 1200px — null = ยังไม่มี ให้ใช้ thumbnail_image/cover_image
+            'card_image' => $this->resource->cardImageUrl(),
             'gallery' => $this->gallery ?? [],
             'videos' => $this->videos ?? [],
             'photos' => TripPhotoResource::collection($this->whenLoaded('photos')),
@@ -135,9 +140,9 @@ class TripResource extends JsonResource
             // คือฉบับที่นับและเรียงคำให้แล้ว ทุกหน้าจอลูกค้าวาดตัวนี้ — null ทั้งคู่ = ยังไม่ระบุ
             'meal_plan' => TripMealPlan::normalize($this->meal_plan, $this->duration_days),
             'meals' => $this->resource->meals(),
-            'rating' => $this->reviews()->where('is_approved', true)->avg('rating') ?: 0,
-            'review_count' => $this->reviews()->where('is_approved', true)->count(),
-            'rating_breakdown' => $this->ratingBreakdown(),
+            'rating' => $reviewStats['rating'],
+            'review_count' => $reviewStats['count'],
+            'rating_breakdown' => $reviewStats['breakdown'],
             'confirmed_passengers_count' => $this->confirmed_passengers_count,
             'bookings_count' => $this->bookings_count,
             'booked_passengers_count' => $this->booked_passengers_count,
@@ -245,26 +250,5 @@ class TripResource extends JsonResource
             ->first();
 
         return $schedule?->departure_date?->toDateString();
-    }
-
-    /**
-     * Average sub-ratings (guide/vehicle/food/value) from approved reviews.
-     * Returns null per category when no review has rated it.
-     */
-    private function ratingBreakdown(): array
-    {
-        $avg = $this->reviews()
-            ->where('is_approved', true)
-            ->selectRaw('AVG(rating_guide) as guide, AVG(rating_vehicle) as vehicle, AVG(rating_food) as food, AVG(rating_value) as value')
-            ->first();
-
-        $round = fn ($v) => $v === null ? null : round((float) $v, 1);
-
-        return [
-            'guide' => $round($avg?->guide),
-            'vehicle' => $round($avg?->vehicle),
-            'food' => $round($avg?->food),
-            'value' => $round($avg?->value),
-        ];
     }
 }

@@ -28,8 +28,8 @@
             <router-link v-for="item in items" :key="item.trip.id" :to="`/trips/${item.trip.slug}`" @click="goBook"
               class="flex items-center gap-3 p-2.5 rounded-2xl border border-gray-100 hover:border-orange-200 hover:bg-orange-50/50 transition-colors group">
               <div class="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                <img v-if="item.trip.thumbnail_image || item.trip.cover_image"
-                  :src="item.trip.thumbnail_image || item.trip.cover_image" :alt="item.trip.title"
+                <img v-if="tripCardImage(item.trip)"
+                  :src="tripCardImage(item.trip)" :alt="item.trip.title"
                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
               </div>
               <div class="flex-1 min-w-0">
@@ -90,6 +90,7 @@
 import { ref, computed, reactive, watch, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useTripsStore } from '../stores/trips';
+import { tripCardImage } from '../lib/tripImage';
 import { tripScarcityLabel, tripScarcityLevel } from '../lib/scheduleHelpers';
 
 const SNOOZE_KEY = 'llk_urgent_popup_snooze'; // localStorage — ISO date; ปิดไปจนถึงวันนั้น

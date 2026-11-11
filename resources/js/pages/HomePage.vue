@@ -309,8 +309,8 @@
             <!-- Image -->
             <div class="relative overflow-hidden aspect-[4/5]">
               <img
-                v-if="trip.thumbnail_image || trip.cover_image"
-                :src="trip.thumbnail_image || trip.cover_image"
+                v-if="tripCardImage(trip)"
+                :src="tripCardImage(trip)"
                 :alt="trip.title"
                 class="w-full h-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.09]"
                 @error="(e) => e.target.style.display='none'"
@@ -506,7 +506,7 @@
             >
               <!-- Background Image -->
                <img
-                :src="trip.thumbnail_image || trip.cover_image || '/images/placeholder.jpg'"
+                :src="tripCardImage(trip) || '/images/placeholder.jpg'"
                 :alt="trip.title"
                 class="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-60"
               />
@@ -765,6 +765,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import api from '../lib/axios';
+import { tripCardImage } from '../lib/tripImage';
 import { useWishlistStore } from '../stores/wishlist';
 import TripCard from '../components/TripCard.vue';
 import CommunityFeedStrip from '../components/CommunityFeedStrip.vue';

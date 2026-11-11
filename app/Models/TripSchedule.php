@@ -1139,6 +1139,52 @@ class TripSchedule extends Model
     }
 
     /**
+     * [syncBookedSeats] ของหลายรอบพร้อมกัน — หน้ารายการทริปเคยเรียกทีละรอบ
+     * (2 COUNT + UPDATE ต่อรอบ ทริป 30 ใบ × หลายรอบ = หลายร้อยคิวรีต่อการเปิดหน้า)
+     * ตรงนี้นับทุกรอบในคิวรีเดียว แล้วเขียนเฉพาะรอบที่ตัวเลขไม่ตรงจริง ผลลัพธ์บน
+     * โมเดลเหมือนเรียกทีละรอบทุกอย่าง
+     *
+     * @param  iterable<TripSchedule>  $schedules
+     */
+    public static function syncBookedSeatsFor(iterable $schedules): void
+    {
+        $schedules = collect($schedules)->filter()->values();
+        if ($schedules->isEmpty()) {
+            return;
+        }
+
+        $counts = BookingPassenger::query()
+            ->join('bookings', 'bookings.id', '=', 'booking_passengers.booking_id')
+            ->whereIn('bookings.schedule_id', $schedules->pluck('id')->unique()->all())
+            ->whereIn('bookings.status', self::ACTIVE_BOOKING_STATUSES)
+            ->groupBy('bookings.schedule_id')
+            ->selectRaw('bookings.schedule_id as schedule_id, COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN bookings.is_join_trip = ? THEN 1 ELSE 0 END) as joins', [true])
+            ->get()
+            ->keyBy('schedule_id');
+
+        foreach ($schedules as $schedule) {
+            $row = $counts->get($schedule->id);
+            $join = (int) ($row->joins ?? 0);
+            $count = (int) ($row->total ?? 0) - $join;
+
+            if ((int) $schedule->booked_seats !== $count
+                || (int) $schedule->join_trip_booked_seats !== $join) {
+                $schedule->update([
+                    'booked_seats' => $count,
+                    'join_trip_booked_seats' => $join,
+                ]);
+            }
+            $schedule->booked_seats = $count;
+            $schedule->join_trip_booked_seats = $join;
+
+            if ($schedule->relationLoaded('vehicleOptions')) {
+                $schedule->syncVehicleOptionSeats();
+            }
+        }
+    }
+
+    /**
      * ตัวนับที่นั่งของแต่ละตัวเลือกยานพาหนะ นับใหม่จากใบจองจริง
      *
      * แยกเมธอดไว้เพื่อให้ syncBookedSeats() ยังอ่านง่าย และเพราะรอบส่วนใหญ่

@@ -5,7 +5,7 @@
   <router-link :to="`/trips/${trip.slug}`" class="group flex flex-col h-full">
 
     <div class="zoom-media relative aspect-[4/5] rounded-2xl bg-[var(--color-sand-dark)] shrink-0">
-      <img v-if="trip.thumbnail_image || trip.cover_image" :src="trip.thumbnail_image || trip.cover_image" :alt="trip.title"
+      <img v-if="tripCardImage(trip)" :src="tripCardImage(trip)" :alt="trip.title"
         loading="lazy"
         class="w-full h-full object-cover"
         @error="(e) => e.target.style.display='none'" />
@@ -78,6 +78,7 @@ import { computed, ref } from 'vue';
 import { useWishlistStore } from '../stores/wishlist';
 import { tripSeatsLeft, tripScarcityLevel } from '../lib/scheduleHelpers';
 import { thaiDayMonth } from '../lib/thaiDate';
+import { tripCardImage } from '../lib/tripImage';
 
 const props = defineProps({
   trip: { type: Object, required: true },

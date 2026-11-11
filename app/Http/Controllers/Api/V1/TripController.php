@@ -8,10 +8,12 @@ use App\Http\Resources\TripScheduleResource;
 use App\Models\BookingPassenger;
 use App\Models\Place;
 use App\Models\Trip;
+use App\Models\TripSchedule;
 use App\Services\WeatherService;
 use App\Support\Countries;
 use App\Support\MediaDisk;
 use App\Support\ThaiDate;
+use App\Support\TripListCache;
 use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +28,11 @@ class TripController extends Controller
     public function __construct(private WeatherService $weatherService) {}
 
     public function index(Request $request): JsonResponse
+    {
+        return TripListCache::respond('index', $request, fn () => $this->buildIndex($request));
+    }
+
+    private function buildIndex(Request $request): JsonResponse
     {
         $query = Trip::query()->where('status', 'active');
 
@@ -94,7 +101,8 @@ class TripController extends Controller
         // เพดาน 100 — หน้าแรกของเว็บดึงทริปทั้งหมดในครั้งเดียว (per_page=100)
         // แต่ endpoint สาธารณะต้องไม่ยอมให้ใครขอทีละหลายพันแถว
         $trips = $query->orderBy('created_at', 'desc')->paginate(min(max((int) ($request->per_page ?: 12), 1), 100));
-        $trips->getCollection()->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
+        TripSchedule::syncBookedSeatsFor($trips->getCollection()->flatMap->schedules);
+        Trip::loadListStats($trips->getCollection());
 
         return $this->paginated($trips->through(fn ($trip) => new TripResource($trip)));
     }
@@ -220,7 +228,12 @@ class TripController extends Controller
         return $this->success($trips);
     }
 
-    public function featured(): JsonResponse
+    public function featured(Request $request): JsonResponse
+    {
+        return TripListCache::respond('featured', $request, fn () => $this->buildFeatured());
+    }
+
+    private function buildFeatured(): JsonResponse
     {
         $trips = Trip::where('status', 'active')
             ->where('is_featured', true)
@@ -229,7 +242,8 @@ class TripController extends Controller
             }])
             ->orderByDesc('created_at')
             ->get();
-        $trips->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
+        TripSchedule::syncBookedSeatsFor($trips->flatMap->schedules);
+        Trip::loadListStats($trips);
 
         return $this->success(TripResource::collection($trips));
     }
@@ -238,18 +252,28 @@ class TripController extends Controller
      * Trips with at least one OPEN upcoming round that is almost full
      * (1–5 seats left). Sorted most-urgent first. Powers the "ใกล้เต็มแล้ว" rail.
      */
-    public function almostFull(): JsonResponse
+    public function almostFull(Request $request): JsonResponse
     {
-        return $this->success(TripResource::collection($this->almostFullTrips()));
+        return TripListCache::respond('almost-full', $request, function () {
+            $trips = $this->almostFullTrips();
+            Trip::loadListStats($trips);
+
+            return $this->success(TripResource::collection($trips));
+        });
     }
 
     /**
      * Trips with at least one round on a live flash sale, soonest-ending first.
      * Powers the "⚡ Flash Sale" home rail and the flash-sale push CTA.
      */
-    public function flashSale(): JsonResponse
+    public function flashSale(Request $request): JsonResponse
     {
-        return $this->success(TripResource::collection($this->flashSaleTrips()));
+        return TripListCache::respond('flash-sale', $request, function () {
+            $trips = $this->flashSaleTrips();
+            Trip::loadListStats($trips);
+
+            return $this->success(TripResource::collection($trips));
+        });
     }
 
     /**
@@ -278,6 +302,8 @@ class TripController extends Controller
                 ->values()
             : collect();
 
+        Trip::loadListStats($flash->concat($almost));
+
         return $this->success([
             'enabled' => true,
             'title' => $settings['title'],
@@ -300,7 +326,7 @@ class TripController extends Controller
             }])
             ->get();
 
-        $trips->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
+        TripSchedule::syncBookedSeatsFor($trips->flatMap->schedules);
 
         return $trips
             ->map(function ($trip) {
@@ -330,7 +356,7 @@ class TripController extends Controller
             }])
             ->get();
 
-        $trips->each(fn ($trip) => $trip->schedules->each->syncBookedSeats());
+        TripSchedule::syncBookedSeatsFor($trips->flatMap->schedules);
 
         // whereHas prefilters cheaply; flashSaleActive() is the source of truth
         // (price/seats/end time), so re-check in PHP after syncing booked seats.
@@ -410,7 +436,8 @@ class TripController extends Controller
             ->pluck('trip')
             ->values();
 
-        $ranked->each(fn ($t) => $t->schedules->each->syncBookedSeats());
+        TripSchedule::syncBookedSeatsFor($ranked->flatMap->schedules);
+        Trip::loadListStats($ranked);
 
         return $this->success(TripResource::collection($ranked));
     }
@@ -441,7 +468,7 @@ class TripController extends Controller
             ->withHeldSeats()
             ->orderBy('departure_date')
             ->get();
-        $schedules->each->syncBookedSeats();
+        TripSchedule::syncBookedSeatsFor($schedules);
         $schedules->each(fn ($s) => $this->weatherService->attach($s, $trip));
 
         return $this->success(TripScheduleResource::collection($schedules));

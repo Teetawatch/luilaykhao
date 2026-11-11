@@ -167,8 +167,8 @@
                 @click="selectTrip(t)"
               >
                 <img
-                  v-if="t.slug && (t.thumbnail_image || t.cover_image)"
-                  :src="t.thumbnail_image || t.cover_image"
+                  v-if="t.slug && tripCardImage(t)"
+                  :src="tripCardImage(t)"
                   :alt="t.title"
                   loading="lazy"
                   class="w-12 h-12 rounded-xl object-cover shrink-0 bg-gray-100"
@@ -279,6 +279,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
+import { tripCardImage } from '../lib/tripImage';
 import { THAI_MONTHS_SHORT } from '../lib/thaiDate';
 import {
   bookableSeats,

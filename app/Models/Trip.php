@@ -8,6 +8,7 @@ use App\Support\TripDocumentRequirements;
 use App\Support\TripMealPlan;
 use App\Support\TripRentalItems;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -350,6 +351,10 @@ class Trip extends Model
 
     public function getConfirmedPassengersCountAttribute(): int
     {
+        if ($this->listStats !== null) {
+            return (int) $this->listStats['confirmed_passengers'];
+        }
+
         return BookingPassenger::whereHas('booking', function ($q) {
             $q->where('status', 'completed')
                 ->whereHas('schedule', function ($sq) {
@@ -364,6 +369,10 @@ class Trip extends Model
      */
     public function getBookingsCountAttribute(): int
     {
+        if ($this->listStats !== null) {
+            return (int) $this->listStats['bookings'];
+        }
+
         return Booking::whereIn('status', ['confirmed', 'completed'])
             ->whereHas('schedule', function ($sq) {
                 $sq->where('trip_id', $this->id);
@@ -377,6 +386,10 @@ class Trip extends Model
      */
     public function getBookedPassengersCountAttribute(): int
     {
+        if ($this->listStats !== null) {
+            return (int) $this->listStats['booked_passengers'];
+        }
+
         return BookingPassenger::whereHas('booking', function ($q) {
             $q->whereIn('status', ['confirmed', 'completed'])
                 ->whereHas('schedule', function ($sq) {
@@ -392,6 +405,10 @@ class Trip extends Model
      */
     public function getBookedThisWeekCountAttribute(): int
     {
+        if ($this->listStats !== null) {
+            return (int) $this->listStats['booked_this_week'];
+        }
+
         return BookingPassenger::whereHas('booking', function ($q) {
             $q->whereIn('status', ['confirmed', 'completed'])
                 ->where('created_at', '>=', now()->subDays(7))
@@ -399,6 +416,141 @@ class Trip extends Model
                     $sq->where('trip_id', $this->id);
                 });
         })->count();
+    }
+
+    /** รูปที่การ์ดทริปใช้ — thumbnail ที่แอดมินตั้ง หรือรูปปก */
+    public function cardImageSource(): ?string
+    {
+        return $this->thumbnail_image ?: ($this->cover_image ?: null);
+    }
+
+    /**
+     * รูปการ์ดที่ย่อแล้ว (GenerateTripCardImageJob) — null ระหว่างที่รูปใหม่ยังย่อไม่เสร็จ
+     * หรือรูปอยู่นอก storage ของเรา ผู้เรียกใช้รูปเต็มแทน
+     */
+    public function cardImageUrl(): ?string
+    {
+        $source = $this->cardImageSource();
+
+        return $source && $this->card_image && $this->card_image_source === $source
+            ? $this->card_image
+            : null;
+    }
+
+    /**
+     * สถิติที่การ์ดทริปใช้ (ยอดจอง/คนจอง/รีวิว) ที่นับไว้ล่วงหน้าทั้งหน้าด้วย
+     * [loadListStats] — null = ยังไม่ได้นับ accessor แต่ละตัวถามฐานข้อมูลเองเหมือนเดิม
+     *
+     * เป็น property ธรรมดา ไม่ใช่ attribute จึงไม่มีวันถูกเขียนลงตาราง
+     *
+     * @var array<string, mixed>|null
+     */
+    public ?array $listStats = null;
+
+    /**
+     * นับสถิติการ์ดของทริปทั้งชุดในคิวรีไม่กี่ตัว แทนที่ทริปละ 7 คิวรี
+     * (4 accessor ยอดจอง + รีวิว 3 ตัว) — รายการทริป 30 ใบเคยยิงราว 210 คิวรี
+     *
+     * @param  iterable<Trip>  $trips
+     */
+    public static function loadListStats(iterable $trips): void
+    {
+        // ทริปเดียวกันอาจมาเป็นคนละ instance (เช่นใบจองสองใบในรอบต่างกันของทริปเดียว)
+        // — นับครั้งเดียวต่อ id แล้วใส่ให้ทุก instance
+        $trips = collect($trips)->filter()->values();
+        if ($trips->isEmpty()) {
+            return;
+        }
+        $ids = $trips->pluck('id')->unique()->values()->all();
+        $weekAgo = now()->subDays(7);
+
+        $passengers = BookingPassenger::query()
+            ->join('bookings', 'bookings.id', '=', 'booking_passengers.booking_id')
+            ->join('trip_schedules', 'trip_schedules.id', '=', 'bookings.schedule_id')
+            ->whereIn('trip_schedules.trip_id', $ids)
+            ->whereIn('bookings.status', ['confirmed', 'completed'])
+            ->groupBy('trip_schedules.trip_id')
+            ->selectRaw('trip_schedules.trip_id as trip_id')
+            ->selectRaw("SUM(CASE WHEN bookings.status = 'completed' THEN 1 ELSE 0 END) as confirmed_passengers")
+            ->selectRaw('COUNT(*) as booked_passengers')
+            ->selectRaw('SUM(CASE WHEN bookings.created_at >= ? THEN 1 ELSE 0 END) as booked_this_week', [$weekAgo])
+            ->get()
+            ->keyBy('trip_id');
+
+        $bookings = Booking::query()
+            ->join('trip_schedules', 'trip_schedules.id', '=', 'bookings.schedule_id')
+            ->whereIn('trip_schedules.trip_id', $ids)
+            ->whereIn('bookings.status', ['confirmed', 'completed'])
+            ->groupBy('trip_schedules.trip_id')
+            ->selectRaw('trip_schedules.trip_id as trip_id, COUNT(*) as total')
+            ->pluck('total', 'trip_id');
+
+        $reviews = self::reviewStatsQuery()
+            ->whereIn('trip_id', $ids)
+            ->groupBy('trip_id')
+            ->addSelect('trip_id')
+            ->get()
+            ->keyBy('trip_id');
+
+        foreach ($trips as $trip) {
+            $id = $trip->id;
+            $p = $passengers->get($id);
+            $trip->listStats = [
+                'confirmed_passengers' => (int) ($p->confirmed_passengers ?? 0),
+                'booked_passengers' => (int) ($p->booked_passengers ?? 0),
+                'booked_this_week' => (int) ($p->booked_this_week ?? 0),
+                'bookings' => (int) ($bookings->get($id) ?? 0),
+                'reviews' => self::formatReviewStats($reviews->get($id)),
+            ];
+
+            // รอบที่โหลดมาพร้อมทริปถาม $schedule->trip (ราคา, แคมเปญ) ซึ่งเดิมโหลดทริป
+            // ซ้ำทีละรอบ แล้ว TripScheduleResource ก็วาดทริปนั้นซ้อนเข้าไปพร้อมนับสถิติ
+            // ใหม่ทั้งชุด — ผูกสำเนาของทริปนี้ (ไม่มีรายการรอบ เหมือนตัวที่โหลดเองเดิม
+            // และพกสถิติที่เพิ่งนับไปด้วย) ให้ทุกรอบแทน
+            if ($trip->relationLoaded('schedules')) {
+                $lite = $trip->withoutRelations();
+                $trip->schedules->each(fn ($schedule) => $schedule->setRelation('trip', $lite));
+            }
+        }
+    }
+
+    /**
+     * คะแนนรีวิวที่อนุมัติแล้ว: เฉลี่ย, จำนวน และคะแนนย่อย 4 ด้าน — คิวรีเดียว
+     * (เดิม TripResource ถามแยก 3 ครั้งต่อทริป)
+     *
+     * @return array{rating: mixed, count: int, breakdown: array<string, float|null>}
+     */
+    public function reviewStats(): array
+    {
+        if ($this->listStats !== null) {
+            return $this->listStats['reviews'];
+        }
+
+        return self::formatReviewStats(self::reviewStatsQuery()->where('trip_id', $this->id)->first());
+    }
+
+    private static function reviewStatsQuery(): Builder
+    {
+        return Review::query()
+            ->where('is_approved', true)
+            ->selectRaw('AVG(rating) as rating, COUNT(*) as review_count')
+            ->selectRaw('AVG(rating_guide) as guide, AVG(rating_vehicle) as vehicle, AVG(rating_food) as food, AVG(rating_value) as value');
+    }
+
+    private static function formatReviewStats(?Model $row): array
+    {
+        $round = fn ($v) => $v === null ? null : round((float) $v, 1);
+
+        return [
+            'rating' => $row?->rating ?: 0,
+            'count' => (int) ($row?->review_count ?? 0),
+            'breakdown' => [
+                'guide' => $round($row?->guide),
+                'vehicle' => $round($row?->vehicle),
+                'food' => $round($row?->food),
+                'value' => $round($row?->value),
+            ],
+        ];
     }
 
     public function getRouteKeyName(): string

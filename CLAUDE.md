@@ -180,6 +180,13 @@ Both apps follow the same structure: `lib/{models,providers,screens,services,the
 - Reverb WebSocket: `web_socket_channel` in `realtime_service.dart`
 - API base URL and Reverb coordinates are injected at build time via `--dart-define`; `lib/config/api_config.dart` reads them with `String.fromEnvironment`
 
+### Home / list performance
+
+- **Public trip lists are cached** — `trips`, `trips/featured`, `trips/almost-full`, `trips/flash-sale` go through `TripListCache::respond()` (60 s, key = query + locale + viewer loyalty tier, because `booking_opens_at` shifts per tier). Saving a `Trip`, `TripSchedule`, `SchedulePickupPoint`, `SaleCampaign` or `Review` flushes it (AppServiceProvider); a booking flushes it through `syncBookedSeats`. If you add a viewer-dependent field to `TripResource`/`TripScheduleResource`, add it to the cache key.
+- **No per-trip queries in lists** — call `TripSchedule::syncBookedSeatsFor($schedules)` (one grouped COUNT) and `Trip::loadListStats($trips)` (booking/review stats for the whole page, and links a relation-less copy of the trip to each loaded schedule so `$schedule->trip` doesn't reload it). `TripListPerformanceTest` guards the query count.
+- **Card images** — `trips.card_image` is a 1200px JPEG made by `GenerateTripCardImageJob` (on trip save when the picture changes; backfill with `php artisan trips:card-images`). Only pictures on our own media disk are processed. `TripResource.card_image` is null until it matches the current picture; clients use `tripCardImage()` (app `customer_app_helpers.part.dart`, web `lib/tripImage.js`) which falls back to thumbnail/cover.
+- **App boot** — `AppProvider.boot()` paints from `OfflineCache` immediately when it has trips (+ the user, if signed in), then loads public and account data in parallel; `auth/me` failing no longer skips account loading. Tabs build on first visit (`FadeThroughIndexedStack`). `ApiClient.httpClient()` is one keep-alive client (respects `http.runWithClient` in tests). Resume refreshes only stale sets (`syncOnResume`).
+
 ### Testing
 
 Tests use SQLite in-memory (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`). Queue is `sync`, cache is `array`, mail is `array`. Feature tests in `tests/Feature/`, unit in `tests/Unit/`.
