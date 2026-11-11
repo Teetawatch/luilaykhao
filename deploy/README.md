@@ -14,8 +14,11 @@ bash /var/www/luilaykhao/deploy/deploy.sh
 ```
 
 รันในนาม user ที่ปกติใช้ `git pull` (ไม่ต้องใส่ `sudo` นำหน้า สคริปต์ขอรหัส sudo เอง)
-สคริปต์ดึงโค้ด → composer install → build หน้าเว็บ → migrate → ล้าง cache →
-รีสตาร์ท Horizon → `ops:doctor` และหยุดทันทีถ้าขั้นไหนพัง
+สคริปต์ดึงโค้ด → composer install → build หน้าเว็บ → migrate → สร้าง cache
+config/route ใหม่ (`optimize`) → รีสตาร์ท Horizon → `ops:doctor` และหยุดทันทีถ้าขั้นไหนพัง
+
+config ถูกแคชไว้ — **แก้ `.env` บนเครื่องแล้วต้องรัน `sudo -u www-data php artisan optimize`**
+ไม่งั้นค่าใหม่ไม่มีผล และอย่าเรียก `env()` นอกไฟล์ใน `config/` (คืน null เมื่อแคช config)
 
 ถ้าขึ้น "มีไฟล์ถูกแก้บนเซิร์ฟเวอร์" แปลว่ามีคนแก้โค้ดตรงบนเครื่อง — การแก้นั้นต้องเข้า git
 ก่อน ไม่งั้นจะหายตอน deploy ครั้งหน้า
@@ -117,7 +120,7 @@ heartbeat แก้ตรงนี้: ระบบยิงสัญญาณ "
    ```
 6. ```bash
    cd /var/www/luilaykhao
-   sudo -u www-data php artisan config:clear
+   sudo -u www-data php artisan optimize
    sudo -u www-data php artisan horizon:terminate
    ```
 7. ภายใน 5 นาที หน้า healthchecks.io ต้องขึ้นสถานะ **up** สีเขียว
@@ -143,7 +146,7 @@ cd /var/www/luilaykhao && sudo -u www-data php artisan reverb:check
 ```
 
 บอกว่าส่งไปที่ไหน ล้มเพราะอะไร และต้องแก้อะไร (`ops:doctor` / `ops:alert` ตรวจข้อนี้ด้วย)
-แก้ `.env` แล้ว: `config:clear` → `horizon:terminate` → `sudo supervisorctl restart 'reverb:*'`
+แก้ `.env` แล้ว: `optimize` → `horizon:terminate` → `sudo supervisorctl restart 'reverb:*'`
 ขนาด event ที่ Reverb รับได้คือ `max_request_size` ใน `config/reverb.php` (500 KB) Reverb อ่านค่านี้ตอนเริ่มเท่านั้น
 ถ้า `reverb:check` ขึ้น `Payload too large` แปลว่า Reverb ที่รันอยู่ยังใช้ค่าเก่า → `sudo supervisorctl restart 'reverb:*'`
 event สดที่ล้มไปแล้วหมดความหมายแล้ว ไม่ต้อง retry (`queue:flush` ล้างได้ แต่ล้าง*ทุก*งานที่ล้ม — ดูก่อนว่าไม่มีงานอื่นปน)

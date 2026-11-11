@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Resources\TripResource;
 use App\Models\Booking;
+use App\Models\BookingMember;
 use App\Models\BookingPassenger;
 use App\Models\LoyaltyAccount;
 use App\Models\Review;
@@ -192,6 +193,144 @@ class TripListPerformanceTest extends TestCase
         $trip->update(['title' => 'ชื่อใหม่']);
 
         $this->getJson('/api/v1/trips')->assertJsonPath('data.0.title', 'ชื่อใหม่');
+    }
+
+    public function test_opening_a_trip_page_keeps_the_list_cache(): void
+    {
+        $trip = $this->trip();
+        $schedule = $this->schedule($trip);
+        $this->book($schedule, 2);
+        $schedule->syncBookedSeats();
+
+        $this->getJson('/api/v1/trips')->assertOk();
+
+        // ตัวเลขที่นั่งตรงอยู่แล้ว — หน้าทริปต้องไม่เขียนรอบซ้ำ และต้องไม่ล้างแคชรายการ
+        DB::enableQueryLog();
+        $this->getJson("/api/v1/trips/{$trip->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.schedules.0.booked_seats', 2);
+        $writes = array_filter(
+            DB::getQueryLog(),
+            fn ($q) => str_starts_with($q['query'], 'update "trip_schedules"'),
+        );
+        DB::flushQueryLog();
+
+        $this->getJson('/api/v1/trips')->assertOk();
+        $listReads = array_filter(
+            DB::getQueryLog(),
+            fn ($q) => str_contains($q['query'], 'from "trips"'),
+        );
+        DB::disableQueryLog();
+
+        $this->assertSame([], $writes, 'trip page should not rewrite unchanged seat counters');
+        $this->assertSame([], $listReads, 'trip list should still be served from cache');
+    }
+
+    public function test_trip_page_repairs_drifted_seat_counters(): void
+    {
+        $trip = $this->trip();
+        $schedule = $this->schedule($trip);
+        $this->book($schedule, 3);
+        $schedule->forceFill(['booked_seats' => 0])->saveQuietly();
+
+        $this->getJson("/api/v1/trips/{$trip->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.schedules.0.booked_seats', 3);
+        $this->assertSame(3, (int) $schedule->fresh()->booked_seats);
+    }
+
+    public function test_my_reviews_query_count_does_not_grow_per_review(): void
+    {
+        $me = User::factory()->create();
+        $trip = $this->trip();
+        $schedule = $this->schedule($trip);
+        $write = fn () => Review::create([
+            'user_id' => $me->id,
+            'booking_id' => $this->book($schedule, 1, 'completed')->id,
+            'trip_id' => $trip->id,
+            'rating' => 5,
+            'is_approved' => true,
+        ]);
+
+        $count = function () use ($me) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->actingAs($me, 'sanctum')->getJson('/api/v1/reviews/my')->assertOk();
+            $n = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $n;
+        };
+
+        $write();
+        $one = $count();
+        $write();
+        $write();
+        $write();
+
+        $this->assertSame($one, $count());
+    }
+
+    public function test_member_bookings_do_not_ask_for_membership_per_booking(): void
+    {
+        $me = User::factory()->create();
+        $trip = $this->trip();
+        $schedule = $this->schedule($trip);
+
+        $joinAs = function () use ($me, $schedule) {
+            $booking = $this->book($schedule, 2);
+            BookingMember::create([
+                'booking_id' => $booking->id,
+                'user_id' => $me->id,
+                'passenger_id' => $booking->passengers()->orderBy('id')->value('id'),
+                'role' => 'companion',
+                'status' => BookingMember::STATUS_ACTIVE,
+            ]);
+
+            return $booking;
+        };
+
+        $memberQueries = function () use ($me) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $rows = $this->actingAs($me, 'sanctum')->getJson('/api/v1/bookings')->assertOk()->json('data');
+            $n = count(array_filter(DB::getQueryLog(), fn ($q) => str_contains($q['query'], 'from "booking_members"')));
+            DB::disableQueryLog();
+
+            return [$n, $rows];
+        };
+
+        $joinAs();
+        [$one] = $memberQueries();
+        $joinAs();
+        $joinAs();
+        [$three, $rows] = $memberQueries();
+
+        $this->assertSame($one, $three);
+        $this->assertCount(3, $rows);
+        foreach ($rows as $row) {
+            // เพื่อนร่วมใบเห็นบัตรขึ้นรถของตัวเองคนเดียว และส่งต่อได้เฉพาะที่นั่งตัวเอง
+            $this->assertSame('member', $row['check_in_passes']['viewer_role']);
+            $this->assertCount(1, $row['check_in_passes']['passes']);
+            $this->assertNotNull($row['check_in_passes']['mine_passenger_id']);
+        }
+    }
+
+    public function test_trip_page_embeds_the_same_rounds_as_the_schedules_endpoint(): void
+    {
+        $trip = $this->trip();
+        $this->book($this->schedule($trip, 10), 2);
+        $this->schedule($trip, 40);
+
+        $embedded = $this->getJson("/api/v1/trips/{$trip->slug}")->assertOk()->json('data.schedules');
+        $endpoint = $this->getJson("/api/v1/trips/{$trip->slug}/schedules")->assertOk()->json('data');
+
+        // แอป/เว็บใช้รอบที่ฝังมาแทน /schedules เมื่อทุกรอบมี key vehicle — ต้องเหมือนกันทุกช่อง
+        $this->assertCount(2, $embedded);
+        foreach ($embedded as $round) {
+            $this->assertArrayHasKey('vehicle', $round);
+        }
+        $this->assertSame($endpoint, $embedded);
     }
 
     public function test_cache_key_depends_on_the_query(): void

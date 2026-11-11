@@ -231,7 +231,9 @@ class ReviewController extends Controller
 
     public function myReviews(Request $request): JsonResponse
     {
-        $reviews = Review::with(['trip', 'booking'])
+        // formatReview อ่าน user (ชื่อ รูป ระดับสมาชิก) และ repliedBy — โหลดมาพร้อมกัน
+        // ไม่งั้นยิงคิวรีรีวิวละ 3 ครั้ง
+        $reviews = Review::with(['trip', 'booking', 'user.loyaltyAccount', 'repliedBy'])
             ->where('user_id', $request->user()->id)
             ->orderByDesc('created_at')
             ->get()

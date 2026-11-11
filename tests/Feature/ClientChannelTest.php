@@ -8,6 +8,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\ClientChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -87,6 +88,41 @@ class ClientChannelTest extends TestCase
         $this->withToken($plain)->getJson('/api/v1/auth/me')->assertOk();
 
         $this->assertTrue($token->fresh()->expires_at->greaterThan(now()->addDays(ClientChannel::webTokenTtlDays() - 1)));
+    }
+
+    public function test_token_last_used_at_is_stamped_at_most_hourly(): void
+    {
+        $user = $this->user();
+        $plain = ClientChannel::issueToken($user, ClientChannel::APP);
+        $token = PersonalAccessToken::findToken($plain);
+        $this->assertNull($token->last_used_at);
+
+        $hit = function () use ($plain) {
+            // guard ถือ token ตัวเดิมไว้ข้าม request ในเทสต์ — ลืมทิ้งให้อ่านจากฐานข้อมูลใหม่
+            $this->app['auth']->forgetGuards();
+            $this->withToken($plain)->getJson('/api/v1/auth/me')->assertOk();
+        };
+
+        $hit();
+        $this->assertEqualsWithDelta(now()->timestamp, $token->fresh()->last_used_at->timestamp, 5);
+
+        // ใช้ไปเมื่อ 10 นาทีก่อน — ไม่ต้องเขียนซ้ำ (Sanctum เดิมเขียนทุก request)
+        $recent = now()->subMinutes(10)->startOfSecond();
+        $token->forceFill(['last_used_at' => $recent])->save();
+        DB::enableQueryLog();
+        $hit();
+        $tokenWrites = array_filter(
+            DB::getQueryLog(),
+            fn ($q) => str_starts_with($q['query'], 'update "personal_access_tokens"'),
+        );
+        DB::disableQueryLog();
+        $this->assertSame([], $tokenWrites);
+        $this->assertSame($recent->timestamp, $token->fresh()->last_used_at->timestamp);
+
+        // เกินชั่วโมง — เขียนใหม่
+        $token->forceFill(['last_used_at' => now()->subHours(2)])->save();
+        $hit();
+        $this->assertEqualsWithDelta(now()->timestamp, $token->fresh()->last_used_at->timestamp, 5);
     }
 
     public function test_expired_web_token_is_rejected(): void

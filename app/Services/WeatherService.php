@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Jobs\RefreshWeatherForecastJob;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\WeatherForecast;
 use App\Services\Weather\OpenWeatherProvider;
 use App\Services\Weather\WeatherProvider;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class WeatherService
@@ -30,6 +33,9 @@ class WeatherService
      * coordinates) and stash it on the model as `weather_forecast` so the API
      * resource can expose it. No-op when coords/date are missing or the date is
      * outside the forecast window. Never throws — weather is best-effort.
+     *
+     * Never calls the provider during the request: it reads the stored row and
+     * queues a refresh when that row is missing or stale (cachedForecastFor).
      */
     public function attach(TripSchedule $schedule, ?Trip $trip = null): void
     {
@@ -50,7 +56,7 @@ class WeatherService
         }
 
         try {
-            $forecast = $this->forecastFor(
+            $forecast = $this->cachedForecastFor(
                 (float) $trip->latitude,
                 (float) $trip->longitude,
                 $departure->toDateString(),
@@ -90,9 +96,18 @@ class WeatherService
         };
     }
 
+    /** How long a failed upstream call keeps us from retrying the same spot. */
+    private const FAILURE_BACKOFF_MINUTES = 10;
+
+    /** One queued refresh per spot at a time, however many screens ask. */
+    private const REFRESH_LOCK_MINUTES = 10;
+
     /**
      * Daily forecast for a coordinate on a specific date, or null when it is
      * outside the provider's window or the upstream call is unavailable.
+     *
+     * Calls the provider synchronously — meant for jobs. Screens a customer is
+     * waiting on use [cachedForecastFor] instead.
      */
     public function forecastFor(float $lat, float $lng, string $date): ?WeatherForecast
     {
@@ -104,16 +119,100 @@ class WeatherService
             return $fresh;
         }
 
+        // ดึงพิกัดนี้ไปไม่นานนี้แล้ว (หรือเพิ่งดึงไม่สำเร็จ) — ไม่มีแถวของวันนั้นก็แปลว่า
+        // ผู้ให้บริการไม่มีให้ (เกินช่วงพยากรณ์) ยิงซ้ำก็ได้คำตอบเดิม
+        if ($this->recentlyFetched($lat, $lng)) {
+            return $this->cachedRow($lat, $lng, $date);
+        }
+
         $days = $this->provider->fetchDaily($lat, $lng);
         if (empty($days)) {
+            $this->markFetched($lat, $lng, self::FAILURE_BACKOFF_MINUTES);
+
             // Upstream unavailable — fall back to a stale row if we have one
             // rather than showing nothing.
             return $this->cachedRow($lat, $lng, $date);
         }
 
         $this->store($lat, $lng, $days);
+        $this->markFetched($lat, $lng, $this->cacheTtlMinutes);
 
         return $this->cachedRow($lat, $lng, $date);
+    }
+
+    /**
+     * Forecast from the table only — never waits on the provider. When the row
+     * is missing or stale and the date is inside the forecast window, a
+     * [RefreshWeatherForecastJob] is queued (once per spot per few minutes) and
+     * whatever is stored is returned, stale or not; the next view gets the new
+     * one. With the sync queue (tests, local) the job runs first, so the answer
+     * is the same as [forecastFor].
+     */
+    public function cachedForecastFor(float $lat, float $lng, string $date): ?WeatherForecast
+    {
+        $lat = round($lat, self::COORD_PRECISION);
+        $lng = round($lng, self::COORD_PRECISION);
+
+        $fresh = $this->freshCached($lat, $lng, $date);
+        if ($fresh) {
+            return $fresh;
+        }
+
+        if ($this->insideWindow($date) && ! $this->recentlyFetched($lat, $lng)) {
+            $this->queueRefresh($lat, $lng, $date);
+        }
+
+        return $this->cachedRow($lat, $lng, $date);
+    }
+
+    private function insideWindow(string $date): bool
+    {
+        try {
+            $day = Carbon::parse($date)->startOfDay();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        $today = now()->startOfDay();
+
+        return ! $day->isBefore($today)
+            && ! $day->isAfter($today->copy()->addDays(self::FORECAST_WINDOW_DAYS));
+    }
+
+    private function queueRefresh(float $lat, float $lng, string $date): void
+    {
+        try {
+            if (! Cache::add($this->spotKey('refresh', $lat, $lng), true, now()->addMinutes(self::REFRESH_LOCK_MINUTES))) {
+                return;
+            }
+
+            RefreshWeatherForecastJob::dispatch($lat, $lng, $date);
+        } catch (\Throwable $e) {
+            Log::warning('Unable to queue weather refresh', ['message' => $e->getMessage()]);
+        }
+    }
+
+    private function recentlyFetched(float $lat, float $lng): bool
+    {
+        try {
+            return Cache::has($this->spotKey('fetched', $lat, $lng));
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private function markFetched(float $lat, float $lng, int $minutes): void
+    {
+        try {
+            Cache::put($this->spotKey('fetched', $lat, $lng), true, now()->addMinutes(max(1, $minutes)));
+        } catch (\Throwable) {
+            // best-effort — worst case the next caller fetches again
+        }
+    }
+
+    private function spotKey(string $kind, float $lat, float $lng): string
+    {
+        return "weather:{$kind}:{$this->provider->name()}:{$lat}:{$lng}";
     }
 
     private function freshCached(float $lat, float $lng, string $date): ?WeatherForecast

@@ -194,10 +194,7 @@ class SeatHandoverService
             return ['role' => 'owner', 'passenger_id' => null];
         }
 
-        $member = BookingMember::where('booking_id', $booking->id)
-            ->where('user_id', $user->id)
-            ->where('status', BookingMember::STATUS_ACTIVE)
-            ->first();
+        $member = $booking->activeMembershipOf((int) $user->id);
 
         if (! $member) {
             return null;

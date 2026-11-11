@@ -240,7 +240,8 @@ class AuthController extends Controller
     {
         $this->validateProvider($provider);
 
-        $frontendUrl = env('FRONTEND_URL', config('app.url'));
+        // อ่านผ่าน config — env() คืน null เมื่อ deploy แคช config ไว้ (php artisan optimize)
+        $frontendUrl = config('app.frontend_url') ?: config('app.url');
         $mobileReturnTo = $this->mobileReturnToFromState($request->get('state'));
 
         \Log::info('Social Callback params', [

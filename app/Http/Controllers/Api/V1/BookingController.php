@@ -151,7 +151,8 @@ class BookingController extends Controller
     /**
      * Best-effort: attach the departure-day forecast to the booking's schedule
      * so the booking detail screen can surface it. Never let a weather lookup
-     * failure break the booking response.
+     * failure break the booking response, and never wait on the provider here —
+     * cachedForecastFor() reads the stored row and queues a refresh.
      */
     private function attachWeather(Booking $booking): void
     {
@@ -168,7 +169,7 @@ class BookingController extends Controller
         }
 
         try {
-            $forecast = $this->weatherService->forecastFor(
+            $forecast = $this->weatherService->cachedForecastFor(
                 (float) $trip->latitude,
                 (float) $trip->longitude,
                 $date,
@@ -217,9 +218,12 @@ class BookingController extends Controller
         $userId = $request->user()->id;
 
         // การจองที่ผู้ใช้เป็นเจ้าของ หรือถูกเชิญเข้าร่วมในฐานะเพื่อน (companion)
-        $memberBookingIds = BookingMember::where('user_id', $userId)
+        // เก็บแถวไว้ด้วย — BookingResource ต้องรู้ว่าผู้ดูเป็นสมาชิกใบไหน (primeMemberships)
+        $memberships = BookingMember::where('user_id', $userId)
             ->where('status', BookingMember::STATUS_ACTIVE)
-            ->pluck('booking_id');
+            ->orderBy('id')
+            ->get();
+        $memberBookingIds = $memberships->pluck('booking_id')->unique()->values();
 
         // สร้างใหม่ทุกครั้งแทนการ clone เพื่อให้แน่ใจว่า query นับจำนวนไม่ติดเงื่อนไข
         // scope หรือ eager load ของ query หลักมาด้วย
@@ -274,21 +278,26 @@ class BookingController extends Controller
 
         // จำนวนของแต่ละแท็บต้องนับจากการจองทั้งหมดของผู้ใช้ ไม่ใช่จากหน้าที่กำลังดู
         // หรือจาก scope ที่กรองอยู่ ไม่งั้นตัวเลขบนแท็บจะเปลี่ยนไปมาตามหน้า
+        // นับต่อสถานะทีเดียวแล้วรวมเอง แทน COUNT แยกทีละแท็บ
+        $byStatus = $this->countByStatus($mine());
         $meta = [
-            'upcoming_count' => $mine()->whereIn('status', self::UPCOMING_STATUSES)->count(),
-            'past_count' => $mine()->whereIn('status', self::PAST_STATUSES)->count(),
+            'upcoming_count' => $this->sumStatuses($byStatus, self::UPCOMING_STATUSES),
+            'past_count' => $this->sumStatuses($byStatus, self::PAST_STATUSES),
         ];
 
         if (in_array($scope, ['current', 'history'], true)) {
             $history = fn () => $mine()->whereNot(fn ($inner) => $this->whereStillCurrent($inner));
             $travelled = fn () => $history()->whereNotIn('bookings.status', self::CANCELLED_STATUSES);
+            $historyByStatus = $this->countByStatus($history());
+            $historyCount = array_sum($historyByStatus);
+            $cancelledCount = $this->sumStatuses($historyByStatus, self::CANCELLED_STATUSES);
 
             $meta += [
                 'current_count' => $this->whereStillCurrent($mine())->count(),
-                'history_count' => $history()->count(),
+                'history_count' => $historyCount,
                 // แท็บ "เดินทางแล้ว" / "ยกเลิก" ของแอปนับจากตรงนี้ เพราะแอปถือประวัติไว้แค่บางหน้า
-                'travelled_count' => $travelled()->count(),
-                'cancelled_count' => $history()->whereIn('bookings.status', self::CANCELLED_STATUSES)->count(),
+                'travelled_count' => $historyCount - $cancelledCount,
+                'cancelled_count' => $cancelledCount,
                 'destinations_count' => Trip::query()
                     ->whereIn('id', TripSchedule::query()
                         ->select('trip_id')
@@ -302,6 +311,7 @@ class BookingController extends Controller
 
         if (! isset($data['per_page'])) {
             $bookings = $query->get();
+            $this->primeMemberships($bookings, $userId, $memberships);
             $this->attachNextTripWeather($bookings);
             // ทริปที่ฝังในแต่ละใบนับยอดจอง/รีวิวรวดเดียว แทนใบละ 7 คิวรี
             Trip::loadListStats($bookings->map(fn ($b) => $b->schedule?->trip));
@@ -313,6 +323,7 @@ class BookingController extends Controller
         }
 
         $bookings = $query->paginate($data['per_page']);
+        $this->primeMemberships($bookings->getCollection(), $userId, $memberships);
         $this->attachNextTripWeather($bookings->getCollection());
         Trip::loadListStats($bookings->getCollection()->map(fn ($b) => $b->schedule?->trip));
 
@@ -320,6 +331,41 @@ class BookingController extends Controller
             $bookings->through(fn ($b) => new BookingResource($b)),
             meta: $meta,
         );
+    }
+
+    /**
+     * @return array<string, int> สถานะ => จำนวนใบ
+     */
+    private function countByStatus($query): array
+    {
+        return $query->toBase()
+            ->reorder()
+            ->groupBy('bookings.status')
+            ->selectRaw('bookings.status as status, COUNT(*) as aggregate')
+            ->pluck('aggregate', 'status')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+    }
+
+    /** @param  array<string, int>  $byStatus */
+    private function sumStatuses(array $byStatus, array $statuses): int
+    {
+        return array_sum(array_intersect_key($byStatus, array_flip($statuses)));
+    }
+
+    /**
+     * บอกทุกใบว่าผู้ดูเป็นสมาชิกด้วยแถวไหน — สมาชิกภาพทั้งหมดของผู้ดูโหลดมาแล้วตอนหาใบจอง
+     *
+     * @param  Collection<int, Booking>  $bookings
+     * @param  Collection<int, BookingMember>  $memberships  เรียงตาม id แล้ว
+     */
+    private function primeMemberships(Collection $bookings, int $userId, Collection $memberships): void
+    {
+        $byBooking = $memberships->unique('booking_id')->keyBy('booking_id');
+
+        foreach ($bookings as $booking) {
+            $booking->primeMembership($userId, $byBooking->get($booking->id));
+        }
     }
 
     /**

@@ -14,7 +14,8 @@
 #   3. composer install (ทุกครั้ง — vendor/ ต้องตรงกับ composer.lock เสมอ)
 #   4. npm ci (เมื่อ package-lock.json เปลี่ยน) + npm run build
 #   5. php artisan migrate
-#   6. ล้าง cache config/route/view/event (ไม่แตะ cache ข้อมูล — ที่นั่งที่ล็อกไว้ยังอยู่)
+#   6. สร้าง cache config/route/view/event ใหม่ (php artisan optimize — ไม่แตะ cache
+#      ข้อมูล ที่นั่งที่ล็อกไว้ยังอยู่) + seat-locks:reindex
 #   7. รีสตาร์ท Horizon ให้โหลดโค้ดใหม่
 #   8. php artisan ops:doctor
 #
@@ -137,11 +138,17 @@ artisan migrate --force
 
 # ---------------------------------------------------------------------------
 CURRENT_STEP="ล้าง cache"
-step "ล้าง cache config / route / view / event"
+step "สร้าง cache config / route / view / event ใหม่"
 artisan config:clear
 artisan route:clear
 artisan view:clear
 artisan event:clear
+# แคชไว้ให้ทุก request ไม่ต้องอ่านไฟล์ config ทั้งหมดและลงทะเบียน route ใหม่ทุกครั้ง
+# (optimize ของ Laravel 11 = config/event/route/view:cache ไม่ล้าง cache ข้อมูล)
+# แก้ .env ทีหลังต้องรัน optimize ซ้ำ ไม่งั้นค่าใหม่ไม่มีผล — ดู deploy/README.md
+artisan optimize
+# ล็อกที่นั่งที่ทำไว้ก่อนมีดัชนีต่อผู้ใช้ (ครั้งแรกหลังอัปเดตนี้) — รันซ้ำได้ไม่เป็นไร
+artisan seat-locks:reindex >/dev/null || warn "seat-locks:reindex ไม่สำเร็จ — ล็อกเก่าจะหมดอายุไปเองใน ~30 นาที"
 
 # ---------------------------------------------------------------------------
 CURRENT_STEP="รีสตาร์ท Horizon"

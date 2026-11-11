@@ -113,22 +113,43 @@ final class ClientChannel
         return max(1, (int) config('auth.web_token_ttl_days', 30));
     }
 
+    /** last_used_at ละเอียดแค่ระดับชั่วโมง — คนอ่าน (app:versions, tokens:revoke-legacy) นับเป็นวัน */
+    public const LAST_USED_RESOLUTION_MINUTES = 60;
+
     /**
-     * เลื่อนวันหมดอายุของ token เว็บที่ยังใช้งานอยู่ — เขียนลงฐานข้อมูลอย่างมากวันละครั้ง
-     * ต่อ token (เลื่อนเฉพาะเมื่อเหลือไม่ถึง TTL - 1 วัน)
+     * งานของ token ที่ใช้อยู่ทุก request (เรียกจาก TrackApiClient) รวมเป็นการเขียนครั้งเดียว:
+     * - last_used_at — Sanctum เขียนเองทุก request ถูกปิดไว้ (config/sanctum.php)
+     *   ตรงนี้เขียนเมื่อค่าเดิมเก่ากว่า [LAST_USED_RESOLUTION_MINUTES] เท่านั้น
+     * - token เว็บเลื่อนวันหมดอายุออกไป — อย่างมากวันละครั้งต่อ token (เลื่อนเฉพาะเมื่อ
+     *   เหลือไม่ถึง TTL - 1 วัน)
      */
-    public static function extendWebToken(?PersonalAccessToken $token): void
+    public static function touchToken(?PersonalAccessToken $token): void
     {
-        if (! $token || $token->name !== self::WEB || ! $token->expires_at) {
+        if (! $token || ! $token->exists) {
             return;
         }
 
-        $ttl = self::webTokenTtlDays();
-        if ($token->expires_at->greaterThan(now()->addDays($ttl - 1))) {
-            return;
+        $changes = [];
+        if (! $token->last_used_at
+            || $token->last_used_at->lt(now()->subMinutes(self::LAST_USED_RESOLUTION_MINUTES))) {
+            $changes['last_used_at'] = now();
+        }
+        if (self::webTokenNeedsExtending($token)) {
+            $changes['expires_at'] = now()->addDays(self::webTokenTtlDays());
         }
 
-        $token->forceFill(['expires_at' => now()->addDays($ttl)])->save();
+        if ($changes !== []) {
+            $token->forceFill($changes)->save();
+        }
+    }
+
+    private static function webTokenNeedsExtending(PersonalAccessToken $token): bool
+    {
+        if ($token->name !== self::WEB || ! $token->expires_at) {
+            return false;
+        }
+
+        return ! $token->expires_at->greaterThan(now()->addDays(self::webTokenTtlDays() - 1));
     }
 
     public static function currentToken(Request $request): ?PersonalAccessToken

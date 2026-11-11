@@ -374,6 +374,37 @@ class Booking extends Model
     /**
      * ผู้ใช้รายนี้เข้าถึงการจองนี้ได้หรือไม่ (เจ้าของหรือสมาชิก active)
      */
+    /**
+     * สิทธิ์สมาชิก (BookingMember ที่ active) ของผู้ดูที่ผู้เรียกโหลดมาให้ล่วงหน้า —
+     * user id => แถว หรือ null (= ไม่ได้เป็นสมาชิก) ไม่ใช่ attribute จึงไม่ถูก serialize
+     *
+     * @var array<int, BookingMember|null>
+     */
+    private array $primedMemberships = [];
+
+    /**
+     * บอกล่วงหน้าว่าผู้ใช้คนนี้เป็นสมาชิกของใบนี้ด้วยแถวไหน (null = ไม่ได้เป็น) — รายการจอง
+     * โหลดสมาชิกภาพของผู้ดูมาทีเดียวแล้วส่งให้ทุกใบ แทนที่ BookingResource จะถามใบละ
+     * 2 คิวรี (บัตรขึ้นรถ + ส่งต่อที่นั่ง)
+     */
+    public function primeMembership(int $userId, ?BookingMember $member): void
+    {
+        $this->primedMemberships[$userId] = $member;
+    }
+
+    /** BookingMember ที่ active ของผู้ใช้ในใบนี้ — ใช้ค่าที่ prime ไว้ถ้ามี ไม่งั้นถามฐานข้อมูล */
+    public function activeMembershipOf(int $userId): ?BookingMember
+    {
+        if (array_key_exists($userId, $this->primedMemberships)) {
+            return $this->primedMemberships[$userId];
+        }
+
+        return BookingMember::where('booking_id', $this->id)
+            ->where('user_id', $userId)
+            ->where('status', BookingMember::STATUS_ACTIVE)
+            ->first();
+    }
+
     public function isAccessibleByUser(int $userId): bool
     {
         if ($this->user_id === $userId) {

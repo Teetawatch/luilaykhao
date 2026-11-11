@@ -3035,8 +3035,17 @@ onMounted(async () => {
     diffLabel.value = diffMap[trip.value.difficulty] || trip.value.difficulty;
 
     schedulesLoading.value = true;
-    const sRes = await api.get(`/trips/${route.params.slug}/schedules`);
-    schedules.value = sRes.data.data;
+    // รอบที่ฝังมากับ /trips/{slug} คือชุดเดียวกับ /schedules แล้ว (เซิร์ฟเวอร์ที่ส่ง key
+    // vehicle มาด้วย) ใช้ได้เลยไม่ต้องรออีกรอบ — ไม่ครบเมื่อไหร่ค่อยถาม /schedules
+    const embedded = Array.isArray(trip.value.schedules) ? trip.value.schedules : null;
+    const embeddedComplete = embedded
+      && embedded.every((s) => s && Object.prototype.hasOwnProperty.call(s, 'vehicle'));
+    if (embeddedComplete) {
+      schedules.value = [...embedded];
+    } else {
+      const sRes = await api.get(`/trips/${route.params.slug}/schedules`);
+      schedules.value = sRes.data.data;
+    }
     schedulePoll = setInterval(refreshSchedules, SCHEDULE_POLL_MS);
     flashTimer = setInterval(() => { nowTick.value = Date.now(); }, 1000);
 

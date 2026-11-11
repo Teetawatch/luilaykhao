@@ -71,6 +71,8 @@ class SeatLockService
         $locked = Redis::set($key, $value, 'EX', $ttlSeconds, 'NX');
 
         if ($locked) {
+            $this->indexLock($userId, $scheduleId, $seatId, $vehicleOptionId, $ttlSeconds);
+
             return [
                 'locked' => true,
                 'expires_at' => now()->addSeconds($ttlSeconds)->toISOString(),
@@ -80,6 +82,7 @@ class SeatLockService
         $lockedBy = $this->lockUserId(Redis::get($key));
         if ($lockedBy === $userId) {
             Redis::setex($key, $ttlSeconds, $value);
+            $this->indexLock($userId, $scheduleId, $seatId, $vehicleOptionId, $ttlSeconds);
 
             return [
                 'locked' => true,
@@ -131,6 +134,7 @@ class SeatLockService
 
         if ($lockedBy === $userId) {
             Redis::del($key);
+            Redis::srem($this->userIndexKey($userId), $this->indexMember($scheduleId, $seatId, $vehicleOptionId));
 
             return true;
         }
@@ -156,10 +160,14 @@ class SeatLockService
             return [];
         }
 
+        // อ่านจากดัชนีของผู้ใช้ (set ที่ lock() เขียนไว้) — เดิมใช้ KEYS seat_lock:*
+        // ซึ่งไล่ทุกคีย์ใน Redis แบบบล็อกทั้งเซิร์ฟเวอร์ และแอปเรียกทุก 30 วินาทีต่อคน
+        $indexKey = $this->userIndexKey($userId);
         $groups = [];
-        foreach (Redis::keys('seat_lock:*') as $key) {
-            // คีย์รูปแบบเก่า (ไม่มีช่องคัน) ตกไปโดยไม่เข้าเงื่อนไข — ดู seatKey()
-            if (! preg_match('/seat_lock:(\d+):(\d+):(.+)$/', (string) $key, $matches)) {
+        foreach ((array) Redis::smembers($indexKey) as $member) {
+            if (! preg_match('/^(\d+):(\d+):(.+)$/', (string) $member, $matches)) {
+                Redis::srem($indexKey, $member);
+
                 continue;
             }
 
@@ -169,12 +177,12 @@ class SeatLockService
             $redisKey = $this->seatKey($scheduleId, $seatId, $vehicleOptionId);
             $payload = $this->lockPayload(Redis::get($redisKey));
             $lockedBy = $this->lockUserId($payload);
-            if ($lockedBy !== $userId) {
-                continue;
-            }
+            $ttl = $lockedBy === $userId ? (int) Redis::ttl($redisKey) : 0;
 
-            $ttl = (int) Redis::ttl($redisKey);
+            // หมดอายุ ถูกปลด หรือคนอื่นล็อกที่นั่งนี้ไปแล้ว — เก็บกวาดออกจากดัชนี
             if ($ttl <= 0) {
+                Redis::srem($indexKey, $member);
+
                 continue;
             }
 
@@ -293,7 +301,50 @@ class SeatLockService
         if (! $this->redisAvailable()) {
             return;
         }
-        Redis::del($this->seatKey($scheduleId, $seatId, $vehicleOptionId));
+        $key = $this->seatKey($scheduleId, $seatId, $vehicleOptionId);
+        $lockedBy = $this->lockUserId(Redis::get($key));
+        Redis::del($key);
+        if ($lockedBy !== null) {
+            Redis::srem($this->userIndexKey($lockedBy), $this->indexMember($scheduleId, $seatId, $vehicleOptionId));
+        }
+    }
+
+    /**
+     * สร้างดัชนีล็อกต่อผู้ใช้จากล็อกที่มีอยู่ทั้งหมด — รันครั้งเดียวตอนดีพลอย
+     * (`php artisan seat-locks:reindex`) ให้ล็อกที่ทำไว้ก่อนมีดัชนียังขึ้นใน
+     * "ที่นั่งที่ล็อกไว้" ได้ ใช้ KEYS ได้เพราะรันครั้งเดียว ไม่ใช่ทุก request
+     *
+     * @return int จำนวนล็อกที่ใส่ลงดัชนี
+     */
+    public function reindex(): int
+    {
+        if (! $this->redisAvailable()) {
+            return 0;
+        }
+
+        $count = 0;
+        foreach (Redis::keys('seat_lock:*') as $key) {
+            // คีย์รูปแบบเก่า (ไม่มีช่องคัน) ตกไปโดยไม่เข้าเงื่อนไข — ดู seatKey()
+            // ไม่ยึดต้นสตริง เพราะ KEYS คืนคีย์ที่มี prefix ของ Redis ติดมาด้วย
+            if (! preg_match('/seat_lock:(\d+):(\d+):(.+)$/', (string) $key, $matches)) {
+                continue;
+            }
+
+            $scheduleId = (int) $matches[1];
+            $vehicleOptionId = (int) $matches[2];
+            $seatId = $matches[3];
+            $redisKey = $this->seatKey($scheduleId, $seatId, $vehicleOptionId);
+            $userId = $this->lockUserId(Redis::get($redisKey));
+            $ttl = (int) Redis::ttl($redisKey);
+            if ($userId === null || $ttl <= 0) {
+                continue;
+            }
+
+            $this->indexLock($userId, $scheduleId, $seatId, $vehicleOptionId, $ttl);
+            $count++;
+        }
+
+        return $count;
     }
 
     public function getSeatStatus(int $scheduleId, array $allSeatIds, ?int $userId = null, int $vehicleOptionId = 0): array
@@ -404,6 +455,32 @@ class SeatLockService
     private function seatKey(int $scheduleId, string $seatId, int $vehicleOptionId = 0): string
     {
         return "seat_lock:{$scheduleId}:{$vehicleOptionId}:{$seatId}";
+    }
+
+    /** ดัชนีล็อกของผู้ใช้หนึ่งคน: set ของ "{รอบ}:{คัน}:{ที่นั่ง}" */
+    private function userIndexKey(int $userId): string
+    {
+        return "seat_lock_user:{$userId}";
+    }
+
+    private function indexMember(int $scheduleId, string $seatId, int $vehicleOptionId = 0): string
+    {
+        return "{$scheduleId}:{$vehicleOptionId}:{$seatId}";
+    }
+
+    /**
+     * จดล็อกลงดัชนีของผู้ใช้ — set มีอายุยาวกว่าล็อกที่อายุยาวที่สุดในนั้นเสมอ
+     * (เลื่อนออกเท่านั้น ไม่หดลง) สมาชิกที่ล็อกหมดอายุไปแล้วถูกกวาดออกตอนอ่าน
+     */
+    private function indexLock(int $userId, int $scheduleId, string $seatId, int $vehicleOptionId, int $ttlSeconds): void
+    {
+        $indexKey = $this->userIndexKey($userId);
+        Redis::sadd($indexKey, $this->indexMember($scheduleId, $seatId, $vehicleOptionId));
+
+        $wanted = $ttlSeconds + 60;
+        if ((int) Redis::ttl($indexKey) < $wanted) {
+            Redis::expire($indexKey, $wanted);
+        }
     }
 
     private function lockValue(int $userId, array $metadata = []): string

@@ -128,4 +128,28 @@ class WeatherServiceTest extends TestCase
         $this->assertNull($f);
         $this->assertSame(0, WeatherForecast::count());
     }
+
+    public function test_a_date_the_provider_does_not_cover_is_not_refetched(): void
+    {
+        $this->fakeForecast(); // covers 2026-06-01 and 02 only
+        $service = new WeatherService;
+
+        $this->assertNull($service->forecastFor(self::LAT, self::LNG, '2026-06-05'));
+        $this->assertNull($service->forecastFor(self::LAT, self::LNG, '2026-06-05'));
+        // วันอื่นของพิกัดเดียวกันได้จากรอบที่ดึงไปแล้ว
+        $this->assertNotNull($service->forecastFor(self::LAT, self::LNG, '2026-06-01'));
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_a_failed_fetch_backs_off_instead_of_retrying_every_call(): void
+    {
+        Http::fake(['*/data/2.5/forecast*' => Http::response(['message' => 'down'], 503)]);
+        $service = new WeatherService;
+
+        $this->assertNull($service->forecastFor(self::LAT, self::LNG, '2026-06-01'));
+        $this->assertNull($service->forecastFor(self::LAT, self::LNG, '2026-06-01'));
+
+        Http::assertSentCount(1);
+    }
 }

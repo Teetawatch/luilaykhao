@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\RefreshWeatherForecastJob;
 use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Models\WeatherForecast;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class TripWeatherTest extends TestCase
@@ -126,5 +129,82 @@ class TripWeatherTest extends TestCase
             ->assertOk()
             ->assertJsonMissingPath('data.0.weather');
         Http::assertNothingSent();
+    }
+
+    public function test_trip_page_never_waits_on_the_weather_provider(): void
+    {
+        Queue::fake();
+        $this->fakeRainyForecast(now()->addDays(2)->toDateString());
+
+        $trip = $this->makeTrip(18.788, 98.985);
+        $this->makeSchedule($trip, now()->addDays(2)->toDateString());
+        $this->makeSchedule($trip, now()->addDays(3)->toDateString());
+
+        $this->getJson("/api/v1/trips/{$trip->slug}")->assertOk();
+        $this->getJson("/api/v1/trips/{$trip->slug}/schedules")->assertOk();
+
+        Http::assertNothingSent();
+        // หนึ่งพิกัด = หนึ่งงานในคิว ไม่ว่าจะมีกี่รอบหรือเปิดกี่หน้า
+        Queue::assertPushed(RefreshWeatherForecastJob::class, 1);
+    }
+
+    public function test_stale_forecast_is_shown_while_a_refresh_is_queued(): void
+    {
+        Queue::fake();
+        Http::fake();
+        $departure = now()->addDays(2)->toDateString();
+
+        WeatherForecast::create([
+            'provider' => 'openweather',
+            'latitude' => 18.788,
+            'longitude' => 98.985,
+            'forecast_date' => $departure,
+            'condition_code' => '800',
+            'description_th' => 'ท้องฟ้าแจ่มใส',
+            'temp_min' => 20,
+            'temp_max' => 30,
+            'pop' => 0,
+            'severity' => 'none',
+            'fetched_at' => now()->subHours(6),
+        ]);
+
+        $trip = $this->makeTrip(18.788, 98.985);
+        $this->makeSchedule($trip, $departure);
+
+        $this->getJson("/api/v1/trips/{$trip->slug}/schedules")
+            ->assertOk()
+            ->assertJsonPath('data.0.weather.description_th', 'ท้องฟ้าแจ่มใส');
+
+        Http::assertNothingSent();
+        Queue::assertPushed(RefreshWeatherForecastJob::class, 1);
+    }
+
+    public function test_fresh_forecast_queues_nothing(): void
+    {
+        Queue::fake();
+        Http::fake();
+        $departure = now()->addDays(2)->toDateString();
+
+        WeatherForecast::create([
+            'provider' => 'openweather',
+            'latitude' => 18.788,
+            'longitude' => 98.985,
+            'forecast_date' => $departure,
+            'condition_code' => '500',
+            'description_th' => 'ฝนเล็กน้อย',
+            'pop' => 0.4,
+            'severity' => 'advisory',
+            'fetched_at' => now()->subMinutes(5),
+        ]);
+
+        $trip = $this->makeTrip(18.788, 98.985);
+        $this->makeSchedule($trip, $departure);
+
+        $this->getJson("/api/v1/trips/{$trip->slug}/schedules")
+            ->assertOk()
+            ->assertJsonPath('data.0.weather.severity', 'advisory');
+
+        Http::assertNothingSent();
+        Queue::assertNotPushed(RefreshWeatherForecastJob::class);
     }
 }

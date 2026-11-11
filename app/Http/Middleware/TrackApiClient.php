@@ -11,7 +11,8 @@ use Symfony\Component\HttpFoundation\Response;
  * งานเล็ก ๆ ที่ต้องรู้ว่า request มาจาก client ไหน — ทำหลัง $next เพราะ
  * auth:sanctum เป็น route middleware จึงรู้ตัวผู้ใช้ทีหลังกลุ่ม api (เหมือน SetAppLocale)
  *
- *  - token เว็บที่ยังถูกใช้ เลื่อนวันหมดอายุออกไป (ClientChannel::extendWebToken)
+ *  - token ที่ใช้อยู่: last_used_at (ชั่วโมงละครั้ง แทน Sanctum ที่เขียนทุก request)
+ *    และ token เว็บเลื่อนวันหมดอายุออกไป (ClientChannel::touchToken)
  *  - แอปที่ส่ง X-App-Version / X-Platform มา จำไว้ที่ users.app_version /
  *    app_platform / app_seen_at เพื่อรู้ว่าแอปรุ่นเก่ายังมีคนใช้แค่ไหน ก่อนจะเปลี่ยน
  *    รูปแบบ response (`php artisan app:versions`) เขียนเฉพาะตอนค่าเปลี่ยน หรือ
@@ -41,7 +42,7 @@ class TrackApiClient
             return;
         }
 
-        ClientChannel::extendWebToken(ClientChannel::currentToken($request));
+        ClientChannel::touchToken(ClientChannel::currentToken($request));
 
         $version = ClientChannel::appVersion($request);
         $platform = ClientChannel::platform($request);

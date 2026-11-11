@@ -380,7 +380,9 @@ class TripController extends Controller
             ->with(['photos', 'schedules' => function ($q) {
                 $q->where('status', 'open')
                     ->where('departure_date', '>=', now()->startOfDay())
-                    ->with(['pickupPoints', 'vehicleOptions'])
+                    // ชุดเดียวกับ schedules() — รอบที่ฝังมากับหน้าทริปจึงใช้แทนการเรียก
+                    // /schedules ซ้ำได้ (แอป/เว็บดูจาก key vehicle ว่าเซิร์ฟเวอร์ส่งครบแล้ว)
+                    ->with(['vehicle', 'pickupPoints', 'vehicleOptions'])
                     // ที่นั่งที่กันไว้ให้คิวรอต้องไม่ถูกนับเป็นของว่างบนหน้าจอง
                     ->withHeldSeats()
                     ->orderBy('departure_date');
@@ -389,7 +391,14 @@ class TripController extends Controller
 
         $this->registerView($trip, $request);
 
-        $trip->schedules->each->syncBookedSeats();
+        // นับทุกรอบในคิวรีเดียว และเขียนเฉพาะรอบที่ตัวเลขเปลี่ยนจริง — เดิมเรียก
+        // syncBookedSeats() ทีละรอบ ซึ่ง update() ทุกครั้ง แม้ค่าเท่าเดิม ทำให้ event
+        // saved ไปล้าง TripListCache ทุกครั้งที่มีคนเปิดหน้าทริป
+        TripSchedule::syncBookedSeatsFor($trip->schedules);
+        // ราคาของรอบอ่าน $schedule->trip — ผูกสำเนาทริปที่ไม่มี relation (กันวงวน
+        // trip → schedules → trip ตอน serialize) ให้ ไม่ต้องโหลดซ้ำรอบละครั้ง
+        $lite = $trip->withoutRelations();
+        $trip->schedules->each(fn ($s) => $s->setRelation('trip', $lite));
         $trip->schedules->each(fn ($s) => $this->weatherService->attach($s, $trip));
 
         return $this->success(new TripResource($trip->loadCount(['schedules' => function ($q) {
@@ -406,35 +415,36 @@ class TripController extends Controller
     {
         $trip = Trip::where('slug', $slug)->firstOrFail();
 
-        $candidates = Trip::where('status', 'active')
-            ->where('id', '!=', $trip->id)
-            ->with(['photos', 'schedules' => function ($q) {
-                $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
-            }])
-            ->get();
-
         $today = now()->startOfDay();
 
-        $ranked = $candidates
-            ->map(function ($candidate) use ($trip, $today) {
-                $hasUpcoming = $candidate->schedules->contains(
-                    fn ($s) => $s->status === 'open'
-                        && $s->departure_date
-                        && $s->departure_date->gte($today)
-                );
+        // คิดคะแนนในฐานข้อมูลแล้วดึงมาแค่ 6 ใบ — เดิมโหลดทุกทริปในระบบพร้อมรูป รอบ
+        // และจุดรับ แล้วจัดอันดับใน PHP ทุกครั้งที่มีคนเปิดหน้าทริป
+        // ประเภท/ภาคที่เป็น null นับว่า "ตรงกัน" กับทริปที่เป็น null เหมือนเดิม (=== ของ PHP)
+        [$typeSql, $typeBindings] = $trip->type === null
+            ? ['CASE WHEN trips.type IS NULL THEN 3 ELSE 0 END', []]
+            : ['CASE WHEN trips.type = ? THEN 3 ELSE 0 END', [$trip->type]];
+        [$regionSql, $regionBindings] = $trip->region === null
+            ? ['CASE WHEN trips.region IS NULL THEN 2 ELSE 0 END', []]
+            : ['CASE WHEN trips.region = ? THEN 2 ELSE 0 END', [$trip->region]];
 
-                $score = 0;
-                $score += $candidate->type === $trip->type ? 3 : 0;
-                $score += $candidate->region === $trip->region ? 2 : 0;
-                $score += $hasUpcoming ? 2 : 0;
-                $score += $candidate->is_featured ? 1 : 0;
-
-                return ['trip' => $candidate, 'score' => $score];
-            })
-            ->sortByDesc('score')
-            ->take(6)
-            ->pluck('trip')
-            ->values();
+        $ranked = Trip::query()
+            ->select('trips.*')
+            ->where('status', 'active')
+            ->where('id', '!=', $trip->id)
+            ->orderByRaw(
+                "({$typeSql}) + ({$regionSql})"
+                .' + (CASE WHEN EXISTS (SELECT 1 FROM trip_schedules ts WHERE ts.trip_id = trips.id'
+                .' AND ts.status = ? AND ts.departure_date >= ?) THEN 2 ELSE 0 END)'
+                .' + (CASE WHEN trips.is_featured = ? THEN 1 ELSE 0 END) DESC',
+                [...$typeBindings, ...$regionBindings, 'open', $today, true],
+            )
+            // คะแนนเท่ากันเรียงตาม id — ลำดับเดียวกับที่ sortByDesc เดิมได้จากแถวที่ดึงมา
+            ->orderBy('trips.id')
+            ->limit(6)
+            ->with(['photos', 'schedules' => function ($q) use ($today) {
+                $q->where('departure_date', '>=', $today)->with('pickupPoints');
+            }])
+            ->get();
 
         TripSchedule::syncBookedSeatsFor($ranked->flatMap->schedules);
         Trip::loadListStats($ranked);
@@ -469,6 +479,8 @@ class TripController extends Controller
             ->orderBy('departure_date')
             ->get();
         TripSchedule::syncBookedSeatsFor($schedules);
+        $lite = $trip->withoutRelations();
+        $schedules->each(fn ($s) => $s->setRelation('trip', $lite));
         $schedules->each(fn ($s) => $this->weatherService->attach($s, $trip));
 
         return $this->success(TripScheduleResource::collection($schedules));

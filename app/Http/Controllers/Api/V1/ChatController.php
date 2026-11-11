@@ -926,15 +926,39 @@ class ChatController extends Controller
             ->tap(fn ($q) => $this->whereChatNotPurged($q))
             ->get();
 
-        $messagesBySchedule = ChatMessage::whereIn('schedule_id', $schedules->pluck('id'))
-            ->with('user:id,name,nickname')
-            ->tap(fn ($q) => $this->chatService->scopeVisibleTo($q, $user))
-            ->get()
-            ->groupBy('schedule_id');
+        $scheduleIdList = $schedules->pluck('id')->all();
 
         $reads = ChatRead::where('user_id', $user->id)
-            ->whereIn('schedule_id', $schedules->pluck('id'))
+            ->whereIn('schedule_id', $scheduleIdList)
             ->pluck('last_read_message_id', 'schedule_id');
+
+        // ข้อความล่าสุดของแต่ละห้อง + จำนวนที่ยังไม่อ่าน นับในฐานข้อมูล — เดิมดึงทุกข้อความ
+        // ของทุกห้องมานับใน PHP ห้องที่คุยกันเยอะยิ่งช้า (ใช้ index schedule_id, id)
+        $lastMessages = ChatMessage::query()
+            ->whereIn('id', ChatMessage::query()
+                ->selectRaw('MAX(id)')
+                ->whereIn('schedule_id', $scheduleIdList)
+                ->tap(fn ($q) => $this->chatService->scopeVisibleTo($q, $user))
+                ->groupBy('schedule_id'))
+            ->with('user:id,name,nickname')
+            ->get()
+            ->keyBy('schedule_id');
+
+        $unreadBySchedule = ChatMessage::query()
+            ->whereIn('schedule_id', $scheduleIdList)
+            ->tap(fn ($q) => $this->chatService->scopeVisibleTo($q, $user))
+            ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', '!=', $user->id))
+            ->where(function ($q) use ($reads) {
+                // ห้องที่ไม่เคยอ่านนับทั้งห้อง ห้องที่อ่านแล้วนับเฉพาะหลังข้อความที่อ่านล่าสุด
+                $read = $reads->filter(fn ($id) => (int) $id > 0);
+                $q->whereNotIn('schedule_id', $read->keys()->all());
+                foreach ($read as $scheduleId => $lastReadId) {
+                    $q->orWhere(fn ($w) => $w->where('schedule_id', $scheduleId)->where('id', '>', (int) $lastReadId));
+                }
+            })
+            ->groupBy('schedule_id')
+            ->selectRaw('schedule_id, COUNT(*) as unread')
+            ->pluck('unread', 'schedule_id');
 
         $notifyLevels = ChatRoomPreference::where('user_id', $user->id)
             ->whereIn('schedule_id', $schedules->pluck('id'))
@@ -942,15 +966,9 @@ class ChatController extends Controller
 
         $privateUnread = $this->privateUnreadBySchedule($user, $schedules);
 
-        $conversations = $schedules->map(function ($schedule) use ($messagesBySchedule, $reads, $user, $notifyLevels, $privateUnread) {
-            $messages = $messagesBySchedule->get($schedule->id) ?? collect();
-            $last = $messages->sortByDesc('id')->first();
-            $lastReadId = (int) ($reads[$schedule->id] ?? 0);
-
-            $unread = $messages
-                ->where('id', '>', $lastReadId)
-                ->filter(fn ($m) => $m->user_id === null || $m->user_id !== $user->id)
-                ->count();
+        $conversations = $schedules->map(function ($schedule) use ($lastMessages, $unreadBySchedule, $notifyLevels, $privateUnread) {
+            $last = $lastMessages->get($schedule->id);
+            $unread = (int) ($unreadBySchedule[$schedule->id] ?? 0);
 
             return [
                 'schedule_id' => $schedule->id,

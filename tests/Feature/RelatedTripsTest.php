@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Trip;
+use App\Models\TripSchedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -74,5 +76,72 @@ class RelatedTripsTest extends TestCase
         $res = $this->getJson("/api/v1/trips/{$trip->slug}/related")->assertOk();
 
         $this->assertLessThanOrEqual(6, count($res->json('data')));
+    }
+
+    private function round(Trip $trip, string $status, int $inDays = 30): void
+    {
+        TripSchedule::create([
+            'trip_id' => $trip->id,
+            'departure_date' => now()->addDays($inDays)->toDateString(),
+            'return_date' => now()->addDays($inDays + 1)->toDateString(),
+            'total_seats' => 10,
+            'booked_seats' => 0,
+            'transport_type' => 'van',
+            'status' => $status,
+        ]);
+    }
+
+    public function test_an_open_upcoming_round_outranks_featured_and_ties_keep_id_order(): void
+    {
+        $trip = $this->makeTrip(['type' => 'trekking', 'region' => 'north']);
+        $plain = $this->makeTrip(['type' => 'diving', 'region' => 'south']);
+        $featured = $this->makeTrip(['type' => 'diving', 'region' => 'south', 'is_featured' => true]);
+        $withRound = $this->makeTrip(['type' => 'diving', 'region' => 'south']);
+        $closedRound = $this->makeTrip(['type' => 'diving', 'region' => 'south']);
+        $plainToo = $this->makeTrip(['type' => 'diving', 'region' => 'south']);
+        $this->round($withRound, 'open');
+        $this->round($closedRound, 'closed');
+        // รอบที่ผ่านไปแล้วไม่นับว่า "มีรอบให้จอง"
+        $this->round($plain, 'open', -5);
+
+        $slugs = collect($this->getJson("/api/v1/trips/{$trip->slug}/related")->assertOk()->json('data'))
+            ->pluck('slug')
+            ->all();
+
+        $this->assertSame(
+            [$withRound->slug, $featured->slug, $plain->slug, $closedRound->slug, $plainToo->slug],
+            $slugs,
+        );
+    }
+
+    public function test_trips_without_a_region_count_as_the_same_region(): void
+    {
+        $trip = $this->makeTrip(['type' => 'trekking', 'region' => null]);
+        $north = $this->makeTrip(['type' => 'diving', 'region' => 'north']);
+        $none = $this->makeTrip(['type' => 'diving', 'region' => null]);
+
+        $slugs = collect($this->getJson("/api/v1/trips/{$trip->slug}/related")->assertOk()->json('data'))
+            ->pluck('slug')
+            ->all();
+
+        $this->assertSame([$none->slug, $north->slug], $slugs);
+    }
+
+    public function test_only_the_six_shown_trips_are_loaded(): void
+    {
+        $trip = $this->makeTrip();
+        for ($i = 0; $i < 12; $i++) {
+            $this->round($this->makeTrip(), 'open');
+        }
+
+        DB::enableQueryLog();
+        $this->getJson("/api/v1/trips/{$trip->slug}/related")->assertOk()->assertJsonCount(6, 'data');
+        $scheduleLoads = collect(DB::getQueryLog())
+            ->filter(fn ($q) => str_starts_with($q['query'], 'select * from "trip_schedules" where "trip_schedules"."trip_id" in'));
+
+        $this->assertCount(1, $scheduleLoads);
+        // eager load ใส่ id ที่เป็นตัวเลขลงใน SQL ตรง ๆ (ไม่ผ่าน binding)
+        preg_match('/"trip_id" in \(([^)]*)\)/', $scheduleLoads->first()['query'], $m);
+        $this->assertCount(6, explode(',', $m[1] ?? ''), 'โหลดรอบเฉพาะ 6 ทริปที่แสดง');
     }
 }

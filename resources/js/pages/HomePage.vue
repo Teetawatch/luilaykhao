@@ -1023,7 +1023,10 @@ const typeFeaturedIcon = (type) => {
   return icons[type] || 'explore';
 };
 
+let unmounted = false;
+
 onUnmounted(() => {
+  unmounted = true;
   clearInterval(sliderInterval);
 });
 
@@ -1032,26 +1035,29 @@ onMounted(async () => {
     prefersReducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
-  // Fetch hero slides from API; keep static fallback if API returns empty
-  try {
-    const heroRes = await api.get('/hero-slides');
-    const apiSlides = (heroRes.data.data ?? heroRes.data) || [];
-    if (apiSlides.length) {
-      heroImages.value = apiSlides.map((s) => s.image_url);
+  // Hero slides load alongside everything else (they used to hold the whole page
+  // back by one round trip); keep the static fallback if the API returns empty.
+  (async () => {
+    try {
+      const heroRes = await api.get('/hero-slides');
+      const apiSlides = (heroRes.data.data ?? heroRes.data) || [];
+      if (apiSlides.length) {
+        heroImages.value = apiSlides.map((s) => s.image_url);
+      }
+    } catch {
+      // keep static fallback
     }
-  } catch {
-    // keep static fallback
-  }
 
-  if (!prefersReducedMotion.value && heroImages.value.length > 1) {
-    sliderInterval = setInterval(() => {
-      currentSlide.value = (currentSlide.value + 1) % heroImages.value.length;
-    }, HERO_SLIDE_INTERVAL_MS);
-  }
+    // ออกจากหน้าไปก่อนรูปมา — อย่าตั้งตัวจับเวลาที่ไม่มีใครล้าง
+    if (!unmounted && !prefersReducedMotion.value && heroImages.value.length > 1) {
+      sliderInterval = setInterval(() => {
+        currentSlide.value = (currentSlide.value + 1) % heroImages.value.length;
+      }, HERO_SLIDE_INTERVAL_MS);
+    }
+  })();
 
   try {
-    const [tripsRes, featuredRes, reviewsRes, statsRes, allTripsRes, almostFullRes, categoriesRes] = await Promise.all([
-      api.get('/trips', { params: { per_page: 8 } }),
+    const [featuredRes, reviewsRes, statsRes, allTripsRes, almostFullRes, categoriesRes] = await Promise.all([
       api.get('/trips/featured'),
       api.get('/reviews', { params: { per_page: 30 } }),
       api.get('/stats'),
@@ -1059,8 +1065,10 @@ onMounted(async () => {
       api.get('/trips/almost-full'),
       api.get('/categories'),
     ]);
-    trips.value = tripsRes.data.data;
     allTrips.value = allTripsRes.data.data || [];
+    // แถวทริปยอดนิยม 8 ใบแรกคือหน้าแรกของรายการเดียวกัน (เรียงแบบเดียวกัน) — ตัดจาก
+    // ชุด 100 ใบที่ได้มาแล้ว ไม่ต้องยิง /trips?per_page=8 ซ้ำ
+    trips.value = allTrips.value.slice(0, 8);
     featuredTrips.value = featuredRes.data.data || [];
     almostFullTrips.value = almostFullRes.data.data || [];
     reviews.value = reviewsRes.data.data || [];

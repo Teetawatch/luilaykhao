@@ -7,6 +7,7 @@ use App\Jobs\SendChatPushJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\ChatMessage;
+use App\Models\ChatRead;
 use App\Models\ScheduleItineraryItem;
 use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
@@ -16,6 +17,7 @@ use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
@@ -622,6 +624,82 @@ class ChatTest extends TestCase
             ->assertJsonPath('data.0.unread_count', 4)
             ->assertJsonPath('data.1.schedule_id', $noChat->id)
             ->assertJsonPath('data.1.unread_count', 0);
+    }
+
+    public function test_my_conversations_counts_after_the_read_marker_and_skips_own_and_hidden(): void
+    {
+        $room = $this->makeSchedule();
+        $other = $this->makeSchedule();
+        $me = User::factory()->create();
+        $friend = User::factory()->create();
+        $this->bookOnto($me, $room);
+        $this->bookOnto($friend, $room);
+        $this->bookOnto($me, $other);
+
+        $say = fn (TripSchedule $s, ?User $u, string $body) => ChatMessage::create([
+            'schedule_id' => $s->id,
+            'user_id' => $u?->id,
+            'sender_role' => $u ? 'customer' : 'system',
+            'body' => $body,
+        ]);
+
+        $seen = $say($room, $friend, 'อ่านแล้ว');
+        ChatRead::updateOrCreate(
+            ['schedule_id' => $room->id, 'user_id' => $me->id],
+            ['last_read_message_id' => $seen->id],
+        );
+        $say($room, $friend, 'ใหม่ 1');
+        $say($room, $me, 'ของฉันเอง ไม่นับ');
+        $say($room, null, 'ข้อความระบบ นับ');
+        $say($room, $friend, 'ล่าสุดที่เห็นได้');
+        $say($room, $friend, 'ถูกซ่อน')->forceFill(['hidden_at' => now()])->save();
+        $say($other, $friend, 'ห้องอื่น');
+
+        $rows = collect($this->actingAs($me, 'sanctum')
+            ->getJson('/api/v1/chat/my-conversations')
+            ->assertOk()
+            ->json('data'))
+            ->keyBy('schedule_id');
+
+        // ใหม่ 1 + ข้อความระบบ + ล่าสุดที่เห็นได้ (ข้อความของตัวเองและที่ถูกซ่อนไม่นับ)
+        $this->assertSame(3, $rows[$room->id]['unread_count']);
+        $this->assertSame('ล่าสุดที่เห็นได้', $rows[$room->id]['last_message']['body']);
+        $this->assertSame($friend->nickname ?: $friend->name, $rows[$room->id]['last_message']['sender_name']);
+        // ห้องที่ไม่เคยเปิดอ่าน นับทุกข้อความของคนอื่น (รวมข้อความระบบตอนมีคนเข้าห้อง)
+        $this->assertSame(
+            ChatMessage::where('schedule_id', $other->id)
+                ->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', '!=', $me->id))
+                ->whereNull('hidden_at')
+                ->count(),
+            $rows[$other->id]['unread_count'],
+        );
+        $this->assertSame('ห้องอื่น', $rows[$other->id]['last_message']['body']);
+    }
+
+    public function test_my_conversations_query_count_does_not_grow_with_messages(): void
+    {
+        $room = $this->makeSchedule();
+        $me = User::factory()->create();
+        $friend = User::factory()->create();
+        $this->bookOnto($me, $room);
+        $this->bookOnto($friend, $room);
+
+        $count = function () use ($me) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->actingAs($me, 'sanctum')->getJson('/api/v1/chat/my-conversations')->assertOk();
+            $n = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $n;
+        };
+
+        $before = $count();
+        for ($i = 0; $i < 30; $i++) {
+            ChatMessage::create(['schedule_id' => $room->id, 'user_id' => $friend->id, 'sender_role' => 'customer', 'body' => "ข้อความ {$i}"]);
+        }
+
+        $this->assertSame($before, $count());
     }
 
     public function test_my_conversations_empty_for_non_member(): void
