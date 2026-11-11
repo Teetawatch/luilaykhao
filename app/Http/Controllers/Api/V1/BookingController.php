@@ -420,7 +420,9 @@ class BookingController extends Controller
             ->firstOrFail();
 
         try {
-            $booking = $this->bookingService->cancelBooking($booking, $request->reason);
+            // ลูกค้ายกเลิกใบที่ยังไม่จ่ายของตัวเอง (เว็บ แอป LIFF) — ไม่ส่ง SMS: เจ้าตัวเพิ่งกด
+            // เอง และกันคนสร้างใบจองด้วยเบอร์คนอื่นแล้วกดยกเลิกวนให้เราเสียเครดิต
+            $booking = $this->bookingService->cancelBooking($booking, $request->reason, sms: false);
 
             return $this->success(new BookingResource($booking), 'ยกเลิกการจองสำเร็จ');
         } catch (\Exception $e) {

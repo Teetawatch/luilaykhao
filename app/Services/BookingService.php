@@ -1010,8 +1010,11 @@ class BookingService
     /**
      * @param  bool  $notify  false = ผู้เรียกแจ้งลูกค้าเอง (เช่นขอคืนเงินเพราะรอบคนไม่ครบ
      *                        ซึ่งอีเมลยกเลิกปกติจะแสดงนโยบายคืนเงินที่ไม่ตรงกับกรณีนั้น)
+     * @param  bool  $sms  false = ไม่ส่ง SMS (อีเมลและแจ้งเตือนในแอปยังส่งตาม $notify) —
+     *                     ลูกค้ายกเลิกใบที่ยังไม่จ่ายของตัวเอง รู้อยู่แล้วว่ายกเลิก และ
+     *                     ใครก็สร้างใบจองด้วยเบอร์คนอื่นแล้วกดยกเลิกวนได้ เปลืองเครดิตฟรี ๆ
      */
-    public function cancelBooking(Booking $booking, ?string $reason = null, bool $notify = true): Booking
+    public function cancelBooking(Booking $booking, ?string $reason = null, bool $notify = true, bool $sms = true): Booking
     {
         $bookedBefore = null;
 
@@ -1039,7 +1042,9 @@ class BookingService
         // Send cancellation email outside of DB transaction
         if ($notify) {
             $this->mailService->sendBookingCancelledEmail($cancelled, $reason);
-            $this->smsService->sendBookingCancelled($cancelled, $reason);
+            if ($sms) {
+                $this->smsService->sendBookingCancelled($cancelled, $reason);
+            }
             SmartNotification::send(
                 $cancelled->user_id,
                 'booking_cancelled',

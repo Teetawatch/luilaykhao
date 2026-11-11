@@ -134,6 +134,41 @@ class BookingSmsTest extends TestCase
         $this->assertStringContainsString('ติดต่อทีมงาน', $message);
     }
 
+    public function test_customer_cancelling_their_own_unpaid_booking_sends_no_sms(): void
+    {
+        Mail::fake();
+        config()->set('services.thaibulksms.enabled', false);
+
+        [$booking] = $this->bookingWithSms();
+
+        // ตัวเดียวกับที่แถบแจ้งเตือนส่วนกลางของเว็บส่งมา
+        $this->actingAs($booking->user, 'sanctum')
+            ->postJson("/api/v1/bookings/{$booking->booking_ref}/cancel", [
+                'reason' => 'ผู้ใช้กดยกเลิกจากแถบแจ้งเตือนส่วนกลาง',
+            ])
+            ->assertOk();
+
+        $this->assertSame('cancelled', $booking->fresh()->status);
+        $this->assertSame(0, SmsLog::where('booking_id', $booking->id)->where('sms_type', 'booking_cancelled')->count());
+        // แจ้งเตือนในแอปยังได้ตามปกติ (ไม่เสียเงิน)
+        $this->assertDatabaseHas('smart_notifications', [
+            'user_id' => $booking->user_id,
+            'type' => 'booking_cancelled',
+        ]);
+    }
+
+    public function test_staff_cancellation_still_texts_the_customer(): void
+    {
+        Mail::fake();
+        config()->set('services.thaibulksms.enabled', false);
+
+        [$booking] = $this->bookingWithSms();
+
+        app(BookingService::class)->cancelBooking($booking, 'รอบนี้ยกเลิก');
+
+        $this->assertStringContainsString('ถูกยกเลิก', $this->messageFor($booking, 'booking_cancelled'));
+    }
+
     /**
      * @return array{0: Booking, 1: SmsService}
      */
