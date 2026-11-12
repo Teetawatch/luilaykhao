@@ -77,19 +77,20 @@
     @endif
 
     @php
-      // รอบไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ — เราเป็นฝ่ายยกเลิก คืนเต็มจำนวน ไม่ใช่นโยบายปกติ
-      $underfilledRefund = $booking->owesUnderfilledFullRefund();
+      // เราเป็นฝ่ายยกเลิก (ทริปไม่ออก / รอบที่คนไม่ครบ) — คืนเต็มจำนวน ไม่ใช่นโยบายปกติ
+      $underfilledRefund = $booking->owesFullRefund();
       $refundAccount = $booking->refundAccountSummary();
+      $awaitingAccount = \App\Services\RefundService::stateOf($booking) === \App\Services\RefundService::AWAITING_ACCOUNT;
     @endphp
 
     @if($booking->refund_amount > 0)
     <div class="highlight-box hl-green">
       <div class="amount-label">ยอดคืนเงิน{{ $underfilledRefund ? ' (เต็มจำนวน)' : '' }}</div>
       <div class="amount">฿{{ number_format($booking->refund_amount, 0) }}</div>
-      @if($underfilledRefund && $refundAccount)
+      @if($refundAccount)
       <div class="amount-note">ทีมงานจะโอนเงินคืนเข้า {{ $refundAccount }} ภายใน 3&ndash;7 วันทำการ โดยคุณไม่ต้องดำเนินการใดเพิ่มเติมครับ</div>
-      @elseif($underfilledRefund)
-      <div class="amount-note">ทีมงานจะติดต่อเพื่อขอเลขบัญชีสำหรับรับเงินคืน และโอนเงินให้ภายใน 3&ndash;7 วันทำการครับ</div>
+      @elseif($awaitingAccount)
+      <div class="amount-note">กรุณาแจ้งบัญชีธนาคารหรือพร้อมเพย์สำหรับรับเงินคืนในแอป (เมนู การจองของฉัน &rarr; ติดตามการคืนเงิน) หรือติดต่อทีมงาน เราจะโอนให้ภายใน 3&ndash;7 วันทำการหลังได้รับบัญชีครับ</div>
       @else
       <div class="amount-note">ทีมงานจะโอนเงินคืนให้ภายใน 3&ndash;7 วันทำการ โดยคุณไม่ต้องดำเนินการใดเพิ่มเติมครับ</div>
       @endif

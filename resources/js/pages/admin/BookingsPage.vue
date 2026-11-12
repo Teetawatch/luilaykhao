@@ -108,7 +108,10 @@
 
         <select v-model="filters.refund_status" @change="fetchData()">
           <option value="">การคืนเงินทั้งหมด</option>
-          <option value="requested">ขอคืนเงิน · รอโอน</option>
+          <option value="open">คืนเงินที่ยังไม่ปิด (ทุกขั้น)</option>
+          <option value="awaiting_account">รอลูกค้าแจ้งบัญชี</option>
+          <option value="requested">ได้บัญชีแล้ว · รอโอน</option>
+          <option value="processing">กำลังโอน</option>
           <option value="refunded">โอนคืนแล้ว</option>
         </select>
 
@@ -186,9 +189,9 @@
                   <span class="status-badge" :class="`status-${booking.status}`">
                     {{ statusLabels[booking.status] || booking.status || '-' }}
                   </span>
-                  <button v-if="booking.refund_status === 'requested'" type="button" class="status-badge status-pending"
-                    title="ลูกค้าขอคืนเงิน (รอบคนไม่ครบ) — กดเพื่อบันทึกการโอนคืน" @click.stop="openStatusModal(booking)">
-                    รอโอนคืน
+                  <button v-if="refundStageLabels[booking.refund_status]" type="button" class="status-badge status-pending"
+                    title="เรื่องคืนเงินยังไม่ปิด — กดเพื่อดูขั้นตอนและบันทึกการโอนคืน" @click.stop="openStatusModal(booking)">
+                    {{ refundStageLabels[booking.refund_status] }}
                   </button>
                   <span v-if="booking.checked_in" class="checkin-badge checked">
                     <span class="material-symbols-rounded">task_alt</span>
@@ -1843,11 +1846,59 @@
               <option value="pending">รอดำเนินการ</option>
               <option value="confirmed">ยืนยันแล้ว</option>
               <option value="cancelled">ยกเลิก</option>
+              <option v-if="canOpenRefund" value="refund_open">ยกเลิก + คืนเงิน (ให้ลูกค้ากรอกบัญชีในแอป)</option>
               <option value="refunded">คืนเงินแล้ว</option>
             </select>
           </div>
-          <div v-if="statusForm.status === 'cancelled' || statusForm.status === 'refunded'" class="form-group">
-            <label>เหตุผล</label>
+          <!-- เรื่องคืนเงินที่เปิดอยู่: ขั้นปัจจุบัน + ปุ่มแจ้งลูกค้าว่ากำลังโอน / ตีกลับบัญชี -->
+          <div v-if="refundStageLabels[statusBooking?.refund_status]" class="refund-stage-box">
+            <div class="refund-stage-head">
+              <span class="material-symbols-rounded">currency_exchange</span>
+              <strong>ขั้นการคืนเงิน: {{ refundStageLabels[statusBooking.refund_status] }}</strong>
+            </div>
+            <p v-if="statusBooking.refund_status === 'awaiting_account'" class="field-hint">
+              ลูกค้าได้ push ให้กรอกบัญชีในแอปแล้ว (ระบบเตือนซ้ำวันที่ 2 และ 5) — ถ้าได้เลขบัญชีทางโทรศัพท์/LINE โอนแล้วกดบันทึก "คืนเงินแล้ว" ได้เลย
+            </p>
+            <p v-if="refundPreview?.refund_note" class="field-hint" style="color:#b45309;">
+              ตีกลับล่าสุด: {{ refundPreview.refund_note }}
+            </p>
+            <div class="refund-stage-actions">
+              <button v-if="statusBooking.refund_status === 'requested'" type="button" class="btn-secondary compact"
+                :disabled="submitting" @click="markRefundProcessing">
+                <span class="material-symbols-rounded">sync_alt</span>
+                แจ้งลูกค้าว่ากำลังโอน
+              </button>
+              <button v-if="['requested', 'processing'].includes(statusBooking.refund_status)" type="button" class="btn-secondary compact"
+                :disabled="submitting" @click="rejectRefundAccount">
+                <span class="material-symbols-rounded">undo</span>
+                บัญชีโอนไม่ได้ · ขอใหม่
+              </button>
+              <button v-if="refundPreview?.refund_account" type="button" class="btn-secondary compact" @click="copyRefundAccount">
+                <span class="material-symbols-rounded">content_copy</span>
+                คัดลอกเลขบัญชี
+              </button>
+            </div>
+          </div>
+          <template v-if="statusForm.status === 'refund_open'">
+            <div class="form-group">
+              <label>ยอดที่จะคืน (บาท)</label>
+              <input v-model.number="statusForm.refundAmount" type="number" min="1" step="0.01" placeholder="0.00" />
+              <p v-if="refundPreview" class="field-hint">
+                นโยบาย: {{ refundPreview.policy_note }} — แนะนำคืน ฿{{ Number(refundPreview.refund_amount).toLocaleString() }}
+                (ชำระมาแล้ว ฿{{ Number(refundPreview.paid_amount).toLocaleString() }})
+              </p>
+            </div>
+            <label class="checkbox-row">
+              <input v-model="statusForm.refundFull" type="checkbox" @change="onRefundFullToggle" />
+              ผู้จัดเป็นฝ่ายยกเลิก — คืนเต็มจำนวนรวมมัดจำ (อีเมลไม่แสดงนโยบาย 80/50/0)
+            </label>
+            <p class="field-hint">
+              ใบจองจะถูกยกเลิก และลูกค้าได้ push + อีเมล + SMS ให้กรอกบัญชีธนาคาร/พร้อมเพย์ในแอป
+              เมื่อได้บัญชีแล้วจะขึ้นคิวงาน "เงินคืนที่ต้องโอนให้ลูกค้า"
+            </p>
+          </template>
+          <div v-if="['cancelled', 'refunded', 'refund_open'].includes(statusForm.status)" class="form-group">
+            <label>เหตุผล{{ statusForm.status === 'refund_open' ? ' (ลูกค้าเห็นในหน้าติดตามการคืนเงิน)' : '' }}</label>
             <textarea v-model="statusForm.reason" rows="3" placeholder="ระบุเหตุผลที่เปลี่ยนสถานะ..."></textarea>
           </div>
           <template v-if="statusForm.status === 'refunded'">
@@ -1863,8 +1914,8 @@
                 <span style="font-family:monospace;">{{ refundPreview.refund_account.number }}</span>
                 · {{ refundPreview.refund_account.name }}
               </p>
-              <p v-else-if="refundPreview?.refund_status === 'requested'" class="field-hint" style="color:#dc2626;">
-                ลูกค้ายังไม่ได้แจ้งเลขบัญชี — โทรขอก่อนโอน
+              <p v-else-if="refundPreview?.refund_status === 'awaiting_account'" class="field-hint" style="color:#dc2626;">
+                ลูกค้ายังไม่ได้แจ้งเลขบัญชีในแอป — รอให้กรอก หรือโทรขอก่อนโอน
               </p>
             </div>
             <div v-if="refundPreview && Number(refundPreview.voucher_restorable) > 0" class="form-group">
@@ -1882,7 +1933,7 @@
               <p class="field-hint">แนบสลิปการโอนเงินคืนให้ลูกค้า (ไม่บังคับ) — ลูกค้าจะเห็นในหน้าสถานะการคืนเงิน</p>
             </div>
           </template>
-          <p v-if="statusForm.status === 'cancelled' || statusForm.status === 'refunded'" class="confirm-warning">
+          <p v-if="['cancelled', 'refunded', 'refund_open'].includes(statusForm.status)" class="confirm-warning">
             <span class="material-symbols-rounded">warning</span>
             การเปลี่ยนเป็นยกเลิกหรือคืนเงินจะปล่อยที่นั่งและอัปเดตจำนวนที่นั่งของรอบเดินทาง
           </p>
@@ -2503,7 +2554,7 @@ const transferInput = ref(null);
 const submitting = ref(false);
 const loadingDetail = ref(false);
 const currentPage = ref(1);
-const statusForm = reactive({ status: '', reason: '', refundAmount: null, refundSlip: null, voucherRestore: null });
+const statusForm = reactive({ status: '', reason: '', refundAmount: null, refundSlip: null, voucherRestore: null, refundFull: false });
 const refundPreview = ref(null);
 const editForm = reactive({
   status: 'pending',
@@ -3561,12 +3612,29 @@ async function doUpdateHold() {
   }
 }
 
+// ขั้นของเรื่องคืนเงินที่ยังไม่ปิด (RefundService) — ป้ายบนการ์ดและในหน้าต่างสถานะ
+const refundStageLabels = {
+  awaiting_account: 'รอลูกค้าแจ้งบัญชี',
+  requested: 'รอโอนคืน',
+  processing: 'กำลังโอนคืน',
+};
+
+// เปิดเรื่องคืนเงินได้: เคยจ่ายเงิน และยังไม่มีเรื่องคืนเงิน/ยังไม่คืน
+const canOpenRefund = computed(() => {
+  const b = statusBooking.value;
+  if (!b) return false;
+  return Number(b.paid_amount || 0) > 0
+    && ['pending', 'confirmed', 'cancelled'].includes(b.status)
+    && !b.refund_status;
+});
+
 function openStatusModal(booking) {
   statusBooking.value = booking;
-  // ลูกค้าขอคืนเงินไว้แล้ว (รอบคนไม่ครบ) — สิ่งเดียวที่ต้องทำคือบันทึกการโอนคืน
-  const refundRequested = booking.refund_status === 'requested' && booking.status !== 'refunded';
+  // เรื่องคืนเงินเปิดอยู่ — สิ่งที่ต้องทำต่อคือบันทึกการโอนคืน
+  const refundRequested = !!refundStageLabels[booking.refund_status] && booking.status !== 'refunded';
   statusForm.status = refundRequested ? 'refunded' : booking.status;
   statusForm.reason = '';
+  statusForm.refundFull = false;
   statusForm.refundAmount = null;
   statusForm.refundSlip = null;
   statusForm.voucherRestore = null;
@@ -3600,12 +3668,89 @@ async function loadRefundPreview() {
 watch(
   () => statusForm.status,
   (status) => {
-    if (status === 'refunded') loadRefundPreview();
+    if (status === 'refunded' || status === 'refund_open') loadRefundPreview();
   },
 );
 
+function onRefundFullToggle() {
+  if (statusForm.refundFull) statusForm.refundAmount = Number(statusBooking.value?.paid_amount || 0);
+  else if (refundPreview.value) statusForm.refundAmount = Number(refundPreview.value.refund_amount ?? 0);
+}
+
+async function afterRefundAction(message) {
+  showStatusModal.value = false;
+  if (detailBooking.value?.booking_ref === statusBooking.value.booking_ref) {
+    await openDetail(statusBooking.value);
+  }
+  await fetchData(currentPage.value);
+  toast.success(message);
+}
+
+async function markRefundProcessing() {
+  if (!statusBooking.value) return;
+  submitting.value = true;
+  try {
+    const res = await api.post(`/admin/bookings/${statusBooking.value.booking_ref}/refund/processing`);
+    await afterRefundAction(res.data?.message || 'แจ้งลูกค้าว่ากำลังโอนแล้ว');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ดำเนินการไม่สำเร็จ');
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function rejectRefundAccount() {
+  if (!statusBooking.value) return;
+  const note = window.prompt('บอกลูกค้าว่าบัญชีมีปัญหาอะไร (ลูกค้าเห็นข้อความนี้ใน push และในแอป)', 'ชื่อบัญชีไม่ตรงกับเลขบัญชี');
+  if (!note || !note.trim()) return;
+  submitting.value = true;
+  try {
+    const res = await api.post(`/admin/bookings/${statusBooking.value.booking_ref}/refund/reject-account`, { note: note.trim() });
+    await afterRefundAction(res.data?.message || 'แจ้งลูกค้าให้กรอกบัญชีใหม่แล้ว');
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'ดำเนินการไม่สำเร็จ');
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function copyRefundAccount() {
+  const a = refundPreview.value?.refund_account;
+  if (!a) return;
+  const amount = refundPreview.value.refund_requested_amount ?? refundPreview.value.refund_amount;
+  const text = `${a.bank} ${a.number} ${a.name} ฿${Number(amount || 0).toLocaleString()} (${statusBooking.value?.booking_ref})`;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success('คัดลอกเลขบัญชีแล้ว');
+  } catch {
+    window.prompt('คัดลอกข้อมูลนี้', text);
+  }
+}
+
 async function doUpdateStatus() {
   if (!statusBooking.value) return;
+
+  // ยกเลิก + เปิดเรื่องคืนเงิน — ลูกค้ากรอกบัญชีเองในแอป (RefundService)
+  if (statusForm.status === 'refund_open') {
+    if (!(Number(statusForm.refundAmount) > 0)) {
+      toast.error('กรุณาระบุยอดที่จะคืน');
+      return;
+    }
+    submitting.value = true;
+    try {
+      const res = await api.post(`/admin/bookings/${statusBooking.value.booking_ref}/refund/open`, {
+        refund_amount: statusForm.refundAmount,
+        full: !!statusForm.refundFull,
+        reason: statusForm.reason || null,
+      });
+      await afterRefundAction(res.data?.message || 'เปิดเรื่องคืนเงินแล้ว');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'เปิดเรื่องคืนเงินไม่สำเร็จ');
+    } finally {
+      submitting.value = false;
+    }
+    return;
+  }
 
   // Route an actual refund through the dedicated endpoint so refund fields,
   // seat release, notifications and the transfer slip are all handled.
@@ -7947,4 +8092,33 @@ async function reverifySlip(bookingRef, slipType) {
   font-family: inherit;
 }
 .partner-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.refund-stage-box {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+.refund-stage-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #92400e;
+}
+.refund-stage-head .material-symbols-rounded { font-size: 20px; }
+.refund-stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.checkbox-row input { margin-top: 3px; }
 </style>

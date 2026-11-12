@@ -37,6 +37,7 @@ use App\Jobs\SendCheckInRemindersJob;
 use App\Jobs\SendDepartureSoonRemindersJob;
 use App\Jobs\SendFinanceCloseRemindersJob;
 use App\Jobs\SendForceMajeureRemindersJob;
+use App\Jobs\SendRefundAccountRemindersJob;
 use App\Jobs\SendRentalOrderRemindersJob;
 use App\Jobs\SendReviewInvitesJob;
 use App\Jobs\SendSafeTravelsJob;
@@ -114,6 +115,8 @@ Schedule::job(new SendUnderfilledTripWarningsJob)->hourly()->between('09:00', '2
 // รอบที่เดินทางจบแล้วแต่ยังไม่ปิดงบ — เตือนทุกเช้าจนกว่าจะเคลียร์ ไม่ปล่อยให้เงียบหาย
 Schedule::job(new SendFinanceCloseRemindersJob)->dailyAt('09:15')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::job(new SendForceMajeureRemindersJob)->dailyAt('10:00')->timezone('Asia/Bangkok')->withoutOverlapping();
+// มีเงินคืนรออยู่แต่ยังไม่กรอกบัญชี — เตือนวันที่ 2 และ 5 หลังเปิดเรื่อง (RefundService)
+Schedule::job(new SendRefundAccountRemindersJob)->dailyAt('10:05')->timezone('Asia/Bangkok')->withoutOverlapping();
 
 // ของขวัญวันเกิดตามระดับสมาชิก — เช้าพอที่จะเห็นตั้งแต่ต้นวันเกิด
 Schedule::job(new IssueBirthdayCouponsJob)->dailyAt('07:30')->timezone('Asia/Bangkok')->withoutOverlapping();

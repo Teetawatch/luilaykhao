@@ -88,6 +88,7 @@ class Booking extends Model
         'was_auto_expired', 'winback_sent_at',
         'hold_until', 'hold_note', 'hold_by_id',
         'refund_status', 'refund_amount', 'refunded_at', 'refund_slip_path', 'refund_account',
+        'refund_opened_at', 'refund_account_at', 'refund_processing_at', 'refund_note', 'refund_full',
         'promotion_id', 'promotion_code', 'discount_amount', 'coins_used',
         'gift_voucher_id', 'voucher_amount', 'voucher_restored_amount',
         'sale_campaign_id', 'campaign_discount',
@@ -131,6 +132,10 @@ class Booking extends Model
             'hold_until' => 'datetime',
             'refund_amount' => 'decimal:2',
             'refunded_at' => 'datetime',
+            'refund_opened_at' => 'datetime',
+            'refund_account_at' => 'datetime',
+            'refund_processing_at' => 'datetime',
+            'refund_full' => 'boolean',
             'checked_in_at' => 'datetime',
             'attendance_asked_at' => 'datetime',
             'rental_reminder_sent_at' => 'datetime',
@@ -940,6 +945,15 @@ class Booking extends Model
     {
         return $this->isUnderfilledPostponement()
             && (int) $this->schedule_id === (int) $this->force_majeure_schedule_id;
+    }
+
+    /**
+     * คืนทุกบาทที่จ่ายมา (รวมมัดจำและบัตรของขวัญ) — เราเป็นฝ่ายยกเลิก: ทริปไม่ออก
+     * (RefundService::cancelSchedule) หรือรอบที่คนไม่ครบแล้วลูกค้ายังค้างอยู่บนรอบนั้น
+     */
+    public function owesFullRefund(): bool
+    {
+        return (bool) $this->refund_full || $this->owesUnderfilledFullRefund();
     }
 
     /** ขอรับเงินคืนเต็มจำนวนแทนการเลือกรอบใหม่ได้ไหม */

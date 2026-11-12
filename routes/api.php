@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\AdminPaymentController;
 use App\Http\Controllers\Api\V1\AdminPermitFormController;
 use App\Http\Controllers\Api\V1\AdminPlaceController;
 use App\Http\Controllers\Api\V1\AdminPriceSheetController;
+use App\Http\Controllers\Api\V1\AdminRefundController;
 use App\Http\Controllers\Api\V1\AdminRentalController;
 use App\Http\Controllers\Api\V1\AdminSeatHandoverController;
 use App\Http\Controllers\Api\V1\AdminSettingsController;
@@ -361,6 +362,9 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/reschedule', [BookingController::class, 'reschedule']);
         // รอบไม่ได้ออกเพราะคนไม่ครบ — ขอรับเงินคืนเต็มจำนวนแทนการเลือกรอบใหม่
         Route::post('bookings/{ref}/postponement/refund', [BookingController::class, 'requestPostponementRefund'])
+            ->middleware('throttle:10,1');
+        // บัญชีรับเงินคืน — กรอก/แก้ได้จนกว่าทีมงานจะเริ่มโอน (RefundService)
+        Route::post('bookings/{ref}/refund/account', [BookingController::class, 'submitRefundAccount'])
             ->middleware('throttle:10,1');
         Route::post('bookings/{ref}/change-pickup', [BookingController::class, 'changePickup']);
         // ลูกค้ากดบอกสถานะตัวเองที่จุดนัด (กำลังไป/ถึงแล้ว/อาจสาย) — ให้กดซ้ำได้
@@ -1024,6 +1028,13 @@ Route::prefix('v1')->group(function () {
         Route::delete('bookings/{ref}', [AdminController::class, 'deleteBooking']);
         Route::get('bookings/{ref}/refund-preview', [AdminController::class, 'refundPreview']);
         Route::post('bookings/{ref}/refund', [AdminController::class, 'processRefund']);
+        // ติดตามการคืนเงินทีละขั้น — เปิดเรื่อง / เริ่มโอน / ตีกลับบัญชี (RefundService)
+        Route::post('bookings/{ref}/refund/open', [AdminRefundController::class, 'open']);
+        Route::post('bookings/{ref}/refund/processing', [AdminRefundController::class, 'processing']);
+        Route::post('bookings/{ref}/refund/reject-account', [AdminRefundController::class, 'rejectAccount']);
+        // ทริปไม่ออก — ยกเลิกทั้งรอบแล้วคืนเงินเต็มจำนวนทุกคน
+        Route::get('schedules/{id}/cancel-refund', [AdminRefundController::class, 'schedulePreview']);
+        Route::post('schedules/{id}/cancel-refund', [AdminRefundController::class, 'cancelSchedule']);
         Route::post('bookings/{ref}/transfer', [AdminController::class, 'transferBooking']);
         Route::get('bookings/{ref}/handovers', [AdminSeatHandoverController::class, 'index']);
         Route::post('bookings/{ref}/handovers', [AdminSeatHandoverController::class, 'store']);

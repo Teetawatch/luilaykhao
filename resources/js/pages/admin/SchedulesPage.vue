@@ -1646,8 +1646,8 @@
         <div class="modal-header">
           <div>
             <h2>
-              <span class="material-symbols-rounded" style="color:#d97706;margin-right:8px;">{{ fmActiveKind === 'underfilled' ? 'group_off' : 'thunderstorm' }}</span>
-              {{ fmActiveKind === 'underfilled' ? 'ยกเลิกรอบเพราะผู้ร่วมทริปไม่ครบ' : 'ยกเลิกรอบเพราะเหตุสุดวิสัย' }}
+              <span class="material-symbols-rounded" style="color:#d97706;margin-right:8px;">{{ fmActiveKind === 'underfilled' ? 'group_off' : fmActiveKind === 'cancel_refund' ? 'currency_exchange' : 'thunderstorm' }}</span>
+              {{ fmActiveKind === 'underfilled' ? 'ยกเลิกรอบเพราะผู้ร่วมทริปไม่ครบ' : fmActiveKind === 'cancel_refund' ? 'ยกเลิกทริปและคืนเงินทุกคน' : 'ยกเลิกรอบเพราะเหตุสุดวิสัย' }}
             </h2>
             <p class="modal-subtitle" v-if="fmSchedule">
               {{ fmSchedule.trip?.title }} — {{ fmSchedule.departure_date }}
@@ -1670,10 +1670,26 @@
                 <span class="material-symbols-rounded">group_off</span>
                 <span><strong>ผู้ร่วมทริปไม่ครบ</strong><small>{{ fmUnderfilledBlocked || 'เลือกรอบใหม่ หรือรับเงินคืนเต็มจำนวน' }}</small></span>
               </button>
+              <button type="button" class="fm-kind" :class="{ active: fmKind === 'cancel_refund' }"
+                :disabled="fmSchedule?.status === 'cancelled'" @click="setFmKind('cancel_refund')">
+                <span class="material-symbols-rounded">currency_exchange</span>
+                <span><strong>ทริปไม่ออก · คืนเงินทุกคน</strong><small>จบเลย ไม่มีรอบใหม่ คืนเต็มจำนวนรวมมัดจำ</small></span>
+              </button>
             </div>
             <div class="fm-explain">
               <p><strong>กดแล้วจะเกิดอะไรขึ้น</strong></p>
-              <ul v-if="fmKind === 'underfilled'">
+              <ul v-if="fmKind === 'cancel_refund'">
+                <li>รอบนี้เปลี่ยนเป็น "ยกเลิก" ทันที และทุกการจองในรอบถูกยกเลิก
+                  <template v-if="fmRefundPreview">
+                    ({{ fmRefundPreview.bookings }} การจอง · จ่ายแล้ว {{ fmRefundPreview.paid_bookings }} ราย รวม <strong>฿{{ Number(fmRefundPreview.refund_total).toLocaleString() }}</strong>)
+                  </template>
+                </li>
+                <li>คนที่จ่ายเงินแล้วได้<strong>เงินคืนเต็มจำนวนรวมมัดจำ</strong> — ได้ push + อีเมล + SMS ให้กรอกบัญชีธนาคาร/พร้อมเพย์ในแอป เตือนซ้ำวันที่ 2 และ 5</li>
+                <li>ลูกค้าติดตามได้ในแอปทีละขั้น: รอบัญชี → รอโอน → กำลังโอน → โอนแล้ว (พร้อมสลิป) และได้ push ทุกขั้น</li>
+                <li>ได้บัญชีแล้วขึ้นคิวงาน "เงินคืนที่ต้องโอนให้ลูกค้า" — โอนแล้วกด "คืนเงินแล้ว" + แนบสลิปที่หน้าการจอง</li>
+                <li>คนที่ยังไม่ได้จ่ายถูกยกเลิกเฉย ๆ · คิวรอที่นั่งถูกปิด · สตาฟประจำรอบได้รับแจ้ง · <strong>ย้อนกลับไม่ได้</strong></li>
+              </ul>
+              <ul v-else-if="fmKind === 'underfilled'">
                 <li>รอบนี้เปลี่ยนเป็น "ยกเลิก" ทันที และเปิดกลับไม่ได้</li>
                 <li>ทุกการจองในรอบ ({{ fmSchedule?.booked_seats || 0 }} ที่นั่ง) <strong>ไม่ถูกยกเลิกทันที</strong> ลูกค้าเลือกเองในแอป เว็บ และ LINE ว่าจะ<strong>ไปรอบใหม่ (ราคาเดิม)</strong> หรือ<strong>รับเงินคืนเต็มจำนวนรวมมัดจำ</strong></li>
                 <li>ต้องตัดสินใจภายใน <strong>{{ fmDecideByPreview }}</strong> (14 วัน) รอบใหม่ที่เลือกได้ต้องออกไม่เกิน {{ fmUntilPreview }} · เลยกำหนดแล้วยังไม่เลือก ระบบคืนเงินให้เอง</li>
@@ -1693,6 +1709,7 @@
               <label>
                 เหตุผล (ลูกค้าจะเห็นข้อความนี้ต่อท้ายคำว่า "เนื่องจาก")
                 <template v-if="fmKind === 'underfilled'"> — เว้นว่างได้</template>
+                <template v-if="fmKind === 'cancel_refund'"> — ลูกค้าเห็นในหน้าติดตามการคืนเงิน</template>
               </label>
               <div class="fm-chips">
                 <button v-for="r in fmActivePresets" :key="r" type="button" class="fm-chip"
@@ -1781,8 +1798,8 @@
         <div class="modal-footer">
           <button class="btn-secondary" @click="closeForceMajeure" :disabled="fmSubmitting">ปิด</button>
           <button v-if="!fmLoading && !fmOverview?.force_majeure_at" class="btn-primary btn-fm-confirm"
-            @click="submitForceMajeure" :disabled="fmSubmitting || (fmKind === 'force_majeure' && !fmReason.trim()) || (fmKind === 'underfilled' && !!fmUnderfilledBlocked)">
-            {{ fmSubmitting ? 'กำลังดำเนินการ…' : 'ยืนยันยกเลิกรอบ และแจ้งลูกค้า' }}
+            @click="submitForceMajeure" :disabled="fmSubmitting || (fmKind !== 'underfilled' && !fmReason.trim()) || (fmKind === 'underfilled' && !!fmUnderfilledBlocked)">
+            {{ fmSubmitting ? 'กำลังดำเนินการ…' : fmKind === 'cancel_refund' ? 'ยืนยันยกเลิกทริป และคืนเงินทุกคน' : 'ยืนยันยกเลิกรอบ และแจ้งลูกค้า' }}
           </button>
         </div>
       </div>
@@ -3435,6 +3452,8 @@ const fmStateClass = (state) => ({
 // ประเภทที่กำลังดู — ก่อนกดคือที่เลือกในฟอร์ม หลังกดคือของจริงจากหลังบ้าน
 const fmActiveKind = computed(() => fmOverview.value?.kind || fmKind.value);
 const fmActivePresets = computed(() => (fmKind.value === 'underfilled' ? fmUnderfilledPresets : fmReasonPresets));
+// ทริปไม่ออก · คืนเงินทุกคน — จะยกเลิกกี่ใบ คืนรวมเท่าไร (RefundService)
+const fmRefundPreview = ref(null);
 
 // หลังบ้านปฏิเสธรอบที่ครบขั้นต่ำแล้ว/ผ่านวันไปแล้ว — บอกตั้งแต่ก่อนกด
 const fmUnderfilledBlocked = computed(() => {
@@ -3460,6 +3479,7 @@ const fmDecideByPreview = computed(() => {
 
 const setFmKind = (kind) => {
   fmKind.value = kind;
+  if (kind === 'cancel_refund' && fmSchedule.value) loadFmRefundPreview(fmSchedule.value.id);
   // สลับประเภทแล้วเหตุผลเดิมของอีกแบบไม่ใช่ของแบบนี้
   if (kind === 'underfilled' && fmReasonPresets.includes(fmReason.value)) fmReason.value = '';
   if (kind === 'force_majeure' && fmUnderfilledPresets.includes(fmReason.value)) fmReason.value = '';
@@ -3486,9 +3506,20 @@ const fmUntilPreview = computed(() => {
   return until.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 });
 
+const loadFmRefundPreview = async (id) => {
+  fmRefundPreview.value = null;
+  try {
+    const res = await api.get(`/admin/schedules/${id}/cancel-refund`);
+    fmRefundPreview.value = res.data.data;
+  } catch {
+    fmRefundPreview.value = null;
+  }
+};
+
 const openForceMajeure = async (sch, kind = 'force_majeure') => {
   fmSchedule.value = sch;
   fmOverview.value = null;
+  fmRefundPreview.value = null;
   fmKind.value = kind;
   fmReason.value = sch.force_majeure_reason || '';
   showForceMajeure.value = true;
@@ -3509,7 +3540,25 @@ const closeForceMajeure = () => {
   showForceMajeure.value = false;
 };
 
+const submitCancelRefund = async () => {
+  if (!fmSchedule.value || !fmReason.value.trim()) return;
+  const total = fmRefundPreview.value ? ` รวม ฿${Number(fmRefundPreview.value.refund_total).toLocaleString()}` : '';
+  if (!window.confirm(`ยืนยันยกเลิกทริปรอบ ${fmSchedule.value.departure_date} และคืนเงินเต็มจำนวนทุกคน${total}?\nทุกการจองในรอบจะถูกยกเลิก ลูกค้าจะได้แจ้งให้กรอกบัญชีรับเงินคืนในแอป — ย้อนกลับไม่ได้`)) return;
+  fmSubmitting.value = true;
+  try {
+    const res = await api.post(`/admin/schedules/${fmSchedule.value.id}/cancel-refund`, { reason: fmReason.value.trim() });
+    toast.success(res.data.message || 'ยกเลิกทริปและเปิดเรื่องคืนเงินแล้ว');
+    showForceMajeure.value = false;
+    fetchData();
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'ดำเนินการไม่สำเร็จ');
+  } finally {
+    fmSubmitting.value = false;
+  }
+};
+
 const submitForceMajeure = async () => {
+  if (fmKind.value === 'cancel_refund') return submitCancelRefund();
   const underfilled = fmKind.value === 'underfilled';
   if (!fmSchedule.value || (!underfilled && !fmReason.value.trim())) return;
   const question = underfilled

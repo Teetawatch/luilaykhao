@@ -8,6 +8,7 @@ use App\Services\BookingDocumentService;
 use App\Services\CheckInPassService;
 use App\Services\ForceMajeureService;
 use App\Services\PickupStatusService;
+use App\Services\RefundService;
 use App\Services\RentalOrderService;
 use App\Services\SeatHandoverService;
 use App\Services\TravelDocumentService;
@@ -360,6 +361,8 @@ class BookingResource extends JsonResource
             'refund_amount' => $this->refund_amount,
             'refunded_at' => $this->refunded_at?->toISOString(),
             'refund_slip_url' => MediaDisk::slipUrl($this->refund_slip_path),
+            // ติดตามการคืนเงินทีละขั้น + บัญชีแบบปิดเลข — null = ไม่มีเรื่องคืนเงิน (RefundService)
+            'refund' => RefundService::customerPayload($this->resource),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

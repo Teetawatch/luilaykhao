@@ -51,26 +51,10 @@ class ForceMajeureService
     public const UNDERFILLED_REASON = 'ผู้ร่วมเดินทางไม่ครบตามจำนวนขั้นต่ำ';
 
     /** refund_status ของใบที่ขอคืนเงินแล้ว รอทีมงานโอน (processRefund เปลี่ยนเป็น refunded) */
-    public const REFUND_REQUESTED = 'requested';
+    public const REFUND_REQUESTED = RefundService::REQUESTED;
 
-    /** ตัวเลือกช่องทางรับเงินคืน — ทุกหน้าจอ (เว็บ แอป LIFF ลิงก์) ใช้รายการเดียวกันจากที่นี่ */
-    public const REFUND_BANKS = [
-        'พร้อมเพย์',
-        'กสิกรไทย',
-        'ไทยพาณิชย์',
-        'กรุงเทพ',
-        'กรุงไทย',
-        'กรุงศรีอยุธยา',
-        'ทหารไทยธนชาต (ttb)',
-        'ออมสิน',
-        'ธ.ก.ส.',
-        'อาคารสงเคราะห์',
-        'ยูโอบี',
-        'ซีไอเอ็มบี ไทย',
-        'เกียรตินาคินภัทร',
-        'แลนด์ แอนด์ เฮ้าส์',
-        'อื่น ๆ',
-    ];
+    /** ตัวเลือกช่องทางรับเงินคืน — ดู RefundService::BANKS */
+    public const REFUND_BANKS = RefundService::BANKS;
 
     public const TIMEZONE = 'Asia/Bangkok';
 
@@ -310,7 +294,7 @@ class ForceMajeureService
         }
 
         $refunds = Booking::where('force_majeure_schedule_id', $schedule->id)
-            ->whereIn('refund_status', [self::REFUND_REQUESTED, 'refunded'])
+            ->whereIn('refund_status', [...RefundService::OPEN_STATES, RefundService::REFUNDED])
             ->count();
 
         if ($refunds > 0) {
@@ -738,11 +722,14 @@ class ForceMajeureService
 
             $cancelled = app(BookingService::class)->cancelBooking($locked, $reason, notify: false);
 
+            // ไม่มีบัญชี (ระบบคืนให้เองเพราะเลยกำหนด) = รอลูกค้ากรอกบัญชีในแอป — RefundService
             $cancelled->forceFill([
                 'force_majeure_resolved_at' => now(),
-                'refund_status' => $paid > 0 ? self::REFUND_REQUESTED : null,
+                'refund_status' => $paid > 0 ? ($account ? RefundService::REQUESTED : RefundService::AWAITING_ACCOUNT) : null,
                 'refund_amount' => $paid > 0 ? $paid : null,
                 'refund_account' => $paid > 0 ? $account : null,
+                'refund_opened_at' => $paid > 0 ? now() : null,
+                'refund_account_at' => $paid > 0 && $account ? now() : null,
             ])->save();
 
             return $cancelled;
@@ -794,26 +781,7 @@ class ForceMajeureService
      */
     public static function normalizeRefundAccount(array $account): array
     {
-        $bank = trim((string) ($account['bank'] ?? ''));
-        $number = preg_replace('/\D+/', '', (string) ($account['number'] ?? ''));
-        $name = trim(preg_replace('/\s+/u', ' ', (string) ($account['name'] ?? '')));
-
-        if (! in_array($bank, self::REFUND_BANKS, true)) {
-            throw new \Exception('กรุณาเลือกธนาคารหรือพร้อมเพย์');
-        }
-
-        // พร้อมเพย์ = เบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน 13 หลัก
-        if ($bank === 'พร้อมเพย์' ? ! in_array(strlen($number), [10, 13], true) : (strlen($number) < 9 || strlen($number) > 15)) {
-            throw new \Exception($bank === 'พร้อมเพย์'
-                ? 'พร้อมเพย์ต้องเป็นเบอร์มือถือ 10 หลัก หรือเลขบัตรประชาชน 13 หลัก'
-                : 'เลขบัญชีไม่ถูกต้อง');
-        }
-
-        if ($name === '' || mb_strlen($name) > 120) {
-            throw new \Exception('กรุณากรอกชื่อบัญชี');
-        }
-
-        return ['bank' => $bank, 'number' => $number, 'name' => $name];
+        return RefundService::normalizeAccount($account);
     }
 
     /**
@@ -867,7 +835,7 @@ class ForceMajeureService
     {
         return match (true) {
             $booking->refund_status === 'refunded' || $booking->status === 'refunded' => 'refunded',
-            $booking->refund_status === self::REFUND_REQUESTED => 'refund_requested',
+            in_array($booking->refund_status, RefundService::OPEN_STATES, true) => 'refund_requested',
             ! in_array($booking->status, Booking::MODIFIABLE_STATUSES, true) => 'cancelled',
             $booking->force_majeure_resolved_at !== null => 'moved',
             $booking->canChooseForceMajeureRound() => 'awaiting',
@@ -1039,7 +1007,7 @@ class ForceMajeureService
         $body = $amount > 0
             ? 'การจอง '.$booking->booking_ref.' ทริป '.$tripTitle.' ยกเลิกแล้ว เราจะโอนคืน ฿'
                 .number_format($amount, 0).' เต็มจำนวน'
-                .($hasAccount ? ' เข้าบัญชีที่แจ้งไว้ภายใน 3–7 วันทำการครับ' : ' ทีมงานจะติดต่อขอเลขบัญชีรับเงินคืนครับ')
+                .($hasAccount ? ' เข้าบัญชีที่แจ้งไว้ภายใน 3–7 วันทำการครับ' : ' กรุณากรอกบัญชีธนาคารหรือพร้อมเพย์ในแอปเพื่อรับเงินคืนครับ')
             : 'การจอง '.$booking->booking_ref.' ทริป '.$tripTitle.' ยกเลิกแล้ว ไม่มียอดที่ต้องคืนครับ';
 
         if ($booking->user_id) {
@@ -1052,7 +1020,8 @@ class ForceMajeureService
                     [
                         'booking_ref' => $booking->booking_ref,
                         'refund_amount' => $amount,
-                        'route' => 'booking',
+                        'refund_status' => RefundService::stateOf($booking),
+                        'route' => $amount > 0 ? 'refund' : 'booking',
                     ],
                 );
             } catch (\Throwable $e) {

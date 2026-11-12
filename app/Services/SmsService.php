@@ -137,9 +137,35 @@ class SmsService
                     number_format($amount, 0),
                     $booking->refundAccountSummary()
                         ? ' เข้าบัญชีที่แจ้งไว้ภายใน 3-7 วันทำการ'
-                        : ' ทีมงานจะติดต่อขอเลขบัญชีรับเงินคืน',
+                        : ' กรุณาแจ้งบัญชีรับเงินคืนในแอป (การจองของฉัน) หรือติดต่อทีมงาน',
                 )
                 : sprintf('การจอง %s ยกเลิกแล้ว ไม่มียอดที่ต้องคืน', $booking->booking_ref),
+        );
+    }
+
+    /**
+     * เปิดเรื่องคืนเงิน (RefundService::open) — ทริปถูกยกเลิกทั้งรอบ หรือทีมงานคืนเงินรายใบ
+     * ลูกค้าที่ไม่มีแอปต้องรู้ว่าทริปไม่ออก และต้องแจ้งบัญชีถึงจะได้เงินคืน
+     */
+    public function sendRefundOpened(Booking $booking, bool $tripCancelled): ?SmsLog
+    {
+        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        $needsAccount = $booking->refund_status === RefundService::AWAITING_ACCOUNT;
+
+        return $this->queueOrSend(
+            booking: $booking,
+            type: 'refund_opened',
+            dedupeKey: 'default',
+            message: sprintf(
+                '%sเราจะคืนเงิน %s บาท%s',
+                $tripCancelled
+                    ? sprintf('ขออภัย ทริป %s %s ถูกยกเลิก ', $this->tripTitle($booking), ThaiDate::short($booking->schedule?->departure_date))
+                    : sprintf('การจอง %s ', $booking->booking_ref),
+                number_format((float) $booking->refund_amount, 0),
+                $needsAccount
+                    ? ' กรุณาแจ้งบัญชีรับเงินคืนในแอป (การจองของฉัน) หรือติดต่อทีมงาน'
+                    : ' เข้าบัญชีที่แจ้งไว้ '.RefundService::ETA_LABEL,
+            ),
         );
     }
 
@@ -584,6 +610,7 @@ class SmsService
             'trip_postponed_reminder',
             'trip_resumed',
             'trip_refund_requested',
+            'refund_opened',
             self::UNDERFILLED_NOTICE,
             self::UNDERFILLED_WARNING,
         ];

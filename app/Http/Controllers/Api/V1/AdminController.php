@@ -52,6 +52,7 @@ use App\Services\DriverLoginCodeService;
 use App\Services\ForceMajeureService;
 use App\Services\MailService;
 use App\Services\PermitSignatureService;
+use App\Services\RefundService;
 use App\Services\RouteTrackService;
 use App\Services\ScheduleFinanceService;
 use App\Services\ScheduleSeatNotifier;
@@ -1611,8 +1612,11 @@ class AdminController extends Controller
             $query->whereDate('created_at', $request->date);
         }
         // คิวงาน "คืนเงินรอโอน" ลิงก์มาที่ ?refund_status=requested
+        // "open" = ทุกใบที่เรื่องคืนเงินยังไม่ปิด (รอบัญชี / รอโอน / กำลังโอน)
         if ($request->filled('refund_status')) {
-            $query->where('refund_status', $request->refund_status);
+            $request->refund_status === 'open'
+                ? $query->whereIn('refund_status', RefundService::OPEN_STATES)
+                : $query->where('refund_status', $request->refund_status);
         }
         if ($request->filled('payment_type')) {
             $query->where('payment_type', $request->payment_type);
@@ -1692,8 +1696,8 @@ class AdminController extends Controller
                 $booking->update([
                     'status' => 'refunded',
                     // ลูกค้าขอคืนเงินไว้ (รอบคนไม่ครบ) — ปิดเรื่องในคิวงาน "เงินคืนที่ต้องโอน" ด้วย
-                    ...($booking->refund_status === ForceMajeureService::REFUND_REQUESTED
-                        ? ['refund_status' => 'refunded', 'refunded_at' => now()]
+                    ...(in_array($booking->refund_status, RefundService::OPEN_STATES, true)
+                        ? ['refund_status' => RefundService::REFUNDED, 'refunded_at' => now()]
                         : []),
                 ]);
             }
@@ -1752,8 +1756,14 @@ class AdminController extends Controller
             'refund_amount' => $preview['refund_amount'],
             'policy_note' => $preview['policy_note'],
             // ลูกค้าขอคืนเงินเองจากรอบที่คนไม่ครบ — บัญชีที่เขากรอกไว้ให้โอนเข้า
-            'refund_status' => $booking->refund_status,
+            'refund_status' => RefundService::stateOf($booking) ?? $booking->refund_status,
             'refund_account' => is_array($account) && ! empty($account['number']) ? $account : null,
+            'refund_requested_amount' => $booking->refund_amount !== null ? (float) $booking->refund_amount : null,
+            'refund_full' => $booking->owesFullRefund(),
+            'refund_note' => $booking->refund_note,
+            'refund_opened_at' => $booking->refund_opened_at?->toISOString(),
+            'refund_account_at' => $booking->refund_account_at?->toISOString(),
+            'refund_processing_at' => $booking->refund_processing_at?->toISOString(),
             // ส่วนที่จ่ายด้วยบัตรของขวัญ — คืนกลับเข้าบัตร ไม่ใช่โอนเป็นเงิน
             'voucher_amount' => (float) $booking->voucher_amount,
             'voucher_restorable' => $voucher['remaining'],
@@ -1817,13 +1827,7 @@ class AdminController extends Controller
 
         $this->mailService->sendBookingStatusChangedEmail($booking, 'refunded');
 
-        SmartNotification::send(
-            $booking->user_id,
-            'booking_refunded',
-            'ดำเนินการคืนเงินแล้ว',
-            "เลขการจอง {$booking->booking_ref} ได้รับการคืนเงิน ฿".number_format($refundAmount, 0).' แล้ว',
-            ['booking_ref' => $booking->booking_ref, 'refund_amount' => $refundAmount, 'route' => 'booking'],
-        );
+        app(RefundService::class)->notifyRefunded($booking);
 
         return $this->success([
             'booking_ref' => $booking->booking_ref,

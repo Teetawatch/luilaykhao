@@ -13,7 +13,7 @@ use App\Models\SosAlert;
 use App\Models\SupportConversation;
 use App\Models\TripPost;
 use App\Services\AtRiskScheduleService;
-use App\Services\ForceMajeureService;
+use App\Services\RefundService;
 use App\Services\ScheduleFinanceService;
 use App\Services\SeatLayoutGuard;
 use App\Services\ShoppingListService;
@@ -52,6 +52,7 @@ class AdminActionQueueController extends Controller
             $this->financeCloseGroup(),
             $this->shoppingReportGroup(),
             $this->refundRequestGroup(),
+            $this->refundAwaitingAccountGroup(),
             $this->slipGroup(),
             $this->customPickupGroup(),
             $this->supportGroup(),
@@ -217,24 +218,47 @@ class AdminActionQueueController extends Controller
     }
 
     /**
-     * เงินที่ต้องโอนคืนลูกค้า — รอบไม่ได้ออกเพราะคนไม่ครบแล้วลูกค้าขอคืน (หรือเลยกำหนด
-     * ตัดสินใจแล้วระบบคืนให้) กดคืนเงินที่หน้าการจองแล้วการ์ดนี้หายไปเอง
-     * ใบที่ไม่มีเลขบัญชีต้องโทรขอก่อน จึงบอกไว้ในรายการ
+     * เงินที่ต้องโอนคืนลูกค้า — ลูกค้าแจ้งบัญชีแล้ว (รอโอน) หรือทีมงานกดเริ่มโอนไว้
+     * โอนเสร็จกด "คืนเงินแล้ว" + แนบสลิปที่หน้าการจองแล้วการ์ดนี้หายไปเอง
+     * ใบที่ยังรอลูกค้ากรอกบัญชีแยกไปอีกกลุ่ม (refundAwaitingAccountGroup)
      */
     private function refundRequestGroup(): array
     {
-        $query = Booking::where('refund_status', ForceMajeureService::REFUND_REQUESTED);
+        $query = Booking::whereIn('refund_status', [RefundService::REQUESTED, RefundService::PROCESSING]);
         $recent = (clone $query)->with(['user', 'schedule.trip'])->oldest('cancelled_at')->limit(5)->get();
 
         return $this->group(
             'refund_requests', 'เงินคืนที่ต้องโอนให้ลูกค้า', 'currency_exchange', 'high',
             $query->count(),
-            '/admin/bookings?refund_status='.ForceMajeureService::REFUND_REQUESTED,
+            '/admin/bookings?refund_status=open',
             $recent->map(fn (Booking $b) => [
-                'title' => $b->booking_ref.' · ฿'.number_format((float) $b->refund_amount, 0),
+                'title' => $b->booking_ref.' · ฿'.number_format((float) $b->refund_amount, 0)
+                    .($b->refund_status === RefundService::PROCESSING ? ' · กำลังโอน' : ''),
                 'detail' => ($b->user?->name ?? 'ลูกค้า')
                     .($b->refundAccountSummary() ? ' · '.$b->refundAccountSummary() : ' · ยังไม่มีเลขบัญชี ต้องติดต่อ'),
                 'at' => $b->cancelled_at?->toISOString(),
+            ])->values(),
+        );
+    }
+
+    /**
+     * เปิดเรื่องคืนเงินมาเกิน 3 วันแล้วลูกค้ายังไม่กรอกบัญชี (push เตือนไปแล้ว 2 ครั้ง)
+     * — ถึงเวลาโทร/ทักไลน์ขอเลขบัญชี
+     */
+    private function refundAwaitingAccountGroup(): array
+    {
+        $query = Booking::where('refund_status', RefundService::AWAITING_ACCOUNT)
+            ->where(fn ($q) => $q->where('refund_opened_at', '<=', now()->subDays(3))->orWhereNull('refund_opened_at'));
+        $recent = (clone $query)->with('user')->oldest('refund_opened_at')->limit(5)->get();
+
+        return $this->group(
+            'refund_awaiting_account', 'ลูกค้ายังไม่แจ้งบัญชีรับเงินคืน', 'account_balance', 'medium',
+            $query->count(),
+            '/admin/bookings?refund_status='.RefundService::AWAITING_ACCOUNT,
+            $recent->map(fn (Booking $b) => [
+                'title' => $b->booking_ref.' · ฿'.number_format((float) $b->refund_amount, 0),
+                'detail' => ($b->user?->name ?? 'ลูกค้า').($b->user?->phone ? ' · '.$b->user->phone : ''),
+                'at' => ($b->refund_opened_at ?? $b->cancelled_at)?->toISOString(),
             ])->values(),
         );
     }

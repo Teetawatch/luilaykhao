@@ -427,14 +427,16 @@ class UnderfilledPostponementTest extends TestCase
 
         $silent->refresh();
         $this->assertSame('cancelled', $silent->status);
-        $this->assertSame('requested', $silent->refund_status);
+        // ไม่มีบัญชี — ลูกค้ากรอกเองในแอป (RefundService)
+        $this->assertSame('awaiting_account', $silent->refund_status);
         $this->assertSame('7000.00', (string) $silent->refund_amount);
         $this->assertNull($silent->refund_account);
         $this->assertStringContainsString('ไม่ได้เลือกรอบใหม่ภายในกำหนด', $silent->cancellation_reason);
 
         $note = SmartNotification::where('user_id', $silent->user_id)->where('type', 'trip_refund_requested')->first();
         $this->assertStringContainsString('คืนเงินให้แล้ว', $note->title);
-        $this->assertStringContainsString('ติดต่อขอเลขบัญชี', $note->body);
+        $this->assertStringContainsString('กรอกบัญชีธนาคารหรือพร้อมเพย์ในแอป', $note->body);
+        $this->assertSame('refund', $note->data['route']);
 
         $this->assertSame('cancelled', $unpaid->fresh()->status);
         $this->assertNull($unpaid->fresh()->refund_status);
@@ -555,7 +557,7 @@ class UnderfilledPostponementTest extends TestCase
         $group = collect($this->actingAs($this->admin)->getJson('/api/v1/admin/action-queue')->json('data.groups'))
             ->firstWhere('key', 'refund_requests');
         $this->assertSame(1, $group['count']);
-        $this->assertSame('/admin/bookings?refund_status=requested', $group['route']);
+        $this->assertSame('/admin/bookings?refund_status=open', $group['route']);
         $this->assertStringContainsString('กสิกรไทย ••••7890', $group['items'][0]['detail']);
 
         $this->actingAs($this->admin)

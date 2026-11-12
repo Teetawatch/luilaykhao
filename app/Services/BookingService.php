@@ -775,7 +775,7 @@ class BookingService
             return ['percent' => 0, 'amount' => 0.0, 'remaining' => 0.0];
         }
 
-        $percent = $booking->owesUnderfilledFullRefund() ? 100 : $this->calculateRefundPercent($booking);
+        $percent = $booking->owesFullRefund() ? 100 : $this->calculateRefundPercent($booking);
 
         return [
             'percent' => $percent,
@@ -1546,6 +1546,16 @@ class BookingService
     {
         $paidAmount = (float) $booking->paid_amount;
         $paymentType = $booking->payment_type ?? 'full';
+
+        // ทริปไม่ออก (ยกเลิกทั้งรอบ) — เราเป็นฝ่ายยกเลิก คืนทุกบาทรวมมัดจำ
+        if ($booking->refund_full) {
+            return [
+                'refund_percent' => 100,
+                'refund_amount' => round($paidAmount, 2),
+                'paid_amount' => $paidAmount,
+                'policy_note' => 'ทริปถูกยกเลิกโดยผู้จัด คืนเต็มจำนวนรวมมัดจำ',
+            ];
+        }
 
         // รอบไม่ได้ออกเพราะผู้ร่วมทริปไม่ครบ — เราเป็นฝ่ายยกเลิก คืนทุกบาทรวมมัดจำ
         if ($booking->owesUnderfilledFullRefund()) {

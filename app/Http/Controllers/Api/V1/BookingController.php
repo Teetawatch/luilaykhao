@@ -20,6 +20,7 @@ use App\Services\ForceMajeureService;
 use App\Services\ModerationService;
 use App\Services\PartnerService;
 use App\Services\PickupStatusService;
+use App\Services\RefundService;
 use App\Services\WeatherService;
 use App\Support\ClientChannel;
 use App\Support\TermsConsent;
@@ -498,6 +499,34 @@ class BookingController extends Controller
         return $this->success(
             new BookingResource($booking->fresh(['schedule.trip', 'passengers', 'forceMajeureSchedule'])),
             (float) $booking->refund_amount > 0 ? 'รับเรื่องคืนเงินแล้ว' : 'ยกเลิกการจองแล้ว',
+        );
+    }
+
+    /**
+     * ลูกค้ากรอก/แก้บัญชีรับเงินคืน (ทริปถูกยกเลิก หรือทีมงานเปิดเรื่องคืนเงินให้)
+     * แก้ได้จนกว่าทีมงานจะเริ่มโอน — ดู RefundService
+     */
+    public function submitRefundAccount(Request $request, string $ref): JsonResponse
+    {
+        $validated = $request->validate([
+            'bank' => ['required', 'string', 'max:60'],
+            'account_number' => ['required', 'string', 'max:30'],
+            'account_name' => ['required', 'string', 'max:120'],
+        ]);
+
+        $booking = Booking::where('booking_ref', $ref)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        try {
+            $booking = app(RefundService::class)->submitAccount($booking, self::refundAccountFrom($validated) ?? []);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success(
+            new BookingResource($booking->fresh(['schedule.trip', 'passengers', 'forceMajeureSchedule'])),
+            'บันทึกบัญชีรับเงินคืนแล้ว ทีมงานจะโอนให้'.RefundService::ETA_LABEL,
         );
     }
 

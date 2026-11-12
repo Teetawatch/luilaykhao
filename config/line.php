@@ -45,6 +45,11 @@ return [
         'trip_refund_requested',
         'booking_transferred',
         'booking_refunded',
+        // ติดตามการคืนเงิน (RefundService) — คนไม่มีแอปตอบกลับใน LINE OA เพื่อแจ้งบัญชีได้
+        'refund_account_needed',
+        'refund_requested',
+        'refund_processing',
+        'refund_account_rejected',
         // เงิน
         'payment_confirmed',
         'deposit_paid',
