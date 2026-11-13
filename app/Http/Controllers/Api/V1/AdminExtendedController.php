@@ -720,8 +720,10 @@ class AdminExtendedController extends Controller
         $bookings = Booking::where('user_id', $id)
             ->with(['schedule.trip', 'passengers', 'seats'])
             ->orderByDesc('created_at')
-            ->get()
-            ->map(fn ($b) => new BookingResource($b));
+            ->get();
+        // ลูกค้าประจำมีหลายสิบใบ — นับสถิติทริปรวดเดียว ไม่ใช่ใบละ 5 คิวรี
+        Trip::loadListStats($bookings->map(fn ($b) => $b->schedule?->trip)->filter()->unique('id'));
+        $bookings = $bookings->map(fn ($b) => (new BookingResource($b))->forStaffList());
 
         $totalSpent = Booking::where('user_id', $id)
             ->where('status', 'confirmed')

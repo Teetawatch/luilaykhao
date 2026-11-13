@@ -15,6 +15,8 @@ use App\Support\LoyaltyTier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -430,5 +432,77 @@ class TripListPerformanceTest extends TestCase
 
         // เดิมแต่ละใบนับสถิติทริปของตัวเองใหม่ — 4 ใบที่เพิ่มมาเพิ่ม 22 คิวรี ตอนนี้ 2
         $this->assertLessThan(10, $five - $one, '4 more bookings added '.($five - $one).' queries');
+    }
+
+    private function admin(): User
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        return $admin;
+    }
+
+    /** @return array{0: int, 1: TestResponse} */
+    private function countQueries(User $as, string $url): array
+    {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $response = $this->actingAs($as, 'sanctum')->getJson($url)->assertOk();
+        $queries = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return [$queries, $response];
+    }
+
+    public function test_admin_schedule_list_counts_per_page_and_sends_a_brief_trip(): void
+    {
+        $admin = $this->admin();
+        $trip = $this->trip();
+        $trip->update(['description' => str_repeat('รายละเอียดยาว ', 200)]);
+        foreach ([10, 20] as $days) {
+            $this->book($this->schedule($trip, $days), 2);
+        }
+        [$two] = $this->countQueries($admin, '/api/v1/admin/schedules?per_page=500');
+
+        foreach ([30, 40, 50, 60] as $days) {
+            $this->book($this->schedule($this->trip(), $days), 2);
+        }
+        [$six, $response] = $this->countQueries($admin, '/api/v1/admin/schedules?per_page=500');
+
+        // เดิมรอบละ ~7 คิวรี (นับที่นั่งทีละรอบ + นับสถิติทริปเดียวกันซ้ำทุกรอบ)
+        // หน้านี้ขอทีละ 500 รอบ บน production จึงหลายพันคิวรี
+        $this->assertLessThan(3, $six - $two, '4 more rounds added '.($six - $two).' queries');
+
+        // ทุกหน้าที่ใช้รายการนี้อ่านแค่ชื่อ/รูป/พิกัด — เนื้อหายาวไม่ต้องซ้ำทุกรอบ
+        $round = collect($response->json('data'))->firstWhere('trip_id', $trip->id);
+        $this->assertSame($trip->title, $round['trip']['title']);
+        $this->assertArrayHasKey('cover_image', $round['trip']);
+        $this->assertArrayNotHasKey('description', $round['trip']);
+        $this->assertArrayNotHasKey('itinerary', $round['trip']);
+    }
+
+    public function test_admin_booking_list_does_not_query_per_booking(): void
+    {
+        $admin = $this->admin();
+        $this->book($this->schedule($this->trip()), 2);
+        [$one] = $this->countQueries($admin, '/api/v1/admin/bookings?per_page=50');
+
+        foreach (range(1, 4) as $i) {
+            $this->book($this->schedule($this->trip("Trip {$i}"), 10 + $i), 2);
+        }
+        [$five, $response] = $this->countQueries($admin, '/api/v1/admin/bookings?per_page=50');
+
+        // เดิมใบละ ~7 คิวรี (สถิติทริป + บัตรขึ้นรถ/ส่งต่อที่นั่งของ "ผู้ชม" ที่เป็นแอดมิน)
+        $this->assertLessThan(3, $five - $one, '4 more bookings added '.($five - $one).' queries');
+
+        $row = $response->json('data.0');
+        $this->assertArrayHasKey('title', $row['schedule']['trip']);
+        $this->assertArrayNotHasKey('description', $row['schedule']['trip']);
+
+        // หน้าแก้ไขการจองยังได้ทริปเต็มจาก /admin/bookings/{ref}
+        $full = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/bookings/'.$row['booking_ref'])->assertOk()->json('data.schedule.trip');
+        $this->assertArrayHasKey('rental_items', $full);
     }
 }

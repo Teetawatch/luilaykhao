@@ -22,6 +22,16 @@ class TripScheduleResource extends JsonResource
         return $this;
     }
 
+    /** รายการรอบยาว ๆ (หน้าแอดมิน) — ทริปที่แนบมาไม่ต้องพกเนื้อหายาว ดู TripResource::brief() */
+    protected bool $briefTrip = false;
+
+    public function briefTrip(bool $brief = true): static
+    {
+        $this->briefTrip = $brief;
+
+        return $this;
+    }
+
     /**
      * นำเสนอชื่อผู้ร่วมเดินทางแบบสั้น: ชื่อเล่นถ้ามี ไม่งั้นใช้ชื่อต้นคำเดียว
      * เพื่อไม่เปิดเผยชื่อ-นามสกุลเต็มของลูกค้าคนอื่นในรอบ
@@ -49,7 +59,9 @@ class TripScheduleResource extends JsonResource
         return [
             'id' => $this->id,
             'trip_id' => $this->trip_id,
-            'trip' => $this->withoutTrip ? new MissingValue : new TripResource($this->whenLoaded('trip')),
+            'trip' => $this->withoutTrip
+                ? new MissingValue
+                : (new TripResource($this->whenLoaded('trip')))->brief($this->briefTrip),
             'departure_date' => $this->departure_date?->toDateString(),
             // เวลาออกเดินทางจริง (เวลาท้องถิ่นไทย ไม่แปลง timezone) — อาจอยู่ก่อน
             // departure_date เช่น รถออกคืนวันศุกร์ 23:30 สำหรับทริปวันเสาร์

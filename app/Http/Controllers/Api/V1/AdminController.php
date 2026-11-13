@@ -481,9 +481,16 @@ class AdminController extends Controller
             ->orderBy('departure_date', $direction)
             ->orderBy('id', $direction)
             ->paginate($request->get('per_page', 15));
-        $schedules->getCollection()->each->syncBookedSeats();
 
-        return $this->paginated($schedules->through(fn ($s) => new TripScheduleResource($s)));
+        // หน้ารอบเดินทางขอทีละ 500 รอบ — นับที่นั่งและสถิติทริปทั้งหน้าในไม่กี่คิวรี
+        // (เดิมนับทีละรอบ ~7 คิวรีต่อรอบ และนับสถิติทริปเดียวกันซ้ำทุกรอบ)
+        // eager load ผูกทริปตัวเดียวกันให้ทุกรอบของทริปนั้นอยู่แล้ว
+        $rounds = $schedules->getCollection();
+        TripSchedule::syncBookedSeatsFor($rounds);
+        Trip::loadListStats($rounds->pluck('trip')->filter()->unique('id'));
+
+        // ทุกหน้าที่ใช้รายการนี้อ่านแค่ชื่อ/รูป/พิกัดของทริป — ไม่ส่งเนื้อหายาวซ้ำทุกรอบ
+        return $this->paginated($schedules->through(fn ($s) => (new TripScheduleResource($s))->briefTrip()));
     }
 
     public function storeSchedule(StoreScheduleRequest $request): JsonResponse
@@ -1652,8 +1659,10 @@ class AdminController extends Controller
         }
 
         $bookings = $query->orderByDesc('created_at')->paginate($request->get('per_page', 15));
+        // สถิติทริปที่ฝังในแต่ละใบนับรวดเดียวทั้งหน้า (เดิมใบละ 5 คิวรี)
+        Trip::loadListStats($bookings->getCollection()->map(fn ($b) => $b->schedule?->trip)->filter()->unique('id'));
 
-        return $this->paginated($bookings->through(fn ($b) => new BookingResource($b)));
+        return $this->paginated($bookings->through(fn ($b) => (new BookingResource($b))->forStaffList()));
     }
 
     public function showBooking(string $ref): JsonResponse

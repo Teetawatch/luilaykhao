@@ -13,7 +13,35 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class TripResource extends JsonResource
 {
+    /**
+     * เนื้อหายาวของหน้าทริป — รายการที่แนบทริปไว้กับทุกแถว (เช่นรอบเดินทางของแอดมิน
+     * ทีละ 500 รอบ) ไม่มีใครอ่าน แต่หนักหลายสิบ KB ต่อแถว
+     */
+    public const LONG_FORM_KEYS = [
+        'description', 'route_track', 'gallery', 'videos', 'photos', 'inclusions',
+        'exclusions', 'highlights', 'must_know', 'cancellation_policy', 'itinerary',
+        'preparations', 'faqs', 'rental_items', 'document_requirements',
+        'border_pass_documents', 'permit_notice', 'checkin_bring', 'meal_plan', 'meals',
+        'visa', 'emergency_numbers',
+    ];
+
+    protected bool $brief = false;
+
+    public function brief(bool $brief = true): static
+    {
+        $this->brief = $brief;
+
+        return $this;
+    }
+
     public function toArray(Request $request): array
+    {
+        $data = $this->fullArray($request);
+
+        return $this->brief ? array_diff_key($data, array_flip(self::LONG_FORM_KEYS)) : $data;
+    }
+
+    private function fullArray(Request $request): array
     {
         $prices = collect();
         $originalPrices = collect();

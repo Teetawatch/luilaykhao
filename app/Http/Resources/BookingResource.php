@@ -21,6 +21,20 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class BookingResource extends JsonResource
 {
+    /**
+     * รายการจองของแอดมิน — ทริปที่แนบมาเป็นแบบย่อ (หน้าแก้ไขโหลด /admin/bookings/{ref}
+     * ตัวเต็มเอง) และไม่คำนวณบัตรขึ้นรถ/ส่งต่อที่นั่งของผู้ชม ซึ่งเป็นของลูกค้า: สำหรับ
+     * แอดมินมันได้ผลว่าง ๆ แต่เสียคิวรีใบละหลายตัว
+     */
+    protected bool $forStaffList = false;
+
+    public function forStaffList(): static
+    {
+        $this->forStaffList = true;
+
+        return $this;
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -41,7 +55,7 @@ class BookingResource extends JsonResource
                     'is_shadow' => (bool) $this->user->is_shadow,
                 ];
             }),
-            'schedule' => new TripScheduleResource($this->whenLoaded('schedule')),
+            'schedule' => (new TripScheduleResource($this->whenLoaded('schedule')))->briefTrip($this->forStaffList),
             'assigned_staff' => $this->when(
                 $this->relationLoaded('schedule') && $this->schedule?->relationLoaded('staff'),
                 fn () => $this->schedule->staff->map(fn ($staff) => [
@@ -170,7 +184,7 @@ class BookingResource extends JsonResource
             // บัตรขึ้นรถรายคนที่ผู้เรียกควรเห็น (เจ้าของ = ทุกคน, เพื่อน = ของตัวเอง)
             // ส่งมากับใบจองเพื่อให้แอปเปิดได้ตอนไม่มีสัญญาณ — null สำหรับคนนอกใบจอง
             'check_in_passes' => $this->when(
-                $request->user() !== null && $this->relationLoaded('passengers'),
+                ! $this->forStaffList && $request->user() !== null && $this->relationLoaded('passengers'),
                 fn () => app(CheckInPassService::class)->passesFor($this->resource, $request->user()),
             ),
             // ยืนยันแล้วว่าไปกี่คน (ถามก่อนวันเดินทาง)
@@ -229,7 +243,7 @@ class BookingResource extends JsonResource
             // ส่งต่อที่นั่ง — ผู้เรียกส่งต่อได้ไหม (เจ้าของ = ทุกที่นั่ง, เพื่อนร่วมใบ =
             // ที่นั่งตัวเอง) หน้าจอใช้ตัดสินว่าจะโชว์ปุ่มหรือไม่ null = ไม่เกี่ยวกับผู้เรียก
             'seat_handover' => $this->when(
-                $request->user() !== null && $this->relationLoaded('schedule') && $this->schedule,
+                ! $this->forStaffList && $request->user() !== null && $this->relationLoaded('schedule') && $this->schedule,
                 fn () => app(SeatHandoverService::class)->summaryFor($this->resource, $request->user()),
             ),
             'total_amount' => $this->total_amount,
