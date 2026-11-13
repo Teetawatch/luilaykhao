@@ -162,7 +162,13 @@ class TripResource extends JsonResource
                 'theme_color' => $campaign->theme_color,
                 'ends_at' => $campaign->ends_at?->toISOString(),
             ] : null,
-            'schedules' => TripScheduleResource::collection($this->whenLoaded('schedules')),
+            // รอบที่ซ้อนอยู่ใต้ทริปของมันเองไม่ต้องวาดทริปแม่ซ้ำ — loadListStats()
+            // ผูกทริปไว้กับทุกรอบเพื่อกันคิวรีซ้ำ ถ้าปล่อยให้ serialize ด้วย ลิสต์
+            // 12 ทริปจะหนัก ~4 MB (ทริปเต็มตัวซ้ำทุกรอบ) และแอปค้างที่ "กำลังค้นหาทริป…"
+            'schedules' => $this->whenLoaded('schedules', fn () => tap(
+                TripScheduleResource::collection($this->schedules),
+                fn ($collection) => $collection->collection->each->withoutTrip(),
+            )),
             // จำนวนรอบ — หน้าแอดมินใช้บอกว่าทริปนี้ยังมีรอบให้ลูกค้าจองอยู่ไหม
             // (ทริปสถานะ "ใช้งาน" ที่ไม่เหลือรอบเปิดเลย ขายไม่ได้จริง)
             'schedules_count' => $this->whenCounted('schedules'),

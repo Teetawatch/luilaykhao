@@ -483,6 +483,11 @@ class TripController extends Controller
         $schedules->each(fn ($s) => $s->setRelation('trip', $lite));
         $schedules->each(fn ($s) => $this->weatherService->attach($s, $trip));
 
-        return $this->success(TripScheduleResource::collection($schedules));
+        // ผู้เรียกรู้ทริปจาก slug อยู่แล้ว — ไม่วาดทริปเต็มตัวซ้ำทุกรอบ (ต้องตรงกับ
+        // รอบที่ฝังใน show() ทุกช่อง เพราะแอป/เว็บใช้แทนกันได้)
+        return $this->success(tap(
+            TripScheduleResource::collection($schedules),
+            fn ($collection) => $collection->collection->each->withoutTrip(),
+        ));
     }
 }

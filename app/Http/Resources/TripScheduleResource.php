@@ -7,10 +7,21 @@ use App\Models\TripSchedule;
 use App\Support\PaymentQuote;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Resources\MissingValue;
 use Illuminate\Support\Str;
 
 class TripScheduleResource extends JsonResource
 {
+    /** ซ้อนอยู่ใต้ TripResource ของทริปเดียวกันแล้ว — ผู้อ่านมีทริปแม่อยู่ในมือ */
+    protected bool $withoutTrip = false;
+
+    public function withoutTrip(): static
+    {
+        $this->withoutTrip = true;
+
+        return $this;
+    }
+
     /**
      * นำเสนอชื่อผู้ร่วมเดินทางแบบสั้น: ชื่อเล่นถ้ามี ไม่งั้นใช้ชื่อต้นคำเดียว
      * เพื่อไม่เปิดเผยชื่อ-นามสกุลเต็มของลูกค้าคนอื่นในรอบ
@@ -38,7 +49,7 @@ class TripScheduleResource extends JsonResource
         return [
             'id' => $this->id,
             'trip_id' => $this->trip_id,
-            'trip' => new TripResource($this->whenLoaded('trip')),
+            'trip' => $this->withoutTrip ? new MissingValue : new TripResource($this->whenLoaded('trip')),
             'departure_date' => $this->departure_date?->toDateString(),
             // เวลาออกเดินทางจริง (เวลาท้องถิ่นไทย ไม่แปลง timezone) — อาจอยู่ก่อน
             // departure_date เช่น รถออกคืนวันศุกร์ 23:30 สำหรับทริปวันเสาร์

@@ -316,6 +316,27 @@ class TripListPerformanceTest extends TestCase
         }
     }
 
+    public function test_rounds_inside_a_trip_do_not_repeat_the_whole_trip(): void
+    {
+        $trip = $this->trip();
+        $this->schedule($trip, 10);
+        $this->schedule($trip, 40);
+
+        // เดิมทุกรอบพกทริปเต็มตัวซ้ำ — 12 ทริปบน production หนัก ~4 MB
+        // แอปค้างที่ "กำลังค้นหาทริป…" เกือบ 10 วินาที
+        foreach ([
+            $this->getJson('/api/v1/trips?per_page=12')->assertOk()->json('data.0.schedules'),
+            $this->getJson("/api/v1/trips/{$trip->slug}")->assertOk()->json('data.schedules'),
+            $this->getJson("/api/v1/trips/{$trip->slug}/schedules")->assertOk()->json('data'),
+        ] as $rounds) {
+            $this->assertCount(2, $rounds);
+            foreach ($rounds as $round) {
+                $this->assertArrayNotHasKey('trip', $round);
+                $this->assertSame($trip->id, $round['trip_id']);
+            }
+        }
+    }
+
     public function test_trip_page_embeds_the_same_rounds_as_the_schedules_endpoint(): void
     {
         $trip = $this->trip();
