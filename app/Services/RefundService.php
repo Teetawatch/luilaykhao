@@ -500,7 +500,7 @@ class RefundService
                     'waitlist_round_cancelled',
                     'รอบที่คุณรอคิวถูกยกเลิก',
                     ($schedule->trip?->title ?? 'ทริป').' รอบ '.ThaiDate::short($schedule->departure_date)
-                        .' ยกเลิกเนื่องจาก'.$reason.' ลองดูรอบอื่นของทริปนี้ได้เลย',
+                        .' ยกเลิกเนื่องจาก'.$reason.' ขออภัยในความไม่สะดวก สามารถเลือกรอบอื่นของทริปนี้ได้ในแอปครับ',
                     ['trip_slug' => $schedule->trip?->slug, 'schedule_id' => $schedule->id, 'route' => 'trip'],
                 );
             } catch (\Throwable $e) {

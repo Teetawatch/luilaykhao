@@ -11,6 +11,7 @@ use App\Models\TripSchedule;
 use App\Models\WaitlistEntry;
 use App\Support\LoyaltyTier;
 use App\Support\SiteSettings;
+use App\Support\ThaiDate;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -48,7 +49,7 @@ class WaitlistService
             $bookable = $schedule->available_seats - $this->heldSeats($scheduleId);
 
             if ($bookable >= $seatCount) {
-                throw new \Exception('ยังมีที่นั่งว่างอยู่ กรุณาจองโดยตรงได้เลย');
+                throw new \Exception('รอบนี้ยังมีที่นั่งว่าง สามารถจองได้ทันทีครับ');
             }
 
             $hasActiveBooking = Booking::where('user_id', $userId)
@@ -203,12 +204,14 @@ class WaitlistService
             return $offered;
         });
 
+        $tripLabel = $offered ? $this->tripLabel(TripSchedule::with('trip')->find($scheduleId)) : '';
+
         foreach ($offered as $offer) {
             SmartNotification::send(
                 $offer['user_id'],
                 'waitlist_offered',
-                'มีที่นั่งว่างแล้ว!',
-                'มีที่นั่งว่างในทริปที่คุณรอคิวอยู่ กรุณาจองภายใน '.$ttlMinutes.' นาที',
+                'มีที่นั่งว่างสำหรับคุณแล้ว',
+                "{$tripLabel} มีที่นั่งว่างตามที่คุณรอคิวไว้ กรุณายืนยันการจองภายใน {$ttlMinutes} นาที หากเลยเวลา สิทธิ์จะส่งต่อให้ผู้ที่รอคิวลำดับถัดไปครับ",
                 [
                     'schedule_id' => (string) $scheduleId,
                     'expires_at' => $offer['expires_at']->toISOString(),
@@ -225,7 +228,8 @@ class WaitlistService
      */
     public function expireStaleOffers(): array
     {
-        $expiredEntries = WaitlistEntry::where('status', 'offered')
+        $expiredEntries = WaitlistEntry::with('schedule.trip')
+            ->where('status', 'offered')
             ->where('expires_at', '<=', now())
             ->get();
 
@@ -235,8 +239,8 @@ class WaitlistService
             SmartNotification::send(
                 $entry->user_id,
                 'waitlist_expired',
-                'หมดเวลาจองแล้ว',
-                'สิทธิ์การจองของคุณหมดอายุแล้ว ที่นั่งถูกเปิดให้คนถัดไปในคิว',
+                'สิทธิ์จองที่นั่งหมดเวลาแล้ว',
+                'สิทธิ์จองที่นั่ง'.$this->tripLabel($entry->schedule).' หมดเวลาแล้ว ระบบได้ส่งต่อให้ผู้ที่รอคิวลำดับถัดไป หากยังสนใจ สามารถลงชื่อรอคิวใหม่ได้ในแอปครับ',
                 [
                     'schedule_id' => (string) $entry->schedule_id,
                     'route' => 'waitlist',
@@ -297,6 +301,19 @@ class WaitlistService
                     });
             })
             ->count() + 1;
+    }
+
+    /**
+     * ชื่อทริป + วันเดินทางสำหรับข้อความแจ้งเตือน — คนที่รอคิวไว้หลายทริปต้องรู้ว่าข้อความนี้หมายถึงทริปไหน
+     */
+    private function tripLabel(?TripSchedule $schedule): string
+    {
+        $title = $schedule?->trip?->title;
+        if (! $title) {
+            return 'ทริปที่คุณรอคิวไว้';
+        }
+
+        return "ทริป \"{$title}\" รอบวันที่ ".ThaiDate::short($schedule->departure_date);
     }
 
     public function scheduleWaitlistCount(int $scheduleId): int

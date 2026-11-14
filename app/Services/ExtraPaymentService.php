@@ -64,7 +64,7 @@ class ExtraPaymentService
                 $booking->user_id,
                 'extra_paid',
                 'รับชำระยอดเพิ่มเติมแล้ว',
-                'รับชำระ '.number_format($amount, 2)." บาท ของเลขการจอง {$booking->booking_ref} เรียบร้อยแล้ว",
+                'รับชำระ '.number_format($amount, 2)." บาท ของการจอง {$booking->booking_ref} เรียบร้อยแล้ว",
                 [
                     'booking_ref' => $booking->booking_ref,
                     'route' => 'booking',

@@ -65,7 +65,7 @@ class BalancePaymentService
                 $booking->user_id,
                 'balance_paid',
                 'รับชำระเงินส่วนที่เหลือแล้ว',
-                "รับชำระยอดส่วนที่เหลือของเลขการจอง {$booking->booking_ref} ครบถ้วนแล้ว",
+                "รับชำระยอดส่วนที่เหลือของการจอง {$booking->booking_ref} ครบถ้วนแล้ว",
                 [
                     'booking_ref' => $booking->booking_ref,
                     'route' => 'booking',

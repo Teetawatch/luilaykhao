@@ -694,8 +694,8 @@ class BookingService
                 'booking_confirmed',
                 'ยืนยันการจองแล้ว',
                 $due > 0
-                    ? "เลขการจอง {$booking->booking_ref} ได้รับการยืนยันแล้ว ชำระ ".number_format($due, 2).' บาท ได้ในแอปก่อนเดินทาง'
-                    : "เลขการจอง {$booking->booking_ref} ได้รับการยืนยันแล้ว",
+                    ? "การจอง {$booking->booking_ref} ได้รับการยืนยันแล้ว มียอดคงเหลือ ".number_format($due, 2).' บาท กรุณาชำระในแอปก่อนวันเดินทางครับ'
+                    : "การจอง {$booking->booking_ref} ได้รับการยืนยันแล้ว",
                 [
                     'booking_ref' => $booking->booking_ref,
                     'route' => 'booking',
@@ -713,7 +713,7 @@ class BookingService
                 $booking->user_id,
                 'booking_created',
                 'สร้างการจองสำเร็จ',
-                "เลขการจอง {$booking->booking_ref} ถูกสร้างแล้ว กรุณาชำระเงินเพื่อยืนยันที่นั่ง",
+                "การจอง {$booking->booking_ref} ถูกสร้างแล้ว กรุณาชำระเงินเพื่อยืนยันที่นั่ง",
                 [
                     'booking_ref' => $booking->booking_ref,
                     'route' => 'booking',
@@ -884,10 +884,10 @@ class BookingService
             SmartNotification::send(
                 $expired->user_id,
                 'booking_expired',
-                $expired->hold_until ? 'ที่นั่งที่กันไว้ให้หมดเวลาแล้ว' : 'การจองหมดเวลา',
+                $expired->hold_until ? 'ที่นั่งที่สำรองไว้หมดเวลาแล้ว' : 'การจองหมดเวลาชำระเงิน',
                 $expired->hold_until
-                    ? "เลขการจอง {$expired->booking_ref} ที่ทีมงานกันที่นั่งไว้ให้ครบกำหนดแล้ว ที่นั่งถูกปล่อยคืนรอบเดินทาง"
-                    : "เลขการจอง {$expired->booking_ref} ถูกยกเลิกอัตโนมัติ เนื่องจากไม่ได้ชำระเงินภายใน ".Booking::PENDING_TTL_MINUTES.' นาที ที่นั่งถูกปล่อยคืนแล้ว',
+                    ? "ที่นั่งที่ทีมงานสำรองไว้ให้สำหรับการจอง {$expired->booking_ref} ครบกำหนดแล้ว ระบบจึงคืนที่นั่งให้รอบเดินทาง หากยังสนใจ ติดต่อทีมงานผ่านแชทในแอปได้ครับ"
+                    : "การจอง {$expired->booking_ref} เกินเวลาชำระเงิน ".Booking::PENDING_TTL_MINUTES.' นาที ระบบจึงคืนที่นั่งให้รอบเดินทาง หากยังสนใจ สามารถจองใหม่ได้ในแอปครับ',
                 [
                     'booking_ref' => $expired->booking_ref,
                     'route' => 'booking',
@@ -963,8 +963,8 @@ class BookingService
             SmartNotification::send(
                 $booking->user_id,
                 'booking_winback',
-                'ที่นั่งยังว่างอยู่นะ 🎒',
-                "ทริป \"{$trip->title}\" ที่คุณเลือกไว้ยังเปิดจองอยู่ — กลับมาจองให้เสร็จก่อนที่นั่งจะเต็ม",
+                'ทริปที่คุณเลือกไว้ยังมีที่นั่งว่างครับ 🎒',
+                "ทริป \"{$trip->title}\" ยังเปิดรับจองอยู่ ดำเนินการจองต่อได้ในแอปครับ",
                 [
                     'trip_slug' => $trip->slug,
                     'schedule_id' => (string) $schedule->id,
@@ -1049,7 +1049,7 @@ class BookingService
                 $cancelled->user_id,
                 'booking_cancelled',
                 'การจองถูกยกเลิก',
-                "เลขการจอง {$cancelled->booking_ref} ถูกยกเลิกแล้ว",
+                "การจอง {$cancelled->booking_ref} ถูกยกเลิกแล้ว หากมีข้อสงสัย ติดต่อทีมงานผ่านแชทในแอปได้ครับ",
                 [
                     'booking_ref' => $cancelled->booking_ref,
                     'route' => 'booking',

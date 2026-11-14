@@ -408,8 +408,8 @@ class PartnerService
         $this->safeNotify(
             $partner->user_id,
             'partner_payout',
-            'โอนค่าคอมแล้ว ฿'.number_format((float) $payout->amount, 2),
-            'ค่าคอม '.$payout->commission_count.' ใบจอง โอนเข้าบัญชีของคุณแล้ว ขอบคุณที่ช่วยขายครับ',
+            'โอนค่าคอมมิชชันแล้ว ฿'.number_format((float) $payout->amount, 2),
+            'ค่าคอมมิชชันจาก '.$payout->commission_count.' การจอง โอนเข้าบัญชีของคุณเรียบร้อยแล้ว ขอบคุณที่ร่วมเป็นพาร์ทเนอร์กับเราครับ',
             ['route' => 'partner', 'payout_id' => $payout->id],
         );
 
@@ -489,7 +489,7 @@ class PartnerService
             $partner->user_id,
             'partner_sale',
             'มีคนจองผ่านลิงก์ของคุณ 🎉',
-            trim(($commission->trip_title ?? 'ทริป').' · '.$commission->seats.' ที่นั่ง · คอมประมาณ ฿'
+            trim(($commission->trip_title ?? 'ทริป').' · '.$commission->seats.' ที่นั่ง · ค่าคอมมิชชันโดยประมาณ ฿'
                 .number_format((float) $commission->amount, 2).' (ได้หลังเดินทาง)'),
             ['route' => 'partner', 'commission_id' => $commission->id],
         );

@@ -255,7 +255,7 @@ class GiftVoucherService
                 $rejected->purchaser_user_id,
                 'gift_voucher_rejected',
                 'สลิปบัตรของขวัญยังไม่ผ่าน',
-                "ทีมงานตรวจสลิปแล้วยังยืนยันยอดไม่ได้ ({$note}) ส่งสลิปใหม่ได้ที่หน้าบัตรของขวัญ หรือทักทีมงานได้เลยครับ",
+                "ทีมงานตรวจสลิปแล้วยังยืนยันยอดไม่ได้ ({$note}) กรุณาส่งสลิปใหม่ที่หน้าบัตรของขวัญ หรือติดต่อทีมงานผ่านแชทในแอปครับ",
                 ['voucher_id' => $rejected->id, 'route' => 'gift_voucher'],
             );
         }
@@ -271,7 +271,7 @@ class GiftVoucherService
 
             if (! in_array($locked->status, [GiftVoucher::STATUS_PENDING, GiftVoucher::STATUS_REJECTED], true)) {
                 throw new \Exception($locked->status === GiftVoucher::STATUS_UNDER_REVIEW
-                    ? 'บัตรนี้ส่งสลิปแล้ว ทีมงานกำลังตรวจสอบ ถ้าต้องการยกเลิกกรุณาทักทีมงานครับ'
+                    ? 'บัตรนี้ส่งสลิปแล้ว ทีมงานกำลังตรวจสอบ หากต้องการยกเลิก กรุณาติดต่อทีมงานผ่านแชทในแอปครับ'
                     : 'ยกเลิกได้เฉพาะบัตรที่ยังไม่ได้ชำระเงิน');
             }
 

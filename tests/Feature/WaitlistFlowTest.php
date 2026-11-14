@@ -123,7 +123,7 @@ class WaitlistFlowTest extends TestCase
         $this->actingAs(User::factory()->create(), 'sanctum')
             ->postJson("/api/v1/schedules/{$schedule->id}/waitlist")
             ->assertStatus(422)
-            ->assertJsonPath('message', 'ยังมีที่นั่งว่างอยู่ กรุณาจองโดยตรงได้เลย');
+            ->assertJsonPath('message', 'รอบนี้ยังมีที่นั่งว่าง สามารถจองได้ทันทีครับ');
     }
 
     public function test_joining_twice_is_rejected(): void

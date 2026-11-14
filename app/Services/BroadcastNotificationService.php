@@ -64,8 +64,8 @@ class BroadcastNotificationService
             'sale_campaign:'.$campaign->id.':'.$campaign->starts_at->timestamp,
             '🎉 '.$badge.$campaign->name,
             trim(
-                ($campaign->tagline ?: $campaign->discountLabel().' ทุกทริปทั้งเว็บ')
-                .' ถึง '.$endsAt->format('d/m').' เวลา '.$endsAt->format('H:i').' น.'
+                ($campaign->tagline ?: $campaign->discountLabel().' สำหรับทุกทริป')
+                .' ถึงวันที่ '.$endsAt->format('d/m').' เวลา '.$endsAt->format('H:i').' น.'
             ),
             [
                 'route' => 'trips',
@@ -82,8 +82,8 @@ class BroadcastNotificationService
         $this->broadcast(
             'new_trip',
             "new_trip:{$trip->id}",
-            'ทริปใหม่มาแล้ว! 🌿',
-            "{$trip->title} เปิดให้จองแล้ววันนี้ มาเป็นกลุ่มแรกที่ได้ออกเดินทางกัน!",
+            'ทริปใหม่เปิดให้จองแล้ว 🌿',
+            "{$trip->title} เปิดรับจองแล้ววันนี้ ดูรายละเอียดและสำรองที่นั่งได้ในแอปครับ",
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,
@@ -119,9 +119,9 @@ class BroadcastNotificationService
         $this->broadcast(
             'new_schedule',
             "new_schedule:{$schedule->id}",
-            'เปิดรอบใหม่แล้ว! 📅',
-            "{$trip->title} เปิดจองรอบวันที่ ".ThaiDate::full($schedule->departure_date)
-                .' แล้ว รีบจองก่อนเต็มนะ!',
+            'เปิดรอบเดินทางใหม่ 📅',
+            "{$trip->title} เปิดรับจองรอบวันที่ ".ThaiDate::full($schedule->departure_date)
+                .' แล้ว สำรองที่นั่งได้ในแอปครับ',
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,
@@ -169,10 +169,10 @@ class BroadcastNotificationService
         $first = $rounds->first();
         $last = $rounds->last();
         $body = $rounds->count() === 1
-            ? "{$trip->title} เปิดจองรอบวันที่ ".ThaiDate::full($first->departure_date).' แล้ว รีบจองก่อนเต็มนะ!'
-            : "{$trip->title} เปิดจองเพิ่ม {$rounds->count()} รอบ ตั้งแต่ "
+            ? "{$trip->title} เปิดรับจองรอบวันที่ ".ThaiDate::full($first->departure_date).' แล้ว สำรองที่นั่งได้ในแอปครับ'
+            : "{$trip->title} เปิดรับจองเพิ่ม {$rounds->count()} รอบ ระหว่างวันที่ "
                 .ThaiDate::full($first->departure_date).' ถึง '.ThaiDate::full($last->departure_date)
-                .' แล้ว รีบจองก่อนเต็มนะ!';
+                .' แล้ว สำรองที่นั่งได้ในแอปครับ';
 
         // คีย์กันซ้ำผูกกับชุดรอบนี้ — กดประกาศชุดเดิมซ้ำไม่ยิงซ้ำ (dedupe_key ยาวได้ 255
         // ตัว รายการไอดีหลายสิบรอบจึงย่อเป็น hash)
@@ -181,7 +181,7 @@ class BroadcastNotificationService
         return $this->broadcast(
             'new_schedule',
             "new_schedules:{$trip->id}:".sha1($ids),
-            'เปิดรอบใหม่แล้ว! 📅',
+            'เปิดรอบเดินทางใหม่ 📅',
             $body,
             [
                 'route' => 'trip',
@@ -216,11 +216,11 @@ class BroadcastNotificationService
         $this->broadcast(
             'flash_sale',
             "flash_sale:{$schedule->id}:{$endsKey}:".(int) $price,
-            '⚡ Flash Sale ราคาพิเศษ!',
+            '⚡ Flash Sale ราคาพิเศษ',
             "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
-                .' ลดเหลือ ฿'.number_format($price)
+                .' ราคาพิเศษ ฿'.number_format($price)
                 .($original > $price ? ' (จาก ฿'.number_format($original).')' : '')
-                .$endsClause.' รีบจองก่อนหมดเวลา!',
+                .$endsClause.' จองได้ในแอปครับ',
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,
@@ -252,9 +252,9 @@ class BroadcastNotificationService
         $this->broadcast(
             'low_seats',
             "low_seats:{$schedule->id}:{$available}",
-            'ที่นั่งใกล้เต็มแล้ว! ⏳',
+            'ที่นั่งใกล้เต็มแล้ว ⏳',
             "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
-                ." เหลือเพียง {$available} ที่นั่ง รีบจองก่อนเต็มนะ!",
+                ." เหลือที่นั่งเพียง {$available} ที่นั่ง จองได้ในแอปครับ",
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,
@@ -292,9 +292,9 @@ class BroadcastNotificationService
         $this->broadcast(
             'seats_freed',
             "seats_freed:{$schedule->id}:{$available}",
-            'มีที่นั่งว่างแล้ว! 🎟️',
+            'มีที่นั่งว่างเพิ่ม 🎟️',
             "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
-                ." มีคนสละสิทธิ์ เหลือที่ว่าง {$available} ที่นั่ง ใครพลาดรอบนี้ไปรีบจองเลย!",
+                ." มีที่นั่งว่างเพิ่ม {$available} ที่นั่ง จองได้แล้วในแอปครับ",
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,
@@ -327,9 +327,9 @@ class BroadcastNotificationService
         $this->broadcast(
             'almost_ready',
             "almost_ready:{$schedule->id}",
-            '🟡 อีกนิดเดียว รถตู้การันตีออก!',
+            '🟡 ใกล้การันตีออกเดินทางแล้ว',
             "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
-                ." ขาดอีกเพียง {$seatsLeft} ที่นั่ง รถตู้ก็การันตีออกเดินทางทันที!",
+                ." ขาดอีกเพียง {$seatsLeft} ที่นั่งก็การันตีออกเดินทางทันที จองได้ในแอปครับ",
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,
@@ -363,10 +363,10 @@ class BroadcastNotificationService
         $this->broadcast(
             'guaranteed',
             "guaranteed:{$schedule->id}",
-            '🟢 การันตีออกเดินทางแน่นอน!',
+            '🟢 การันตีออกเดินทางแล้ว',
             "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
-                .' มีผู้ร่วมทางครบแล้ว ออกเดินทางแน่นอน 100% เหลืออีก '
-                ."{$schedule->available_seats} ที่นั่ง รีบจองก่อนเต็ม!",
+                .' มีผู้ร่วมเดินทางครบตามกำหนด ออกเดินทางแน่นอน ยังเหลืออีก '
+                ."{$schedule->available_seats} ที่นั่ง จองได้ในแอปครับ",
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,
@@ -395,9 +395,9 @@ class BroadcastNotificationService
         $this->broadcast(
             'sold_out',
             "sold_out:{$schedule->id}",
-            'ที่นั่งเต็มแล้ว 🔴',
+            'ที่นั่งเต็มแล้ว',
             "{$trip->title} รอบ ".ThaiDate::full($schedule->departure_date)
-                .' เต็มทุกที่นั่งแล้ว กดเข้าคิว waitlist เผื่อมีที่ว่าง!',
+                .' เต็มแล้ว หากสนใจ สามารถลงชื่อรอที่นั่งว่างไว้ได้ ระบบจะแจ้งให้ทราบทันทีเมื่อมีที่นั่งว่างครับ',
             [
                 'route' => 'trip',
                 'trip_slug' => $trip->slug,

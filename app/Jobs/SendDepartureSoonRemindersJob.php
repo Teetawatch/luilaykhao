@@ -77,9 +77,9 @@ class SendDepartureSoonRemindersJob implements ShouldQueue
             SmartNotification::send(
                 $booking->user_id,
                 'trip_departure_soon',
-                'ใกล้เวลาออกเดินทางแล้ว! 🚐',
+                'ใกล้เวลาออกเดินทางแล้ว 🚐',
                 "{$tripTitle} ออกเดินทางเวลา {$timeLabel} น.{$whenNote} "
-                    .'เตรียมของให้พร้อมและมาถึงจุดนัดก่อนเวลานะ',
+                    .'กรุณาเตรียมสัมภาระให้พร้อมและมาถึงจุดนัดก่อนเวลาครับ',
                 [
                     'booking_ref' => $booking->booking_ref,
                     'trip_id' => $schedule?->trip_id,

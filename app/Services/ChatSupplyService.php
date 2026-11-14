@@ -132,7 +132,7 @@ class ChatSupplyService
         $this->send(
             (int) $request->user_id,
             "😔 ตอนนี้ทีมงานไม่มี{$meta['label']}",
-            $note ?: 'ขอโทษนะครับ ถ้าเร่งด่วนทักทีมงานในแชทได้เลย',
+            $note ?: 'ขออภัยครับ หากเร่งด่วน แจ้งทีมงานในแชทได้เลย',
             $request->schedule,
         );
 

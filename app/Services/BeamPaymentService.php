@@ -591,7 +591,7 @@ class BeamPaymentService
                     $admin->id,
                     'payment_needs_refund',
                     'รับเงินหลังการจองถูกยกเลิก',
-                    "เลขการจอง {$booking->booking_ref} ถูกยกเลิกไปแล้ว แต่มีเงิน {$amount} บาทเข้ามาหลังจากนั้น กรุณาตรวจสอบและคืนเงินให้ลูกค้า",
+                    "การจอง {$booking->booking_ref} ถูกยกเลิกไปแล้ว แต่มีเงิน {$amount} บาทเข้ามาหลังจากนั้น กรุณาตรวจสอบและคืนเงินให้ลูกค้า",
                     ['booking_ref' => $booking->booking_ref, 'route' => 'admin.bookings'],
                 );
             });

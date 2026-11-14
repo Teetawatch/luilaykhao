@@ -304,10 +304,10 @@ class TripContactService
         try {
             $this->fcm->sendToUser(
                 $userId,
-                $accepted ? '🤝 แลกคอนแทคกันแล้ว' : '🤝 มีคนอยากแลกคอนแทค',
+                $accepted ? '🤝 แลกคอนแทคกันแล้ว' : '🤝 มีคำขอแลกคอนแทค',
                 $accepted
-                    ? "{$name} ตอบรับแล้ว — ดู LINE/IG ของเขาได้เลย ({$trip})"
-                    : "{$name} จากทริป {$trip} อยากแลกคอนแทคกับคุณ",
+                    ? "{$name} ตอบรับคำขอแล้ว ดูช่องทางติดต่อได้ในแอป ({$trip})"
+                    : "{$name} จากทริป {$trip} ขอแลกคอนแทคกับคุณ",
                 [
                     'type' => 'trip_contact',
                     'schedule_id' => (string) $schedule->id,

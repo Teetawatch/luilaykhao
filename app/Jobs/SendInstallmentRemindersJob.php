@@ -63,7 +63,7 @@ class SendInstallmentRemindersJob implements ShouldQueue
                     $ip->booking->user_id,
                     'installment_overdue',
                     'ค่างวดเลยกำหนดชำระ',
-                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} เลยกำหนดชำระแล้ว",
+                    "งวดที่ {$ip->installment_no} ของการจอง {$ip->booking->booking_ref} เลยกำหนดชำระแล้ว",
                     ['booking_ref' => $ip->booking->booking_ref, 'installment_no' => $ip->installment_no, 'route' => 'booking'],
                 );
             }
@@ -84,7 +84,7 @@ class SendInstallmentRemindersJob implements ShouldQueue
                     $ip->booking->user_id,
                     'installment_due_soon',
                     'ใกล้ถึงกำหนดชำระค่างวด',
-                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} จะครบกำหนดในอีก ".self::DUE_SOON_DAYS.' วัน',
+                    "งวดที่ {$ip->installment_no} ของการจอง {$ip->booking->booking_ref} จะครบกำหนดในอีก ".self::DUE_SOON_DAYS.' วัน',
                     ['booking_ref' => $ip->booking->booking_ref, 'installment_no' => $ip->installment_no, 'days_before' => self::DUE_SOON_DAYS, 'route' => 'booking'],
                 );
             }
@@ -105,7 +105,7 @@ class SendInstallmentRemindersJob implements ShouldQueue
                     $ip->booking->user_id,
                     'installment_due_today',
                     'ถึงกำหนดชำระค่างวดวันนี้',
-                    "งวดที่ {$ip->installment_no} ของเลขการจอง {$ip->booking->booking_ref} ครบกำหนดชำระวันนี้",
+                    "งวดที่ {$ip->installment_no} ของการจอง {$ip->booking->booking_ref} ครบกำหนดชำระวันนี้",
                     ['booking_ref' => $ip->booking->booking_ref, 'installment_no' => $ip->installment_no, 'route' => 'booking'],
                 );
             }

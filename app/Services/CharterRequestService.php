@@ -133,7 +133,7 @@ class CharterRequestService
 
             if (! in_array($locked->status, [CharterRequest::STATUS_NEW, CharterRequest::STATUS_QUOTED, CharterRequest::STATUS_DECLINED], true)) {
                 throw new \Exception($locked->status === CharterRequest::STATUS_ACCEPTED
-                    ? 'ตอบรับใบเสนอราคาแล้ว ถ้าต้องการยกเลิกกรุณาทักทีมงานครับ'
+                    ? 'ตอบรับใบเสนอราคาแล้ว หากต้องการยกเลิก กรุณาติดต่อทีมงานผ่านแชทในแอปครับ'
                     : 'คำขอนี้ปิดไปแล้ว');
             }
 
@@ -191,7 +191,7 @@ class CharterRequestService
             SmartNotification::send(
                 $quoted->user_id,
                 'charter_quoted',
-                'ใบเสนอราคาเหมาทริปมาแล้ว 📝',
+                'ได้รับใบเสนอราคาเหมาทริปแล้ว 📝',
                 ($quoted->quoteTrip?->title ?? 'ทริปส่วนตัว').' · '.$quoted->quote_group_size.' คน · รวม ฿'
                     .number_format((float) $quoted->quote_total).' — แตะเพื่อดูรายละเอียดและตอบรับ',
                 ['charter_request_id' => $quoted->id, 'route' => 'charter_request'],
@@ -225,7 +225,7 @@ class CharterRequestService
                 $rejected->user_id,
                 'charter_rejected',
                 'ทีมงานยังรับเหมาทริปนี้ไม่ได้',
-                "คำขอ {$rejected->ref}: {$reason} — ขอโทษด้วยนะครับ ลองเลือกวันอื่นหรือทักทีมงานได้เลย",
+                "คำขอ {$rejected->ref}: {$reason} — ขออภัยในความไม่สะดวก สามารถเลือกวันอื่น หรือติดต่อทีมงานผ่านแชทในแอปได้ครับ",
                 ['charter_request_id' => $rejected->id, 'route' => 'charter_request'],
             );
         }
@@ -317,7 +317,7 @@ class CharterRequestService
                 $linked->user_id,
                 'charter_booked',
                 'การจองทริปเหมาของคุณพร้อมแล้ว 🎉',
-                "เลขการจอง {$booking->booking_ref} — แตะเพื่อดูรายละเอียดและชำระเงิน",
+                "การจอง {$booking->booking_ref} — แตะเพื่อดูรายละเอียดและชำระเงิน",
                 ['charter_request_id' => $linked->id, 'booking_ref' => $booking->booking_ref, 'route' => 'charter_request'],
             );
         }

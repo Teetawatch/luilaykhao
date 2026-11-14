@@ -69,7 +69,7 @@ class SendBalanceDueRemindersJob implements ShouldQueue
                         $daysBeforeDue === 0
                             ? 'ครบกำหนดชำระยอดส่วนที่เหลือวันนี้'
                             : "เหลือ {$daysBeforeDue} วัน ก่อนครบกำหนดชำระยอดส่วนที่เหลือ",
-                        "เลขการจอง {$booking->booking_ref} กรุณาชำระยอดส่วนที่เหลือภายในวันที่ ".ThaiDate::full($booking->balance_due_at),
+                        "การจอง {$booking->booking_ref} กรุณาชำระยอดส่วนที่เหลือภายในวันที่ ".ThaiDate::full($booking->balance_due_at),
                         ['booking_ref' => $booking->booking_ref, 'days_before_due' => $daysBeforeDue, 'route' => 'booking'],
                     );
                 }

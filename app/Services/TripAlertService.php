@@ -47,7 +47,7 @@ class TripAlertService
                 $schedule->id,
                 'new_schedule',
                 "เปิดรอบใหม่: {$trip->title}",
-                'เปิดให้จองรอบวันที่ '.ThaiDate::full($schedule->departure_date).' แล้ว รีบจองก่อนเต็ม!',
+                'เปิดรับจองรอบวันที่ '.ThaiDate::full($schedule->departure_date).' แล้ว สำรองที่นั่งได้ในแอปครับ',
                 $trip,
                 $schedule->id,
             );
@@ -94,9 +94,9 @@ class TripAlertService
 
             $first = $fresh->first();
             $body = $fresh->count() === 1
-                ? 'เปิดให้จองรอบวันที่ '.ThaiDate::full($first->departure_date).' แล้ว รีบจองก่อนเต็ม!'
-                : "เปิดให้จองเพิ่ม {$fresh->count()} รอบ ตั้งแต่ ".ThaiDate::full($first->departure_date)
-                    .' ถึง '.ThaiDate::full($fresh->last()->departure_date).' แล้ว รีบจองก่อนเต็ม!';
+                ? 'เปิดรับจองรอบวันที่ '.ThaiDate::full($first->departure_date).' แล้ว สำรองที่นั่งได้ในแอปครับ'
+                : "เปิดรับจองเพิ่ม {$fresh->count()} รอบ ระหว่างวันที่ ".ThaiDate::full($first->departure_date)
+                    .' ถึง '.ThaiDate::full($fresh->last()->departure_date).' แล้ว สำรองที่นั่งได้ในแอปครับ';
 
             SmartNotification::send(
                 $alert->user_id,
@@ -166,7 +166,7 @@ class TripAlertService
                 null,
                 'price_drop',
                 "ราคาลดลง: {$trip->title}",
-                'ราคาลดเหลือ '.number_format($currentMin).' บาท/คน (จาก '.number_format($previous).' บาท) จองเลย!',
+                'ราคาเริ่มต้นลดเหลือ '.number_format($currentMin).' บาท/ท่าน (จากเดิม '.number_format($previous).' บาท) ดูรายละเอียดและจองได้ในแอปครับ',
                 $trip,
                 null,
             );
@@ -218,7 +218,7 @@ class TripAlertService
                     $schedule->id,
                     'sold_out',
                     "เต็มแล้ว: {$trip->title}",
-                    'รอบวันที่ '.ThaiDate::full($schedule->departure_date).' เต็มทุกที่นั่งแล้ว กดเข้าคิว waitlist เผื่อมีที่ว่าง!',
+                    'รอบวันที่ '.ThaiDate::full($schedule->departure_date).' เต็มแล้ว หากสนใจ สามารถลงชื่อรอที่นั่งว่างไว้ได้ ระบบจะแจ้งให้ทราบทันทีเมื่อมีที่นั่งว่างครับ',
                     $trip,
                     $schedule->id,
                 );
@@ -261,7 +261,7 @@ class TripAlertService
                     'seats_freed',
                     "มีที่นั่งว่าง: {$trip->title}",
                     'รอบวันที่ '.ThaiDate::full($schedule->departure_date)
-                        ." มีคนสละสิทธิ์ เหลือที่ว่าง {$available} ที่นั่ง รีบจองก่อนเต็มอีกรอบ!",
+                        ." มีที่นั่งว่างเพิ่ม {$available} ที่นั่ง จองได้แล้วในแอปครับ",
                     $trip,
                     $schedule->id,
                     $dedupeType,
@@ -313,7 +313,7 @@ class TripAlertService
             $schedule->id,
             'low_seats',
             "ที่นั่งใกล้เต็ม: {$trip->title}",
-            'รอบวันที่ '.ThaiDate::full($schedule->departure_date)." เหลือเพียง {$available} ที่นั่ง รีบจองก่อนหมด!",
+            'รอบวันที่ '.ThaiDate::full($schedule->departure_date)." เหลือที่นั่งเพียง {$available} ที่นั่ง จองได้ในแอปครับ",
             $trip,
             $schedule->id,
             $dedupeType,

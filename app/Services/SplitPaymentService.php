@@ -276,7 +276,7 @@ class SplitPaymentService
             $userId,
             'split_share_reminder',
             'เตือนชำระส่วนของคุณ',
-            "อย่าลืมชำระส่วนของคุณ {$amountText} บาท สำหรับทริป {$tripName}",
+            "กรุณาชำระยอดส่วนของคุณ {$amountText} บาท สำหรับทริป {$tripName} ในแอปครับ",
             [
                 'booking_ref' => $booking->booking_ref,
                 'share_id' => $share->id,
@@ -365,8 +365,8 @@ class SplitPaymentService
             SmartNotification::send(
                 $member->user_id,
                 'split_share_created',
-                'ถึงตาคุณช่วยจ่ายแล้ว',
-                "ทริป {$tripName} — ส่วนของคุณ {$amountText} บาท กดเพื่อชำระผ่านแอปได้เลย",
+                'ส่วนที่คุณต้องชำระพร้อมแล้ว',
+                "ทริป {$tripName} — ยอดส่วนของคุณ {$amountText} บาท แตะเพื่อชำระในแอปครับ",
                 [
                     'booking_ref' => $booking->booking_ref,
                     'share_id' => $share->id,
@@ -397,8 +397,8 @@ class SplitPaymentService
             SmartNotification::send(
                 $userId,
                 'split_share_created',
-                'ถึงตาคุณช่วยจ่ายแล้ว',
-                "ทริป {$tripName} — ส่วนของคุณ {$amountText} บาท กดเพื่อชำระผ่านแอปได้เลย",
+                'ส่วนที่คุณต้องชำระพร้อมแล้ว',
+                "ทริป {$tripName} — ยอดส่วนของคุณ {$amountText} บาท แตะเพื่อชำระในแอปครับ",
                 [
                     'booking_ref' => $booking->booking_ref,
                     'share_id' => $share->id,

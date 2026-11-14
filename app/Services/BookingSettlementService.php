@@ -368,7 +368,7 @@ class BookingSettlementService
             $booking->user_id,
             'payment_confirmed',
             'ยืนยันการชำระเงินแล้ว',
-            "รับชำระเงินเลขการจอง {$booking->booking_ref} แล้ว ที่นั่งของคุณได้รับการยืนยัน",
+            "รับชำระเงินของการจอง {$booking->booking_ref} แล้ว ที่นั่งของคุณได้รับการยืนยัน",
             ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
         );
     }
@@ -383,7 +383,7 @@ class BookingSettlementService
             $booking->user_id,
             'deposit_paid',
             'รับชำระเงินมัดจำแล้ว',
-            "รับชำระมัดจำเลขการจอง {$booking->booking_ref} แล้ว กรุณาชำระยอดส่วนที่เหลือภายในวันที่ {$balanceDueText}",
+            "รับชำระมัดจำของการจอง {$booking->booking_ref} แล้ว กรุณาชำระยอดส่วนที่เหลือภายในวันที่ {$balanceDueText}",
             ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
         );
     }
@@ -397,7 +397,7 @@ class BookingSettlementService
             $booking->user_id,
             'split_started',
             'รับชำระส่วนของคุณแล้ว',
-            "รับชำระส่วนของคุณสำหรับเลขการจอง {$booking->booking_ref} แล้ว แบ่งยอดที่เหลือให้เพื่อนอีก {$shareCount} คน — เชิญเพื่อนเข้าการจองหรือส่งลิงก์ชำระเงินได้เลย",
+            "รับชำระส่วนของคุณสำหรับการจอง {$booking->booking_ref} แล้ว แบ่งยอดที่เหลือให้เพื่อนอีก {$shareCount} คน สามารถเชิญเพื่อนเข้าการจองหรือส่งลิงก์ชำระเงินได้ในแอปครับ",
             ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
         );
     }
@@ -410,7 +410,7 @@ class BookingSettlementService
             $booking->user_id,
             'payment_confirmed',
             'ยืนยันการชำระเงินแล้ว',
-            "รับชำระงวดแรกของเลขการจอง {$booking->booking_ref} แล้ว",
+            "รับชำระงวดแรกของการจอง {$booking->booking_ref} แล้ว",
             ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
         );
     }

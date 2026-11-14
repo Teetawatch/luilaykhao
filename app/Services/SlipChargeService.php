@@ -186,7 +186,7 @@ class SlipChargeService
             $booking->user_id,
             'payment_under_review',
             'กำลังตรวจสอบการชำระเงิน',
-            "ได้รับสลิปของเลขการจอง {$booking->booking_ref} แล้ว ทีมงานกำลังตรวจสอบยอดโอนและจะยืนยันการจองให้โดยเร็ว",
+            "ได้รับสลิปของการจอง {$booking->booking_ref} แล้ว ทีมงานกำลังตรวจสอบยอดโอนและจะยืนยันการจองให้โดยเร็ว",
             ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
         );
     }

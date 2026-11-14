@@ -1723,11 +1723,18 @@ class AdminController extends Controller
         // Send status change email notification to customer
         $this->mailService->sendBookingStatusChangedEmail($booking->fresh(), $request->status);
         if ($request->status !== 'cancelled') {
+            // ลูกค้าต้องไม่เห็นชื่อสถานะภาษาอังกฤษของระบบ (เคยส่ง "เปลี่ยนสถานะเป็น confirmed")
+            [$title, $body] = match ($request->status) {
+                'refunded' => ['ดำเนินการคืนเงินแล้ว', "การจอง {$booking->booking_ref} ได้รับการคืนเงินเรียบร้อยแล้ว ดูรายละเอียดได้ในแอปครับ"],
+                'confirmed' => ['ยืนยันการจองแล้ว', "การจอง {$booking->booking_ref} ได้รับการยืนยันแล้ว"],
+                'pending' => ['อัปเดตสถานะการจอง', "การจอง {$booking->booking_ref} อยู่ระหว่างรอดำเนินการ ตรวจสอบรายละเอียดได้ในแอปครับ"],
+                default => ['อัปเดตสถานะการจอง', "การจอง {$booking->booking_ref} มีการอัปเดตสถานะ ตรวจสอบรายละเอียดได้ในแอปครับ"],
+            };
             SmartNotification::send(
                 $booking->user_id,
                 $request->status === 'refunded' ? 'booking_refunded' : 'booking_status_changed',
-                $request->status === 'refunded' ? 'ดำเนินการคืนเงินแล้ว' : 'อัปเดตสถานะการจอง',
-                "เลขการจอง {$booking->booking_ref} เปลี่ยนสถานะเป็น {$request->status}",
+                $title,
+                $body,
                 [
                     'booking_ref' => $booking->booking_ref,
                     'status' => $request->status,
@@ -1960,7 +1967,7 @@ class AdminController extends Controller
             $targetUser->id,
             'booking_transferred',
             'ได้รับการจองใหม่',
-            "เลขการจอง {$booking->booking_ref} ถูกโอนมาที่บัญชีของคุณแล้ว",
+            "การจอง {$booking->booking_ref} ถูกโอนมาที่บัญชีของคุณแล้ว",
             ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
         );
 
@@ -5034,7 +5041,7 @@ class AdminController extends Controller
             $booking->user_id,
             'slip_approved',
             'สลิปได้รับการอนุมัติแล้ว',
-            "ทีมงานตรวจสอบและอนุมัติการชำระเงินของเลขการจอง {$booking->booking_ref} แล้ว",
+            "ทีมงานตรวจสอบและอนุมัติการชำระเงินของการจอง {$booking->booking_ref} แล้ว",
             ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
         );
 
@@ -5090,8 +5097,8 @@ class AdminController extends Controller
                 $isSplit ? 'split_started' : 'deposit_paid',
                 $isSplit ? 'รับชำระส่วนของคุณแล้ว' : 'รับชำระเงินมัดจำแล้ว',
                 $isSplit
-                    ? "ทีมงานยืนยันส่วนของคุณสำหรับเลขการจอง {$booking->booking_ref} แล้ว แบ่งยอดที่เหลือให้เพื่อนช่วยจ่ายได้เลย"
-                    : "รับชำระมัดจำเลขการจอง {$booking->booking_ref} แล้ว กรุณาชำระยอดส่วนที่เหลือภายในวันที่ {$balanceDueText}",
+                    ? "ทีมงานยืนยันส่วนของคุณสำหรับการจอง {$booking->booking_ref} แล้ว สามารถแบ่งยอดที่เหลือให้เพื่อนร่วมทริปชำระได้ในแอปครับ"
+                    : "รับชำระมัดจำของการจอง {$booking->booking_ref} แล้ว กรุณาชำระยอดส่วนที่เหลือภายในวันที่ {$balanceDueText}",
                 ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
             );
 
@@ -5105,7 +5112,7 @@ class AdminController extends Controller
             $booking->user_id,
             'payment_confirmed',
             'ยืนยันการชำระเงินแล้ว',
-            "ทีมงานยืนยันการชำระเงินของเลขการจอง {$booking->booking_ref} แล้ว ที่นั่งของคุณได้รับการยืนยัน",
+            "ทีมงานยืนยันการชำระเงินของการจอง {$booking->booking_ref} แล้ว ที่นั่งของคุณได้รับการยืนยัน",
             ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
         );
     }
@@ -5142,7 +5149,7 @@ class AdminController extends Controller
                 $booking->user_id,
                 'slip_rejected',
                 'กรุณาตรวจสอบสลิปการชำระเงิน',
-                "สลิปงวดที่ {$no} ของเลขการจอง {$booking->booking_ref}: {$reason} กรุณาอัพโหลดสลิปใหม่",
+                "ไม่สามารถยืนยันสลิปงวดที่ {$no} ของการจอง {$booking->booking_ref} ได้ ({$reason}) กรุณาอัปโหลดสลิปใหม่ในแอปครับ",
                 ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
             );
 
@@ -5156,7 +5163,7 @@ class AdminController extends Controller
             $booking->user_id,
             'slip_rejected',
             'กรุณาตรวจสอบสลิปการชำระเงิน',
-            "สลิปของเลขการจอง {$booking->booking_ref}: {$reason} กรุณาอัพโหลดสลิปใหม่",
+            "ไม่สามารถยืนยันสลิปของการจอง {$booking->booking_ref} ได้ ({$reason}) กรุณาอัปโหลดสลิปใหม่ในแอปครับ",
             ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
         );
 

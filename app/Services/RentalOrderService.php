@@ -73,7 +73,7 @@ class RentalOrderService
 
         $closesAt = $this->closesAt($booking);
         if (! $closesAt || now(self::TIMEZONE)->greaterThanOrEqualTo($closesAt)) {
-            return 'ปิดรับเช่าอุปกรณ์ในแอปแล้ว (เช่าได้ถึง '.self::cutoffDays().' วันก่อนเดินทาง) ทักทีมงานในแชทได้หากยังต้องการ';
+            return 'ปิดรับเช่าอุปกรณ์ในแอปแล้ว (เช่าได้ถึง '.self::cutoffDays().' วันก่อนเดินทาง) หากยังต้องการเช่า กรุณาติดต่อทีมงานผ่านแชทในแอปครับ';
         }
 
         return null;
@@ -306,7 +306,7 @@ class RentalOrderService
                         $booking->user_id,
                         'rental_order_cancelled',
                         'ยกเลิกรายการเช่าอุปกรณ์แล้ว',
-                        "รายการเช่าอุปกรณ์ของ {$booking->booking_ref} ยังไม่ได้ชำระก่อนปิดรับ ระบบจึงยกเลิกให้ หากยังต้องการ ทักทีมงานในแชทได้เลย",
+                        "รายการเช่าอุปกรณ์ของการจอง {$booking->booking_ref} ยังไม่ได้ชำระภายในเวลาปิดรับ ระบบจึงยกเลิกรายการให้ หากยังต้องการเช่า กรุณาติดต่อทีมงานผ่านแชทในแอปครับ",
                         ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
                     );
                 }

@@ -1074,9 +1074,9 @@ class ForceMajeureService
                 SmartNotification::send(
                     $entry->user_id,
                     'waitlist_round_reopened',
-                    'รอบที่คุณรอคิวกลับมาแล้ว',
+                    'รอบที่คุณรอคิวกลับมาเดินทางตามกำหนด',
                     ($schedule->trip?->title ?? 'ทริป').' รอบ '.ThaiDate::short($schedule->departure_date)
-                        .' เดินทางตามกำหนดเดิม คิวรอที่นั่งของคุณยังอยู่ ถ้ามีที่ว่างระบบจะแจ้งทันที',
+                        .' กลับมาเดินทางตามกำหนดเดิมแล้ว ลำดับคิวของคุณยังคงอยู่ หากมีที่นั่งว่าง ระบบจะแจ้งให้ทราบทันทีครับ',
                     [
                         'trip_slug' => $schedule->trip?->slug,
                         'schedule_id' => $schedule->id,
@@ -1116,7 +1116,7 @@ class ForceMajeureService
                     'waitlist_round_cancelled',
                     'รอบที่คุณรอคิวถูกยกเลิก',
                     ($schedule->trip?->title ?? 'ทริป').' รอบ '.ThaiDate::short($schedule->departure_date)
-                        .' ยกเลิกเนื่องจาก'.$schedule->force_majeure_reason.' ลองดูรอบอื่นของทริปนี้ได้เลย',
+                        .' ยกเลิกเนื่องจาก'.$schedule->force_majeure_reason.' ขออภัยในความไม่สะดวก สามารถเลือกรอบอื่นของทริปนี้ได้ในแอปครับ',
                     [
                         'trip_slug' => $schedule->trip?->slug,
                         'schedule_id' => $schedule->id,

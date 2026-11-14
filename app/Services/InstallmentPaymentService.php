@@ -68,7 +68,7 @@ class InstallmentPaymentService
                 $booking->user_id,
                 'installment_paid',
                 'รับชำระค่างวดแล้ว',
-                "รับชำระงวดที่ {$installment->installment_no} ของเลขการจอง {$booking->booking_ref} แล้ว",
+                "รับชำระงวดที่ {$installment->installment_no} ของการจอง {$booking->booking_ref} แล้ว",
                 [
                     'booking_ref' => $booking->booking_ref,
                     'installment_no' => $installment->installment_no,
