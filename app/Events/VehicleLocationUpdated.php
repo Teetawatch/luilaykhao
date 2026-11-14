@@ -27,6 +27,7 @@ class VehicleLocationUpdated implements ShouldBroadcast
         public ?float $destLat = null,
         public ?float $destLng = null,
         public ?string $tripTitle = null,
+        public ?int $scheduleId = null,
     ) {}
 
     public function broadcastOn(): array
@@ -59,6 +60,9 @@ class VehicleLocationUpdated implements ShouldBroadcast
             'dest_lat' => $this->destLat,
             'dest_lng' => $this->destLng,
             'trip_title' => $this->tripTitle,
+            // รอบที่รถกำลังวิ่งอยู่ — แอปลูกค้ารับพิกัดสดเฉพาะของรอบที่ตัวเองรอ
+            // (รถคันเดียวกันวิ่งหลายรอบได้ ช่องนี้เป็นของรถ ไม่ใช่ของรอบ)
+            'schedule_id' => $this->scheduleId,
         ];
     }
 }

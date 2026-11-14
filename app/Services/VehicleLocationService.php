@@ -117,6 +117,7 @@ class VehicleLocationService
             destLat: $schedule?->trip?->latitude,
             destLng: $schedule?->trip?->longitude,
             tripTitle: $schedule?->trip?->title,
+            scheduleId: $schedule?->id,
         ));
     }
 
