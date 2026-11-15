@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Services\TripMemberLocationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Redis;
+use Tests\Support\InMemoryRedis;
 use Tests\TestCase;
 
 /**
@@ -19,20 +21,33 @@ use Tests\TestCase;
  *
  * นี่คือตำแหน่งของคนจริง เทสต์ชุดนี้จึงล็อกขอบเขตไว้แน่นกว่าฟีเจอร์อื่น: ใครดูได้
  * ดูได้เมื่อไหร่ ปิดแล้วหายจริงไหม และหมุดเก่าต้องไม่ถูกส่งออกไปหลอกใคร
+ *
+ * ชุดนี้รันตอน Redis ล่ม (ทางสำรองที่เขียนลงตาราง) — ชุดเดียวกันตอน Redis ปกติอยู่ใน
+ * TripMemberLocationRedisTest ซึ่งสืบทอดเทสต์ทุกข้อจากที่นี่
  */
 class TripMemberLocationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private TripSchedule $schedule;
+    protected TripSchedule $schedule;
 
-    private User $owner;
+    protected User $owner;
 
-    private User $friend;
+    protected User $friend;
+
+    protected InMemoryRedis $redis;
+
+    /** Redis ของชุดนี้ — ล่มทั้งตัว ทุกอย่างต้องถอยไปใช้ตาราง */
+    protected function makeRedis(): InMemoryRedis
+    {
+        return InMemoryRedis::down();
+    }
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        Redis::swap($this->redis = $this->makeRedis());
 
         $trip = Trip::create([
             'title' => 'ดอยหลวงเชียงดาว', 'slug' => 'live-loc-'.uniqid(), 'type' => 'trekking',
@@ -199,7 +214,7 @@ class TripMemberLocationTest extends TestCase
         $this->assertDatabaseCount('trip_member_locations', 0);
     }
 
-    private function share(User $user, float $lat = 19.39): void
+    protected function share(User $user, float $lat = 19.39): void
     {
         $this->actingAs($user)
             ->postJson("/api/v1/schedules/{$this->schedule->id}/live-location", [
@@ -209,7 +224,7 @@ class TripMemberLocationTest extends TestCase
             ->assertOk();
     }
 
-    private function confirmedBooking(User $user): Booking
+    protected function confirmedBooking(User $user): Booking
     {
         return Booking::create([
             'booking_ref' => Booking::generateRef(),
