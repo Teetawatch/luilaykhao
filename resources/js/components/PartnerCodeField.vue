@@ -8,14 +8,14 @@
       <button type="button" class="shrink-0 text-xs font-bold text-gray-400 hover:text-red-500" @click="remove">เอาออก</button>
     </div>
 
-    <button v-else-if="!open" type="button" class="text-xs font-bold text-gray-500 underline-offset-2 hover:text-teal-700 hover:underline" @click="open = true">
+    <button v-else-if="!open" type="button" class="text-xs font-bold text-gray-500 underline-offset-2 hover:text-accent hover:underline" @click="open = true">
       มีรหัสผู้แนะนำ/พาร์ทเนอร์?
     </button>
 
     <div v-else class="space-y-1">
       <div class="flex gap-2">
         <input v-model="input" type="text" maxlength="20" placeholder="รหัสผู้แนะนำ"
-          class="min-w-0 flex-1 rounded-xl border-2 border-gray-200 px-4 py-2.5 text-sm font-bold uppercase text-gray-900 outline-none focus:border-teal-600"
+          class="min-w-0 flex-1 rounded-xl border-2 border-gray-200 px-4 py-2.5 text-sm font-bold uppercase text-gray-900 outline-none focus:border-accent"
           @keyup.enter="check" />
         <button type="button" :disabled="loading || !input.trim()" class="shrink-0 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50" @click="check">
           ตรวจสอบ

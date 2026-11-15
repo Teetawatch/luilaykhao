@@ -8,9 +8,9 @@
     ซ่อนตัวเองเมื่อลูกค้าเปิดแอปมาแล้ว (has_app จาก /auth/me) — เห็นของที่ตัวเอง
     ถืออยู่ถูกขายซ้ำทุกครั้งที่จอง ทำให้คำชวนครั้งที่สำคัญจริงหมดน้ำหนัก
   -->
-  <div v-if="show" class="bg-white border-2 border-teal-100 rounded-[1.75rem] p-6">
+  <div v-if="show" class="bg-white border-2 border-accent/15 rounded-[1.75rem] p-6">
     <div class="flex items-start gap-4">
-      <span class="w-12 h-12 shrink-0 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center">
+      <span class="w-12 h-12 shrink-0 rounded-2xl bg-accent-tint text-accent flex items-center justify-center">
         <span class="material-symbols-rounded text-[26px]">forum</span>
       </span>
       <div class="min-w-0">
@@ -23,18 +23,18 @@
 
     <ul class="mt-5 flex flex-col gap-2.5">
       <li v-for="item in features" :key="item.icon" class="flex items-center gap-3 text-sm font-bold text-gray-600">
-        <span class="material-symbols-rounded text-[20px] text-teal-500">{{ item.icon }}</span>
+        <span class="material-symbols-rounded text-[20px] text-accent">{{ item.icon }}</span>
         <span>{{ item.text }}</span>
       </li>
     </ul>
 
     <div class="mt-6 flex flex-col sm:flex-row gap-3">
       <a :href="appStore" target="_blank" rel="noopener"
-        class="flex-1 flex items-center justify-center gap-2 py-3.5 bg-teal-600 text-white rounded-2xl font-black text-sm hover:bg-teal-700 active:scale-95 transition-all">
+        class="flex-1 flex items-center justify-center gap-2 py-3.5 bg-accent text-white rounded-2xl font-black text-sm hover:bg-accent-mid active:scale-95 transition-all">
         App Store
       </a>
       <a :href="playStore" target="_blank" rel="noopener"
-        class="flex-1 flex items-center justify-center gap-2 py-3.5 bg-teal-600 text-white rounded-2xl font-black text-sm hover:bg-teal-700 active:scale-95 transition-all">
+        class="flex-1 flex items-center justify-center gap-2 py-3.5 bg-accent text-white rounded-2xl font-black text-sm hover:bg-accent-mid active:scale-95 transition-all">
         Google Play
       </a>
     </div>

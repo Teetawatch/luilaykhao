@@ -51,7 +51,7 @@
                     class="rounded-full px-2.5 py-0.5 text-[11px] font-bold shrink-0"
                     :class="plan.booking_ref
                       ? 'bg-[#006565]/10 text-[#006565]'
-                      : plan.is_open ? 'bg-emerald-50 text-emerald-700' : 'bg-[#F4F7F6] text-[#8A9A9A]'"
+                      : plan.is_open ? 'bg-accent-tint text-accent' : 'bg-[#F4F7F6] text-[#8A9A9A]'"
                   >
                     {{ plan.booking_ref ? 'จองแล้ว' : plan.is_open ? 'กำลังรวมกลุ่ม' : 'ปิดรับแล้ว' }}
                   </span>

@@ -41,7 +41,7 @@ function toastIcon(type) {
 
 function toastClass(type) {
   return {
-    success: 'bg-emerald-600/95 text-white',
+    success: 'bg-accent/95 text-white',
     error:   'bg-red-600/95 text-white',
     warning: 'bg-amber-500/95 text-white',
     info:    'bg-[#006565]/95 text-white',

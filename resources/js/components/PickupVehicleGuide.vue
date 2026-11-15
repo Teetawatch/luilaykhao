@@ -8,10 +8,10 @@
 <template>
   <div v-if="classes.length" class="bg-white rounded-[2rem] border border-gray-100 p-5 sm:p-6">
     <div class="flex items-start gap-3 mb-1">
-      <span class="material-symbols-rounded text-teal-600 text-[22px] shrink-0">airport_shuttle</span>
+      <span class="material-symbols-rounded text-accent text-[22px] shrink-0">airport_shuttle</span>
       <div class="min-w-0">
         <h3 class="font-bold text-gray-900">รถรับ-ส่งมาที่จุดขึ้นรถ</h3>
-        <p v-if="matched" class="text-sm font-bold text-teal-700 mt-0.5">
+        <p v-if="matched" class="text-sm font-bold text-accent mt-0.5">
           เดินทาง {{ paxCount }} ท่าน โดยประมาณจะใช้{{ matched.label }}
         </p>
       </div>
@@ -23,7 +23,7 @@
         :key="item.id"
         class="rounded-2xl border overflow-hidden transition-colors"
         :class="item.id === matched?.id
-          ? 'border-teal-500 border-2 bg-teal-50/50'
+          ? 'border-accent border-2 bg-accent-tint/50'
           : 'border-gray-100 bg-gray-50/60'"
       >
         <div class="aspect-[16/10] bg-gray-100">
@@ -39,7 +39,7 @@
           </div>
         </div>
         <div class="p-3">
-          <p class="font-bold text-sm leading-tight" :class="item.id === matched?.id ? 'text-teal-700' : 'text-gray-900'">
+          <p class="font-bold text-sm leading-tight" :class="item.id === matched?.id ? 'text-accent' : 'text-gray-900'">
             {{ item.label }}
           </p>
           <p class="text-xs font-bold text-gray-500 mt-0.5">{{ item.pax_label }}</p>

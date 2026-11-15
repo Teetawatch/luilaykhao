@@ -372,7 +372,7 @@ const statusLabel = computed(() => {
 const statusChipClass = computed(() => {
   if (plan.value?.booking_ref) return 'bg-[#006565]/10 text-[#006565]';
   return plan.value?.is_open
-    ? 'bg-emerald-50 text-emerald-700'
+    ? 'bg-accent-tint text-accent'
     : 'bg-[#F4F7F6] text-[#8A9A9A]';
 });
 

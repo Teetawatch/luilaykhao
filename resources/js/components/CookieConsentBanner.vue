@@ -15,7 +15,7 @@
               <p class="text-sm text-gray-500 leading-relaxed">
                 เราอยากเก็บข้อมูลการใช้งานแบบไม่ระบุตัวตน เพื่อดูว่าหน้าไหนใช้ยาก
                 แล้วปรับให้ดีขึ้น ถ้าไม่สะดวกกดปฏิเสธได้เลยครับ ใช้งานเว็บได้ครบเหมือนเดิม
-                <router-link to="/privacy" class="text-teal-600 font-bold underline underline-offset-2 whitespace-nowrap">
+                <router-link to="/privacy" class="text-accent font-bold underline underline-offset-2 whitespace-nowrap">
                   อ่านนโยบายความเป็นส่วนตัว
                 </router-link>
               </p>

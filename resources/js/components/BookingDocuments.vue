@@ -39,7 +39,7 @@
               </span>
               <span class="text-xs font-bold text-gray-700 truncate flex-1">{{ file.original_name }}</span>
               <a :href="file.url" target="_blank" rel="noopener" title="เปิดดู"
-                class="text-gray-400 hover:text-teal-600 shrink-0">
+                class="text-gray-400 hover:text-accent shrink-0">
                 <span class="material-symbols-rounded text-[18px]">open_in_new</span>
               </a>
               <button type="button" title="ลบไฟล์นี้" :disabled="deletingId === file.id"

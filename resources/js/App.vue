@@ -16,9 +16,9 @@
                 ? 'bg-red-50 border-red-100' 
                 : seatsStore.countdownSeconds <= 180 
                   ? 'bg-amber-50 border-amber-100' 
-                  : 'bg-teal-50 border-teal-100'">
+                  : 'bg-accent-tint border-accent/15'">
               <span class="material-symbols-rounded text-[18px] md:text-[20px]"
-                :class="seatsStore.countdownSeconds <= 60 ? 'text-red-600 animate-pulse' : seatsStore.countdownSeconds <= 180 ? 'text-amber-600' : 'text-teal-600'"
+                :class="seatsStore.countdownSeconds <= 60 ? 'text-red-600 animate-pulse' : seatsStore.countdownSeconds <= 180 ? 'text-amber-600' : 'text-accent'"
                 style="font-variation-settings:'FILL' 1,'wght' 400">timer</span>
             </div>
 
@@ -33,7 +33,7 @@
                 ? 'bg-red-600 text-white border-red-500' 
                 : seatsStore.countdownSeconds <= 180 
                   ? 'bg-amber-100 text-amber-700 border-amber-200' 
-                  : 'bg-teal-600 text-white border-teal-500'">
+                  : 'bg-accent text-white border-accent'">
               <span class="material-symbols-rounded text-[14px] md:text-[16px]" :class="seatsStore.countdownSeconds <= 60 ? 'animate-spin-slow' : ''">hourglass_bottom</span>
               <span class="font-anuphan tracking-tighter">{{ formattedGlobal }}</span>
             </div>
@@ -61,7 +61,7 @@
           <!-- Progress bar -->
           <div class="h-1 w-full bg-gray-100/50 relative overflow-hidden">
             <div class="h-full transition-all duration-1000 ease-linear shadow-[0_1px_4px_rgba(0,0,0,0.1)]"
-              :class="seatsStore.countdownSeconds <= 60 ? 'bg-red-500' : seatsStore.countdownSeconds <= 180 ? 'bg-amber-500' : 'bg-teal-500'"
+              :class="seatsStore.countdownSeconds <= 60 ? 'bg-red-500' : seatsStore.countdownSeconds <= 180 ? 'bg-amber-500' : 'bg-accent-light'"
               :style="{ width: `${seatsStore.countdownProgress * 100}%` }">
             </div>
           </div>
@@ -99,7 +99,7 @@
           <span v-else class="material-symbols-rounded text-[20px] text-red-400 flex items-center justify-center w-full h-full" style="font-variation-settings:'FILL' 1">favorite</span>
         </div>
         <div class="flex-1 min-w-0">
-          <p class="text-[12px] font-bold text-teal-600">เพิ่มเข้ารายการที่ชอบแล้ว</p>
+          <p class="text-[12px] font-bold text-accent">เพิ่มเข้ารายการที่ชอบแล้ว</p>
           <p class="text-[13px] font-bold text-gray-900 truncate">{{ wishlistStore.lastAdded.title || `ทริป #${wishlistStore.lastAdded.id}` }}</p>
           <p v-if="wishlistStore.lastAddedAlertOn" class="text-[11px] font-semibold text-gray-500">จะแจ้งเตือนเมื่อเปิดรอบใหม่หรือราคาลด</p>
         </div>

@@ -48,7 +48,7 @@
               <p class="text-sm font-bold text-gray-900 mb-2">เช็คก่อนกดแนบ</p>
               <ul class="space-y-1.5">
                 <li v-for="(tip, i) in tips" :key="i" class="flex items-start gap-2 text-sm text-gray-700 leading-relaxed">
-                  <span class="material-symbols-rounded text-[18px] text-teal-600 shrink-0">check_circle</span>
+                  <span class="material-symbols-rounded text-[18px] text-accent shrink-0">check_circle</span>
                   <span>{{ tip }}</span>
                 </li>
               </ul>

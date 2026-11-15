@@ -197,7 +197,7 @@
                   <span class="flex items-center gap-2">
                     <span class="font-black text-gray-900 text-base tracking-wider tabular-nums">230-1-39095-8</span>
                     <button @click="copyAccount" aria-label="คัดลอกเลขบัญชี"
-                      class="p-1.5 rounded-lg bg-accent-tint text-accent hover:bg-emerald-100 active:scale-90 transition-all">
+                      class="p-1.5 rounded-lg bg-accent-tint text-accent hover:bg-accent/10 active:scale-90 transition-all">
                       <span class="material-symbols-rounded icon-18">{{ accountCopied ? 'check' : 'content_copy' }}</span>
                     </button>
                   </span>

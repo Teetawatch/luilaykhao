@@ -34,12 +34,12 @@
 
       <!-- ได้รับข้อเสนอที่นั่ง -->
       <div v-else-if="entry.status === 'offered'" class="space-y-3">
-        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-          <p class="text-sm font-black text-emerald-700 flex items-center gap-1.5">
+        <div class="p-3 rounded-xl bg-accent-tint border border-accent/25">
+          <p class="text-sm font-black text-accent flex items-center gap-1.5">
             <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">celebration</span>
             มีที่นั่งว่างสำหรับคุณแล้ว!
           </p>
-          <p v-if="countdown" class="text-xs font-bold text-emerald-600 mt-1">
+          <p v-if="countdown" class="text-xs font-bold text-accent mt-1">
             รีบจองภายใน <span class="tabular-nums">{{ countdown }}</span> ก่อนสิทธิ์หมดอายุ
           </p>
         </div>

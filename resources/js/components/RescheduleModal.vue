@@ -134,7 +134,7 @@
                     class="h-10 rounded-[10px] border-2 text-xs font-bold transition"
                     :class="selectedSeats.includes(seat.id)
                       ? 'bg-[#006565] border-[#006565] text-white'
-                      : isSeatFree(seat) ? 'bg-emerald-50 border-emerald-300 text-[#1a1c1c] hover:border-[#006565]' : 'bg-[#F4F7F6] border-[#E8EEEF] text-[#A0B0B0] cursor-not-allowed line-through'">
+                      : isSeatFree(seat) ? 'bg-accent-tint border-accent/40 text-[#1a1c1c] hover:border-[#006565]' : 'bg-[#F4F7F6] border-[#E8EEEF] text-[#A0B0B0] cursor-not-allowed line-through'">
                     {{ seat.label || seat.id }}
                   </button>
                 </div>

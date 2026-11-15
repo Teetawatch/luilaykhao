@@ -9,7 +9,7 @@
     <!-- Legend — สีต้องตรงกับที่นั่งจริงในผัง ไม่งั้นคำอธิบายกลายเป็นการเดา -->
     <div class="flex flex-wrap gap-x-5 gap-y-2 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
       <div class="flex items-center gap-1.5">
-        <div class="w-5 h-5 rounded-lg border-2 bg-emerald-50 border-emerald-300"></div>
+        <div class="w-5 h-5 rounded-lg border-2 bg-accent-tint border-accent/40"></div>
         <span class="text-[11px] font-bold text-gray-500">ว่าง</span>
       </div>
       <div v-if="!readonly" class="flex items-center gap-1.5">
@@ -28,14 +28,14 @@
       </div>
       <div v-if="hasOwnSeats" class="flex items-center gap-1.5">
         <div class="w-5 h-5 rounded-lg border-2 border-dashed"
-          :class="isWomenOnly ? 'bg-pink-50 border-[#db2777]' : 'bg-teal-50 border-[#006565]'"></div>
+          :class="isWomenOnly ? 'bg-pink-50 border-[#db2777]' : 'bg-accent-tint border-[#006565]'"></div>
         <span class="text-[11px] font-bold text-gray-500">ที่นั่งของคุณ</span>
       </div>
     </div>
 
     <!-- ที่นั่งที่ตัวเองถืออยู่ — กันความเข้าใจผิดว่า "มีคนอื่นจองไปแล้ว" -->
     <div v-if="hasOwnSeats" class="flex items-start gap-2 px-4 py-3 rounded-2xl border"
-      :class="isWomenOnly ? 'bg-pink-50/60 border-pink-100' : 'bg-teal-50/60 border-teal-100'">
+      :class="isWomenOnly ? 'bg-pink-50/60 border-pink-100' : 'bg-accent-tint/60 border-accent/15'">
       <span class="material-symbols-rounded text-[18px] shrink-0 mt-px"
         :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'"
         style="font-variation-settings:'FILL' 1,'wght' 400">how_to_reg</span>
@@ -47,7 +47,7 @@
 
     <!-- Booking note -->
     <div v-if="!readonly" class="flex items-start gap-2 px-4 py-3 rounded-2xl border"
-      :class="isWomenOnly ? 'bg-pink-50/60 border-pink-100' : 'bg-teal-50/60 border-teal-100'">
+      :class="isWomenOnly ? 'bg-pink-50/60 border-pink-100' : 'bg-accent-tint/60 border-accent/15'">
       <span class="material-symbols-rounded text-[18px] shrink-0 mt-px" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'"
         style="font-variation-settings:'FILL' 1,'wght' 400">info</span>
       <span class="text-[11px] font-bold leading-relaxed" :class="isWomenOnly ? 'text-[#9d174d]' : 'text-[#0f5132]'">
@@ -62,7 +62,7 @@
       <div class="absolute inset-0 rounded-b-[3rem] overflow-hidden pointer-events-none"
         :class="isBus ? 'rounded-t-[2.5rem]' : 'rounded-t-[6rem]'">
         <div class="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-3xl opacity-50"
-          :class="isWomenOnly ? 'bg-pink-100' : 'bg-teal-50'"></div>
+          :class="isWomenOnly ? 'bg-pink-100' : 'bg-accent-tint'"></div>
         <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-gray-50 rounded-full blur-3xl"></div>
       </div>
 
@@ -78,18 +78,18 @@
         <div class="mx-auto h-9 border-2 border-b-0 pointer-events-none"
           :class="[
             isBus ? 'w-full rounded-t-2xl' : 'w-[94%] rounded-t-[3.5rem]',
-            isWomenOnly ? 'bg-gradient-to-b from-pink-200/70 via-pink-50 to-white border-pink-100' : 'bg-gradient-to-b from-sky-200/70 via-sky-50 to-white border-teal-100',
+            isWomenOnly ? 'bg-gradient-to-b from-pink-200/70 via-pink-50 to-white border-pink-100' : 'bg-gradient-to-b from-sky-200/70 via-sky-50 to-white border-accent/15',
           ]"></div>
 
         <!-- Front cabin: staff + front passenger (left) · label · driver (right) -->
         <div class="flex items-end justify-between mb-5 px-1 pt-1 pb-4 border-2 border-t-0 rounded-b-3xl border-dashed"
-          :class="isWomenOnly ? 'border-pink-100/70' : 'border-teal-100/70'">
+          :class="isWomenOnly ? 'border-pink-100/70' : 'border-accent/11'">
           <!-- Left group: staff then front passenger seat -->
           <div class="flex items-end gap-2 shrink-0">
             <!-- Staff -->
             <div v-if="layoutConfig.show_staff" class="flex flex-col items-center gap-1 shrink-0">
               <div class="w-12 h-12 rounded-2xl flex items-center justify-center border-2"
-                :class="isWomenOnly ? 'bg-pink-50 border-pink-200' : 'bg-teal-50 border-teal-200'">
+                :class="isWomenOnly ? 'bg-pink-50 border-pink-200' : 'bg-accent-tint border-accent/25'">
                 <span class="material-symbols-rounded text-[20px]"
                   :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'"
                   style="font-variation-settings:'FILL' 1,'wght' 400">{{ layoutConfig.staff_icon }}</span>
@@ -132,7 +132,7 @@
           <!-- Front label -->
           <div class="flex-1 flex justify-center self-center">
             <span class="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase transition-colors duration-300"
-              :class="isWomenOnly ? 'bg-pink-50 text-[#db2777] border border-pink-100' : 'bg-teal-50 text-[#006565] border border-teal-100'">
+              :class="isWomenOnly ? 'bg-pink-50 text-[#db2777] border border-pink-100' : 'bg-accent-tint text-[#006565] border border-accent/15'">
               {{ layoutConfig.front_label }}
             </span>
           </div>
@@ -216,10 +216,10 @@
     <div v-if="!readonly" class="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
       <div class="flex items-center gap-2">
         <div class="w-2 h-2 rounded-full"
-          :class="seatMap.available_seats === 0 ? 'bg-red-400' : seatMap.available_seats <= 3 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400 animate-pulse'"></div>
+          :class="seatMap.available_seats === 0 ? 'bg-red-400' : seatMap.available_seats <= 3 ? 'bg-amber-400 animate-pulse' : 'bg-accent-light animate-pulse'"></div>
         <span class="text-xs font-bold text-gray-500">
           ว่าง <span class="text-gray-800"
-            :class="seatMap.available_seats === 0 ? 'text-red-500' : seatMap.available_seats <= 3 ? 'text-amber-600' : 'text-emerald-600'">
+            :class="seatMap.available_seats === 0 ? 'text-red-500' : seatMap.available_seats <= 3 ? 'text-amber-600' : 'text-accent'">
             {{ seatMap.available_seats }}
           </span> / {{ seatMap.total_seats }} ที่นั่ง
         </span>
@@ -305,7 +305,7 @@ function seatBgClass(seat) {
   if (isOwnBooking(seat)) {
     return props.isWomenOnly
       ? 'bg-pink-50 border-[#db2777] border-dashed'
-      : 'bg-teal-50 border-[#006565] border-dashed';
+      : 'bg-accent-tint border-[#006565] border-dashed';
   }
   // ไฟจราจร: ว่าง = เขียว, จองแล้ว = แดง + ไอคอนล็อค — อ่านออกตั้งแต่ระยะสายตาแรก
   // โดยไม่ต้องอ่านคำอธิบายสี
@@ -318,11 +318,11 @@ function seatBgClass(seat) {
   if (isOwnLock(seat)) {
     return props.isWomenOnly
       ? 'bg-pink-50 border-[#db2777] border-dashed group-hover:bg-pink-100'
-      : 'bg-teal-50 border-[#006565] border-dashed group-hover:bg-teal-100';
+      : 'bg-accent-tint border-[#006565] border-dashed group-hover:bg-accent/10';
   }
   if (seat.status === 'locked') return 'bg-amber-50 border-amber-200';
-  if (props.readonly) return 'bg-emerald-50 border-emerald-200';
-  return 'bg-emerald-50 border-emerald-300 group-hover:border-emerald-600 group-hover:bg-emerald-100 group-hover:scale-105';
+  if (props.readonly) return 'bg-accent-tint border-accent/25';
+  return 'bg-accent-tint border-accent/40 group-hover:border-accent group-hover:bg-accent/10 group-hover:scale-105';
 }
 
 function seatIconClass(seat) {
@@ -332,7 +332,7 @@ function seatIconClass(seat) {
   if (isSelected(seat)) return 'text-white';
   if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'locked') return 'text-amber-400';
-  return 'text-emerald-600';
+  return 'text-accent';
 }
 
 function seatLabelClass(seat) {
@@ -343,7 +343,7 @@ function seatLabelClass(seat) {
   if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
   if (seat.status === 'locked') return 'text-amber-500';
   if (props.readonly) return 'text-gray-400';
-  return 'text-gray-400 group-hover:text-emerald-700';
+  return 'text-gray-400 group-hover:text-accent';
 }
 
 // ─── Front passenger seat ─────────────────────────────────────────

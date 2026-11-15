@@ -1,40 +1,40 @@
 <template>
   <div v-if="seconds > 0"
     class="rounded-2xl border overflow-hidden transition-all duration-300"
-    :class="isUrgent ? 'border-red-200 bg-red-50' : isWarning ? 'border-amber-200 bg-amber-50' : 'border-teal-200 bg-teal-50'">
+    :class="isUrgent ? 'border-red-200 bg-red-50' : isWarning ? 'border-amber-200 bg-amber-50' : 'border-accent/25 bg-accent-tint'">
     <div class="flex items-center gap-3 px-4 py-3">
       <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-        :class="isUrgent ? 'bg-red-100' : isWarning ? 'bg-amber-100' : 'bg-teal-100'">
+        :class="isUrgent ? 'bg-red-100' : isWarning ? 'bg-amber-100' : 'bg-accent/10'">
         <span class="material-symbols-rounded text-[20px]"
-          :class="[isUrgent ? 'text-red-600 animate-pulse' : isWarning ? 'text-amber-600' : 'text-teal-600']"
+          :class="[isUrgent ? 'text-red-600 animate-pulse' : isWarning ? 'text-amber-600' : 'text-accent']"
           style="font-variation-settings:'FILL' 1,'wght' 400">timer</span>
       </div>
       <div class="flex-1 min-w-0">
         <p class="text-xs font-bold uppercase tracking-wider mb-0.5"
-          :class="isUrgent ? 'text-red-500' : isWarning ? 'text-amber-600' : 'text-teal-600'">
+          :class="isUrgent ? 'text-red-500' : isWarning ? 'text-amber-600' : 'text-accent'">
           {{ isUrgent ? 'เวลาใกล้หมดแล้ว!' : 'เวลาที่เหลือในการจอง' }}
         </p>
         <p class="text-xl font-extrabold font-anuphan tracking-tight"
-          :class="isUrgent ? 'text-red-700' : isWarning ? 'text-amber-700' : 'text-teal-700'">
+          :class="isUrgent ? 'text-red-700' : isWarning ? 'text-amber-700' : 'text-accent'">
           {{ formatted }}
         </p>
       </div>
       <div class="text-right shrink-0">
         <p class="text-xs font-medium"
-          :class="isUrgent ? 'text-red-400' : isWarning ? 'text-amber-500' : 'text-teal-500'">
+          :class="isUrgent ? 'text-red-400' : isWarning ? 'text-amber-500' : 'text-accent'">
           ที่นั่งจะถูกปลดล็อค
         </p>
         <p class="text-xs font-bold"
-          :class="isUrgent ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-teal-600'">
+          :class="isUrgent ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-accent'">
           หากไม่ทำรายการ
         </p>
       </div>
     </div>
     <!-- Progress bar -->
     <div class="h-1.5 w-full"
-      :class="isUrgent ? 'bg-red-100' : isWarning ? 'bg-amber-100' : 'bg-teal-100'">
+      :class="isUrgent ? 'bg-red-100' : isWarning ? 'bg-amber-100' : 'bg-accent/10'">
       <div class="h-full transition-all duration-1000 rounded-full"
-        :class="isUrgent ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-teal-500'"
+        :class="isUrgent ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-accent-light'"
         :style="{ width: progressWidth }">
       </div>
     </div>

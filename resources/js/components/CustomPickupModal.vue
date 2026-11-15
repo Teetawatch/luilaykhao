@@ -6,7 +6,7 @@
       <!-- Header -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
         <div class="flex items-center gap-2">
-          <span class="material-symbols-rounded text-teal-600">add_location_alt</span>
+          <span class="material-symbols-rounded text-accent">add_location_alt</span>
           <h3 class="text-lg font-bold text-gray-900">{{ title }}</h3>
         </div>
         <button @click="$emit('close')" class="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
@@ -26,8 +26,8 @@
             <span class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
             <input v-model="searchQuery" @input="onSearchInput" @keyup.enter="runSearch" type="text"
               placeholder="ค้นหาสถานที่ เช่น เซ็นทรัลลาดพร้าว, ปั๊ม ปตท. ทางเข้าเขาใหญ่"
-              class="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none text-sm font-medium" />
-            <span v-if="searching" class="material-symbols-rounded animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-teal-500 text-[20px]">progress_activity</span>
+              class="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium" />
+            <span v-if="searching" class="material-symbols-rounded animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-accent text-[20px]">progress_activity</span>
             <button v-else-if="searchQuery" type="button" @click="clearSearch"
               class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
               <span class="material-symbols-rounded text-[20px]">close</span>
@@ -38,8 +38,8 @@
             class="absolute z-[500] mt-1 w-full max-h-56 overflow-y-auto bg-white rounded-xl border border-gray-200">
             <li v-for="(r, i) in searchResults" :key="i">
               <button type="button" @click="pickResult(r)"
-                class="w-full text-left px-4 py-2.5 hover:bg-teal-50 flex items-start gap-2 border-b border-gray-50 last:border-0">
-                <span class="material-symbols-rounded text-teal-600 text-[18px] mt-0.5 shrink-0">location_on</span>
+                class="w-full text-left px-4 py-2.5 hover:bg-accent-tint flex items-start gap-2 border-b border-gray-50 last:border-0">
+                <span class="material-symbols-rounded text-accent text-[18px] mt-0.5 shrink-0">location_on</span>
                 <span class="text-sm text-gray-700 leading-snug">{{ r.label }}</span>
               </button>
             </li>
@@ -52,11 +52,11 @@
           <div ref="mapEl" class="absolute inset-0 z-0"></div>
           <!-- หมุดคงที่กลางจอ ปลายหมุดชี้จุดกึ่งกลาง -->
           <div class="pointer-events-none absolute left-1/2 top-1/2 z-[400] -translate-x-1/2 -translate-y-full">
-            <span class="material-symbols-rounded text-teal-600" style="font-size:42px; font-variation-settings:'FILL' 1">location_on</span>
+            <span class="material-symbols-rounded text-accent" style="font-size:42px; font-variation-settings:'FILL' 1">location_on</span>
           </div>
           <!-- ปุ่มหาตำแหน่งฉัน -->
           <button type="button" @click="goToMyLocation" :disabled="locating"
-            class="absolute right-3 bottom-3 z-[401] w-11 h-11 rounded-full bg-white flex items-center justify-center text-teal-600 hover:bg-gray-50 disabled:opacity-60 transition-all">
+            class="absolute right-3 bottom-3 z-[401] w-11 h-11 rounded-full bg-white flex items-center justify-center text-accent hover:bg-gray-50 disabled:opacity-60 transition-all">
             <span v-if="locating" class="material-symbols-rounded animate-spin">progress_activity</span>
             <span v-else class="material-symbols-rounded">my_location</span>
           </button>
@@ -68,12 +68,12 @@
           <div class="flex items-center gap-2">
             <input v-model="latInput" @keyup.enter="goToLatLng" @focus="latLngFocused = true" @blur="latLngFocused = false"
               type="text" inputmode="decimal" placeholder="ละติจูด เช่น 13.75630"
-              class="min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none text-sm font-medium tabular-nums" />
+              class="min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium tabular-nums" />
             <input v-model="lngInput" @keyup.enter="goToLatLng" @focus="latLngFocused = true" @blur="latLngFocused = false"
               type="text" inputmode="decimal" placeholder="ลองจิจูด เช่น 100.50180"
-              class="min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none text-sm font-medium tabular-nums" />
+              class="min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium tabular-nums" />
             <button type="button" @click="goToLatLng" :disabled="!canGoLatLng"
-              class="shrink-0 px-4 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-bold hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              class="shrink-0 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-bold hover:bg-accent-mid disabled:opacity-40 disabled:cursor-not-allowed transition-all">
               ไป
             </button>
           </div>
@@ -86,7 +86,7 @@
           <label class="block text-sm font-bold text-gray-700 mb-1.5">ชื่อจุดรับ / จุดสังเกต <span class="text-red-500">*</span></label>
           <input v-model="label" type="text" maxlength="255"
             placeholder="เช่น ปั๊ม ปตท. ทางเข้าเขาใหญ่"
-            class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none text-sm font-medium" />
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium" />
         </div>
 
         <!-- Note -->
@@ -94,7 +94,7 @@
           <label class="block text-sm font-bold text-gray-700 mb-1.5">รายละเอียดเพิ่มเติม (ถ้ามี)</label>
           <textarea v-model="note" rows="2" maxlength="1000"
             placeholder="เช่น รอตรงร้านกาแฟหน้าปั๊ม"
-            class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none text-sm font-medium resize-none"></textarea>
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium resize-none"></textarea>
         </div>
       </div>
 
@@ -105,7 +105,7 @@
           ยกเลิก
         </button>
         <button @click="confirm" :disabled="!canConfirm"
-          class="flex-1 py-3 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+          class="flex-1 py-3 rounded-xl font-bold text-white bg-accent hover:bg-accent-mid transition-all disabled:opacity-40 disabled:cursor-not-allowed">
           ใช้จุดนี้
         </button>
       </div>

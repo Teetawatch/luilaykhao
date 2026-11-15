@@ -10,14 +10,14 @@
     และต้องพูดให้ชัดว่าห้ามจ่ายซ้ำ
   -->
   <div :class="isSettling
-    ? 'rounded-3xl border border-teal-100 bg-white p-7 text-center'
+    ? 'rounded-3xl border border-accent/15 bg-white p-7 text-center'
     : 'rounded-3xl border border-gray-100 bg-white/60 p-4'">
     <template v-if="isSettling">
       <div class="relative mx-auto w-24 h-24 flex items-center justify-center">
-        <span class="absolute inset-0 rounded-full bg-teal-500/10 settling-ping"></span>
-        <span class="absolute inset-2 rounded-full bg-teal-500/10 settling-ping settling-ping-delayed"></span>
-        <span class="absolute inset-3 rounded-full border-[3px] border-teal-100 border-t-teal-600 animate-spin"></span>
-        <span class="material-symbols-rounded text-teal-600 text-[30px]" style="font-variation-settings:'FILL' 1">
+        <span class="absolute inset-0 rounded-full bg-accent/10 settling-ping"></span>
+        <span class="absolute inset-2 rounded-full bg-accent/10 settling-ping settling-ping-delayed"></span>
+        <span class="absolute inset-3 rounded-full border-[3px] border-accent/15 border-t-accent animate-spin"></span>
+        <span class="material-symbols-rounded text-accent text-[30px]" style="font-variation-settings:'FILL' 1">
           {{ slow ? 'hourglass_top' : 'account_balance' }}
         </span>
       </div>
@@ -38,16 +38,16 @@
         class="flex items-center gap-3 rounded-2xl border transition-colors"
         :class="[
           isSettling ? 'px-4 py-3' : 'px-3.5 py-2.5',
-          i < activeIndex ? 'bg-teal-50/70 border-teal-100'
-            : i === activeIndex ? 'bg-white border-teal-100'
+          i < activeIndex ? 'bg-accent-tint/70 border-accent/15'
+            : i === activeIndex ? 'bg-white border-accent/15'
               : 'bg-gray-50/60 border-gray-100',
         ]">
         <span v-if="i < activeIndex"
-          class="w-6 h-6 rounded-full bg-teal-600 flex items-center justify-center shrink-0">
+          class="w-6 h-6 rounded-full bg-accent flex items-center justify-center shrink-0">
           <span class="material-symbols-rounded text-white text-[15px]">check</span>
         </span>
         <span v-else-if="i === activeIndex"
-          class="w-6 h-6 rounded-full border-[3px] border-teal-100 border-t-teal-600 animate-spin shrink-0"></span>
+          class="w-6 h-6 rounded-full border-[3px] border-accent/15 border-t-accent animate-spin shrink-0"></span>
         <span v-else class="w-6 h-6 rounded-full bg-gray-200/70 shrink-0"></span>
 
         <span class="text-xs font-bold" :class="i > activeIndex ? 'text-gray-400' : 'text-gray-800'">
@@ -57,14 +57,14 @@
     </ol>
 
     <div v-if="isSettling" class="mt-6 flex items-center justify-center gap-2 text-[11px] font-bold text-gray-400">
-      <span class="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
+      <span class="w-1.5 h-1.5 rounded-full bg-accent-light animate-pulse"></span>
       <span class="tabular-nums">รอมาแล้ว {{ elapsedText }}</span>
     </div>
 
     <p v-if="isSettling && slow" class="mt-4 text-[11px] font-bold text-gray-500 leading-relaxed">
       หากเงินถูกตัดไปแล้วแต่สถานะยังไม่ขึ้น ระบบจะยืนยันที่นั่งให้เองเมื่อได้รับผลจากธนาคาร
       หรือทักหาเราได้ที่
-      <router-link to="/support" class="text-teal-600 underline underline-offset-4">ศูนย์ช่วยเหลือ</router-link>
+      <router-link to="/support" class="text-accent underline underline-offset-4">ศูนย์ช่วยเหลือ</router-link>
     </p>
 
     <slot name="actions" />

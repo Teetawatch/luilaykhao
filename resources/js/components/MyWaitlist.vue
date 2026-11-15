@@ -10,7 +10,7 @@
         v-for="e in entries"
         :key="e.id"
         class="p-4 rounded-[16px] border bg-white flex items-center gap-3"
-        :class="e.status === 'offered' ? 'border-emerald-300 bg-emerald-50/40' : 'border-[#E8EEEF]'">
+        :class="e.status === 'offered' ? 'border-accent/40 bg-accent-tint/40' : 'border-[#E8EEEF]'">
         <img
           v-if="e.schedule?.trip?.cover_image || e.schedule?.trip?.thumbnail_image"
           :src="e.schedule.trip.cover_image || e.schedule.trip.thumbnail_image"
@@ -19,7 +19,7 @@
           <p class="font-extrabold text-sm text-[#1a1c1c] truncate">{{ e.schedule?.trip?.title || 'ทริป' }}</p>
           <p class="text-xs font-bold text-[#889696]">{{ formatDate(e.schedule?.departure_date) }} · {{ e.seat_count }} ที่นั่ง</p>
           <div class="mt-1">
-            <span v-if="e.status === 'offered'" class="text-xs font-black text-emerald-600">
+            <span v-if="e.status === 'offered'" class="text-xs font-black text-accent">
               🎉 มีที่นั่งว่าง! <span v-if="countdowns[e.id]" class="tabular-nums">({{ countdowns[e.id] }})</span>
             </span>
             <span v-else class="text-xs font-bold text-[var(--color-accent)]">

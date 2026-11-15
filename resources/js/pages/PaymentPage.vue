@@ -37,8 +37,8 @@
 
     <!-- ทีมงานกันที่นั่งไว้ให้ — ไม่ต้องนับถอยหลังสิบนาทีแบบจองเอง -->
     <div v-if="isOnHold" class="max-w-7xl mx-auto mb-10 pay-rise" style="--d: 60ms">
-      <div class="bg-teal-50 border border-teal-100 rounded-3xl p-5 md:p-6 flex items-center gap-4">
-        <div class="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
+      <div class="bg-accent-tint border border-accent/15 rounded-3xl p-5 md:p-6 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
           <span class="material-symbols-rounded text-[#006565] text-2xl">event_seat</span>
         </div>
         <div>
@@ -77,7 +77,7 @@
         <!-- ── Step Instructions ── -->
         <div class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100 pay-rise" style="--d: 120ms">
            <h2 class="text-xl font-bold mb-8 text-gray-900 flex items-center gap-2">
-            <span class="material-symbols-rounded text-teal-600">checklist</span>
+            <span class="material-symbols-rounded text-accent">checklist</span>
             ขั้นตอนการชำระเงิน
           </h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
@@ -85,17 +85,17 @@
             <div class="hidden md:block absolute top-7 left-[15%] right-[15%] h-[2px] bg-gray-100"></div>
             
             <div class="relative flex flex-col items-center text-center gap-3">
-              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 z-10">1</div>
+              <div class="w-14 h-14 rounded-2xl bg-accent-tint text-accent flex items-center justify-center font-black text-xl border-2 border-accent/15 z-10">1</div>
               <p class="font-bold text-gray-900">สแกน QR เพื่อชำระเงิน</p>
               <p class="text-xs text-gray-500 leading-relaxed px-2">เปิดแอปธนาคารแล้วสแกน QR Code ด้านล่าง</p>
             </div>
             <div class="relative flex flex-col items-center text-center gap-3">
-              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 z-10">2</div>
+              <div class="w-14 h-14 rounded-2xl bg-accent-tint text-accent flex items-center justify-center font-black text-xl border-2 border-accent/15 z-10">2</div>
               <p class="font-bold text-gray-900">อัปโหลดสลิป</p>
               <p class="text-xs text-gray-500 leading-relaxed px-2">แนบหลักฐานการโอนเงินเพื่อตรวจสอบความถูกต้อง</p>
             </div>
             <div class="relative flex flex-col items-center text-center gap-3">
-              <div class="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-xl border-2 border-teal-100 z-10">3</div>
+              <div class="w-14 h-14 rounded-2xl bg-accent-tint text-accent flex items-center justify-center font-black text-xl border-2 border-accent/15 z-10">3</div>
               <p class="font-bold text-gray-900">กดยืนยันการชำระเงิน</p>
               <p class="text-xs text-gray-500 leading-relaxed px-2">เสร็จสิ้น! รอเจ้าหน้าที่ตรวจสอบใน 10 นาที</p>
             </div>
@@ -378,7 +378,7 @@
                   <span class="flex items-center gap-2">
                     <span class="text-base font-black text-gray-900 tracking-wider tabular-nums">230-1-39095-8</span>
                     <button @click="copyBankAccount" aria-label="คัดลอกเลขบัญชี"
-                      class="p-1.5 rounded-lg bg-accent-tint text-accent hover:bg-emerald-100 transition-colors active:scale-90">
+                      class="p-1.5 rounded-lg bg-accent-tint text-accent hover:bg-accent/10 transition-colors active:scale-90">
                       <span class="material-symbols-rounded icon-18">content_copy</span>
                     </button>
                   </span>
@@ -433,7 +433,7 @@
           <div v-if="!useBeam" class="space-y-6 pb-5 sm:pb-7">
             <div class="flex items-center justify-between">
                <label class="block text-sm font-black text-gray-900">อัปโหลดสลิปการโอนเงินที่นี่ <span class="text-red-500 font-normal">*</span></label>
-               <span v-if="slipFile" class="text-xs font-bold text-teal-600 flex items-center gap-1">
+               <span v-if="slipFile" class="text-xs font-bold text-accent flex items-center gap-1">
                  <span class="material-symbols-rounded text-base">check_circle</span>
                  เลือกไฟล์แล้ว
                </span>
@@ -446,12 +446,12 @@
               @drop.prevent="handleDrop"
               class="group relative flex flex-col items-center justify-center gap-4 border-3 border-dashed rounded-[2.5rem] py-12 px-6 cursor-pointer transition-all duration-500"
               :class="[
-                isDragging ? 'border-teal-600 bg-teal-50 scale-[0.99]' : 'border-gray-200 bg-gray-50/50 hover:border-teal-400 hover:bg-teal-50/20',
+                isDragging ? 'border-accent bg-accent-tint scale-[0.99]' : 'border-gray-200 bg-gray-50/50 hover:border-accent/50 hover:bg-accent-tint/40',
                 slipPreview ? 'border-none p-0 overflow-hidden bg-transparent' : ''
               ]">
               
               <template v-if="!slipPreview">
-                <div class="w-20 h-20 rounded-[2rem] bg-white text-teal-500 flex items-center justify-center border border-gray-100 group-hover:scale-110 transition-transform duration-500">
+                <div class="w-20 h-20 rounded-[2rem] bg-white text-accent flex items-center justify-center border border-gray-100 group-hover:scale-110 transition-transform duration-500">
                   <span class="material-symbols-rounded text-4xl">cloud_upload</span>
                 </div>
                 <div class="text-center space-y-1">
@@ -472,7 +472,7 @@
                       <span class="material-symbols-rounded text-[22px]">delete</span>
                     </button>
                     <!-- Success indicator -->
-                    <div class="absolute bottom-4 left-4 bg-teal-600 text-white px-4 py-2 rounded-full text-xs font-black flex items-center gap-2 pay-pop" style="--d: 200ms">
+                    <div class="absolute bottom-4 left-4 bg-accent text-white px-4 py-2 rounded-full text-xs font-black flex items-center gap-2 pay-pop" style="--d: 200ms">
                        <span class="material-symbols-rounded text-[18px]">check_circle</span>
                        อัปโหลดสำเร็จ
                     </div>
@@ -490,20 +490,20 @@
               :class="scanningSlip
                 ? 'bg-gray-50/50 border-gray-100'
                 : slipAmountMatched
-                  ? 'bg-teal-50 border-teal-100'
+                  ? 'bg-accent-tint border-accent/15'
                   : 'bg-amber-50 border-amber-100'">
               <template v-if="scanningSlip">
-                <span class="w-6 h-6 border-2 border-teal-600/30 border-t-teal-600 rounded-full animate-spin shrink-0 mt-0.5"></span>
+                <span class="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin shrink-0 mt-0.5"></span>
                 <div>
                   <p class="text-sm font-black text-gray-900">กำลังตรวจสอบสลิปและยอดเงิน...</p>
                   <p class="text-xs text-gray-500 font-medium mt-0.5">ระบบกำลังอ่านสลิปให้อัตโนมัติ รอสักครู่</p>
                 </div>
               </template>
               <template v-else-if="slipAmountMatched">
-                <span class="material-symbols-rounded text-teal-600 shrink-0" style="font-variation-settings:'FILL' 1">verified</span>
+                <span class="material-symbols-rounded text-accent shrink-0" style="font-variation-settings:'FILL' 1">verified</span>
                 <div>
-                  <p class="text-sm font-black text-teal-900">ยอดเงินถูกต้อง — กำลังยืนยันอัตโนมัติ</p>
-                  <p class="text-xs text-teal-700 font-medium mt-0.5">ไม่ต้องกดยืนยัน ระบบดำเนินการให้เรียบร้อย</p>
+                  <p class="text-sm font-black text-accent-mid">ยอดเงินถูกต้อง — กำลังยืนยันอัตโนมัติ</p>
+                  <p class="text-xs text-accent font-medium mt-0.5">ไม่ต้องกดยืนยัน ระบบดำเนินการให้เรียบร้อย</p>
                 </div>
               </template>
               <template v-else-if="slipChecked">
@@ -523,7 +523,7 @@
         <!-- Trust Badges & Support -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pay-rise" style="--d: 300ms">
            <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100">
-             <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+             <div class="w-12 h-12 rounded-2xl bg-accent-tint text-accent flex items-center justify-center shrink-0">
                <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">verified</span>
              </div>
              <div>
@@ -532,13 +532,13 @@
              </div>
            </div>
            <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100">
-             <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+             <div class="w-12 h-12 rounded-2xl bg-accent-tint text-accent flex items-center justify-center shrink-0">
                <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">support_agent</span>
              </div>
              <div>
                 <p class="text-sm font-bold text-gray-900">ทีมงานพร้อมช่วยเหลือ</p>
                 <p class="text-xs text-gray-500">
-                  สอบถามโทร <a :href="supportPhoneHref()" class="font-semibold text-teal-700">{{ supportPhone() }}</a> ({{ supportHours() }})
+                  สอบถามโทร <a :href="supportPhoneHref()" class="font-semibold text-accent">{{ supportPhone() }}</a> ({{ supportHours() }})
                 </p>
              </div>
            </div>
@@ -585,7 +585,7 @@
 
             <div class="space-y-4 mb-8">
                <div v-if="booking.seats?.length" class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 pay-rise">
-                 <div class="w-10 h-10 rounded-xl bg-white text-teal-600 flex items-center justify-center shrink-0">
+                 <div class="w-10 h-10 rounded-xl bg-white text-accent flex items-center justify-center shrink-0">
                     <span class="material-symbols-rounded text-xl">airline_seat_recline_extra</span>
                  </div>
                  <div>
@@ -657,19 +657,19 @@
                </template>
 
                <template v-else-if="paymentType === 'deposit'">
-                 <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-4 border border-teal-200">
-                    <span class="text-xs font-bold text-teal-700">ชำระมัดจำตอนนี้</span>
+                 <div class="flex justify-between items-end bg-accent-tint rounded-2xl p-4 border border-accent/25">
+                    <span class="text-xs font-bold text-accent">ชำระมัดจำตอนนี้</span>
                     <div class="text-right">
-                       <span class="text-2xl font-black text-teal-700 leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
-                       <p class="text-[10px] font-bold text-teal-600 leading-none mt-1">ส่วนที่เหลือ ฿{{ balanceAmount.toLocaleString() }}</p>
+                       <span class="text-2xl font-black text-accent leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
+                       <p class="text-[10px] font-bold text-accent leading-none mt-1">ส่วนที่เหลือ ฿{{ balanceAmount.toLocaleString() }}</p>
                     </div>
                  </div>
                </template>
 
                <template v-else>
-                 <div class="flex justify-between items-end bg-teal-50 rounded-2xl p-5 border border-teal-100">
-                    <span class="text-sm font-black text-teal-900 uppercase tracking-tight">ยอดชำระสุทธิ</span>
-                    <span class="text-3xl font-black text-teal-600 leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
+                 <div class="flex justify-between items-end bg-accent-tint rounded-2xl p-5 border border-accent/15">
+                    <span class="text-sm font-black text-accent-mid uppercase tracking-tight">ยอดชำระสุทธิ</span>
+                    <span class="text-3xl font-black text-accent leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
                  </div>
                </template>
             </div>
@@ -677,15 +677,15 @@
             <!-- โหมดเกตเวย์: ไม่มีปุ่ม "ยืนยัน" เพราะการจ่ายจบที่แอปธนาคาร ไม่ใช่ที่นี่ -->
             <div v-if="useBeam" class="space-y-4">
               <div class="rounded-2xl p-5 border flex items-start gap-3"
-                :class="beamSettling ? 'bg-white border-teal-200' : 'bg-teal-50 border-teal-100'">
+                :class="beamSettling ? 'bg-white border-accent/25' : 'bg-accent-tint border-accent/15'">
                 <div v-if="beamSettling"
-                  class="w-5 h-5 rounded-full border-[3px] border-teal-100 border-t-teal-600 animate-spin mt-0.5 shrink-0"></div>
-                <div v-else class="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse mt-1.5 shrink-0"></div>
+                  class="w-5 h-5 rounded-full border-[3px] border-accent/15 border-t-accent animate-spin mt-0.5 shrink-0"></div>
+                <div v-else class="w-2.5 h-2.5 rounded-full bg-accent-light animate-pulse mt-1.5 shrink-0"></div>
                 <div class="space-y-1">
-                  <p class="text-sm font-black text-teal-900">
+                  <p class="text-sm font-black text-accent-mid">
                     {{ beamSettling ? 'กำลังตรวจสอบการชำระเงิน' : 'สแกน QR หรือเลือกช่องทางอื่น แล้วรอสักครู่' }}
                   </p>
-                  <p class="text-xs text-teal-800/80 font-medium leading-relaxed">
+                  <p class="text-xs text-accent-mid/80 font-medium leading-relaxed">
                     {{ beamSettling
                       ? 'ระบบกำลังรอผลจากธนาคาร อย่าปิดหน้านี้และไม่ต้องจ่ายซ้ำ ที่นั่งจะถูกยืนยันให้เองทันทีที่เงินเข้า'
                       : 'ระบบจะยืนยันที่นั่งให้อัตโนมัติทันทีที่เงินเข้า ไม่ต้องแนบสลิปและไม่ต้องรอเจ้าหน้าที่ตรวจ' }}
@@ -703,8 +703,8 @@
                   paymentType === 'installment'
                     ? 'bg-amber-600 text-white hover:bg-amber-700'
                     : paymentType === 'deposit'
-                      ? 'bg-teal-600 text-white hover:bg-teal-700'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                      ? 'bg-accent text-white hover:bg-accent-mid'
+                      : 'bg-accent text-white hover:bg-accent-mid'
                 ]">
                 <span class="pay-shine" aria-hidden="true"></span>
                 <!-- Loading State overlay -->
@@ -738,8 +738,8 @@
             <!-- Verification promise -->
             <div class="mt-8 pt-6 border-t border-gray-50">
                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-rounded text-teal-600 text-base" style="font-variation-settings:'FILL' 1">{{ useBeam ? 'bolt' : 'av_timer' }}</span>
+                  <div class="w-8 h-8 rounded-full bg-accent-tint flex items-center justify-center shrink-0">
+                    <span class="material-symbols-rounded text-accent text-base" style="font-variation-settings:'FILL' 1">{{ useBeam ? 'bolt' : 'av_timer' }}</span>
                   </div>
                   <p class="text-xs text-gray-500 font-medium">
                     {{ useBeam
@@ -761,30 +761,30 @@
         -->
         <div class="lg:hidden fixed bottom-0 left-0 right-0 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-xl border-t border-gray-100 z-[100]">
             <!-- โหมดเกตเวย์ไม่มีอะไรให้กดยืนยัน — บอกสถานะแทน -->
-            <div v-if="useBeam" class="w-full py-4 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center gap-2 text-sm">
+            <div v-if="useBeam" class="w-full py-4 rounded-2xl bg-accent-tint border border-accent/15 flex items-center justify-center gap-2 text-sm">
               <template v-if="beamSettling">
-                <div class="w-4 h-4 rounded-full border-2 border-teal-200 border-t-teal-600 animate-spin"></div>
-                <span class="font-black text-teal-900">กำลังตรวจสอบการชำระเงิน</span>
-                <span class="text-xs font-bold text-teal-600 tabular-nums">{{ beamSettlingSeconds }}s</span>
+                <div class="w-4 h-4 rounded-full border-2 border-accent/25 border-t-accent animate-spin"></div>
+                <span class="font-black text-accent-mid">กำลังตรวจสอบการชำระเงิน</span>
+                <span class="text-xs font-bold text-accent tabular-nums">{{ beamSettlingSeconds }}s</span>
               </template>
               <template v-else>
-                <div class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></div>
-                <span class="font-black text-teal-900">รอชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
-                <span v-if="beamPayment && !beamExpired" class="text-xs font-bold text-teal-600 tabular-nums">{{ beamCountdownText }}</span>
+                <div class="w-2 h-2 rounded-full bg-accent-light animate-pulse"></div>
+                <span class="font-black text-accent-mid">รอชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
+                <span v-if="beamPayment && !beamExpired" class="text-xs font-bold text-accent tabular-nums">{{ beamCountdownText }}</span>
               </template>
             </div>
 
             <!-- ยังไม่แนบสลิป: เดิมปุ่มเป็นสีเทากดไม่ได้โดยไม่บอกเหตุผล (กล่องแนบอยู่ไกลกลางหน้า)
                  ตอนนี้กดแล้วเปิดเลือกรูปสลิปได้เลย -->
             <button v-else-if="!slipFile" @click="slipInputRef?.click()"
-              class="w-full py-4 rounded-2xl bg-teal-600 text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm">
+              class="w-full py-4 rounded-2xl bg-accent text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm">
               <span class="material-symbols-rounded text-lg">upload_file</span>
               <span>แนบสลิปการโอน ฿{{ currentPayAmount.toLocaleString() }}</span>
             </button>
 
             <button v-else @click="processPayment"
               :disabled="paying || scanningSlip"
-              class="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
+              class="w-full py-4 rounded-2xl bg-accent text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
               <template v-if="!paying && !scanningSlip">
                 <span>ยืนยันการชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
                 <span class="material-symbols-rounded text-lg">arrow_forward</span>

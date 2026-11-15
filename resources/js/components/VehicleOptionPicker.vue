@@ -7,7 +7,7 @@
   -->
   <div v-if="options.length > 1" class="mb-8 bg-white p-6 md:p-8 rounded-3xl border border-gray-100">
     <div class="flex items-center gap-3 mb-2">
-      <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
+      <div class="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center">
         <span class="material-symbols-rounded text-lg">directions_bus</span>
       </div>
       <h2 class="text-2xl font-bold text-gray-900">เลือกประเภทรถ</h2>
@@ -22,26 +22,26 @@
         @click="$emit('update:modelValue', option.id)"
         class="text-left p-5 rounded-3xl border-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         :class="modelValue === option.id
-          ? 'border-emerald-500 bg-emerald-50/30 ring-4 ring-emerald-500/10'
-          : 'border-gray-100 bg-white hover:border-teal-500/30'">
+          ? 'border-accent bg-accent-tint/30 ring-4 ring-accent/10'
+          : 'border-gray-100 bg-white hover:border-accent/30'">
         <div class="flex items-start gap-3">
           <img v-if="option.image_url" :src="option.image_url" :alt="option.label"
             class="w-16 h-16 rounded-2xl object-cover shrink-0" loading="lazy" />
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <span class="material-symbols-rounded text-[20px]"
-                :class="modelValue === option.id ? 'text-emerald-600' : 'text-gray-300'">
+                :class="modelValue === option.id ? 'text-accent' : 'text-gray-300'">
                 {{ modelValue === option.id ? 'check_circle' : 'radio_button_unchecked' }}
               </span>
               <p class="font-bold text-gray-900 truncate">{{ option.label }}</p>
             </div>
             <p v-if="option.note" class="text-sm text-gray-500 mt-1 line-clamp-2">{{ option.note }}</p>
             <div class="flex items-center gap-2 mt-2 flex-wrap">
-              <span class="text-sm font-bold" :class="Number(option.price_adjustment) === 0 ? 'text-gray-500' : 'text-teal-700'">
+              <span class="text-sm font-bold" :class="Number(option.price_adjustment) === 0 ? 'text-gray-500' : 'text-accent'">
                 {{ priceLabel(option) }}
               </span>
               <span v-if="seatLabel(option)" class="text-[11px] font-bold px-2 py-0.5 rounded-full"
-                :class="option.is_sold_out ? 'bg-red-50 text-red-600' : 'bg-teal-50 text-teal-700'">
+                :class="option.is_sold_out ? 'bg-red-50 text-red-600' : 'bg-accent-tint text-accent'">
                 {{ seatLabel(option) }}
               </span>
             </div>

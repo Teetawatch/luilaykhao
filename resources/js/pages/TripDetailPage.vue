@@ -957,10 +957,10 @@
 
                 <!-- Join Trip Option -->
                 <div v-if="selectedSchedule?.join_trip_enabled" class="mb-8 p-6 rounded-[1.5rem] border-2 transition-all duration-300"
-                  :class="isJoinTrip ? 'border-emerald-500 bg-emerald-50' : 'border-dashed border-gray-200 bg-white'">
+                  :class="isJoinTrip ? 'border-accent bg-accent-tint' : 'border-dashed border-gray-200 bg-white'">
                   <div class="flex items-start gap-4">
                     <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                      :class="isJoinTrip ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'">
+                      :class="isJoinTrip ? 'bg-accent text-white' : 'bg-gray-100 text-gray-400'">
                       <span class="material-symbols-rounded text-2xl">confirmation_number</span>
                     </div>
                     <div class="flex-grow">
@@ -970,7 +970,7 @@
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" v-model="isJoinTrip" :disabled="joinTripFull(selectedSchedule)" class="sr-only peer disabled:cursor-not-allowed">
-                          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
                         </label>
                       </div>
                       <p class="text-sm font-bold text-[var(--color-text-muted)] mt-1 leading-relaxed">
@@ -978,10 +978,10 @@
                       </p>
                       <div class="mt-3 flex items-center gap-2 flex-wrap">
                         <span class="text-[11px] font-black uppercase text-gray-400">ราคา:</span>
-                        <span class="text-xl font-black text-emerald-600">฿{{ Number(selectedSchedule.join_trip_price || selectedSchedule.price || trip.price_per_person).toLocaleString() }}</span>
+                        <span class="text-xl font-black text-accent">฿{{ Number(selectedSchedule.join_trip_price || selectedSchedule.price || trip.price_per_person).toLocaleString() }}</span>
                         <span v-if="joinTripSeats(selectedSchedule) !== null"
                           class="text-xs font-black px-2.5 py-1 rounded-full"
-                          :class="joinTripFull(selectedSchedule) ? 'bg-red-50 text-red-600' : 'bg-emerald-100 text-emerald-700'">
+                          :class="joinTripFull(selectedSchedule) ? 'bg-red-50 text-red-600' : 'bg-accent/10 text-accent'">
                           {{ joinTripSeatLabel(selectedSchedule) }}
                         </span>
                         <span v-else class="text-xs font-bold text-gray-400">
@@ -1737,7 +1737,7 @@
                         </div>
                         <span v-if="s.join_trip_enabled"
                           class="text-[10px] md:text-[11px] font-black px-2 py-0.5 rounded-full"
-                          :class="joinTripFull(s) ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'">
+                          :class="joinTripFull(s) ? 'bg-red-50 text-red-600' : 'bg-accent-tint text-accent'">
                           {{ joinTripSeatLabel(s) }}
                         </span>
                         <span class="w-1 h-1 rounded-full bg-gray-300"></span>
