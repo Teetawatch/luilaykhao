@@ -2051,6 +2051,7 @@ class AdminController extends Controller
             'passengers.*.allergies' => ['nullable', 'string'],
             'passengers.*.health_notes' => ['nullable', 'string'],
             'passengers.*.emergency_contact' => ['nullable', 'string', 'max:255'],
+            'passengers.*.emergency_relation' => ['nullable', 'string', 'max:50'],
             'passengers.*.emergency_phone' => ['nullable', 'string', 'max:30'],
             'passengers.*.dive_cert_level' => ['nullable', 'string', 'max:255'],
             'passengers.*.cert_number' => ['nullable', 'string', 'max:255'],
@@ -2350,6 +2351,11 @@ class AdminController extends Controller
                             'weight' => $passengerData['weight'] ?? null,
                             'halal_food' => array_key_exists('halal_food', $passengerData) ? (bool) $passengerData['halal_food'] : null,
                         ];
+
+                        // หน้าแอดมินรุ่นที่ยังไม่มีช่องนี้ต้องไม่ล้างค่าที่ลูกค้าเลือกไว้
+                        if (array_key_exists('emergency_relation', $passengerData)) {
+                            $payload['emergency_relation'] = $passengerData['emergency_relation'] ?: null;
+                        }
 
                         // แอดมินระบุจุดรับให้คนนี้เอง — ค่าว่างแปลว่า "ตามจุดของการจอง"
                         if (array_key_exists('pickup_point_id', $passengerData)) {
@@ -2703,6 +2709,7 @@ class AdminController extends Controller
             'passengers.*.allergies' => ['nullable', 'string'],
             'passengers.*.health_notes' => ['nullable', 'string'],
             'passengers.*.emergency_contact' => ['nullable', 'string', 'max:255'],
+            'passengers.*.emergency_relation' => ['nullable', 'string', 'max:50'],
             'passengers.*.emergency_phone' => ['nullable', 'string', 'max:20'],
             'passengers.*.dive_cert_level' => ['nullable', 'string', 'max:255'],
             'passengers.*.cert_number' => ['nullable', 'string', 'max:255'],
@@ -3067,6 +3074,7 @@ class AdminController extends Controller
                         'allergies' => $passenger['allergies'] ?? null,
                         'health_notes' => $passenger['health_notes'] ?? null,
                         'emergency_contact' => $passenger['emergency_contact'] ?? null,
+                        'emergency_relation' => $passenger['emergency_relation'] ?? null,
                         'emergency_phone' => $passenger['emergency_phone'] ?? null,
                         'dive_cert_level' => $passenger['dive_cert_level'] ?? null,
                         'cert_number' => $passenger['cert_number'] ?? null,

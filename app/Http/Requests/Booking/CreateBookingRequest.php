@@ -197,6 +197,7 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.halal_food' => [$passengerRequired, 'boolean'],
             'passengers.*.health_notes' => ['nullable', 'string'],
             'passengers.*.emergency_contact' => [$passengerRequired, 'string', 'max:255'],
+            'passengers.*.emergency_relation' => ['nullable', 'string', 'max:50'],
             'passengers.*.emergency_phone' => [$passengerRequired, 'string', 'max:20', 'regex:/^\+?[0-9][0-9 -]{7,19}$/'],
             'passengers.*.pickup_point_id' => ['nullable', 'integer', 'exists:schedule_pickup_points,id'],
             'passengers.*.dive_cert_level' => ['nullable', 'string'],

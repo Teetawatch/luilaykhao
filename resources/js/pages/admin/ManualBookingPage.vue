@@ -320,6 +320,10 @@
                   <span>เบอร์ฉุกเฉิน *</span>
                   <input v-model.trim="passenger.emergency_phone" required type="tel" placeholder="0XX-XXX-XXXX" />
                 </label>
+                <label class="form-field">
+                  <span>ความสัมพันธ์ผู้ติดต่อ</span>
+                  <input v-model.trim="passenger.emergency_relation" list="emergency-relations" maxlength="50" placeholder="เช่น แม่, สามี, เพื่อน" />
+                </label>
                 <div class="form-field full">
                   <span>ต้องการอาหารฮาลาล *</span>
                   <div class="radio-choice-group">
@@ -891,6 +895,9 @@
         </div>
       </aside>
     </div>
+    <datalist id="emergency-relations">
+      <option v-for="opt in EMERGENCY_RELATIONS" :key="opt" :value="opt" />
+    </datalist>
   </div>
 </template>
 
@@ -899,6 +906,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router';
 import api from '../../lib/axios';
 import { useToast } from '../../lib/toast';
+import { EMERGENCY_RELATIONS } from '../../lib/emergencyRelation';
 
 const toast = useToast();
 
@@ -1470,6 +1478,7 @@ function newPassenger() {
     allergies: '',
     health_notes: '',
     emergency_contact: '',
+    emergency_relation: '',
     emergency_phone: '',
     dive_cert_level: '',
     cert_number: '',

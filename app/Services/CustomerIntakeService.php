@@ -236,6 +236,7 @@ class CustomerIntakeService
                 ? $data['travel_document']
                 : null,
             'emergency_contact' => $data['emergency_contact'] ?? null,
+            'emergency_relation' => $data['emergency_relation'] ?? null,
             'emergency_phone' => $this->normalisePhone($data['emergency_phone'] ?? '') ?: null,
             'allergies' => $data['allergies'] ?? null,
             'health_notes' => $data['health_notes'] ?? null,

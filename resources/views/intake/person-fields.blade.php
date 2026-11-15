@@ -180,13 +180,23 @@
     <div class="f">
         <label class="field" for="emergency_contact">ผู้ติดต่อฉุกเฉิน <span class="req">*</span></label>
         <input type="text" id="emergency_contact" name="emergency_contact" required
-               placeholder="ชื่อ · ความสัมพันธ์" value="{{ old('emergency_contact') }}">
+               placeholder="ชื่อ-นามสกุล" value="{{ old('emergency_contact') }}">
     </div>
     <div class="f">
         <label class="field" for="emergency_phone">เบอร์ผู้ติดต่อ <span class="req">*</span></label>
         <input type="tel" id="emergency_phone" name="emergency_phone" required inputmode="tel"
                placeholder="08X-XXX-XXXX" value="{{ old('emergency_phone') }}">
     </div>
+</div>
+<div class="f">
+    <label class="field" for="emergency_relation">ผู้ติดต่อเป็นอะไรกับคุณ <span class="req">*</span></label>
+    <input type="text" id="emergency_relation" name="emergency_relation" required maxlength="{{ \App\Support\EmergencyRelation::MAX_LENGTH }}"
+           list="emergency-relations" placeholder="เช่น แม่, สามี, เพื่อน" value="{{ old('emergency_relation') }}">
+    <datalist id="emergency-relations">
+        @foreach (\App\Support\EmergencyRelation::OPTIONS as $relation)
+            <option value="{{ $relation }}"></option>
+        @endforeach
+    </datalist>
 </div>
 
 {{-- สองช่องนี้บังคับกรอก เพราะ "เว้นว่าง" อ่านไม่ออกว่าแปลว่าไม่มี หรือแปลว่า

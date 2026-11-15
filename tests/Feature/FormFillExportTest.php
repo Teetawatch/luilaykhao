@@ -170,6 +170,44 @@ class FormFillExportTest extends TestCase
             ->getContent());
     }
 
+    public function test_emergency_relation_uses_the_picked_value_or_a_guess_from_old_bookings(): void
+    {
+        [$schedule, $booking] = $this->round();
+        [$a, $b] = $booking->passengers->all();
+        $a->update(['emergency_contact' => 'สมศรี ใจดี', 'emergency_relation' => 'แม่']);
+        // ใบจองก่อนมีช่องแยก — ลูกค้าเขียนความสัมพันธ์ไว้ในช่องชื่อ
+        $b->update(['emergency_contact' => 'ต้น (แฟน)', 'emergency_relation' => null]);
+
+        $rows = app(FormFillExportService::class)->rows($schedule, 'emergency_name,emergency_relation');
+
+        $this->assertSame([
+            ['keyword' => 'ผู้ติดต่อฉุกเฉิน', 'value' => 'สมศรี ใจดี', 'exclude' => ['เบอร์', 'โทร', 'ความสัมพันธ์']],
+            ['keyword' => 'ความสัมพันธ์', 'value' => 'แม่'],
+        ], $rows[0]['textFields']);
+        $this->assertSame('แฟน', $rows[1]['textFields'][1]['value']);
+    }
+
+    public function test_booking_stores_the_emergency_relation(): void
+    {
+        [, $booking] = $this->round();
+        $passenger = $booking->passengers->first();
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}", ['passengers' => [[
+                'id' => $passenger->id, 'name' => $passenger->name, 'emergency_relation' => 'สามี',
+            ]]])
+            ->assertOk();
+        $this->assertSame('สามี', $passenger->fresh()->emergency_relation);
+
+        // หน้าแอดมินรุ่นที่ไม่ส่งช่องนี้ ต้องไม่ล้างค่าเดิม
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson("/api/v1/admin/bookings/{$booking->booking_ref}", ['passengers' => [[
+                'id' => $passenger->id, 'name' => $passenger->name,
+            ]]])
+            ->assertOk();
+        $this->assertSame('สามี', $passenger->fresh()->emergency_relation);
+    }
+
     public function test_nothing_ticked_is_refused(): void
     {
         [$schedule] = $this->round();

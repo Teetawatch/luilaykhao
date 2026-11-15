@@ -28,6 +28,7 @@ class BookingPassengerResource extends JsonResource
             'allergies' => $this->allergies,
             'health_notes' => $this->health_notes,
             'emergency_contact' => $this->emergency_contact,
+            'emergency_relation' => $this->emergency_relation,
             'emergency_phone' => $this->emergency_phone,
             'dive_cert_level' => $this->dive_cert_level,
             'cert_number' => $this->cert_number,

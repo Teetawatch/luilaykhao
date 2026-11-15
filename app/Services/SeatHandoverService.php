@@ -57,7 +57,7 @@ class SeatHandoverService
     private const PERSONAL_FIELDS = [
         'title', 'name', 'nickname', 'nationality', 'id_card', 'birth_date',
         'phone', 'email', 'blood_group', 'allergies', 'health_notes', 'halal_food',
-        'emergency_contact', 'emergency_phone', 'name_en', 'passport_no', 'passport_expires_at',
+        'emergency_contact', 'emergency_relation', 'emergency_phone', 'name_en', 'passport_no', 'passport_expires_at',
         'travel_document',
     ];
 
@@ -1076,6 +1076,7 @@ class SeatHandoverService
             'allergies' => $user->allergies,
             'health_notes' => $user->health_notes,
             'emergency_contact' => $user->emergency_contact,
+            'emergency_relation' => $user->emergency_relation,
             'emergency_phone' => $user->emergency_phone,
             'name_en' => $user->name_en,
             'passport_no' => $user->passport_no,

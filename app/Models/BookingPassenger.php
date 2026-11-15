@@ -18,7 +18,7 @@ class BookingPassenger extends Model
     protected $fillable = [
         'booking_id', 'title', 'name', 'nickname', 'id_card', 'birth_date', 'phone', 'email', 'health_notes',
         'name_en', 'nationality', 'passport_no', 'passport_expires_at', 'travel_document',
-        'emergency_contact', 'emergency_phone',
+        'emergency_contact', 'emergency_relation', 'emergency_phone',
         'dive_cert_level', 'cert_number', 'weight',
         'blood_group', 'allergies', 'halal_food', 'pickup_point_id',
         'custom_pickup_label', 'custom_pickup_lat', 'custom_pickup_lng', 'custom_pickup_note',

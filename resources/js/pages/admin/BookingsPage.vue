@@ -848,7 +848,7 @@
                     :value="`${passenger.passport_no}${passenger.name_en ? ` · ${passenger.name_en}` : ''}${passenger.passport_expires_at ? ` · หมดอายุ ${passenger.passport_expires_at}` : ''}`" wide />
                   <InfoItem label="กรุ๊ปเลือด" :value="passenger.blood_group || '-'" />
                   <InfoItem label="น้ำหนัก" :value="passenger.weight ? `${passenger.weight} กก.` : '-'" />
-                  <InfoItem label="ผู้ติดต่อฉุกเฉิน" :value="passenger.emergency_contact || '-'" />
+                  <InfoItem label="ผู้ติดต่อฉุกเฉิน" :value="[passenger.emergency_contact, passenger.emergency_relation && `(${passenger.emergency_relation})`].filter(Boolean).join(' ') || '-'" />
                   <InfoItem label="เบอร์ฉุกเฉิน" :value="passenger.emergency_phone || '-'" />
                   <InfoItem label="ระดับใบดำน้ำ" :value="certLabel(passenger)" />
                   <InfoItem label="การแพ้ / อาหาร" :value="passenger.allergies || '-'" wide />
@@ -1737,6 +1737,10 @@
                         <label>เบอร์ฉุกเฉิน</label>
                         <input v-model.trim="passenger.emergency_phone" type="tel" />
                       </div>
+                      <div class="form-group">
+                        <label>ความสัมพันธ์</label>
+                        <input v-model.trim="passenger.emergency_relation" type="text" list="emergency-relations" maxlength="50" placeholder="เช่น แม่, สามี, เพื่อน" />
+                      </div>
                     </div>
 
                     <p class="bk-group-label">สุขภาพและอาหาร</p>
@@ -2391,6 +2395,9 @@
       @confirm="onEditCustomPickupConfirm"
       @close="showEditCustomPickupModal = false"
     />
+    <datalist id="emergency-relations">
+      <option v-for="opt in EMERGENCY_RELATIONS" :key="opt" :value="opt" />
+    </datalist>
   </div>
 </template>
 
@@ -2403,6 +2410,7 @@ import { useSwal } from '../../lib/swal';
 import api from '../../lib/axios';
 import CustomPickupModal from '../../components/CustomPickupModal.vue';
 import AdminSeatHandoverSection from '../../components/AdminSeatHandoverSection.vue';
+import { EMERGENCY_RELATIONS } from '../../lib/emergencyRelation';
 
 const admin = useAdminStore();
 const toast = useToast();
@@ -3281,6 +3289,7 @@ function mapPassengerToForm(passenger = {}, seatId = '') {
     allergies: passenger.allergies || '',
     health_notes: passenger.health_notes || '',
     emergency_contact: passenger.emergency_contact || '',
+    emergency_relation: passenger.emergency_relation || '',
     emergency_phone: passenger.emergency_phone || '',
     dive_cert_level: passenger.dive_cert_level || '',
     cert_number: passenger.cert_number || '',

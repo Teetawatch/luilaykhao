@@ -151,6 +151,16 @@
                 </div>
             </div>
 
+            <label class="field" for="emergency_relation">ผู้ติดต่อเป็นอะไรกับคุณ</label>
+            <input type="text" id="emergency_relation" name="emergency_relation" list="emergency-relations"
+                   maxlength="{{ \App\Support\EmergencyRelation::MAX_LENGTH }}" placeholder="เช่น แม่, สามี, เพื่อน"
+                   value="{{ old('emergency_relation', $passenger->emergency_relation) }}">
+            <datalist id="emergency-relations">
+                @foreach (\App\Support\EmergencyRelation::OPTIONS as $relation)
+                    <option value="{{ $relation }}"></option>
+                @endforeach
+            </datalist>
+
             <label class="field" for="allergies">การแพ้อาหาร / แพ้ยา</label>
             <textarea id="allergies" name="allergies">{{ old('allergies', $passenger->allergies) }}</textarea>
 

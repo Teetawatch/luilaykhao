@@ -79,6 +79,7 @@ class ClaimSeatHandoverRequest extends FormRequest
             'health_notes' => ['nullable', 'string', 'max:1000'],
             'halal_food' => ['required', 'boolean'],
             'emergency_contact' => ['required', 'string', 'max:255'],
+            'emergency_relation' => ['nullable', 'string', 'max:50'],
             'emergency_phone' => ['required', 'string', 'max:20', 'regex:/^\+?[0-9][0-9 -]{7,19}$/'],
             'name_en' => [$passport, 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z\s.\'-]+$/'],
             'passport_no' => [$passport, 'nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]{5,20}$/'],

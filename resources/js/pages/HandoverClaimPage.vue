@@ -189,7 +189,7 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="lbl">ผู้ติดต่อฉุกเฉิน</label>
-              <input v-model.trim="form.emergency_contact" class="inp" :class="{ err: errors.emergency_contact }" placeholder="ชื่อ / ความสัมพันธ์" />
+              <input v-model.trim="form.emergency_contact" class="inp" :class="{ err: errors.emergency_contact }" placeholder="ชื่อ-นามสกุล" />
             </div>
             <div>
               <label class="lbl">เบอร์ฉุกเฉิน</label>
@@ -198,6 +198,12 @@
           </div>
           <p v-if="errors.emergency_contact" class="msg">{{ errors.emergency_contact }}</p>
           <p v-if="errors.emergency_phone" class="msg">{{ errors.emergency_phone }}</p>
+
+          <div>
+            <label class="lbl">ผู้ติดต่อเป็นอะไรกับคุณ</label>
+            <EmergencyRelationPicker v-model="form.emergency_relation" :error="!!errors.emergency_relation" />
+          </div>
+          <p v-if="errors.emergency_relation" class="msg">{{ errors.emergency_relation }}</p>
 
           <div>
             <label class="lbl">อาหารฮาลาล</label>
@@ -252,6 +258,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
 import api from '../lib/axios';
 import { useToast } from '../lib/toast';
+import EmergencyRelationPicker from '../components/EmergencyRelationPicker.vue';
 
 /**
  * ปลายทางของลิงก์ "ส่งต่อที่นั่ง" (url('/handover/{token}')) — คนรับกรอกข้อมูลของ
@@ -275,7 +282,7 @@ const countries = ref([{ code: 'TH', name: 'ไทย', flag: '🇹🇭' }]);
 const form = reactive({
   title: '', name: '', nickname: '', nationality: 'TH', id_card: '', birth_date: '',
   phone: '', email: '', blood_group: '', halal_food: null, allergies: '', health_notes: '',
-  emergency_contact: '', emergency_phone: '', name_en: '', passport_no: '', passport_expires_at: '',
+  emergency_contact: '', emergency_relation: '', emergency_phone: '', name_en: '', passport_no: '', passport_expires_at: '',
   travel_document: '', accept_terms: false,
 });
 

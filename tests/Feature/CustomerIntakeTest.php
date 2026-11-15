@@ -98,6 +98,7 @@ class CustomerIntakeTest extends TestCase
             'birth_date' => '1994-05-02',
             'blood_group' => '',
             'emergency_contact' => 'สมหญิง ใจดี · พี่สาว',
+            'emergency_relation' => 'พี่น้อง',
             'emergency_phone' => '089-999-8888',
             'allergies' => 'ไม่มี',
             'health_notes' => 'ไม่มี',

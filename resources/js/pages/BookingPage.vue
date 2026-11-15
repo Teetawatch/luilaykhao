@@ -1082,6 +1082,13 @@
                   </p>
                 </div>
                 <div class="md:col-span-2">
+                  <label class="block text-sm font-bold text-gray-700 mb-2">ผู้ติดต่อเป็นอะไรกับผู้เดินทาง <span class="text-red-500">*</span></label>
+                  <EmergencyRelationPicker v-model="p.emergency_relation" :error="!!showErr(i, 'emergency_relation')" />
+                  <p v-if="showErr(i, 'emergency_relation')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'emergency_relation') }}
+                  </p>
+                </div>
+                <div class="md:col-span-2">
                   <label class="block text-sm font-bold text-gray-700 mb-2">ต้องการอาหารฮาลาล <span class="text-red-500">*</span></label>
                   <p class="text-xs text-gray-500 mb-3">เพื่อให้เราจัดเตรียมอาหารได้เหมาะสม รบกวนแจ้งว่าท่านต้องการอาหารฮาลาลหรือไม่</p>
                   <div class="flex gap-3">
@@ -1862,6 +1869,7 @@ import CustomPickupModal from '../components/CustomPickupModal.vue';
 import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
 import VehicleOptionPicker from '../components/VehicleOptionPicker.vue';
 import PartnerCodeField from '../components/PartnerCodeField.vue';
+import EmergencyRelationPicker from '../components/EmergencyRelationPicker.vue';
 import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
@@ -2193,7 +2201,7 @@ const rentalOptions = computed(() => {
 
 const passengers = ref([{
   title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
-  health_notes: '', emergency_contact: '', emergency_phone: '',
+  health_notes: '', emergency_contact: '', emergency_relation: '', emergency_phone: '',
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null, pickup_point_id: null
 }]);
 
@@ -2386,7 +2394,7 @@ watch(passengerCount, (n) => {
   while (passengers.value.length < n) {
     passengers.value.push({
       title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
-      health_notes: '', emergency_contact: '', emergency_phone: '',
+      health_notes: '', emergency_contact: '', emergency_relation: '', emergency_phone: '',
       dive_cert_level: '', cert_number: '', weight: null, halal_food: null,
       pickup_point_id: selectedPickup.value?.id ?? null
     });
@@ -2426,6 +2434,7 @@ function autoFillFromProfile(index) {
     email: user.email || '',
     blood_group: user.blood_group || '',
     emergency_contact: user.emergency_contact || '',
+    emergency_relation: user.emergency_relation || '',
     emergency_phone: user.emergency_phone || '',
     allergies: user.allergies || '',
     health_notes: user.health_notes || '',
@@ -2446,6 +2455,7 @@ function copyFromFirst(index) {
   passengers.value[index] = {
     ...passengers.value[index],
     emergency_contact: first.emergency_contact || '',
+    emergency_relation: first.emergency_relation || '',
     emergency_phone: first.emergency_phone || '',
     halal_food: first.halal_food,
     pickup_point_id: first.pickup_point_id ?? passengers.value[index].pickup_point_id,
@@ -2508,6 +2518,7 @@ function applySavedTraveller(traveller) {
     email: traveller.email || passengers.value[index].email || '',
     blood_group: traveller.blood_group || '',
     emergency_contact: traveller.emergency_contact || '',
+    emergency_relation: traveller.emergency_relation || '',
     emergency_phone: traveller.emergency_phone || '',
     allergies: traveller.allergies || '',
     health_notes: traveller.health_notes || '',
@@ -2765,6 +2776,7 @@ function computePassengerErrors(p, i) {
   if (!p.blood_group) errors.blood_group = 'กรุณาเลือกกรุ๊ปเลือด';
   if (p.halal_food === null || p.halal_food === undefined) errors.halal_food = 'กรุณาเลือกตัวเลือกอาหารฮาลาล';
   if (!hasText(p.emergency_contact)) errors.emergency_contact = 'กรุณากรอกผู้ติดต่อฉุกเฉิน';
+  if (!hasText(p.emergency_relation)) errors.emergency_relation = 'กรุณาเลือกว่าผู้ติดต่อเป็นอะไรกับผู้เดินทาง';
   if (isThai) {
     if (!hasExactDigits(p.emergency_phone, 10)) errors.emergency_phone = 'กรุณากรอกเบอร์ฉุกเฉิน 10 หลัก';
   } else if (!/^\+?[0-9][0-9 -]{7,19}$/.test(String(p.emergency_phone || ''))) {
@@ -3129,6 +3141,7 @@ async function createBooking() {
         halal_food: p.halal_food,
         health_notes: String(p.health_notes || '').trim(),
         emergency_contact: String(p.emergency_contact || '').trim(),
+        emergency_relation: String(p.emergency_relation || '').trim(),
         emergency_phone: isThaiTraveller(p) ? digitsOnly(p.emergency_phone) : String(p.emergency_phone || '').trim(),
         dive_cert_level: p.dive_cert_level || null,
         cert_number: p.cert_number || null,

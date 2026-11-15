@@ -80,6 +80,7 @@ class StaffPermitSignature extends Model
             'phone' => $user->phone,
             'email' => $user->hasPlaceholderEmail() ? null : $user->email,
             'emergency_contact' => $user->emergency_contact,
+            'emergency_relation' => $user->emergency_relation,
             'emergency_phone' => $user->emergency_phone,
             'allergies' => $user->allergies,
             'health_notes' => $user->health_notes,

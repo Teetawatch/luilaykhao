@@ -120,6 +120,7 @@ class PermitFormFields
         'emergency_name' => 'ผู้ติดต่อฉุกเฉิน',
         'emergency_first_name' => 'ผู้ติดต่อฉุกเฉิน',
         'emergency_last_name' => 'ผู้ติดต่อฉุกเฉิน',
+        'emergency_relation' => 'ความสัมพันธ์ผู้ติดต่อฉุกเฉิน',
         'emergency_phone' => 'เบอร์ผู้ติดต่อฉุกเฉิน',
     ];
 
@@ -154,6 +155,7 @@ class PermitFormFields
         'emergency_name' => ['ผู้ติดต่อฉุกเฉิน (ทั้งชื่อ)', 'ผู้เดินทาง', self::TYPE_TEXT, 'สมหญิง ใจดีมาก'],
         'emergency_first_name' => ['ผู้ติดต่อฉุกเฉิน — ชื่อ', 'ผู้เดินทาง', self::TYPE_TEXT, 'สมหญิง'],
         'emergency_last_name' => ['ผู้ติดต่อฉุกเฉิน — นามสกุล', 'ผู้เดินทาง', self::TYPE_TEXT, 'ใจดีมาก'],
+        'emergency_relation' => ['ความสัมพันธ์ผู้ติดต่อฉุกเฉิน', 'ผู้เดินทาง', self::TYPE_TEXT, 'แม่'],
         'emergency_phone' => ['เบอร์ผู้ติดต่อฉุกเฉิน', 'ผู้เดินทาง', self::TYPE_TEXT, '0898765432'],
         'check_mr' => ['✓ ถ้าเป็น "นาย"', 'ผู้เดินทาง', self::TYPE_CHECK, '1'],
         'check_mrs' => ['✓ ถ้าเป็น "นาง"', 'ผู้เดินทาง', self::TYPE_CHECK, ''],
@@ -405,6 +407,8 @@ class PermitFormFields
             'emergency_name' => trim((string) $passenger->emergency_contact),
             'emergency_first_name' => $emergencyFirst,
             'emergency_last_name' => $emergencyLast,
+            // ใบจองเก่าไม่มีช่องนี้ — เดาจากช่องผู้ติดต่อ ("คุณแม่" "สมศรี (แม่)")
+            'emergency_relation' => EmergencyRelation::resolve($passenger->emergency_relation, $passenger->emergency_contact),
             'emergency_phone' => (string) $passenger->emergency_phone,
             'check_mr' => $title === 'นาย' ? '1' : '',
             'check_mrs' => $title === 'นาง' ? '1' : '',

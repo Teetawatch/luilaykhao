@@ -2456,7 +2456,8 @@ function healthSummary(person) {
 }
 
 function emergencySummary(person) {
-  return [person?.emergency_contact, person?.emergency_phone].filter(Boolean).join(' / ') || '-';
+  const name = [person?.emergency_contact, person?.emergency_relation && `(${person.emergency_relation})`].filter(Boolean).join(' ');
+  return [name, person?.emergency_phone].filter(Boolean).join(' / ') || '-';
 }
 
 /* ───── PDF รายชื่อส่งประกัน ──────────────────────────────────────────────

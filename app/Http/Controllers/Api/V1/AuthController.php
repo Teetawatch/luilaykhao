@@ -46,6 +46,7 @@ class AuthController extends Controller
             'id_card' => $request->id_card,
             'birth_date' => $request->birth_date,
             'emergency_contact' => $request->emergency_contact,
+            'emergency_relation' => $request->emergency_relation,
             'emergency_phone' => $request->emergency_phone,
             'allergies' => $request->allergies,
             'health_notes' => $request->health_notes,
@@ -147,6 +148,7 @@ class AuthController extends Controller
             'birth_date' => ['nullable', 'date', 'before:today'],
             'blood_group' => ['nullable', 'string', 'max:10'],
             'emergency_contact' => ['nullable', 'string', 'max:255'],
+            'emergency_relation' => ['nullable', 'string', 'max:50'],
             'emergency_phone' => ['nullable', 'string', 'max:255'],
             'allergies' => ['nullable', 'string'],
             'health_notes' => ['nullable', 'string'],
@@ -163,7 +165,7 @@ class AuthController extends Controller
         }
 
         // Additional profile fields
-        foreach (['title', 'nickname', 'id_card', 'birth_date', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes'] as $field) {
+        foreach (['title', 'nickname', 'id_card', 'birth_date', 'blood_group', 'emergency_contact', 'emergency_relation', 'emergency_phone', 'allergies', 'health_notes'] as $field) {
             if (array_key_exists($field, $validated)) {
                 $user->$field = $validated[$field];
             }
@@ -733,6 +735,7 @@ class AuthController extends Controller
             'age' => $user->age,
             'blood_group' => $user->blood_group,
             'emergency_contact' => $user->emergency_contact,
+            'emergency_relation' => $user->emergency_relation,
             'emergency_phone' => $user->emergency_phone,
             'allergies' => $user->allergies,
             'health_notes' => $user->health_notes,

@@ -38,6 +38,7 @@ class RegisterRequest extends FormRequest
             // (LIFF, สมัครผ่านโซเชียล) ยังไม่มีช่องนี้
             'birth_date' => ['nullable', 'date', 'before:today'],
             'emergency_contact' => ['nullable', 'string', 'max:255'],
+            'emergency_relation' => ['nullable', 'string', 'max:50'],
             'emergency_phone' => ['nullable', 'string', 'max:20'],
             'allergies' => ['nullable', 'string'],
             'health_notes' => ['nullable', 'string'],

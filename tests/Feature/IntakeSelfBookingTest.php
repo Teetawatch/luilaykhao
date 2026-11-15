@@ -107,6 +107,7 @@ class IntakeSelfBookingTest extends TestCase
             'birth_date' => '1994-05-02',
             'blood_group' => '',
             'emergency_contact' => 'สมหญิง ใจดี · พี่สาว',
+            'emergency_relation' => 'พี่น้อง',
             'emergency_phone' => '089-999-8888',
             'allergies' => 'ไม่มี',
             'health_notes' => 'ไม่มี',
@@ -244,6 +245,7 @@ class IntakeSelfBookingTest extends TestCase
         $this->assertSame(['A1', 'A2'], $booking->seats->pluck('seat_id')->all());
         // ข้อมูลที่กรอกในลิงก์ไปถึงใบจองครบ ไม่ต้องให้ทีมงานพิมพ์ซ้ำ
         $this->assertSame(self::VALID_ID, $booking->passengers->first()->id_card);
+        $this->assertSame('พี่น้อง', $booking->passengers->first()->emergency_relation, 'ความสัมพันธ์ตามจากลิงก์รับข้อมูลเข้าใบจอง');
         $this->assertSame('มานี', $booking->passengers->last()->nickname);
 
         // ใบจองอยู่ในบัญชีของคนเปิดกลุ่ม — บัญชีเงาที่มีอีเมลจริงของเขา

@@ -27,7 +27,7 @@ class CustomerIntakePerson extends Model
         'selected_rentals',
         'title', 'name', 'nickname', 'phone', 'email',
         'id_card', 'birth_date', 'blood_group', 'name_en', 'nationality',
-        'passport_no', 'passport_expires_at', 'travel_document', 'emergency_contact', 'emergency_phone',
+        'passport_no', 'passport_expires_at', 'travel_document', 'emergency_contact', 'emergency_relation', 'emergency_phone',
         'allergies', 'health_notes', 'halal_food', 'dive_cert_level', 'cert_number', 'weight',
         'consent_at', 'consent_ip', 'consent_text',
     ];
@@ -146,6 +146,7 @@ class CustomerIntakePerson extends Model
             'birth_date' => $this->birth_date?->toDateString(),
             'blood_group' => $this->blood_group,
             'emergency_contact' => $this->emergency_contact,
+            'emergency_relation' => $this->emergency_relation,
             'emergency_phone' => $this->emergency_phone,
             'allergies' => $this->allergies,
             'health_notes' => $this->health_notes,

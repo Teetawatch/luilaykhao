@@ -259,6 +259,7 @@ class GiftService
             'allergies' => $recipient->allergies,
             'health_notes' => $recipient->health_notes,
             'emergency_contact' => $recipient->emergency_contact,
+            'emergency_relation' => $recipient->emergency_relation,
             'emergency_phone' => $recipient->emergency_phone,
         ];
 

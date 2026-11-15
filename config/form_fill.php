@@ -42,7 +42,10 @@ return [
         'email' => ['label' => 'อีเมล', 'keyword' => 'อีเมล', 'source' => 'email', 'default' => false],
         'health_notes' => ['label' => 'โรคประจำตัว', 'keyword' => 'โรคประจำตัว', 'source' => 'health_notes', 'default' => false],
         'allergies' => ['label' => 'แพ้ยา/อาหาร', 'keyword' => 'แพ้', 'source' => 'allergies', 'default' => false],
-        'emergency_name' => ['label' => 'ชื่อผู้ติดต่อฉุกเฉิน', 'keyword' => 'ผู้ติดต่อฉุกเฉิน', 'exclude' => ['เบอร์', 'โทร'], 'source' => 'emergency_name', 'default' => false],
+        'emergency_name' => ['label' => 'ชื่อผู้ติดต่อฉุกเฉิน', 'keyword' => 'ผู้ติดต่อฉุกเฉิน', 'exclude' => ['เบอร์', 'โทร', 'ความสัมพันธ์'], 'source' => 'emergency_name', 'default' => false],
+        // ใบจองก่อนมีช่องนี้เดาจากช่องผู้ติดต่อ ("คุณแม่" → แม่) เดาไม่ได้ = "" สคริปต์เตือนให้กรอกเอง
+        // ฟอร์มใช้คำอื่น แปลงด้วย map เช่น ['แม่' => 'มารดา', 'พ่อ' => 'บิดา']
+        'emergency_relation' => ['label' => 'ความสัมพันธ์ผู้ติดต่อฉุกเฉิน', 'keyword' => 'ความสัมพันธ์', 'source' => 'emergency_relation', 'default' => false],
         'addr_full' => ['label' => 'ที่อยู่เต็ม (ลูกค้ากรอกตอนเซ็น)', 'keyword' => 'ที่อยู่', 'exclude' => ['อีเมล', 'email'], 'source' => 'addr_full', 'default' => false],
         'addr_province' => ['label' => 'จังหวัด (ลูกค้ากรอกตอนเซ็น)', 'keyword' => 'จังหวัด', 'source' => 'addr_province', 'default' => false],
     ],

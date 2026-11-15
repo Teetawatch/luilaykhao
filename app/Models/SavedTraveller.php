@@ -17,7 +17,7 @@ class SavedTraveller extends Model
     protected $fillable = [
         'user_id', 'label', 'title', 'name', 'nickname', 'phone', 'email',
         'id_card', 'birth_date', 'blood_group', 'emergency_contact',
-        'emergency_phone', 'allergies', 'health_notes', 'halal_food',
+        'emergency_relation', 'emergency_phone', 'allergies', 'health_notes', 'halal_food',
         'name_en', 'nationality', 'passport_no', 'passport_expires_at',
         'last_used_at', 'times_used',
     ];
@@ -59,6 +59,7 @@ class SavedTraveller extends Model
             'birth_date' => $this->birth_date?->toDateString(),
             'blood_group' => $this->blood_group,
             'emergency_contact' => $this->emergency_contact,
+            'emergency_relation' => $this->emergency_relation,
             'emergency_phone' => $this->emergency_phone,
             'allergies' => $this->allergies,
             'health_notes' => $this->health_notes,

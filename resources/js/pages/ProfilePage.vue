@@ -308,11 +308,15 @@
                       :inputmode="field.key === 'id_card' ? 'numeric' : undefined"
                       :maxlength="field.maxlength"
                       :autocomplete="field.autocomplete || 'off'"
+                      :list="field.suggestions ? `dl-${field.key}` : undefined"
                       class="field-input"
                       :class="{ 'field-input--error': fieldErrors[field.key] }"
                       :placeholder="field.placeholder"
                       @input="field.key === 'id_card' && (form.id_card = form.id_card.replace(/\D/g, ''))"
                     />
+                    <datalist v-if="field.suggestions" :id="`dl-${field.key}`">
+                      <option v-for="opt in field.suggestions" :key="opt" :value="opt" />
+                    </datalist>
 
                     <p v-if="fieldErrors[field.key]" class="field-help !text-red-600">{{ fieldErrors[field.key] }}</p>
                     <p v-else-if="field.help" class="field-help">{{ field.help }}</p>
@@ -579,6 +583,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { useToast } from '../lib/toast';
 import api from '../lib/axios';
+import { EMERGENCY_RELATIONS, EMERGENCY_RELATION_MAX } from '../lib/emergencyRelation';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -635,7 +640,8 @@ const infoSections = [
     fields: [
       { key: 'phone', label: 'เบอร์โทรศัพท์', type: 'tel', placeholder: '08X-XXX-XXXX', autocomplete: 'tel' },
       { key: 'email', label: 'อีเมล', readonly: true },
-      { key: 'emergency_contact', label: 'ผู้ติดต่อฉุกเฉิน', recommend: true, placeholder: 'เช่น คุณแม่, พี่สาว' },
+      { key: 'emergency_contact', label: 'ผู้ติดต่อฉุกเฉิน', recommend: true, placeholder: 'ชื่อ-นามสกุลผู้ติดต่อ' },
+      { key: 'emergency_relation', label: 'เป็นอะไรกับคุณ', placeholder: 'เช่น แม่, สามี, เพื่อน', suggestions: EMERGENCY_RELATIONS, maxlength: EMERGENCY_RELATION_MAX },
       { key: 'emergency_phone', label: 'เบอร์ผู้ติดต่อฉุกเฉิน', type: 'tel', placeholder: '08X-XXX-XXXX' },
     ],
   },
@@ -652,7 +658,7 @@ const infoSections = [
   },
 ];
 
-const EDITABLE_KEYS = ['title', 'name', 'phone', 'nickname', 'id_card', 'blood_group', 'emergency_contact', 'emergency_phone', 'allergies', 'health_notes'];
+const EDITABLE_KEYS = ['title', 'name', 'phone', 'nickname', 'id_card', 'blood_group', 'emergency_contact', 'emergency_relation', 'emergency_phone', 'allergies', 'health_notes'];
 
 // ช่องที่นับเป็นความครบของโปรไฟล์
 const COMPLETION_FIELDS = [

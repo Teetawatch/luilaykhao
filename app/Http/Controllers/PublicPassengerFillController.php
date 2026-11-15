@@ -83,6 +83,7 @@ class PublicPassengerFillController extends Controller
             'birth_date' => ['nullable', 'date', 'before:today'],
             'blood_group' => ['nullable', Rule::in(['A', 'B', 'AB', 'O', ''])],
             'emergency_contact' => ['nullable', 'string', 'max:120'],
+            'emergency_relation' => ['nullable', 'string', 'max:50'],
             'emergency_phone' => ['nullable', 'string', 'max:20'],
             'allergies' => ['nullable', 'string', 'max:500'],
             'health_notes' => ['nullable', 'string', 'max:500'],
