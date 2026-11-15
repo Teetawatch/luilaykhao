@@ -13,6 +13,7 @@ use App\Services\VehicleLocationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Role;
+use Tests\Concerns\BooksTravellers;
 use Tests\TestCase;
 
 /**
@@ -23,6 +24,7 @@ use Tests\TestCase;
  */
 class VehicleAutoShareWindowTest extends TestCase
 {
+    use BooksTravellers;
     use RefreshDatabase;
 
     private function mode(TripSchedule $schedule, string $atThaiTime): ?string
@@ -75,19 +77,38 @@ class VehicleAutoShareWindowTest extends TestCase
     public function test_a_round_without_pickup_points_uses_check_ins_instead(): void
     {
         $schedule = $this->round(departsAt: '06:00');
-        $booking = Booking::create([
-            'booking_ref' => Booking::generateRef(),
-            'user_id' => User::factory()->create()->id,
-            'schedule_id' => $schedule->id,
-            'status' => 'confirmed',
-            'qr_code' => Booking::generateQrCode(),
-            'total_amount' => 1000,
-        ]);
+        $booking = Booking::where('schedule_id', $schedule->id)->firstOrFail();
 
         $this->assertSame('pickup', $this->mode($schedule, '07:00'));
 
         $booking->update(['checked_in' => true, 'checked_in_at' => now()]);
         $this->assertSame('onboard', $this->mode($schedule, '07:00'));
+    }
+
+    public function test_a_round_nobody_travels_on_never_shares(): void
+    {
+        $schedule = $this->round(departsAt: '06:00');
+        $booking = Booking::where('schedule_id', $schedule->id)->firstOrFail();
+
+        // ทุกคนแจ้ง "ไปไม่ได้" = รถไม่ได้ออก มือถือสตาฟต้องไม่ออกอากาศตำแหน่งแทนรถ
+        $booking->passengers()->update(['not_going_at' => now()]);
+        $this->assertNull($this->mode($schedule, '07:00'));
+
+        $booking->passengers()->delete();
+        $booking->update(['status' => 'cancelled']);
+        $this->assertNull($this->mode($schedule, '07:00'));
+    }
+
+    public function test_an_underfilled_round_only_shares_once_departure_is_confirmed(): void
+    {
+        $schedule = $this->round(departsAt: '06:00');
+        $schedule->forceFill(['departure_confirmed_at' => null])->save();
+
+        // 1 ที่นั่ง ต่ำกว่าขั้นต่ำ และยังไม่มีใครยืนยันว่าออก — รถไม่ได้ออก
+        $this->assertNull($this->mode($schedule, '07:00'));
+
+        $this->confirmDeparture($schedule);
+        $this->assertSame('pickup', $this->mode($schedule, '07:00'));
     }
 
     public function test_it_stops_itself_after_the_round_is_over(): void
@@ -228,7 +249,7 @@ class VehicleAutoShareWindowTest extends TestCase
 
         $today = now('Asia/Bangkok')->toDateString();
 
-        return TripSchedule::create([
+        $schedule = TripSchedule::create([
             'trip_id' => $trip->id,
             'vehicle_id' => $vehicle->id,
             'departure_date' => $today,
@@ -239,5 +260,10 @@ class VehicleAutoShareWindowTest extends TestCase
             'transport_type' => 'van',
             'status' => 'open',
         ]);
+
+        $this->bookTraveller($schedule);
+        $this->confirmDeparture($schedule);
+
+        return $schedule;
     }
 }

@@ -342,6 +342,12 @@ class VehicleLocationService
             return null;
         }
 
+        // รอบที่รถไม่ได้ออก (คนไม่ถึงขั้นต่ำและไม่ได้ยืนยัน หรือไม่มีลูกค้าเลย) — ห้าม
+        // เปิดแชร์ตำแหน่งส่วนตัวของสตาฟในนามของรถที่ไม่ได้วิ่ง
+        if (! $schedule->goesAhead()) {
+            return null;
+        }
+
         return $this->everyoneAboard($schedule) ? 'onboard' : 'pickup';
     }
 
@@ -551,6 +557,9 @@ class VehicleLocationService
         $schedules = TripSchedule::with(['trip:id,title', 'vehicle', 'activeStaff:id,name,phone'])
             ->whereNotNull('vehicle_id')
             ->where('status', '!=', 'cancelled')
+            // คนไม่ถึงขั้นต่ำและไม่ได้ยืนยันออกเดินทาง = รถไม่ได้ออก — ห้ามขึ้นเป็น
+            // "รถออกแล้วแต่ไม่มีตำแหน่ง"
+            ->goingAhead()
             ->where(fn ($q) => $q
                 ->inProgressOn($today)
                 ->orWhere(fn ($q2) => $q2->departingOn($today->copy()->addDay())))

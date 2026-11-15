@@ -14,6 +14,7 @@ use App\Services\VehicleLocationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Role;
+use Tests\Concerns\BooksTravellers;
 use Tests\TestCase;
 
 /**
@@ -22,6 +23,7 @@ use Tests\TestCase;
  */
 class VehicleShareStopTest extends TestCase
 {
+    use BooksTravellers;
     use RefreshDatabase;
 
     protected function setUp(): void
@@ -231,6 +233,8 @@ class VehicleShareStopTest extends TestCase
             'status' => 'open',
         ]);
 
+        $this->bookTraveller($schedule);
+        $this->confirmDeparture($schedule);
         $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
 
         return [$schedule, $staff];

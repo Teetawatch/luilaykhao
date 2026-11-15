@@ -306,6 +306,43 @@ class TripSchedule extends Model
     }
 
     /**
+     * Scope: รอบที่มีลูกค้าเดินทางจริง — มีการจองที่ยืนยันแล้ว และในนั้นมีอย่างน้อย
+     * หนึ่งคนที่ไม่ได้แจ้งว่าไม่ไป (หรือแจ้งแล้วแต่ขึ้นรถจริง)
+     *
+     * รอบที่เปิดไว้แต่ไม่มีใครจอง หรือทุกคนแจ้ง "ไปไม่ได้" คือรอบที่รถไม่ได้ออก —
+     * งานที่ตามเรื่อง "รถออกแล้ว" ต้องไม่ดังกับรอบพวกนี้ การจองเก่าที่ไม่มีแถว
+     * ผู้โดยสารนับเป็นมีคนไป เพื่อไม่ให้รอบจริงหลุดการติดตาม
+     */
+    public function scopeWithTravellers($query)
+    {
+        return $query->whereHas('bookings', fn ($booking) => $booking
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->where(fn ($q) => $q
+                ->whereHas('passengers', fn ($p) => $p
+                    ->where(fn ($p2) => $p2->whereNull('not_going_at')->orWhereNotNull('checked_in_at')))
+                ->orWhereDoesntHave('passengers')));
+    }
+
+    /**
+     * Scope: รอบที่รถออกจริง — ถึงเกณฑ์ออกเดินทาง (จองครบขั้นต่ำ, แอดมินกด
+     * "ยืนยันออกเดินทาง" หรือเป็นทริปเหมา) และยังมีลูกค้าเดินทางอยู่
+     *
+     * รอบที่คนไม่ครบและไม่มีใครยืนยันคือรอบที่ไม่ได้ออก งานที่ตามเรื่อง
+     * "รถออกแล้ว" (ตำแหน่งรถ, แอปสตาฟเปิดแชร์เอง) ต้องไม่ดังกับรอบพวกนี้
+     */
+    public function scopeGoingAhead($query)
+    {
+        return $query->travelMessagesAllowed()->withTravellers();
+    }
+
+    /** คู่กับ scopeGoingAhead() สำหรับรอบที่โหลดมาแล้ว */
+    public function goesAhead(): bool
+    {
+        return ! $this->holdsTravelMessages()
+            && static::whereKey($this->id)->withTravellers()->exists();
+    }
+
+    /**
      * ที่นั่งขั้นต่ำฝั่งปฏิบัติการ — ต่ำกว่านี้ถือว่ารอบ "ยังไม่ครบ" (แจ้งลูกค้า,
      * ขึ้นเรดาร์รอบเสี่ยง, ระงับข้อความการเดินทาง) แอดมินปรับได้ที่หน้าตั้งค่าระบบ
      */

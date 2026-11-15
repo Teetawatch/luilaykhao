@@ -11,6 +11,7 @@ use App\Services\VehicleLocationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Role;
+use Tests\Concerns\BooksTravellers;
 use Tests\TestCase;
 
 /**
@@ -19,6 +20,7 @@ use Tests\TestCase;
  */
 class VehicleSharingStatusTest extends TestCase
 {
+    use BooksTravellers;
     use RefreshDatabase;
 
     /** ตรึงนาฬิกาไว้ตอนเช้า — นับนาทีก่อน/หลังรถออกภายในวันเดียวกันเสมอ */
@@ -125,6 +127,31 @@ class VehicleSharingStatusTest extends TestCase
         $this->assertSame([['id' => $lateStaff->id, 'name' => 'น้องบี', 'phone' => '0899999999']], $rows[0]['staff']);
         $this->assertSame('live', $rows[1]['state']);
         $this->assertSame($okStaff->id, $rows[1]['sharer']['id']);
+    }
+
+    public function test_a_round_nobody_travels_on_is_not_flagged_as_missing(): void
+    {
+        // เปิดรอบไว้แต่ไม่มีลูกค้า = รถไม่ได้ออก ไม่ต้องขึ้นหน้าติดตามหรือกอง "สิ่งที่รอคุณ"
+        [$empty] = $this->round(minutesFromNow: -30, plate: 'ว่าง 0000');
+        $empty->bookings()->update(['status' => 'cancelled']);
+
+        [$real] = $this->round(minutesFromNow: -30, plate: 'ฮก 8899');
+
+        $admin = $this->user('admin');
+        $rows = $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/tracking/sharing')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame([$real->id], array_column($rows, 'schedule_id'));
+
+        $group = collect(
+            $this->actingAs($admin, 'sanctum')
+                ->getJson('/api/v1/admin/action-queue')
+                ->assertOk()
+                ->json('data.groups'),
+        )->firstWhere('key', 'vehicle_share');
+        $this->assertSame(1, $group['count']);
     }
 
     public function test_the_departure_time_is_only_printed_when_it_was_set(): void
@@ -276,6 +303,8 @@ class VehicleSharingStatusTest extends TestCase
             'status' => 'open',
         ]);
 
+        $this->bookTraveller($schedule);
+        $this->confirmDeparture($schedule);
         $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
 
         return [$schedule, $staff];

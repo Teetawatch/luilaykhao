@@ -74,6 +74,9 @@ class RemindStaffToShareLocationJob implements ShouldQueue
             ->departingOn($now)
             ->where('status', '!=', 'cancelled')
             ->whereNotNull('vehicle_id')
+            // รอบที่คนไม่ถึงขั้นต่ำและแอดมินไม่ได้ยืนยันออกเดินทาง (หรือไม่มีลูกค้าเลย)
+            // = รถไม่ได้ออก ไม่มีอะไรต้องตาม
+            ->goingAhead()
             ->with(['trip', 'vehicle', 'activeStaff'])
             ->get();
 

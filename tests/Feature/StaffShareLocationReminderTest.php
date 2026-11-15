@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\RemindStaffToShareLocationJob;
+use App\Models\BookingPassenger;
 use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -12,6 +13,7 @@ use App\Models\VehicleLocation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Role;
+use Tests\Concerns\BooksTravellers;
 use Tests\TestCase;
 
 /**
@@ -20,6 +22,7 @@ use Tests\TestCase;
  */
 class StaffShareLocationReminderTest extends TestCase
 {
+    use BooksTravellers;
     use RefreshDatabase;
 
     /**
@@ -227,6 +230,69 @@ class StaffShareLocationReminderTest extends TestCase
         $this->assertSame(0, SmartNotification::where('type', RemindStaffToShareLocationJob::OPS_TYPE)->count());
     }
 
+    public function test_a_round_nobody_booked_did_not_leave_and_raises_nothing(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: -20);
+        $this->user('admin');
+        // เปิดรอบไว้แต่ไม่มีลูกค้า — การจองที่ยกเลิกไปแล้วไม่นับว่ามีคนเดินทาง
+        $schedule->bookings()->update(['status' => 'cancelled']);
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(0, SmartNotification::count());
+    }
+
+    public function test_an_underfilled_round_nobody_confirmed_did_not_leave(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: -20);
+        $this->user('admin');
+        // มีลูกค้า 2 ที่นั่ง ต่ำกว่าขั้นต่ำ 8 และแอดมินยังไม่ได้กด "ยืนยันออกเดินทาง"
+        $schedule->forceFill(['departure_confirmed_at' => null])->save();
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(0, SmartNotification::count());
+    }
+
+    public function test_a_round_that_reached_the_minimum_leaves_without_a_confirm(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: -20);
+        $this->user('admin');
+        $schedule->forceFill([
+            'departure_confirmed_at' => null,
+            'booked_seats' => TripSchedule::underfilledMinSeats(),
+        ])->save();
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(1, SmartNotification::where('type', RemindStaffToShareLocationJob::OPS_TYPE)->count());
+    }
+
+    public function test_a_round_where_everyone_said_not_going_raises_nothing(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: -20);
+        $this->user('admin');
+        BookingPassenger::whereIn('booking_id', $schedule->bookings()->pluck('id'))
+            ->update(['not_going_at' => now()]);
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(0, SmartNotification::count());
+    }
+
+    public function test_one_traveller_still_going_keeps_the_round_tracked(): void
+    {
+        [$schedule] = $this->round(minutesFromNow: -20);
+        $this->user('admin');
+        BookingPassenger::whereIn('booking_id', $schedule->bookings()->pluck('id'))
+            ->update(['not_going_at' => now()]);
+        $this->bookTraveller($schedule);
+
+        (new RemindStaffToShareLocationJob)->handle();
+
+        $this->assertSame(1, SmartNotification::where('type', RemindStaffToShareLocationJob::OPS_TYPE)->count());
+    }
+
     public function test_a_van_that_is_sharing_after_leaving_raises_nothing(): void
     {
         [$schedule] = $this->round(minutesFromNow: -20);
@@ -347,6 +413,8 @@ class StaffShareLocationReminderTest extends TestCase
             'status' => 'open',
         ]);
 
+        $this->bookTraveller($schedule);
+        $this->confirmDeparture($schedule);
         $schedule->staff()->attach($staff->id, ['assigned_by' => $staff->id]);
 
         return [$schedule, $staff];
