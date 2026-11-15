@@ -38,6 +38,7 @@ use App\Services\TripActivityService;
 use App\Services\TripContactService;
 use App\Services\TripFactsService;
 use App\Services\WeatherService;
+use App\Support\ChatRoomCursor;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -112,6 +113,16 @@ class ChatController extends Controller
 
         // Polling for live updates: return messages newer than $afterId, oldest-first.
         if ($afterId > 0) {
+            // เกือบทุกครั้งที่แอปถามคือ "ยังไม่มีอะไรใหม่" — ตอบจาก Redis ได้ ไม่ต้อง
+            // ถามรายชื่อคนที่บล็อกและตารางข้อความ (ตรวจสิทธิ์เข้าห้องข้างบนไปแล้ว
+            // คนนอกห้องจึงไม่ได้รู้แม้แต่ว่าห้องนี้มีข้อความใหม่ไหม)
+            if (ChatRoomCursor::nothingAfter($scheduleId, $afterId)) {
+                return $this->success([
+                    'messages' => [],
+                    'has_more' => false,
+                ]);
+            }
+
             $messages = ChatMessage::where('schedule_id', $scheduleId)
                 ->with($this->messageRelations())
                 ->tap($visible)

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ChatRoomCursor;
 use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +25,15 @@ class ChatMessage extends Model
      * ไฟล์เดียวกันออกมาเป็น audio/mp4, audio/x-m4a หรือ video/mp4 ก็ได้ จึงรับทั้งชุด
      */
     public const AUDIO_EXTENSIONS = ['m4a', 'mp4', 'aac', 'adts', 'mp3', 'wav', 'ogg', 'oga', 'weba', '3gp', '3gpp'];
+
+    protected static function booted(): void
+    {
+        // การถามหาข้อความใหม่ของแอปตอบ "ไม่มี" จาก Redis ได้ — ดู ChatRoomCursor
+        static::created(fn (ChatMessage $message) => ChatRoomCursor::bump(
+            (int) $message->schedule_id,
+            (int) $message->id,
+        ));
+    }
 
     protected $fillable = [
         'schedule_id', 'user_id', 'reply_to_id', 'sender_role', 'system_key', 'body', 'body_photos', 'image_path',
