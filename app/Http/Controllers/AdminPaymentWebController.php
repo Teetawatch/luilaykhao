@@ -41,6 +41,11 @@ class AdminPaymentWebController extends Controller
 
     public function login(Request $request): RedirectResponse
     {
+        // Auth::attempt ค้นด้วย where('email', …) ตรง ๆ — ต้องเป็นรูปเดียวกับที่เก็บ
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => User::normalizeEmail($request->input('email'))]);
+        }
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],

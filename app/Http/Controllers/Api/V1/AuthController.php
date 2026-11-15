@@ -71,7 +71,7 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::where('email', $request->email)->first();
+        $user = User::findByEmail($request->email);
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             return $this->error('อีเมลหรือรหัสผ่านไม่ถูกต้อง', 401);
@@ -384,7 +384,7 @@ class AuthController extends Controller
             ->first();
 
         if (! $user && $email) {
-            $user = User::where('email', $email)->first();
+            $user = User::findByEmail($email);
 
             if ($user) {
                 $user->update([
@@ -557,7 +557,7 @@ class AuthController extends Controller
             ->first();
 
         if (! $user) {
-            $user = User::where('email', $email)->first();
+            $user = User::findByEmail($email);
 
             if ($user) {
                 $user->update(['social_provider' => 'apple', 'social_id' => $appleUserId]);

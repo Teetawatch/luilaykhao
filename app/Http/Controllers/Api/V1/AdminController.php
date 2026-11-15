@@ -1947,7 +1947,7 @@ class AdminController extends Controller
         if ($request->filled('user_id')) {
             $targetUser = User::find($request->user_id);
         } elseif ($request->filled('email')) {
-            $targetUser = User::where('email', $request->email)->first();
+            $targetUser = User::findByEmail($request->email);
         } elseif ($request->filled('phone')) {
             $targetUser = User::where('phone', $request->phone)->first();
         }
@@ -3992,6 +3992,11 @@ class AdminController extends Controller
 
     public function storeUser(Request $request): JsonResponse
     {
+        // unique:users,email เทียบตรง ๆ — ต้องเป็นรูปเดียวกับที่เก็บ (ตัวเล็ก)
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => User::normalizeEmail($request->input('email'))]);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
@@ -4044,6 +4049,11 @@ class AdminController extends Controller
     public function updateUser(Request $request, int $id): JsonResponse
     {
         $user = User::findOrFail($id);
+
+        // unique:users,email เทียบตรง ๆ — ต้องเป็นรูปเดียวกับที่เก็บ (ตัวเล็ก)
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => User::normalizeEmail($request->input('email'))]);
+        }
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],

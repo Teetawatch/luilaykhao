@@ -105,21 +105,13 @@ class PasswordResetController extends Controller
     /**
      * Resolve the account by address without caring about letter case.
      *
-     * Not just `where('email', strtolower(...))`: MySQL compares strings
-     * case-insensitively but Postgres does not, and this app is headed for
-     * Postgres — there, someone who signed up as "Somchai@…" would be told their
-     * own address has no account. whereLike gives us ILIKE on Postgres, then the
-     * exact comparison below throws out the rows LIKE matched on its wildcards
-     * (an underscore in an address is one), so a reset link can never be aimed
-     * at a neighbouring account.
+     * Every stored address is lowercase (User::setEmailAttribute + the
+     * 2026_11_15 backfill), so a plain equality on the normalised input finds
+     * "Somchai@…" on any database — MySQL, Postgres or SQLite — and uses the
+     * unique index.
      */
     private function findByEmail(string $email): ?User
     {
-        $normalized = strtolower(trim($email));
-
-        return User::query()
-            ->whereLike('email', $normalized, caseSensitive: false)
-            ->get()
-            ->first(fn (User $user) => strtolower((string) $user->email) === $normalized);
+        return User::findByEmail($email);
     }
 }

@@ -30,6 +30,24 @@ class Promotion extends Model
         'ends_at' => 'datetime',
     ];
 
+    /**
+     * รูปเดียวของโค้ดส่วนลดที่ระบบเก็บและใช้ค้น: ตัดช่องว่างหัวท้าย + พิมพ์ใหญ่
+     * ใช้กับคูปองแลกแต้ม (TRD-XXXXXXXX) ที่กรอกช่องเดียวกันได้ด้วย
+     *
+     * ไม่ตัดขีด/อักขระอื่นทิ้งแบบ GiftVoucher::normalizeCode — โค้ดที่แอดมินตั้งเองมีขีดได้
+     * ภาษาไทยไม่มีตัวพิมพ์ จึงผ่าน mb_strtoupper ไปเหมือนเดิม
+     */
+    public static function normalizeCode(?string $code): string
+    {
+        return mb_strtoupper(trim((string) $code));
+    }
+
+    /** แอดมินพิมพ์ "Summer10" ก็เก็บเป็น "SUMMER10" — ลูกค้าพิมพ์แบบไหนก็เจอ */
+    public function setCodeAttribute(?string $value): void
+    {
+        $this->attributes['code'] = $value === null ? null : self::normalizeCode($value);
+    }
+
     public function bookings()
     {
         return $this->hasMany(Booking::class);

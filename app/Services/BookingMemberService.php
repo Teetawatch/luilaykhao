@@ -342,7 +342,7 @@ class BookingMemberService
         // social login บางราย (เช่น LINE) ไม่มีอีเมลจริง ระบบเก็บเป็น @social.local
         // จึงข้ามการ match อีเมลปลอมเหล่านั้น
         if ($email !== null && $email !== '' && ! Str::endsWith($email, '@social.local')) {
-            return User::where('email', $email)->first();
+            return User::findByEmail($email);
         }
 
         return null;

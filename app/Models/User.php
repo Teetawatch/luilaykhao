@@ -58,6 +58,32 @@ class User extends Authenticatable
     }
 
     /**
+     * รูปเดียวของอีเมลที่ระบบเก็บและใช้ค้น: ตัดช่องว่างหัวท้าย + พิมพ์เล็กทั้งหมด
+     *
+     * MySQL (utf8mb4_unicode_ci) เทียบ `=` แบบไม่สนตัวพิมพ์ให้เอง แต่ Postgres/SQLite
+     * ไม่ — ถ้าไม่ normalize ทั้งตอนเก็บและตอนค้น คนที่สมัครไว้เป็น "Somchai@…"
+     * หรือคีย์บอร์ดมือถือขึ้นตัวใหญ่ให้ จะล็อกอินบัญชีตัวเองไม่ได้
+     */
+    public static function normalizeEmail(?string $email): string
+    {
+        return mb_strtolower(trim((string) $email));
+    }
+
+    /** หาบัญชีจากอีเมลแบบไม่สนตัวพิมพ์ (ใช้ index ได้ เพราะทุกแถวเก็บเป็นตัวเล็กแล้ว) */
+    public static function findByEmail(?string $email): ?self
+    {
+        $normalized = self::normalizeEmail($email);
+
+        return $normalized === '' ? null : self::where('email', $normalized)->first();
+    }
+
+    /** ทุกเส้นทางที่เขียนอีเมลผ่าน Eloquent (สมัคร, social login, แอดมิน, บัญชีเงา) ได้ตัวเล็กเสมอ */
+    public function setEmailAttribute(?string $value): void
+    {
+        $this->attributes['email'] = $value === null ? null : self::normalizeEmail($value);
+    }
+
+    /**
      * อีเมลที่ระบบกรอกให้เองตอนแอดมินเปิดใบจองแทนลูกค้า (manual_...@luilaykhao.com)
      * ส่งเมลไปไม่มีวันถึงใคร — เช็คก่อนทุกครั้งที่จะส่งอีเมลหาบัญชีที่ไม่ได้สมัครเอง
      */

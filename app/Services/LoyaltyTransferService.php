@@ -37,7 +37,7 @@ class LoyaltyTransferService
         }
 
         if (str_contains($input, '@')) {
-            return User::whereRaw('lower(email) = ?', [Str::lower($input)])->first();
+            return User::findByEmail($input);
         }
 
         // รหัสสมาชิก 8 ตัว — ลองก่อนเบอร์ เพราะรหัสที่สุ่มได้เลขล้วนก็มีโอกาสเกิด

@@ -99,6 +99,10 @@ class BookingService
             $promotionCode = null;
         }
 
+        // โค้ดโปรโมชัน/คูปองเก็บเป็นตัวพิมพ์ใหญ่ — ลูกค้าพิมพ์ "summer10" ก็ต้องเจอ
+        // ทุกฐานข้อมูล ไม่ใช่แค่บน MySQL ที่เทียบแบบไม่สนตัวพิมพ์ให้
+        $promotionCode = filled($promotionCode) ? Promotion::normalizeCode($promotionCode) : null;
+
         $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, $skipPayment, $giftVoucherCode, $coinsToUse, $source, &$coveredByVoucher, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();

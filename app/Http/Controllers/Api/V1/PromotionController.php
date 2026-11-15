@@ -131,7 +131,7 @@ class PromotionController extends Controller
             // ลิสต์ในแอปเรียงใหม่สุดก่อน — บันทึกจากเก่าไปใหม่ ใบแรกในลิสต์จึง
             // ได้เวลา/ไอดีล่าสุดและขึ้นบนสุดเหมือนในเครื่อง
             foreach (array_reverse($request->input('codes')) as $code) {
-                $promotion = $this->activePromotions()->where('promotions.code', trim($code))->first();
+                $promotion = $this->activePromotions()->where('promotions.code', Promotion::normalizeCode($code))->first();
                 if ($promotion) {
                     $this->remember($userId, $promotion);
                 }
@@ -142,7 +142,7 @@ class PromotionController extends Controller
         }
 
         $promotion = $this->activePromotions()
-            ->where('promotions.code', trim($request->input('code')))
+            ->where('promotions.code', Promotion::normalizeCode($request->input('code')))
             ->first();
         if (! $promotion) {
             return response()->json([
@@ -180,7 +180,7 @@ class PromotionController extends Controller
 
     public function unsave(Request $request, string $code)
     {
-        $promotionIds = Promotion::where('code', $code)->pluck('id');
+        $promotionIds = Promotion::where('code', Promotion::normalizeCode($code))->pluck('id');
         SavedPromotion::where('user_id', $request->user()->id)
             ->whereIn('promotion_id', $promotionIds)
             ->delete();
@@ -188,9 +188,23 @@ class PromotionController extends Controller
         return response()->json(['data' => null]);
     }
 
+    /**
+     * unique:promotions,code เทียบตรง ๆ — ต้อง normalize ก่อน validate ไม่งั้นบน
+     * Postgres "summer10" จะผ่านทั้งที่มี "SUMMER10" อยู่แล้ว แล้วไปชน unique index
+     */
+    private function withNormalizedCode(Request $request): array
+    {
+        $input = $request->all();
+        if (is_string($input['code'] ?? null)) {
+            $input['code'] = Promotion::normalizeCode($input['code']);
+        }
+
+        return $input;
+    }
+
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $validator = Validator::make($this->withNormalizedCode($request), [
             'code' => 'required|string|unique:promotions,code',
             'name' => 'required|string',
             'type' => 'required|in:percent,fixed',
@@ -225,7 +239,7 @@ class PromotionController extends Controller
     {
         $promotion = Promotion::findOrFail($id);
 
-        $validator = Validator::make($request->all(), [
+        $validator = Validator::make($this->withNormalizedCode($request), [
             'code' => 'required|string|unique:promotions,code,'.$promotion->id,
             'name' => 'required|string',
             'type' => 'required|in:percent,fixed',
@@ -276,7 +290,7 @@ class PromotionController extends Controller
         // คูปองส่วนบุคคล (ของขวัญวันเกิด / แลกด้วยแต้ม) ใช้ช่องกรอกโค้ดเดียวกับโปรโมชัน
         // BookingService รับคูปองพวกนี้อยู่แล้ว แต่ปุ่ม "ใช้โค้ด" ยิงมาตรวจที่นี่ก่อน
         // ซึ่งเดิมดูแค่ตาราง promotions — ลูกค้าจึงเจอ "not found" และไปไม่ถึงขั้นจอง
-        $redemption = LoyaltyRedemption::with('reward')->where('coupon_code', $request->code)->first();
+        $redemption = LoyaltyRedemption::with('reward')->where('coupon_code', Promotion::normalizeCode($request->code))->first();
 
         if ($redemption) {
             return $this->validateCoupon($redemption, $request->user()?->id);
@@ -292,7 +306,7 @@ class PromotionController extends Controller
             }
         }
 
-        $promotion = Promotion::where('code', $request->code)->where('is_active', true)->first();
+        $promotion = Promotion::where('code', Promotion::normalizeCode($request->code))->where('is_active', true)->first();
 
         if (! $promotion) {
             return response()->json(['valid' => false, 'message' => 'Promotion code not found or inactive'], 404);
