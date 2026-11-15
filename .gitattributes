@@ -9,3 +9,6 @@
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
+
+# ไฟล์ .bat ต้องเป็น CRLF — cmd อ่าน label/goto ผิดเมื่อเป็น LF
+*.bat text eol=crlf

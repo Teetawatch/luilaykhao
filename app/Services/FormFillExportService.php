@@ -32,8 +32,11 @@ use Illuminate\Support\Facades\Storage;
  */
 class FormFillExportService
 {
-    /** ไฟล์ใน resources/form-fill/ ที่แนบไปใน ZIP ทุกครั้ง */
-    public const TOOL_FILES = ['autofill.js', 'README.txt'];
+    /**
+     * ไฟล์ใน resources/form-fill/ ที่แนบไปใน ZIP ทุกครั้ง (ชั้นบนสุด + ทุกโฟลเดอร์คน) —
+     * .bat = ดับเบิลคลิกรันบน Windows ติดตั้ง Bun/playwright-core ครั้งแรกให้เอง
+     */
+    public const TOOL_FILES = ['autofill.js', 'README.txt', 'เริ่มกรอกฟอร์ม.bat'];
 
     private const GROUPS = [
         'text_fields' => 'ช่องข้อความ',

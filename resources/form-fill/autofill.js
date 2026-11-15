@@ -5,15 +5,32 @@
 //   - มี data.json อยู่ตรงนั้น  → ใช้ไฟล์นั้น (ชั้นบนสุดของ ZIP = ทั้งรอบ, ในโฟลเดอร์คน = คนเดียว)
 //   - ไม่มี                     → รวม data.json จากทุกโฟลเดอร์ย่อย (ให้คนช่วยหลายคนในครั้งเดียว)
 
-const { chromium } = require('playwright');
+// เริ่มกรอกฟอร์ม.bat ติดตั้ง playwright-core ให้เอง · เครื่องที่ติดตั้ง playwright ตัวเต็มไว้แล้วก็ใช้ได้
+const { chromium } = (() => {
+  try {
+    return require('playwright-core');
+  } catch {
+    return require('playwright');
+  }
+})();
+const { spawn } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 // ====== ตั้งค่า ======
 // พยายามอัปโหลดรูปบัตร/แบบฟอร์มอุทยานให้เอง (ต้องล็อกอิน Google ใน Chrome ก่อน)
 // ถ้า Google เปลี่ยนหน้าต่างเลือกไฟล์แล้วอัปโหลดไม่ได้ สคริปต์จะบอกให้ลากวางเองในแท็บนั้น
 const AUTO_UPLOAD = true;
-const CHROME_URL = 'http://localhost:9222';
+const DEBUG_PORT = 9222;
+// 127.0.0.1 ไม่ใช่ localhost — บางเครื่องแปล localhost เป็น IPv6 (::1) แต่ Chrome ฟังแค่ IPv4
+const CHROME_URL = `http://127.0.0.1:${DEBUG_PORT}`;
+// โปรไฟล์ Chrome แยกของสคริปต์ ล็อกอิน Google ครั้งเดียวแล้วจำไว้ — Chrome ไม่ยอมเปิดพอร์ต
+// 9222 กับโปรไฟล์หลักของเครื่อง · ที่เดียวกับคำสั่งเปิด Chrome เองใน README รุ่นก่อน
+const PROFILE_DIR =
+  process.env.AUTOFILL_PROFILE_DIR ||
+  (process.platform === 'win32' ? 'C:\\chrome-autofill' : path.join(os.homedir(), '.chrome-autofill'));
+const LAST_FORM_FILE = path.join(PROFILE_DIR, 'last-form-url.txt');
 // คำในหัวข้อคำถาม — ใส่ส่วนที่ไม่ซ้ำกับคำถามอื่น
 const UPLOAD_KEYWORDS = {
   idCard: ['บัตรประชาชน', 'บัตรประจำตัว'],
@@ -349,17 +366,132 @@ async function waitForQuestions(page) {
   await page.locator('div[role="listitem"]').first().waitFor({ timeout: 30000 });
 }
 
-function waitEnter(message = '\nกด Enter เพื่อปิดหน้าต่างนี้...') {
+/** ถามหนึ่งบรรทัด — ปิดหน้าต่าง/สิ้นสุด input = "q" */
+function ask(message) {
   return new Promise((resolve) => {
-    if (!process.stdin.isTTY && process.stdin.readableEnded) return resolve();
+    if (!process.stdin.isTTY && process.stdin.readableEnded) return resolve('q');
     process.stdout.write(message);
     process.stdin.resume();
-    process.stdin.once('data', () => {
+    const onData = (chunk) => {
+      process.stdin.off('end', onEnd);
       process.stdin.pause();
-      resolve();
-    });
-    process.stdin.once('end', resolve);
+      resolve(String(chunk).trim());
+    };
+    const onEnd = () => {
+      process.stdin.off('data', onData);
+      resolve('q');
+    };
+    process.stdin.once('data', onData);
+    process.stdin.once('end', onEnd);
   });
+}
+
+function waitEnter(message = '\nกด Enter เพื่อปิดหน้าต่างนี้...') {
+  return ask(message);
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ====== เปิด Chrome ให้เอง ======
+
+/** Chrome ก่อน ไม่มีค่อยใช้ Edge — Edge เป็น Chromium และมีในทุก Windows 10/11 */
+function browserCandidates() {
+  if (process.platform === 'win32') {
+    const env = process.env;
+    const roots = [env.PROGRAMFILES, env['PROGRAMFILES(X86)'], env['ProgramFiles(x86)'], env.LOCALAPPDATA].filter(Boolean);
+    return [
+      ...roots.map((r) => path.join(r, 'Google', 'Chrome', 'Application', 'chrome.exe')),
+      ...roots.map((r) => path.join(r, 'Microsoft', 'Edge', 'Application', 'msedge.exe')),
+    ];
+  }
+  if (process.platform === 'darwin') {
+    return [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    ];
+  }
+  return ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser'];
+}
+
+async function debugPortUp() {
+  try {
+    const res = await fetch(`${CHROME_URL}/json/version`, { signal: AbortSignal.timeout(1500) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** มี Chrome ที่เปิดพอร์ตไว้แล้วก็ใช้ตัวนั้น ไม่มีก็เปิดหน้าต่างใหม่ด้วยโปรไฟล์ของสคริปต์ */
+async function ensureBrowser() {
+  if (await debugPortUp()) return true;
+
+  const exe = browserCandidates().find((p) => fs.existsSync(p));
+  if (!exe) {
+    console.log('❌ ไม่พบ Chrome หรือ Edge ในเครื่องนี้ — ติดตั้ง Google Chrome ก่อน');
+    return false;
+  }
+  console.log(`🌐 กำลังเปิด ${path.basename(exe)} ...`);
+  fs.mkdirSync(PROFILE_DIR, { recursive: true });
+  spawn(
+    exe,
+    [`--remote-debugging-port=${DEBUG_PORT}`, `--user-data-dir=${PROFILE_DIR}`, '--no-first-run', '--no-default-browser-check'],
+    { detached: true, stdio: 'ignore' }
+  ).unref();
+
+  for (let i = 0; i < 40; i++) {
+    if (await debugPortUp()) return true;
+    await sleep(500);
+  }
+  console.log('❌ เปิดเบราว์เซอร์แล้วแต่ต่อไม่ได้ — ปิดหน้าต่าง Chrome ที่สคริปต์เปิดไว้ แล้วลองใหม่');
+  return false;
+}
+
+function lastFormUrl() {
+  try {
+    return fs.readFileSync(LAST_FORM_FILE, 'utf8').trim();
+  } catch {
+    return '';
+  }
+}
+
+function rememberFormUrl(url) {
+  try {
+    fs.mkdirSync(PROFILE_DIR, { recursive: true });
+    fs.writeFileSync(LAST_FORM_FILE, url);
+  } catch {
+    // จำไม่ได้ก็แค่ต้องวางลิงก์ใหม่ครั้งหน้า
+  }
+}
+
+/**
+ * แท็บ Google Form ที่เปิดอยู่ — ไม่มีก็ถามลิงก์ (Enter เฉย ๆ = ฟอร์มที่ใช้ครั้งก่อน)
+ * ฟอร์มที่ต้องล็อกอินจะเด้งไปหน้าล็อกอิน Google ก่อน — ล็อกอินในหน้าต่างนั้นแล้วกด Enter
+ */
+async function formTabs(context) {
+  let tabs = context.pages().filter(isFormTab);
+  while (tabs.length === 0) {
+    const last = lastFormUrl();
+    console.log('\n👉 วางลิงก์ Google Form ที่จะกรอก แล้วกด Enter');
+    if (last) console.log(`   (กด Enter เฉย ๆ = ใช้ฟอร์มเดิม ${last})`);
+    console.log('   ถ้าขึ้นหน้าล็อกอิน Google ให้ล็อกอินในหน้าต่าง Chrome ให้เสร็จ แล้วกลับมากด Enter · พิมพ์ q = ออก');
+    const answer = await ask('> ');
+    if (answer.toLowerCase() === 'q') return [];
+
+    const url = /^https?:\/\//i.test(answer) ? answer : !answer && last ? last : '';
+    if (url) {
+      const open = context.pages().find((p) => p.url() === 'about:blank') || (await context.newPage());
+      await open.goto(url, { timeout: 30000 }).catch(() => {});
+      await open.bringToFront().catch(() => {});
+    }
+
+    tabs = context.pages().filter(isFormTab);
+    if (tabs.length === 0) {
+      console.log('   ยังไม่เห็นหน้ากรอกฟอร์ม (ลิงก์ผิด หรือรอล็อกอิน Google อยู่)');
+    }
+  }
+  rememberFormUrl(tabs[0].url());
+  return tabs;
 }
 
 async function main() {
@@ -379,26 +511,24 @@ async function main() {
   const people = loaded.people;
   console.log(`📄 ${people.length} คน จาก ${loaded.source}`);
 
-  // 2. เชื่อมต่อกับ Chrome ที่เปิดผ่านพอร์ต 9222
+  // 2. เชื่อมต่อกับ Chrome พอร์ต 9222 — ยังไม่ได้เปิดไว้ สคริปต์เปิดให้เอง
+  if (!(await ensureBrowser())) return;
   let browser;
   try {
     browser = await chromium.connectOverCDP(CHROME_URL);
   } catch {
-    console.log('❌ ต่อ Chrome ไม่ได้ — เปิด Chrome ด้วย --remote-debugging-port=9222 ก่อน (ดู README.txt)');
+    console.log('❌ ต่อ Chrome ไม่ได้ — ปิดหน้าต่าง Chrome ที่สคริปต์เปิดไว้ แล้วลองใหม่');
     return;
   }
 
   try {
     const context = browser.contexts()[0];
-    const formTabs = context.pages().filter(isFormTab);
-    if (formTabs.length === 0) {
-      console.log('❌ กรุณาเปิดหน้า Google Form (หน้ากรอก) รอไว้ใน Chrome อย่างน้อย 1 แท็บก่อนรันสคริปต์!');
-      return;
-    }
-    const formUrl = formTabs[0].url();
+    const tabs = await formTabs(context);
+    if (tabs.length === 0) return;
+    const formUrl = tabs[0].url();
 
     const pages = [];
-    for (const tab of formTabs) {
+    for (const tab of tabs) {
       if (pages.length < people.length && (await isBlank(tab))) pages.push(tab);
     }
     while (pages.length < people.length) {

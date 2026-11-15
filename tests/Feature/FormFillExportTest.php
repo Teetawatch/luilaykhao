@@ -298,13 +298,16 @@ class FormFillExportTest extends TestCase
             '01-สมชาย ใจดีมาก/data.json',
             '01-สมชาย ใจดีมาก/id_card.png',
             '01-สมชาย ใจดีมาก/permit.pdf',
+            '01-สมชาย ใจดีมาก/เริ่มกรอกฟอร์ม.bat',
             '02-สมหญิง ใจดี/README.txt',
             '02-สมหญิง ใจดี/autofill.js',
             '02-สมหญิง ใจดี/data.json',
             '02-สมหญิง ใจดี/permit.pdf',
+            '02-สมหญิง ใจดี/เริ่มกรอกฟอร์ม.bat',
             'README.txt',
             'autofill.js',
             'data.json',
+            'เริ่มกรอกฟอร์ม.bat',
         ], array_keys($files));
 
         // ทั้งรอบชี้ไฟล์เข้าไปในโฟลเดอร์ · ในโฟลเดอร์ชี้ไฟล์ข้างตัว
@@ -325,6 +328,11 @@ class FormFillExportTest extends TestCase
         $this->assertStringContainsString('connectOverCDP', $files['autofill.js']);
         // โฟลเดอร์คนรันเองได้ — สคริปต์ชุดเดียวกับชั้นบนสุด
         $this->assertSame($files['autofill.js'], $files['02-สมหญิง ใจดี/autofill.js']);
+        // ตัวเปิดแบบดับเบิลคลิก — cmd ต้องการ CRLF และ ASCII ล้วน (ข้อความไทยอยู่ใน autofill.js)
+        $bat = $files['02-สมหญิง ใจดี/เริ่มกรอกฟอร์ม.bat'];
+        $this->assertStringContainsString("\r\n:have_bun\r\n", $bat);
+        $this->assertSame(0, preg_match('/(?<!\r)\n/', $bat), 'ทุกบรรทัดลงท้าย CRLF');
+        $this->assertTrue(mb_check_encoding($bat, 'ASCII'));
     }
 
     /** แอป Flutter ส่งทุกไฟล์เป็น application/octet-stream — รูปบัตรจากแอปต้องยังมาใน ZIP */
@@ -367,12 +375,15 @@ class FormFillExportTest extends TestCase
             '01-สมชาย ใจดีมาก/README.txt',
             '01-สมชาย ใจดีมาก/autofill.js',
             '01-สมชาย ใจดีมาก/data.json',
+            '01-สมชาย ใจดีมาก/เริ่มกรอกฟอร์ม.bat',
             '02-สมหญิง ใจดี/README.txt',
             '02-สมหญิง ใจดี/autofill.js',
             '02-สมหญิง ใจดี/data.json',
+            '02-สมหญิง ใจดี/เริ่มกรอกฟอร์ม.bat',
             'README.txt',
             'autofill.js',
             'data.json',
+            'เริ่มกรอกฟอร์ม.bat',
         ], array_keys($files));
         $this->assertArrayNotHasKey('idCardFilePath', json_decode($files['data.json'], true)[0]);
     }
