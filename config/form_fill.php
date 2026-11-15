@@ -72,7 +72,8 @@ return [
     // ไม่เจอค่อยหาจากชื่อรายการที่มีคำเหล่านี้ ไม่มีไฟล์ = idCardFilePath เป็น null
     'id_card_documents' => [
         'keys' => ['border-pass-id-front', 'id-card', 'id_card'],
-        'label_contains' => ['บัตรประชาชน', 'บัตรประจำตัวประชาชน'],
+        // ไม่สนตัวพิมพ์เล็ก/ใหญ่
+        'label_contains' => ['บัตรประชาชน', 'บัตรประจำตัวประชาชน', 'ปชช', 'id card'],
     ],
 
 ];

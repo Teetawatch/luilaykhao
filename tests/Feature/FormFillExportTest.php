@@ -249,6 +249,34 @@ class FormFillExportTest extends TestCase
         $this->assertStringContainsString('connectOverCDP', $files['autofill.js']);
     }
 
+    /** แอป Flutter ส่งทุกไฟล์เป็น application/octet-stream — รูปบัตรจากแอปต้องยังมาใน ZIP */
+    public function test_id_card_uploaded_from_the_app_is_packed(): void
+    {
+        [$schedule, $booking] = $this->round();
+        [$a, $b] = $booking->passengers->all();
+
+        // ไฟล์จริงแต่ชนิดที่ client บอกคือ octet-stream — ตอนนี้ store() อ่านจากเนื้อไฟล์
+        $png = UploadedFile::fake()->image('card.png');
+        $fromApp = new UploadedFile($png->getRealPath(), 'image_picker_123.png', 'application/octet-stream', null, true);
+        $stored = app(BookingDocumentService::class)->store($booking, $a, 'id-copy', $fromApp, null);
+        $this->assertSame('image/png', $stored->mime_type);
+
+        // แถวเก่าที่บันทึกเป็น octet-stream ไปแล้ว — ดูจากนามสกุลไฟล์บนดิสก์แทน
+        Storage::disk(MediaDisk::slipDisk())->put('booking-documents/2026/11/old.jpg', 'jpeg-bytes');
+        $booking->documents()->create([
+            'booking_passenger_id' => $b->id, 'requirement_key' => 'id-copy', 'label' => 'สำเนาบัตรประชาชน',
+            'file_path' => 'booking-documents/2026/11/old.jpg', 'original_name' => 'image_picker_456',
+            'mime_type' => 'application/octet-stream', 'size' => 10,
+        ]);
+
+        $files = $this->unzip(app(FormFillExportService::class)->zip($schedule, 'first_name,id_card_file'));
+
+        $this->assertArrayHasKey('01-สมชาย ใจดีมาก/id_card.png', $files);
+        $this->assertSame('jpeg-bytes', $files['02-สมหญิง ใจดี/id_card.jpg']);
+        $round = json_decode($files['data.json'], true);
+        $this->assertSame('./02-สมหญิง ใจดี/id_card.jpg', $round[1]['idCardFilePath']);
+    }
+
     public function test_unticked_files_are_not_packed(): void
     {
         $form = $this->form();

@@ -263,14 +263,15 @@ class FormFillExportService
     {
         $docs = $passenger->booking->documents
             ->where('booking_passenger_id', $passenger->id)
-            ->filter(fn (BookingDocument $d) => str_starts_with((string) $d->mime_type, 'image/') || $d->mime_type === 'application/pdf')
+            // isImage/isPdf ไม่ใช่ mime_type ตรง ๆ — ไฟล์จากแอปบันทึกชนิดเป็น octet-stream
+            ->filter(fn (BookingDocument $d) => $d->isImage() || $d->isPdf())
             ->sortBy('id');
 
         $keys = $rule['keys'] ?? [];
         $words = $rule['label_contains'] ?? [];
 
         $doc = $docs->first(fn (BookingDocument $d) => in_array($d->requirement_key, $keys, true))
-            ?? $docs->first(fn (BookingDocument $d) => collect($words)->contains(fn ($w) => $w !== '' && str_contains((string) $d->label, $w)));
+            ?? $docs->first(fn (BookingDocument $d) => collect($words)->contains(fn ($w) => $w !== '' && mb_stripos((string) $d->label, (string) $w) !== false));
 
         if (! $doc) {
             return null;

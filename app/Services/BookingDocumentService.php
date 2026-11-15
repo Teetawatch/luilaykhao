@@ -216,7 +216,7 @@ class BookingDocumentService
             'note' => $requirement['note'] ?: null,
             'file_path' => $path,
             'original_name' => mb_substr($file->getClientOriginalName() ?: 'document', 0, 255),
-            'mime_type' => $file->getClientMimeType(),
+            'mime_type' => $this->uploadedMime($file, $path),
             'size' => $file->getSize() ?: 0,
             'uploaded_by_id' => $uploadedById,
         ]);
@@ -291,6 +291,26 @@ class BookingDocumentService
         }
 
         return $adopted;
+    }
+
+    /**
+     * ชนิดไฟล์ที่อัปโหลด — อ่านจากเนื้อไฟล์ก่อน ไม่เชื่อที่ client ส่งมา เพราะแอป Flutter
+     * ส่งทุกไฟล์เป็น application/octet-stream (รูปบัตรเลยไม่ถูกนับเป็นรูป)
+     */
+    private function uploadedMime(UploadedFile $file, string $storedPath): string
+    {
+        foreach ([fn () => $file->getMimeType(), fn () => $file->getClientMimeType()] as $read) {
+            try {
+                $mime = strtolower((string) $read());
+            } catch (\Throwable) {
+                continue;
+            }
+            if (str_starts_with($mime, 'image/') || $mime === 'application/pdf') {
+                return $mime;
+            }
+        }
+
+        return $this->mimeOf($storedPath);
     }
 
     private function mimeOf(string $path): string
