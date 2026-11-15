@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BookingDocument;
 use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
+use App\Models\User;
 use App\Support\MediaDisk;
 use App\Support\PermitFormFields;
 use Illuminate\Support\Facades\Storage;
@@ -150,6 +151,8 @@ class FormFillExportService
         $schedule->loadMissing('trip.permitForm');
         $form = $schedule->trip?->permitForm;
         $passengers = $this->documents->passengers($schedule)->values();
+        // อีเมลไล่หาจากบัญชีที่ผูกกับที่นั่ง — โหลดทีเดียวทั้งรอบ
+        $passengers->load('member.user');
         // ช่อง "กลุ่มคณะ ... คน" บนแบบฟอร์มนับสตาฟด้วย — ใช้ตัวเลขเดียวกับ PDF ที่โหลดจากหน้าอื่น
         $groupSize = $form ? $this->forms->groupSize($schedule) : $passengers->count();
         $on = fn (string $id) => in_array($id, $selected, true);
@@ -227,11 +230,43 @@ class FormFillExportService
     {
         $values = PermitFormFields::values($passenger, $schedule, $groupSize);
         $values['gender'] = self::genderFromTitle($values['title'] ?? '');
+        $values['email'] = $this->emailOf($passenger, (string) ($values['email'] ?? ''));
 
         return $values;
     }
 
-    /** @return array<int, array{keyword: string, value: string, exclude?: array<int, string>}> */
+    /**
+     * อีเมลของคนนี้ — ช่องอีเมลในใบจองไม่บังคับ จึงไล่หาจากบัญชีของคนนั้นต่อ:
+     * บัญชีที่ผูกกับที่นั่งนี้ แล้วค่อยบัญชีคนจองถ้าที่นั่งนี้เป็นของคนจองเอง (เบอร์หรือ
+     * เลขบัตรตรงกัน) · บัญชีที่เข้าผ่าน LINE/โซเชียลไม่มีอีเมลจริง (@social.local) —
+     * แบบนั้นไม่มีให้ ต้องถามเจ้าตัว
+     */
+    private function emailOf(BookingPassenger $passenger, string $own): string
+    {
+        $real = fn (?User $user) => $user && filled($user->email)
+            && ! str_ends_with(strtolower((string) $user->email), '@social.local')
+            && ! $user->hasPlaceholderEmail()
+            ? (string) $user->email : null;
+
+        if (trim($own) !== '') {
+            return trim($own);
+        }
+
+        if ($email = $real($passenger->member?->user)) {
+            return $email;
+        }
+
+        $owner = $passenger->booking?->user;
+        $digits = fn ($v) => preg_replace('/\D/', '', (string) $v);
+        $isOwnerSeat = $owner && (
+            ($digits($owner->phone) !== '' && $digits($owner->phone) === $digits($passenger->phone))
+            || ($digits($owner->id_card) !== '' && $digits($owner->id_card) === $digits($passenger->id_card))
+        );
+
+        return ($isOwnerSeat ? $real($owner) : null) ?? '';
+    }
+
+    /** @return array<int, array{keyword: string, value: string, keywords?: array<int, string>, require?: array<int, string>, exclude?: array<int, string>}> */
     private function fields(string $group, array $selected, array $values): array
     {
         return collect(config("form_fill.{$group}", []))
@@ -241,11 +276,19 @@ class FormFillExportService
                     ? (string) $f['value']
                     : trim((string) ($values[$f['source'] ?? ''] ?? ''));
                 $value = (string) (($f['map'] ?? [])[$value] ?? $value);
+                // ช่องที่ว่างแปลว่า "ไม่มี" ได้ (โรคประจำตัว/แพ้) — ฟอร์มมักบังคับตอบ
+                if ($value === '' && isset($f['blank'])) {
+                    $value = (string) $f['blank'];
+                }
 
+                // keyword = ชื่อเรียกในคำเตือน (สคริปต์รุ่นเก่าใช้หาคำถามด้วย) · keywords = คำไหน
+                // ก็ได้ที่หัวข้อคำถามมี · require = ต้องมีทุกคำ · exclude = ห้ามมี
                 $field = ['keyword' => (string) $f['keyword'], 'value' => $value];
-                $exclude = array_values(array_filter(array_map('strval', $f['exclude'] ?? [])));
-                if ($exclude !== []) {
-                    $field['exclude'] = $exclude;
+                foreach (['keywords', 'require', 'exclude'] as $rule) {
+                    $words = array_values(array_filter(array_map('strval', $f[$rule] ?? [])));
+                    if ($words !== []) {
+                        $field[$rule] = $words;
+                    }
                 }
 
                 return $field;

@@ -82,6 +82,11 @@ const isFormTab = (p) => /\/forms\/.+\/viewform/.test(p.url());
 
 const asList = (v) => (Array.isArray(v) ? v : v ? [v] : []);
 
+// เทียบหัวข้อคำถามแบบไม่สนตัวพิมพ์เล็ก/ใหญ่ (Email/email) และให้ "ํา" (นิคหิต+สระอา) เท่ากับ "ำ"
+// — สองแบบนี้หน้าตาเหมือนกันแต่คนละตัวอักษร ฟอร์มที่พิมพ์จากบางเครื่องเป็นแบบแรก
+const norm = (s) => String(s).replace(/\u0E4D\u0E32/g, '\u0E33').toLowerCase();
+const titleHas = (title, k) => title.includes(norm(k));
+
 /**
  * หาคำถามจาก "หัวข้อคำถาม" เท่านั้น (ไม่ใช่ทั้งกล่องที่มีคำอธิบาย/ตัวเลือกปน)
  *   keywords  มีคำใดคำหนึ่ง
@@ -110,12 +115,13 @@ async function questionBox(page, keywords, { require = [], exclude = [], upload 
   const titles = items.map((it) => it.title);
 
   let best = -1;
-  items.forEach(({ title, answerable, upload: isUpload }, i) => {
-    if (!title) return;
+  items.forEach(({ title: raw, answerable, upload: isUpload }, i) => {
+    if (!raw) return;
+    const title = norm(raw);
     if (upload ? !isUpload : !answerable) return;
-    if (!list.some((k) => title.includes(k))) return;
-    if (!asList(require).every((k) => title.includes(k))) return;
-    if (asList(exclude).some((k) => title.includes(k))) return;
+    if (!list.some((k) => titleHas(title, k))) return;
+    if (!asList(require).every((k) => titleHas(title, k))) return;
+    if (asList(exclude).some((k) => titleHas(title, k))) return;
     if (best === -1 || title.length < titles[best].length) best = i;
   });
 
@@ -248,7 +254,7 @@ async function fillPerson(page, data) {
       warnings.push(`ไม่มี "${item.keyword}" ในระบบ — กรอกเอง`);
       continue;
     }
-    const box = await questionBox(page, item.keyword, { exclude: item.exclude });
+    const box = await questionBox(page, item.keywords || item.keyword, { require: item.require, exclude: item.exclude });
     if (!box) warnings.push(`ไม่พบคำถาม "${item.keyword}"`);
     else if (!(await setText(page, box, item.value))) warnings.push(`คำถาม "${item.keyword}" ไม่มีช่องให้กรอก`);
   }
@@ -285,7 +291,7 @@ async function fillPerson(page, data) {
       warnings.push(`ไม่มี "${choice.keyword}" ในระบบ — เลือกเอง`);
       continue;
     }
-    const box = await questionBox(page, choice.keyword, { exclude: choice.exclude });
+    const box = await questionBox(page, choice.keywords || choice.keyword, { require: choice.require, exclude: choice.exclude });
     if (!box) warnings.push(`ไม่พบคำถาม "${choice.keyword}"`);
     else if (!(await setChoice(page, box, choice.value))) warnings.push(`"${choice.keyword}" ไม่มีตัวเลือก "${choice.value}"`);
   }

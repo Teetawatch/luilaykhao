@@ -180,11 +180,45 @@ class FormFillExportTest extends TestCase
 
         $rows = app(FormFillExportService::class)->rows($schedule, 'emergency_name,emergency_relation');
 
-        $this->assertSame([
-            ['keyword' => 'ผู้ติดต่อฉุกเฉิน', 'value' => 'สมศรี ใจดี', 'exclude' => ['เบอร์', 'โทร', 'ความสัมพันธ์']],
-            ['keyword' => 'ความสัมพันธ์', 'value' => 'แม่'],
-        ], $rows[0]['textFields']);
+        $this->assertSame(['ผู้ติดต่อฉุกเฉิน', 'ความสัมพันธ์'], array_column($rows[0]['textFields'], 'keyword'));
+        $this->assertSame(['สมศรี ใจดี', 'แม่'], array_column($rows[0]['textFields'], 'value'));
         $this->assertSame('แฟน', $rows[1]['textFields'][1]['value']);
+        // "ชื่อ-สกุล บุคคลที่ติดต่อได้ในฉุกเฉิน" ไม่มีคำว่า "ผู้ติดต่อฉุกเฉิน" — หาด้วยคำไหนก็ได้ + ต้องมี "ฉุกเฉิน"
+        $this->assertContains('ติดต่อ', $rows[0]['textFields'][0]['keywords']);
+        $this->assertSame(['ฉุกเฉิน'], $rows[0]['textFields'][0]['require']);
+        $this->assertContains('ความสัมพันธ์', $rows[0]['textFields'][0]['exclude']);
+    }
+
+    public function test_email_falls_back_to_the_travellers_own_account_but_never_a_line_placeholder(): void
+    {
+        [$schedule, $booking] = $this->round();
+        [$a, $b] = $booking->passengers->all();
+        // ที่นั่งของคนจองเอง (เบอร์ตรงกับบัญชี) — ใบจองไม่ได้กรอกอีเมลไว้
+        $booking->user->update(['phone' => '0812345678', 'email' => 'somchai@example.com']);
+        // คนที่สองผูกบัญชีที่เข้าผ่าน LINE — ไม่มีอีเมลจริง
+        $line = User::factory()->create(['email' => 'line_U123@social.local']);
+        $booking->members()->create(['user_id' => $line->id, 'passenger_id' => $b->id, 'role' => 'member', 'status' => 'active']);
+
+        $rows = app(FormFillExportService::class)->rows($schedule, 'email');
+
+        $this->assertSame('somchai@example.com', $rows[0]['textFields'][0]['value']);
+        $this->assertSame('', $rows[1]['textFields'][0]['value'], 'ไม่มีอีเมลจริง = ว่าง ให้สคริปต์เตือนกรอกเอง');
+
+        // อีเมลที่กรอกในใบจองมาก่อนบัญชี
+        $a->update(['email' => 'trip@example.com']);
+        $this->assertSame('trip@example.com', app(FormFillExportService::class)->rows($schedule, 'email')[0]['textFields'][0]['value']);
+    }
+
+    public function test_blank_health_answers_say_none(): void
+    {
+        [$schedule, $booking] = $this->round();
+        $booking->passengers->first()->update(['health_notes' => 'หอบหืด']);
+
+        $rows = app(FormFillExportService::class)->rows($schedule, 'health_notes,allergies');
+
+        $this->assertSame(['หอบหืด', 'ไม่มี'], array_column($rows[0]['textFields'], 'value'));
+        $this->assertSame(['ไม่มี', 'ไม่มี'], array_column($rows[1]['textFields'], 'value'));
+        $this->assertContains('โรคประจําตัว', $rows[0]['textFields'][0]['keywords'], 'สระอำแบบนิคหิต+สระอา');
     }
 
     public function test_booking_stores_the_emergency_relation(): void
