@@ -105,6 +105,11 @@ class FormFillExportService
         $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
         $zip->addFromString('data.json', $this->json(array_column($people, 'root')));
 
+        // สคริปต์กรอกฟอร์ม + วิธีใช้ ฉบับล่าสุดไปกับข้อมูลทุกครั้ง — แก้ที่ resources/form-fill/
+        $tools = collect(self::TOOL_FILES)
+            ->mapWithKeys(fn (string $name) => [$name => resource_path('form-fill/'.$name)])
+            ->filter(fn (string $source) => is_file($source));
+
         foreach ($people as $person) {
             $folder = $person['folder'].'/';
             $zip->addFromString($folder.'data.json', $this->json([$person['own']]));
@@ -112,14 +117,16 @@ class FormFillExportService
             foreach ($person['files'] as $name => $bytes) {
                 $zip->addFromString($folder.$name, $bytes);
             }
+
+            // โฟลเดอร์คนส่งต่อให้คนช่วยได้ทั้งโฟลเดอร์ รันในนั้นได้เลยไม่ต้องหาสคริปต์เพิ่ม —
+            // สคริปต์อ่าน data.json ข้างตัวก่อน path ไฟล์ในนั้นก็ชี้ข้างตัว
+            foreach ($tools as $name => $source) {
+                $zip->addFile($source, $folder.$name);
+            }
         }
 
-        // สคริปต์กรอกฟอร์ม + วิธีใช้ ฉบับล่าสุดไปกับข้อมูลทุกครั้ง — แก้ที่ resources/form-fill/
-        foreach (self::TOOL_FILES as $name) {
-            $tool = resource_path('form-fill/'.$name);
-            if (is_file($tool)) {
-                $zip->addFile($tool, $name);
-            }
+        foreach ($tools as $name => $source) {
+            $zip->addFile($source, $name);
         }
 
         $zip->close();

@@ -259,9 +259,13 @@ class FormFillExportTest extends TestCase
         $files = $this->unzip(app(FormFillExportService::class)->zip($schedule));
 
         $this->assertSame([
+            '01-สมชาย ใจดีมาก/README.txt',
+            '01-สมชาย ใจดีมาก/autofill.js',
             '01-สมชาย ใจดีมาก/data.json',
             '01-สมชาย ใจดีมาก/id_card.png',
             '01-สมชาย ใจดีมาก/permit.pdf',
+            '02-สมหญิง ใจดี/README.txt',
+            '02-สมหญิง ใจดี/autofill.js',
             '02-สมหญิง ใจดี/data.json',
             '02-สมหญิง ใจดี/permit.pdf',
             'README.txt',
@@ -285,6 +289,8 @@ class FormFillExportTest extends TestCase
 
         $this->assertStringStartsWith('%PDF', $files['02-สมหญิง ใจดี/permit.pdf']);
         $this->assertStringContainsString('connectOverCDP', $files['autofill.js']);
+        // โฟลเดอร์คนรันเองได้ — สคริปต์ชุดเดียวกับชั้นบนสุด
+        $this->assertSame($files['autofill.js'], $files['02-สมหญิง ใจดี/autofill.js']);
     }
 
     /** แอป Flutter ส่งทุกไฟล์เป็น application/octet-stream — รูปบัตรจากแอปต้องยังมาใน ZIP */
@@ -324,7 +330,11 @@ class FormFillExportTest extends TestCase
         $files = $this->unzip(app(FormFillExportService::class)->zip($schedule, 'first_name'));
 
         $this->assertSame([
+            '01-สมชาย ใจดีมาก/README.txt',
+            '01-สมชาย ใจดีมาก/autofill.js',
             '01-สมชาย ใจดีมาก/data.json',
+            '02-สมหญิง ใจดี/README.txt',
+            '02-สมหญิง ใจดี/autofill.js',
             '02-สมหญิง ใจดี/data.json',
             'README.txt',
             'autofill.js',
