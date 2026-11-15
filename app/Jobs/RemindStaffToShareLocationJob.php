@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
 use App\Models\User;
-use App\Models\VehicleLocation;
 use App\Services\VehicleLocationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -225,9 +224,7 @@ class RemindStaffToShareLocationJob implements ShouldQueue
         // ยี่สิบนาทีล่าสุด: รอบที่เคยแชร์แล้วหลุดไปคือ "stalled" ไม่ใช่ "ยังไม่เปิด"
         if ($now->gte($missingFrom)
             && $now->lte($departsAt->copy()->addHours(self::LATE_WINDOW_HOURS))
-            && ! VehicleLocation::where('vehicle_id', $vehicleId)
-                ->where('recorded_at', '>=', $locations->trackingSince($schedule))
-                ->exists()) {
+            && ! $locations->latestPoint($vehicleId, $locations->trackingSince($schedule))) {
             return 'late';
         }
 
@@ -253,9 +250,8 @@ class RemindStaffToShareLocationJob implements ShouldQueue
 
     private function hasLocationWithin(int $vehicleId, int $minutes): bool
     {
-        return VehicleLocation::where('vehicle_id', $vehicleId)
-            ->where('recorded_at', '>=', now()->subMinutes($minutes))
-            ->exists();
+        return app(VehicleLocationService::class)
+            ->latestPoint($vehicleId, now()->subMinutes($minutes)) !== null;
     }
 
     /**
@@ -271,9 +267,7 @@ class RemindStaffToShareLocationJob implements ShouldQueue
             ->startOfDay()
             ->setTimezone(config('app.timezone', 'UTC'));
 
-        return VehicleLocation::where('vehicle_id', $vehicleId)
-            ->where('recorded_at', '>=', $startOfDay)
-            ->exists();
+        return app(VehicleLocationService::class)->latestPoint($vehicleId, $startOfDay) !== null;
     }
 
     private function alreadySent(int $staffId, int $scheduleId, Carbon $now, string $slot): bool

@@ -16,7 +16,6 @@ use App\Support\ThaiDate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 
 /**
@@ -1720,19 +1719,7 @@ class TripActivityService
      */
     private function vehicleLocation(int $vehicleId): ?array
     {
-        $data = null;
-
-        try {
-            $raw = Redis::get("vehicle:location:{$vehicleId}");
-            $decoded = $raw ? json_decode($raw, true) : null;
-            if (is_array($decoded) && isset($decoded['latitude'], $decoded['longitude'])) {
-                $data = $decoded;
-            }
-        } catch (\Throwable $e) {
-            // ไม่มีแคช — ใช้ฐานข้อมูลแทน
-        }
-
-        $data ??= $this->vehicleLocationFromDatabase($vehicleId);
+        $data = app(VehicleLocationService::class)->latestCoordinates($vehicleId);
 
         if ($data === null) {
             return null;
@@ -1744,27 +1731,6 @@ class TripActivityService
         }
 
         return $data;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function vehicleLocationFromDatabase(int $vehicleId): ?array
-    {
-        $latest = VehicleLocation::where('vehicle_id', $vehicleId)
-            ->orderByDesc('recorded_at')
-            ->first();
-
-        if (! $latest) {
-            return null;
-        }
-
-        return [
-            'latitude' => (float) $latest->latitude,
-            'longitude' => (float) $latest->longitude,
-            'speed' => $latest->speed !== null ? (float) $latest->speed : null,
-            'recorded_at' => $latest->recorded_at->toIso8601String(),
-        ];
     }
 
     private function distanceKm(float $fromLat, float $fromLng, float $toLat, float $toLng): float

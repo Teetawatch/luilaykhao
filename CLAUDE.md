@@ -144,6 +144,8 @@ Deposit can be configured per-schedule as either `percent` or `amount` (per-pers
 
 Vehicle GPS is pushed to `/api/v1/tracking/update` (no auth, intended for device SDK) and stored in `vehicle_locations`. The `VehicleLocationUpdated` event broadcasts to `vehicle.{vehicleId}` channel. The Flutter customer app connects via `web_socket_channel` to Reverb using `--dart-define` config. The share-tracking feature gives unauthenticated public access via a 12-char random token stored on the Booking (`share_token`).
 
+**Latest position is Redis-first** — `vehicle:location:{id}` always holds the row with the greatest `recorded_at` (`VehicleLocationService::cache()` refuses an older point). Any "where is the van now / any point since X / who holds the share claim" question goes through `latestPoint($vehicleId, $since)`, `latestCoordinates()` or `currentSharerId()`; they fall back to the table only when the cache can't answer yes. Don't query `vehicle_locations` for "the latest row" directly — that table grows every day; query it only for real history (route replay, return-leg track, first point of a window).
+
 **Trip member live location** — travellers can opt in to share their own position with the rest of their round (`trip_member_locations`, one row per user per schedule; deleting the row *is* stopping). Who may read/write is `SosParticipantService`, same as SOS, and only within the trip window. `TripMemberLocationUpdated` broadcasts on the **private** channel `trip-members.{scheduleId}` — vehicle position is company data, a person's position is not. Pins older than `TripMemberLocationService::STALE_MINUTES` are never handed out.
 
 ### Live Activity ("วันเดินทาง" lock-screen card)

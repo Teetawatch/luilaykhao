@@ -5,10 +5,10 @@ namespace App\Console\Commands;
 use App\Models\Booking;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
+use App\Services\VehicleLocationService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
 
 class NotifyPickupEtaCommand extends Command
 {
@@ -104,18 +104,10 @@ class NotifyPickupEtaCommand extends Command
      */
     private function vehicleLocation(int $vehicleId): ?array
     {
-        try {
-            $raw = Redis::get("vehicle:location:{$vehicleId}");
-        } catch (\Throwable $e) {
-            return null;
-        }
-
-        if (! $raw) {
-            return null;
-        }
-
-        $data = json_decode($raw, true);
-        if (! is_array($data) || ! isset($data['latitude'], $data['longitude'])) {
+        // Redis ก่อน ถอยไปฐานข้อมูล — เดิมอ่าน Redis อย่างเดียว วันที่ Redis สะดุด
+        // ลูกค้าจึงไม่ได้แจ้งเตือน "รถใกล้ถึง" เลยทั้งที่พิกัดบันทึกไว้ครบ
+        $data = app(VehicleLocationService::class)->latestCoordinates($vehicleId);
+        if ($data === null) {
             return null;
         }
 

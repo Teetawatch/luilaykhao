@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\BroadcastSosResolved;
 use App\Models\Booking;
 use App\Models\SosAlert;
-use App\Models\VehicleLocation;
+use App\Services\VehicleLocationService;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -98,9 +98,7 @@ class AdminSosController extends Controller
 
         // ตำแหน่งรถล่าสุดของรอบนี้ — ช่วยให้ทีมงานบอกคนขับได้ว่าต้องวิ่งไปทางไหน
         $vehicleLocation = $vehicle
-            ? VehicleLocation::where('vehicle_id', $vehicle->id)
-                ->latest('recorded_at')
-                ->first(['latitude', 'longitude', 'recorded_at'])
+            ? app(VehicleLocationService::class)->latestPoint((int) $vehicle->id)
             : null;
 
         return [

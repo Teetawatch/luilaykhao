@@ -143,19 +143,22 @@ class TripDepartureService
         $windowStart = Carbon::parse($from->format('Y-m-d H:i:s'), self::TIMEZONE)
             ->setTimezone(config('app.timezone', 'UTC'));
 
-        $locations = VehicleLocation::where('vehicle_id', $schedule->vehicle_id)
-            ->where('recorded_at', '>=', $windowStart)
-            ->orderBy('recorded_at')
-            ->get(['latitude', 'longitude', 'speed', 'recorded_at']);
+        // ใช้แค่จุดแรกกับจุดล่าสุดของกรอบ — เดิมดึงทุกจุดตั้งแต่ก่อนรถออก (หลายร้อย
+        // แถวต่อรอบ ทุกครั้งที่งานประกาศรถออกวิ่ง) มาเพื่อหยิบหัวกับท้าย
+        $latest = app(VehicleLocationService::class)->latestPoint((int) $schedule->vehicle_id, $windowStart);
 
-        if ($locations->count() < 2) {
+        // พิกัดล่าสุดต้องสด ไม่งั้นคือรอบที่ปิดแชร์ไปแล้ว — เช็คจากแคชก่อนแตะตาราง
+        if (! $latest || $latest->recorded_at->lt(now()->subMinutes(self::FRESH_MINUTES))) {
             return false;
         }
 
-        $latest = $locations->last();
+        $earliest = VehicleLocation::where('vehicle_id', $schedule->vehicle_id)
+            ->where('recorded_at', '>=', $windowStart)
+            ->orderBy('recorded_at')
+            ->limit(2)
+            ->get(['latitude', 'longitude', 'recorded_at']);
 
-        // พิกัดล่าสุดต้องสด ไม่งั้นคือรอบที่ปิดแชร์ไปแล้ว
-        if ($latest->recorded_at->lt(now()->subMinutes(self::FRESH_MINUTES))) {
+        if ($earliest->count() < 2) {
             return false;
         }
 
@@ -163,7 +166,7 @@ class TripDepartureService
             return true;
         }
 
-        $first = $locations->first();
+        $first = $earliest->first();
 
         return $this->metresBetween(
             (float) $first->latitude,

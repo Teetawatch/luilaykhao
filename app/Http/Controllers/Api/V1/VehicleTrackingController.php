@@ -73,7 +73,9 @@ class VehicleTrackingController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'locations' => 'required|array|min:1|max:100',
-            'locations.*.vehicle_id' => 'required|exists:vehicles,id',
+            // ไม่ใช้ exists: — กฎนั้นยิงหนึ่ง query ต่อหนึ่งจุด (ร้อยจุด = ร้อย query)
+            // ตรวจรวดเดียวใน after() ข้างล่างแทน
+            'locations.*.vehicle_id' => 'required|integer',
             'locations.*.latitude' => 'required|numeric|between:-90,90',
             'locations.*.longitude' => 'required|numeric|between:-180,180',
             'locations.*.speed' => 'nullable|numeric|min:0',
@@ -82,16 +84,34 @@ class VehicleTrackingController extends Controller
             'locations.*.recorded_at' => 'nullable|date',
         ]);
 
+        $vehicles = Vehicle::whereIn('id', collect($request->input('locations', []))
+            ->pluck('vehicle_id')->filter(fn ($id) => is_numeric($id))->unique()->values())
+            ->get()
+            ->keyBy('id');
+
+        $validator->after(function ($validator) use ($request, $vehicles) {
+            foreach ((array) $request->input('locations', []) as $i => $loc) {
+                $id = $loc['vehicle_id'] ?? null;
+                if (is_numeric($id) && ! $vehicles->has((int) $id)) {
+                    $attribute = "locations.{$i}.vehicle_id";
+                    $validator->errors()->add($attribute, __('validation.exists', ['attribute' => $attribute]));
+                }
+            }
+        });
+
         if ($validator->fails()) {
             return $this->error('ข้อมูลไม่ถูกต้อง', 422, $validator->errors());
         }
 
         $userId = $request->user()?->id;
-        $inserted = 0;
+        $now = now();
+        $rows = [];
         $latestByVehicle = [];
 
         foreach ($request->locations as $loc) {
-            $location = VehicleLocation::create([
+            // ผ่านโมเดลเพื่อให้ cast แปลงค่าเหมือน create() ทุกอย่าง แต่เขียนลงตาราง
+            // ทีเดียวทั้งชุด — กล่อง GPS ส่งมาครั้งละหลายสิบจุด ไม่ต้องเป็นหลายสิบ INSERT
+            $location = (new VehicleLocation)->forceFill([
                 'vehicle_id' => $loc['vehicle_id'],
                 'user_id' => $userId,
                 'latitude' => $loc['latitude'],
@@ -99,9 +119,11 @@ class VehicleTrackingController extends Controller
                 'speed' => $loc['speed'] ?? null,
                 'heading' => $loc['heading'] ?? null,
                 'accuracy' => $loc['accuracy'] ?? null,
-                'recorded_at' => $loc['recorded_at'] ?? now(),
+                'recorded_at' => $loc['recorded_at'] ?? $now,
+                'created_at' => $now,
+                'updated_at' => $now,
             ]);
-            $inserted++;
+            $rows[] = $location->getAttributes();
 
             // เก็บเฉพาะตัวล่าสุดของแต่ละรถ
             $vid = $loc['vehicle_id'];
@@ -110,9 +132,14 @@ class VehicleTrackingController extends Controller
             }
         }
 
+        foreach (array_chunk($rows, 500) as $chunk) {
+            VehicleLocation::insert($chunk);
+        }
+        $inserted = count($rows);
+
         // Broadcast เฉพาะตำแหน่งล่าสุดของแต่ละคัน
         foreach ($latestByVehicle as $vid => $location) {
-            $vehicle = Vehicle::find($vid);
+            $vehicle = $vehicles->get((int) $vid);
             if (! $vehicle) {
                 continue;
             }
@@ -148,10 +175,7 @@ class VehicleTrackingController extends Controller
             $trackingSince = $this->locations->trackingSince($schedule);
 
             // พิกัดต้องอยู่ในกรอบเวลาของรอบนี้ ไม่งั้นจะได้จุดสุดท้ายของทริปก่อนหน้า
-            $latest = VehicleLocation::where('vehicle_id', $schedule->vehicle_id)
-                ->where('recorded_at', '>=', $trackingSince)
-                ->orderByDesc('recorded_at')
-                ->first();
+            $latest = $this->locations->latestPoint((int) $schedule->vehicle_id, $trackingSince);
 
             return $this->locations->format($schedule->vehicle, $latest, $schedule, $trackingSince);
         })->values();
@@ -611,7 +635,9 @@ class VehicleTrackingController extends Controller
      */
     public function vehicles(): JsonResponse
     {
-        $vehicles = Vehicle::with('latestLocation')->orderBy('name')->get();
+        // ไม่ eager load latestLocation: ไม่ได้ส่งออกไปสักฟิลด์ แต่ latestOfMany ต้อง
+        // กวาดทั้งตาราง vehicle_locations ทุกครั้งที่ endpoint สาธารณะนี้ถูกเรียก
+        $vehicles = Vehicle::orderBy('name')->get();
 
         $data = $vehicles->map(function ($v) {
             return [

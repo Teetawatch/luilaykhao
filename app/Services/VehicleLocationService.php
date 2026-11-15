@@ -30,8 +30,14 @@ class VehicleLocationService
     /** departs_at/departure_date เก็บเป็นเวลาไทย ส่วน app tz เป็น UTC */
     public const TIMEZONE = 'Asia/Bangkok';
 
-    /** ตำแหน่งล่าสุดใน Redis อยู่ได้นานแค่ไหน (วินาที) */
-    public const CACHE_TTL = 3600;
+    /**
+     * ตำแหน่งล่าสุดใน Redis อยู่ได้นานแค่ไหน (วินาที)
+     *
+     * แคชนี้คือ "แถวที่ recorded_at มากสุดของรถคันนี้" เสมอ (ดู [cache]) อายุยาว
+     * จึงไม่ทำให้ใครได้ข้อมูลเก่า — คนอ่านเช็คอายุพิกัดเองอยู่แล้ว — แค่ไม่ต้องถอยไป
+     * ถามฐานข้อมูลตอนรถจอดค้างคืน (มือถือสตาฟโหมดประหยัดแบตเงียบได้ทั้งคืน)
+     */
+    public const CACHE_TTL = 43200;
 
     /** แอปเริ่มแชร์เองก่อนรถออกกี่นาที (คนละเรื่องกับกรอบที่เซิร์ฟเวอร์ยอมรับพิกัด) */
     public const AUTO_START_BEFORE_MINUTES = 90;
@@ -206,12 +212,52 @@ class VehicleLocationService
             return $cached;
         }
 
-        $latest = VehicleLocation::where('vehicle_id', $vehicle->id)
-            ->where('recorded_at', '>=', $since)
-            ->orderByDesc('recorded_at')
-            ->first();
+        $latest = $this->latestPoint($vehicle->id, $since);
 
         return $latest ? $this->format($vehicle, $latest, $schedule, $since) : null;
+    }
+
+    /**
+     * แถวล่าสุด (recorded_at มากสุด) ของรถคันนี้ — Redis ก่อน ถอยไปฐานข้อมูลเมื่อไม่มี
+     *
+     * ทางเดียวที่ควรใช้ตอบ "ตอนนี้รถอยู่ไหน" และ "มีพิกัดตั้งแต่ X ไหม": ตัวหลังเท่ากับ
+     * "แถวล่าสุดใหม่กว่า X ไหม" พอดี จึงตอบจาก Redis ได้โดยไม่ต้องแตะตาราง
+     * vehicle_locations ที่โตขึ้นทุกวัน
+     *
+     * เชื่อแคชเฉพาะคำตอบ "มี": แคชเก่ากว่า [since] อาจแปลว่า Redis สะดุดตอนเขียน
+     * รอบก่อน จึงถามฐานข้อมูลยืนยันอีกที (เกิดเฉพาะรถที่ยังไม่ส่งพิกัดในกรอบนั้น)
+     *
+     * แถวที่ได้จากแคชเป็นโมเดลที่ไม่ได้โหลดจากฐานข้อมูล — อ่านค่าได้ ห้าม save()
+     */
+    public function latestPoint(int $vehicleId, ?\DateTimeInterface $since = null): ?VehicleLocation
+    {
+        $cached = $this->cachedPoint($vehicleId);
+
+        if ($cached && ($since === null || $cached->recorded_at->gte($since))) {
+            return $cached;
+        }
+
+        return VehicleLocation::where('vehicle_id', $vehicleId)
+            ->when($since, fn ($q) => $q->where('recorded_at', '>=', $since))
+            ->orderByDesc('recorded_at')
+            ->first();
+    }
+
+    /**
+     * พิกัดล่าสุดในรูปที่งานคำนวณ ETA ใช้ (lat/lng/speed/recorded_at) — ไม่ดูอายุ
+     *
+     * @return array{latitude: float, longitude: float, speed: ?float, recorded_at: string}|null
+     */
+    public function latestCoordinates(int $vehicleId): ?array
+    {
+        $latest = $this->latestPoint($vehicleId);
+
+        return $latest ? [
+            'latitude' => (float) $latest->latitude,
+            'longitude' => (float) $latest->longitude,
+            'speed' => $latest->speed !== null ? (float) $latest->speed : null,
+            'recorded_at' => $latest->recorded_at->toIso8601String(),
+        ] : null;
     }
 
     /**
@@ -248,13 +294,53 @@ class VehicleLocationService
 
     public function cache(Vehicle $vehicle, VehicleLocation $location, ?TripSchedule $schedule = null): void
     {
-        $data = $this->format($vehicle, $location, $schedule ?? $this->activeScheduleFor($vehicle->id));
+        // คิวออฟไลน์ของแอปส่งจุดเก่าตามมาทีหลังได้ — แคชต้องเป็นจุดล่าสุดจริงเสมอ
+        // (ตรงกับ ORDER BY recorded_at DESC) ไม่ใช่จุดที่มาถึงทีหลังสุด
+        $current = $this->cachedPoint($vehicle->id);
+        if ($current && $current->recorded_at->gt($location->recorded_at)) {
+            return;
+        }
+
+        $data = $this->format($vehicle, $location, $schedule ?? $this->activeScheduleFor($vehicle->id)) + [
+            // ใช้ภายในเท่านั้น (เจ้าของสิทธิ์แชร์ / เช็คว่าเปิดกลับมาหลังกดปิด) —
+            // latestForSchedule ประกอบผลใหม่จาก format() จึงไม่หลุดออกไปหาลูกค้า
+            'location_id' => $location->id,
+            'user_id' => $location->user_id,
+            'accuracy' => $location->accuracy,
+            'created_at' => $location->created_at?->toIso8601String(),
+        ];
 
         try {
             Redis::setex("vehicle:location:{$vehicle->id}", self::CACHE_TTL, json_encode($data));
         } catch (\Exception $e) {
             // Redis ล่ม — ยังอ่านจากฐานข้อมูลได้ ไม่ต้องทำให้การบันทึกพัง
         }
+    }
+
+    /** แคชในรูปโมเดล — null เมื่อไม่มีหรืออ่านไม่ได้ */
+    private function cachedPoint(int $vehicleId): ?VehicleLocation
+    {
+        $data = $this->cached($vehicleId);
+
+        if (! is_array($data) || ! isset($data['latitude'], $data['longitude'], $data['recorded_at'])) {
+            return null;
+        }
+
+        $point = (new VehicleLocation)->forceFill([
+            'id' => $data['location_id'] ?? null,
+            'vehicle_id' => $vehicleId,
+            'user_id' => $data['user_id'] ?? null,
+            'latitude' => $data['latitude'],
+            'longitude' => $data['longitude'],
+            'speed' => $data['speed'] ?? null,
+            'heading' => $data['heading'] ?? null,
+            'accuracy' => $data['accuracy'] ?? null,
+            'recorded_at' => Carbon::parse($data['recorded_at']),
+            'created_at' => isset($data['created_at']) ? Carbon::parse($data['created_at']) : null,
+        ]);
+        $point->exists = true;
+
+        return $point;
     }
 
     /**
@@ -375,6 +461,14 @@ class VehicleLocationService
      */
     public function currentSharerId(int $vehicleId): ?int
     {
+        // ถูกถามทุกครั้งที่มือถือสตาฟส่งพิกัด — จุดล่าสุดในแคชตอบได้เกือบทุกครั้ง
+        // (คนส่งจุดล่าสุดคือเจ้าของสิทธิ์) ถอยไปฐานข้อมูลเฉพาะตอนแคชตอบไม่ได้
+        $cached = $this->cachedPoint($vehicleId);
+        if ($cached && $cached->user_id
+            && $cached->recorded_at->gte(now()->subMinutes(self::CLAIM_MINUTES))) {
+            return (int) $cached->user_id;
+        }
+
         $latest = VehicleLocation::where('vehicle_id', $vehicleId)
             ->where('recorded_at', '>=', now()->subMinutes(self::CLAIM_MINUTES))
             ->whereNotNull('user_id')
@@ -426,12 +520,9 @@ class VehicleLocationService
         $departsAt = $this->departsAtThai($schedule);
 
         $latest = $schedule->vehicle_id
-            ? VehicleLocation::with('user:id,name')
-                ->where('vehicle_id', $schedule->vehicle_id)
-                ->where('recorded_at', '>=', $this->trackingSince($schedule))
-                ->orderByDesc('recorded_at')
-                ->first()
+            ? $this->latestPoint((int) $schedule->vehicle_id, $this->trackingSince($schedule))
             : null;
+        $latest?->loadMissing('user:id,name');
 
         // อายุของพิกัดเทียบกับเวลาจริง (recorded_at เป็น UTC จริง) ไม่ใช่นาฬิกาไทย
         $minutesSince = $latest
@@ -532,9 +623,19 @@ class VehicleLocationService
 
         // พิกัดที่ส่งค้างอยู่กลางทางตอนกดปิดมาถึงทีหลังได้ — ให้เวลาหนึ่งนาที
         // ไม่งั้นจุดสุดท้ายจุดนั้นจะถูกนับว่า "เปิดกลับมาแล้ว"
+        $resumedAfter = $stop->stopped_at->copy()->addSeconds(self::STOP_GRACE_SECONDS);
+
+        // จุดล่าสุดในแคชผ่านเงื่อนไข = มีแถวแบบนั้นจริง ไม่ต้องถามฐานข้อมูล
+        $cached = $this->cachedPoint((int) $schedule->vehicle_id);
+        if ($cached && $cached->id && $cached->created_at
+            && $cached->id > (int) $stop->last_location_id
+            && $cached->created_at->gt($resumedAfter)) {
+            return null;
+        }
+
         $resumed = VehicleLocation::where('vehicle_id', $schedule->vehicle_id)
             ->where('id', '>', (int) $stop->last_location_id)
-            ->where('created_at', '>', $stop->stopped_at->copy()->addSeconds(self::STOP_GRACE_SECONDS))
+            ->where('created_at', '>', $resumedAfter)
             ->exists();
 
         return $resumed ? null : $stop;

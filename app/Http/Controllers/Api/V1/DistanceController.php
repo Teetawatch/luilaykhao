@@ -5,13 +5,12 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\TripSchedule;
 use App\Models\Vehicle;
-use App\Models\VehicleLocation;
 use App\Services\GoogleDistanceService;
+use App\Services\VehicleLocationService;
 use App\Support\Polyline;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Validator;
 
 class DistanceController extends Controller
@@ -335,27 +334,6 @@ class DistanceController extends Controller
      */
     private function getVehicleCurrentLocation(int $vehicleId): ?array
     {
-        try {
-            $cached = Redis::get("vehicle:location:{$vehicleId}");
-            if ($cached) {
-                return json_decode($cached, true);
-            }
-        } catch (\Exception $e) {
-            // Redis unavailable
-        }
-
-        // Fallback to DB
-        $latest = VehicleLocation::where('vehicle_id', $vehicleId)
-            ->orderByDesc('recorded_at')
-            ->first();
-
-        if (! $latest) {
-            return null;
-        }
-
-        return [
-            'latitude' => $latest->latitude,
-            'longitude' => $latest->longitude,
-        ];
+        return app(VehicleLocationService::class)->latestCoordinates($vehicleId);
     }
 }
