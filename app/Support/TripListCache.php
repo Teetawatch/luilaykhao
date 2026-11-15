@@ -31,8 +31,9 @@ final class TripListCache
 
     /**
      * @param  Closure(): JsonResponse  $build
+     * @param  int  $ttl  วินาที — รายการที่หน้าจอถามซ้ำเป็นรอบ ๆ (รอบของทริป) ใช้สั้นกว่านี้
      */
-    public static function respond(string $name, Request $request, Closure $build): JsonResponse
+    public static function respond(string $name, Request $request, Closure $build, int $ttl = self::TTL_SECONDS): JsonResponse
     {
         $query = $request->query();
         self::sortRecursive($query);
@@ -45,10 +46,13 @@ final class TripListCache
             // ส่วนเดียวของรายการที่ขึ้นกับผู้ชม: booking_opens_at ของแต่ละรอบเลื่อนเร็ว
             // ขึ้นตามระดับสมาชิก (TripScheduleResource) — แยกแคชตามระดับ ไม่ใช่ตามคน
             LoyaltyAccount::tierForUser($request->user('sanctum')?->id),
+            // TripScheduleResource ส่ง photos_shared ให้แอดมิน/โอเปอเรเตอร์เท่านั้น —
+            // คำตอบที่สร้างให้แอดมินต้องไม่ถูกเสิร์ฟให้คนทั่วไป
+            $request->user()?->hasAnyRole(['admin', 'operator']) ? 'staff' : 'public',
             md5((string) json_encode($query)),
         ]);
 
-        $payload = Cache::remember($key, self::TTL_SECONDS, fn () => $build()->getData(true));
+        $payload = Cache::remember($key, $ttl, fn () => $build()->getData(true));
 
         return response()->json($payload);
     }

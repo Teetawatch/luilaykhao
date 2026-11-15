@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class TripSchedule extends Model
@@ -1146,6 +1147,36 @@ class TripSchedule extends Model
      *
      * คืนค่าจำนวนที่นั่งบนรถเหมือนเดิม (ผู้เรียกเดิมยังใช้ค่านี้อยู่)
      */
+    /** หน้าผังที่นั่งนับที่นั่งใหม่จากตารางอย่างมากทุกกี่วินาทีต่อรอบ */
+    public const SEAT_SYNC_THROTTLE_SECONDS = 10;
+
+    /**
+     * [syncBookedSeats] สำหรับหน้าที่ถูกถามซ้ำเป็นรอบ ๆ (ผังที่นั่งถามทุก 20 วินาทีต่อคน)
+     * — นับใหม่อย่างมากหนึ่งครั้งต่อ [SEAT_SYNC_THROTTLE_SECONDS] ต่อรอบ
+     *
+     * ตัวเลขไม่ค้าง: การจองนับที่นั่งด้วย increment อยู่แล้ว และใบจอง/ผู้โดยสารของรอบนี้
+     * เปลี่ยนเมื่อไหร่ ช่วงพักถูกยกเลิกทันที ([forgetSeatSyncThrottle], ผูกไว้ใน
+     * AppServiceProvider) ช่วงพักนี้กันแค่ "นับซ้ำทั้งที่ไม่มีอะไรเปลี่ยน"
+     */
+    public function syncBookedSeatsThrottled(): void
+    {
+        if (Cache::add(self::seatSyncThrottleKey($this->id), true, self::SEAT_SYNC_THROTTLE_SECONDS)) {
+            $this->syncBookedSeats();
+        }
+    }
+
+    public static function forgetSeatSyncThrottle(?int $scheduleId): void
+    {
+        if ($scheduleId) {
+            Cache::forget(self::seatSyncThrottleKey($scheduleId));
+        }
+    }
+
+    private static function seatSyncThrottleKey(int $scheduleId): string
+    {
+        return "seat-sync:{$scheduleId}";
+    }
+
     public function syncBookedSeats(): int
     {
         $activePassengers = fn () => BookingPassenger::query()

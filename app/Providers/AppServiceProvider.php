@@ -3,12 +3,16 @@
 namespace App\Providers;
 
 use App\Models\Booking;
+use App\Models\BookingPassenger;
+use App\Models\ForceMajeureSeatHold;
 use App\Models\Review;
 use App\Models\SaleCampaign;
 use App\Models\ScheduleItineraryItem;
 use App\Models\SchedulePickupPoint;
+use App\Models\ScheduleVehicleOption;
 use App\Models\Trip;
 use App\Models\TripSchedule;
+use App\Models\WaitlistEntry;
 use App\Observers\BookingObserver;
 use App\Observers\ScheduleItineraryItemObserver;
 use App\Observers\TripObserver;
@@ -49,9 +53,36 @@ class AppServiceProvider extends ServiceProvider
         // รายการทริปหน้าแรกถูกแคชไว้ (TripListCache) — ของที่แสดงบนการ์ดเปลี่ยน
         // เมื่อไหร่ ทิ้งแคชทันที ไม่ต้องรอหมดอายุ (การจองใหม่เขียนลง TripSchedule
         // ผ่าน syncBookedSeats จึงติดมาด้วย)
-        foreach ([Trip::class, TripSchedule::class, SchedulePickupPoint::class, SaleCampaign::class, Review::class] as $model) {
+        // ที่นั่งที่ถูกกันไว้ (คิวรอได้สิทธิ์ / เหตุสุดวิสัย) และตัวเลือกรถก็อยู่บนการ์ดด้วย
+        foreach ([Trip::class, TripSchedule::class, SchedulePickupPoint::class, SaleCampaign::class, Review::class,
+            ScheduleVehicleOption::class, WaitlistEntry::class, ForceMajeureSeatHold::class] as $model) {
             $model::saved(fn () => TripListCache::flush());
             $model::deleted(fn () => TripListCache::flush());
+        }
+
+        // ผังที่นั่งพักการนับใหม่ไว้ช่วงสั้น ๆ (TripSchedule::syncBookedSeatsThrottled) —
+        // ใบจองหรือผู้โดยสารของรอบเปลี่ยนเมื่อไหร่ ให้นับใหม่ทันทีในคำขอถัดไป
+        $forgetBookingRounds = function (Booking $booking) {
+            TripSchedule::forgetSeatSyncThrottle($booking->schedule_id);
+            TripSchedule::forgetSeatSyncThrottle($booking->getOriginal('schedule_id'));
+        };
+        Booking::saved($forgetBookingRounds);
+        Booking::deleted($forgetBookingRounds);
+        $forgetPassengerRound = fn (BookingPassenger $passenger) => TripSchedule::forgetSeatSyncThrottle(
+            Booking::whereKey($passenger->booking_id)->value('schedule_id'),
+        );
+        BookingPassenger::created($forgetPassengerRound);
+        BookingPassenger::deleted($forgetPassengerRound);
+
+        // BookingService นับที่นั่งด้วย increment() ซึ่งยิงแค่ updated ไม่ยิง saved —
+        // เดิมการจองใหม่จึงไม่ล้างแคช "เหลือกี่ที่" จนกว่าแคชจะหมดอายุเอง ดูเฉพาะคอลัมน์
+        // ที่นั่ง เพราะ increment อื่น (เช่นยอดเปิดดูอัลบั้ม) ไม่ได้อยู่บนการ์ด
+        foreach ([TripSchedule::class, ScheduleVehicleOption::class] as $model) {
+            $model::updated(function ($row) {
+                if ($row->wasChanged(['booked_seats', 'join_trip_booked_seats'])) {
+                    TripListCache::flush();
+                }
+            });
         }
     }
 }

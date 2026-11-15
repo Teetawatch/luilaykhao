@@ -25,6 +25,9 @@ class TripController extends Controller
 {
     use ApiResponse;
 
+    /** แคชรอบของทริป (วินาที) — สั้นกว่ารายการทริป เพราะหน้ารายละเอียดถามซ้ำทุก 25 วินาที */
+    public const SCHEDULES_CACHE_SECONDS = 15;
+
     public function __construct(private WeatherService $weatherService) {}
 
     public function index(Request $request): JsonResponse
@@ -465,7 +468,23 @@ class TripController extends Controller
         }
     }
 
+    /**
+     * รอบของทริปหนึ่งทริป — หน้ารายละเอียดทริปถามซ้ำทุก 25 วินาทีเพื่อให้ "เหลือกี่ที่"
+     * สด ช่วง flash sale คนเปิดหน้าเดียวกันเป็นร้อย ทุกครั้งเคยนับที่นั่งใหม่จากตาราง
+     * จึงแคชไว้สั้น ๆ แบบเดียวกับรายการทริป (ล้างทันทีเมื่อมีการจอง/แก้รอบ — ดู
+     * AppServiceProvider)
+     */
     public function schedules(string $slug, Request $request): JsonResponse
+    {
+        return TripListCache::respond(
+            'trip-schedules:'.$slug,
+            $request,
+            fn () => $this->buildSchedules($slug, $request),
+            self::SCHEDULES_CACHE_SECONDS,
+        );
+    }
+
+    private function buildSchedules(string $slug, Request $request): JsonResponse
     {
         $trip = Trip::where('slug', $slug)->firstOrFail();
 

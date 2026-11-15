@@ -59,7 +59,9 @@ class ScheduleController extends Controller
     public function seats(Request $request, int $id): JsonResponse
     {
         $schedule = TripSchedule::with(['vehicle', 'vehicleOptions.vehicle'])->findOrFail($id);
-        $schedule->syncBookedSeats(); // Sync real-time data to ensure accuracy
+        // หน้าจองถามผังนี้ซ้ำทุก 20 วินาทีต่อคน — นับใหม่เป็นช่วง ๆ และทันทีที่ใบจอง
+        // ของรอบเปลี่ยน สถานะของแต่ละที่นั่งข้างล่าง (จองแล้ว/ล็อกอยู่) ยังอ่านสดทุกครั้ง
+        $schedule->syncBookedSeatsThrottled();
 
         // รอบที่วิ่งหลายคัน — ผังเป็นของคันที่ถามมา ไม่ใช่ของรอบ ไม่ระบุมา = คัน
         // ที่เป็นค่าตั้งต้น (ราคาปกติ) เพื่อให้ client รุ่นก่อนหน้ายังได้ผังที่ใช้ได้
