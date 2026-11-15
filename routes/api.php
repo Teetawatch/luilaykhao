@@ -1217,7 +1217,8 @@ Route::prefix('v1')->group(function () {
         Route::get('calendar/schedules/{id}/documents', [AdminExtendedController::class, 'scheduleDocuments'])->whereNumber('id');
         Route::get('calendar/schedules/{id}/documents/download', [AdminExtendedController::class, 'downloadScheduleDocuments'])
             ->whereNumber('id')->middleware('throttle:30,1');
-        // data.json (+ รูปบัตรประชาชน) ให้สคริปต์ Playwright กรอกฟอร์มออนไลน์ทีละคน — ?format=json ได้ JSON ล้วน
+        // data.json ให้สคริปต์ Playwright กรอกฟอร์มออนไลน์ — ZIP โฟลเดอร์ละคน (?fields= ช่องที่ติ๊ก, ?format=json ได้ JSON ล้วน)
+        Route::get('form-fill/options', [AdminExtendedController::class, 'formFillOptions']);
         Route::get('calendar/schedules/{id}/form-fill', [AdminExtendedController::class, 'formFillExport'])
             ->whereNumber('id')->middleware('throttle:30,1');
 

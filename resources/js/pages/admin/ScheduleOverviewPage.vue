@@ -1370,12 +1370,13 @@
               <button
                 v-if="roundDocs.data.total"
                 class="btn-secondary"
-                :disabled="!!roundDocs.downloading"
-                title="data.json + รูปบัตรประชาชน + แบบฟอร์มอุทยานรายคน + autofill.js สำหรับกรอก Google Form อัตโนมัติ"
-                @click="downloadFormFill"
+                :class="{ active: formFill.open }"
+                title="data.json + รูปบัตรประชาชน + แบบฟอร์มอุทยาน โฟลเดอร์ละคน + autofill.js สำหรับกรอก Google Form อัตโนมัติ"
+                @click="toggleFormFill"
               >
-                <span class="material-symbols-rounded">{{ roundDocs.downloading === 'form-fill' ? 'hourglass_top' : 'data_object' }}</span>
+                <span class="material-symbols-rounded">data_object</span>
                 ข้อมูลกรอกฟอร์ม (data.json)
+                <span class="material-symbols-rounded">{{ formFill.open ? 'expand_less' : 'expand_more' }}</span>
               </button>
               <button v-if="roundDocsUnsignedTotal" class="btn-secondary" @click="copyAllSignLinks">
                 <span class="material-symbols-rounded">{{ roundDocs.copied === 'all' ? 'check' : 'content_copy' }}</span>
@@ -1391,6 +1392,54 @@
                 <span class="material-symbols-rounded">{{ roundDocs.busy === 'remind-round' ? 'hourglass_top' : 'campaign' }}</span>
                 เตือนทั้งรอบ (ห้องแชท + แจ้งเตือน)
               </button>
+            </div>
+
+            <!-- เลือกข้อมูลที่จะใส่ใน data.json — ช่องมาจาก config/form_fill.php ค่าที่ติ๊กจำไว้ในเครื่อง -->
+            <div v-if="formFill.open" class="ff-panel">
+              <div class="ff-head">
+                <strong>เลือกข้อมูลที่จะส่งออก</strong>
+                <small>ZIP มี data.json ทั้งรอบ + โฟลเดอร์ละคน (ส่งต่อให้คนช่วยลงทะเบียนได้) + autofill.js</small>
+              </div>
+              <p v-if="formFill.loading" class="ff-muted">กำลังโหลดรายการ...</p>
+              <p v-else-if="formFill.error" class="ff-error">{{ formFill.error }}</p>
+              <template v-else>
+                <div class="ff-groups">
+                  <fieldset v-for="group in formFill.groups" :key="group.key" class="ff-group">
+                    <legend>{{ group.label }}</legend>
+                    <label
+                      v-for="item in group.items"
+                      :key="item.id"
+                      class="ff-item"
+                      :class="{ disabled: formFillDisabled(item.id) }"
+                    >
+                      <input
+                        type="checkbox"
+                        :value="item.id"
+                        v-model="formFill.selected"
+                        :disabled="formFillDisabled(item.id)"
+                      />
+                      <span>
+                        {{ item.label }}
+                        <small v-if="formFillDisabled(item.id)">ทริปนี้ไม่ได้ผูกแบบฟอร์ม</small>
+                        <small v-else-if="item.keyword">หาคำถาม “{{ item.keyword }}”</small>
+                      </span>
+                    </label>
+                  </fieldset>
+                </div>
+                <div class="ff-actions">
+                  <button class="btn-link" type="button" @click="setFormFillSelection('default')">ค่าเริ่มต้น</button>
+                  <button class="btn-link" type="button" @click="setFormFillSelection('all')">เลือกทั้งหมด</button>
+                  <button class="btn-link" type="button" @click="setFormFillSelection('none')">ไม่เลือกเลย</button>
+                  <button
+                    class="btn-primary ff-download"
+                    :disabled="!!roundDocs.downloading || !formFillChosen.length"
+                    @click="downloadFormFill"
+                  >
+                    <span class="material-symbols-rounded">{{ roundDocs.downloading === 'form-fill' ? 'hourglass_top' : 'download' }}</span>
+                    {{ formFillChosen.length ? `ดาวน์โหลด ZIP (${formFillChosen.length} ช่อง)` : 'เลือกอย่างน้อย 1 ช่อง' }}
+                  </button>
+                </div>
+              </template>
             </div>
             <p v-if="roundDocs.remindNote" class="docs-remind-note">
               <span class="material-symbols-rounded">check_circle</span>{{ roundDocs.remindNote }}
@@ -3032,6 +3081,8 @@ const filteredRoundDocsStaff = computed(() => roundDocsStaff.value.filter((m) =>
 
 async function openRoundDocs(sch) {
   Object.assign(roundDocs, { open: true, loading: true, data: null, schedule: sch, filter: 'all', copied: null, remindNote: '' });
+  // ช่องติ๊กของรอบก่อนไม่ต้องค้างเปิด (ค่าที่ติ๊กยังจำไว้)
+  formFill.open = false;
   try {
     const res = await api.get(`/admin/calendar/schedules/${sch.id}/documents`);
     roundDocs.data = res.data.data;
@@ -3104,13 +3155,68 @@ async function downloadRoundPermitPdf() {
   }
 }
 
-// data.json แถวละคน + id_card_N.* ใน ZIP เดียว — คำถามที่ส่งออกตั้งใน config/form_fill.php
+// ข้อมูลกรอกฟอร์ม: ติ๊กเลือกช่อง → ZIP (data.json ทั้งรอบ + โฟลเดอร์ละคน + autofill.js)
+// รายการช่องมาจาก config/form_fill.php · ค่าที่ติ๊กจำไว้ในเครื่องนี้ (localStorage)
+const FORM_FILL_PREFS_KEY = 'admin.formFill.fields';
+const formFill = reactive({ open: false, loading: false, error: '', groups: [], selected: [] });
+
+const formFillItems = computed(() => formFill.groups.flatMap((g) => g.items));
+// แบบฟอร์มอุทยานติ๊กไม่ได้ในรอบที่ทริปไม่ได้ผูกแบบฟอร์ม — ไม่ส่งไป ไม่นับ
+const formFillChosen = computed(() => formFill.selected.filter((id) => !formFillDisabled(id)));
+
+function formFillDisabled(id) {
+  return id === 'permit_file' && !roundDocs.data?.permit_form;
+}
+
+function setFormFillSelection(mode) {
+  const items = formFillItems.value;
+  formFill.selected = mode === 'all'
+    ? items.map((i) => i.id)
+    : mode === 'none' ? [] : items.filter((i) => i.default).map((i) => i.id);
+}
+
+async function toggleFormFill() {
+  formFill.open = !formFill.open;
+  if (!formFill.open || formFill.groups.length || formFill.loading) return;
+  formFill.loading = true;
+  formFill.error = '';
+  try {
+    const res = await api.get('/admin/form-fill/options');
+    formFill.groups = res.data?.data?.groups || [];
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(FORM_FILL_PREFS_KEY) || 'null');
+    } catch {
+      saved = null;
+    }
+    const known = new Set(formFillItems.value.map((i) => i.id));
+    if (Array.isArray(saved)) formFill.selected = saved.filter((id) => known.has(id));
+    else setFormFillSelection('default');
+  } catch (e) {
+    formFill.error = e.response?.data?.message || 'โหลดรายการข้อมูลไม่สำเร็จ';
+  } finally {
+    formFill.loading = false;
+  }
+}
+
+watch(() => [...formFill.selected], (ids) => {
+  if (!formFill.groups.length) return;
+  try {
+    localStorage.setItem(FORM_FILL_PREFS_KEY, JSON.stringify(ids));
+  } catch {
+    // โหมดส่วนตัว/ปิด storage — ไม่จำก็ได้
+  }
+});
+
 async function downloadFormFill() {
   const data = roundDocs.data;
-  if (!data || roundDocs.downloading) return;
+  if (!data || roundDocs.downloading || !formFillChosen.value.length) return;
   roundDocs.downloading = 'form-fill';
   try {
-    const res = await api.get(`/admin/calendar/schedules/${data.schedule_id}/form-fill`, { responseType: 'blob' });
+    const res = await api.get(`/admin/calendar/schedules/${data.schedule_id}/form-fill`, {
+      params: { fields: formFillChosen.value.join(',') },
+      responseType: 'blob',
+    });
     saveBlob(res.data, 'application/zip', `data-json-${safeFileName(data.trip_title)}-${data.departure_date || data.schedule_id}.zip`);
   } catch (e) {
     alert(await blobErrorMessage(e, 'ส่งออกข้อมูลไม่สำเร็จ'));
@@ -5139,6 +5245,30 @@ onUnmounted(() => {
 .docs-stat strong.text-low, .docs-stat small.text-low { color: #b45309; }
 .docs-stat.muted strong { color: #9ca3af; font-size: 13px; }
 .docs-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.docs-actions .btn-secondary.active { border-color: #2f6f4f; color: #2f6f4f; background: #f0f7f3; }
+.ff-panel {
+  margin-top: 10px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fafaf9;
+}
+.ff-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+.ff-head strong { font-size: 14px; color: #111827; }
+.ff-head small, .ff-muted { font-size: 12px; color: #6b7280; margin: 0; }
+.ff-error { font-size: 13px; color: #b91c1c; margin: 0; }
+.ff-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.ff-group { margin: 0; padding: 8px 10px 10px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; min-width: 0; }
+.ff-group legend { padding: 0 4px; font-size: 12px; font-weight: 600; color: #374151; }
+.ff-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; font-size: 13px; color: #111827; cursor: pointer; }
+.ff-item input { margin-top: 3px; flex-shrink: 0; }
+.ff-item span { display: flex; flex-direction: column; min-width: 0; }
+.ff-item small { font-size: 11px; color: #9ca3af; overflow-wrap: anywhere; }
+.ff-item.disabled { color: #9ca3af; cursor: not-allowed; }
+.ff-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 12px; }
+.ff-actions .btn-link {
+  border: 0; background: none; padding: 4px 0; font-size: 13px; color: #2f6f4f; cursor: pointer; text-decoration: underline;
+}
+.ff-download { margin-left: auto; }
+@media (max-width: 520px) {
+  .ff-download { margin-left: 0; width: 100%; justify-content: center; }
+}
 .docs-remind-note {
   display: flex; align-items: center; gap: 6px; margin: 10px 0 0; padding: 8px 12px;
   border-radius: 10px; background: #ecfdf5; color: #047857; font-size: 13px;

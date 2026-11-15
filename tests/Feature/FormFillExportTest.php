@@ -82,7 +82,39 @@ class FormFillExportTest extends TestCase
         return [$schedule, $booking->fresh('passengers')];
     }
 
-    public function test_json_has_one_row_per_traveller_in_the_configured_shape(): void
+    /** @return array<string, string> ชื่อไฟล์ใน ZIP → เนื้อไฟล์ */
+    private function unzip(string $path): array
+    {
+        $zip = new \ZipArchive;
+        $zip->open($path);
+        $files = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $files[$zip->getNameIndex($i)] = (string) $zip->getFromIndex($i);
+        }
+        $zip->close();
+        // เทสต์ไม่ได้ส่ง response จริง deleteFileAfterSend จึงไม่ทำงาน — ลบเอง
+        @unlink($path);
+        ksort($files);
+
+        return $files;
+    }
+
+    private function form(): PermitForm
+    {
+        $form = app(PermitFormService::class)->create(
+            'เขาช้างเผือก',
+            [UploadedFile::fake()->image('page.jpg', 420, 594)],
+            [['width_mm' => 210, 'height_mm' => 297]],
+        );
+        $form->update(['fields' => [
+            ['id' => 'a', 'page' => 0, 'source' => 'first_name', 'x' => 0.4, 'y' => 0.2, 'w' => 0.2, 'h' => 0.02, 'size' => 11, 'align' => 'left'],
+            ['id' => 's', 'page' => 0, 'source' => 'signature', 'x' => 0.55, 'y' => 0.7, 'w' => 0.3, 'h' => 0.05, 'size' => 11, 'align' => 'center'],
+        ]]);
+
+        return $form->fresh();
+    }
+
+    public function test_default_json_has_one_row_per_traveller_in_the_agreed_shape(): void
     {
         [$schedule] = $this->round();
 
@@ -95,17 +127,18 @@ class FormFillExportTest extends TestCase
         $this->assertCount(2, $rows, 'คนที่แจ้งว่าไม่ไปไม่อยู่ในไฟล์');
         $this->assertSame([
             'id' => 1,
+            'name' => 'สมชาย ใจดีมาก',
             'bookingRef' => $rows[0]['bookingRef'],
             'birthDate' => '1994-02-14',
             'textFields' => [
-                ['keyword' => 'ชื่อจริง', 'value' => 'สมชาย'],
-                ['keyword' => 'นามสกุล', 'value' => 'ใจดีมาก'],
-                ['keyword' => 'อายุ', 'value' => '32'],
+                ['keyword' => 'ชื่อจริง', 'value' => 'สมชาย', 'exclude' => ['ฉุกเฉิน', 'ผู้ติดต่อ']],
+                ['keyword' => 'นามสกุล', 'value' => 'ใจดีมาก', 'exclude' => ['ชื่อ-นามสกุล', 'ชื่อ - นามสกุล', 'ชื่อและนามสกุล', 'ฉุกเฉิน', 'ผู้ติดต่อ', 'อังกฤษ']],
+                ['keyword' => 'อายุ', 'value' => '32', 'exclude' => ['หมดอายุ', 'บัตร']],
                 ['keyword' => 'เลขบัตรประชาชน', 'value' => '1103700123456'],
             ],
             'phoneFields' => ['applicantPhone' => '0812345678', 'emergencyPhone' => '0898765432'],
             'choiceFields' => [
-                ['keyword' => 'คำนำหน้า', 'value' => 'นาย'],
+                ['keyword' => 'คำนำหน้า', 'value' => 'นาย', 'exclude' => ['ฉุกเฉิน', 'อังกฤษ']],
                 ['keyword' => 'เพศ', 'value' => 'ชาย'],
             ],
             'idCardFilePath' => null,
@@ -113,16 +146,60 @@ class FormFillExportTest extends TestCase
             'permitSigned' => null,
         ], $rows[0]);
 
+        // ติ๊กไว้แต่ไม่มีในระบบ = null / "" (สคริปต์เตือนให้กรอกเอง)
         $this->assertNull($rows[1]['birthDate']);
+        $this->assertSame('', $rows[1]['phoneFields']['applicantPhone']);
         $this->assertSame('หญิง', $rows[1]['choiceFields'][1]['value']);
+    }
+
+    public function test_unticked_fields_are_left_out_entirely(): void
+    {
+        [$schedule] = $this->round();
+
+        $rows = $this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/v1/admin/calendar/schedules/{$schedule->id}/form-fill?format=json&fields=first_name,nickname,title,bogus")
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(['id', 'name', 'bookingRef', 'textFields', 'phoneFields', 'choiceFields'], array_keys($rows[0]));
+        $this->assertSame(['ชื่อจริง', 'ชื่อเล่น'], array_column($rows[0]['textFields'], 'keyword'));
+        $this->assertSame(['คำนำหน้า'], array_column($rows[0]['choiceFields'], 'keyword'));
+        // ไม่มีเบอร์ที่เลือก = object ว่าง ไม่ใช่ array (สคริปต์อ่านแบบ object)
+        $this->assertStringContainsString('"phoneFields":{}', $this->actingAs($this->admin, 'sanctum')
+            ->get("/api/v1/admin/calendar/schedules/{$schedule->id}/form-fill?format=json&fields=first_name")
+            ->getContent());
+    }
+
+    public function test_nothing_ticked_is_refused(): void
+    {
+        [$schedule] = $this->round();
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/v1/admin/calendar/schedules/{$schedule->id}/form-fill?fields=bogus")
+            ->assertStatus(422);
+    }
+
+    public function test_options_list_every_config_field_with_defaults(): void
+    {
+        $groups = $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/v1/admin/form-fill/options')
+            ->assertOk()
+            ->json('data.groups');
+
+        $this->assertSame(['text_fields', 'phone_fields', 'choice_fields', 'extras'], array_column($groups, 'key'));
+        $items = collect($groups)->flatMap(fn ($g) => $g['items']);
+        $this->assertSame($items->count(), $items->pluck('id')->unique()->count(), 'รหัสช่องใน config ห้ามซ้ำกันข้ามกลุ่ม');
+        $this->assertTrue($items->firstWhere('id', 'first_name')['default']);
+        $this->assertFalse($items->firstWhere('id', 'nickname')['default']);
+        $this->assertSame('ชื่อจริง', $items->firstWhere('id', 'first_name')['keyword']);
     }
 
     public function test_config_controls_questions_static_values_and_option_mapping(): void
     {
         [$schedule] = $this->round();
         config(['form_fill.choice_fields' => [
-            ['keyword' => 'คำนำหน้าชื่อ', 'source' => 'title', 'map' => ['นางสาว' => 'น.ส.']],
-            ['keyword' => 'ยอมรับเงื่อนไข', 'value' => 'ยอมรับ'],
+            'title' => ['label' => 'คำนำหน้า', 'keyword' => 'คำนำหน้าชื่อ', 'source' => 'title', 'map' => ['นางสาว' => 'น.ส.'], 'default' => true],
+            'consent' => ['label' => 'ยอมรับ', 'keyword' => 'ยอมรับเงื่อนไข', 'value' => 'ยอมรับ', 'default' => true],
         ]]);
 
         $rows = app(FormFillExportService::class)->rows($schedule);
@@ -133,59 +210,71 @@ class FormFillExportTest extends TestCase
         ], $rows[1]['choiceFields']);
     }
 
-    public function test_zip_holds_data_json_and_each_id_card_next_to_it(): void
+    public function test_zip_has_a_folder_per_person_plus_the_whole_round(): void
     {
-        [$schedule, $booking] = $this->round();
-        $first = $booking->passengers->first();
-        app(BookingDocumentService::class)->store($booking, $first, 'id-copy', UploadedFile::fake()->image('card.png'), null);
+        $form = $this->form();
+        [$schedule, $booking] = $this->round($form);
+        [$a] = $booking->passengers->all();
+        app(BookingDocumentService::class)->store($booking, $a, 'id-copy', UploadedFile::fake()->image('card.png'), null);
+        app(PermitSignatureService::class)->sign($a, $form, $this->signature(), ['channel' => 'app']);
 
-        $path = app(FormFillExportService::class)->zip($schedule);
-        $zip = new \ZipArchive;
-        $zip->open($path);
-        $rows = json_decode($zip->getFromName('data.json'), true);
-        $hasImage = $zip->locateName('id_card_1.png') !== false;
-        $count = $zip->numFiles;
-        $script = $zip->getFromName('autofill.js');
-        $readme = $zip->locateName('README.txt') !== false;
-        $zip->close();
-        @unlink($path);
+        $files = $this->unzip(app(FormFillExportService::class)->zip($schedule));
 
-        $this->assertTrue($hasImage);
-        $this->assertSame(4, $count, 'data.json + รูปบัตร 1 ใบ + autofill.js + README.txt');
-        $this->assertStringContainsString('connectOverCDP', (string) $script);
-        $this->assertTrue($readme);
-        $this->assertSame('./id_card_1.png', $rows[0]['idCardFilePath']);
-        $this->assertNull($rows[1]['idCardFilePath']);
+        $this->assertSame([
+            '01-สมชาย ใจดีมาก/data.json',
+            '01-สมชาย ใจดีมาก/id_card.png',
+            '01-สมชาย ใจดีมาก/permit.pdf',
+            '02-สมหญิง ใจดี/data.json',
+            '02-สมหญิง ใจดี/permit.pdf',
+            'README.txt',
+            'autofill.js',
+            'data.json',
+        ], array_keys($files));
+
+        // ทั้งรอบชี้ไฟล์เข้าไปในโฟลเดอร์ · ในโฟลเดอร์ชี้ไฟล์ข้างตัว
+        $round = json_decode($files['data.json'], true);
+        $this->assertSame('./01-สมชาย ใจดีมาก/id_card.png', $round[0]['idCardFilePath']);
+        $this->assertSame('./01-สมชาย ใจดีมาก/permit.pdf', $round[0]['permitFilePath']);
+        $this->assertTrue($round[0]['permitSigned']);
+        $this->assertNull($round[1]['idCardFilePath']);
+        $this->assertFalse($round[1]['permitSigned']);
+
+        $own = json_decode($files['01-สมชาย ใจดีมาก/data.json'], true);
+        $this->assertCount(1, $own);
+        $this->assertSame(1, $own[0]['id']);
+        $this->assertSame('./id_card.png', $own[0]['idCardFilePath']);
+        $this->assertSame('./permit.pdf', $own[0]['permitFilePath']);
+
+        $this->assertStringStartsWith('%PDF', $files['02-สมหญิง ใจดี/permit.pdf']);
+        $this->assertStringContainsString('connectOverCDP', $files['autofill.js']);
     }
 
-    public function test_zip_has_each_persons_park_form_and_says_who_has_not_signed(): void
+    public function test_unticked_files_are_not_packed(): void
     {
-        $form = app(PermitFormService::class)->create(
-            'เขาช้างเผือก',
-            [UploadedFile::fake()->image('page.jpg', 420, 594)],
-            [['width_mm' => 210, 'height_mm' => 297]],
-        );
-        $form->update(['fields' => [
-            ['id' => 'a', 'page' => 0, 'source' => 'first_name', 'x' => 0.4, 'y' => 0.2, 'w' => 0.2, 'h' => 0.02, 'size' => 11, 'align' => 'left'],
-            ['id' => 's', 'page' => 0, 'source' => 'signature', 'x' => 0.55, 'y' => 0.7, 'w' => 0.3, 'h' => 0.05, 'size' => 11, 'align' => 'center'],
-        ]]);
-        $form = $form->fresh();
+        $form = $this->form();
         [$schedule, $booking] = $this->round($form);
-        app(PermitSignatureService::class)->sign($booking->passengers->first(), $form, $this->signature(), ['channel' => 'app']);
+        app(BookingDocumentService::class)->store($booking, $booking->passengers->first(), 'id-copy', UploadedFile::fake()->image('card.jpg'), null);
 
-        $path = app(FormFillExportService::class)->zip($schedule);
-        $zip = new \ZipArchive;
-        $zip->open($path);
-        $rows = json_decode($zip->getFromName('data.json'), true);
-        $pdfs = [$zip->getFromName('permit_1.pdf'), $zip->getFromName('permit_2.pdf')];
-        $zip->close();
-        @unlink($path);
+        $files = $this->unzip(app(FormFillExportService::class)->zip($schedule, 'first_name'));
 
-        foreach ($pdfs as $pdf) {
-            $this->assertStringStartsWith('%PDF', (string) $pdf);
-        }
-        $this->assertSame(['./permit_1.pdf', true], [$rows[0]['permitFilePath'], $rows[0]['permitSigned']]);
-        $this->assertSame(['./permit_2.pdf', false], [$rows[1]['permitFilePath'], $rows[1]['permitSigned']]);
+        $this->assertSame([
+            '01-สมชาย ใจดีมาก/data.json',
+            '02-สมหญิง ใจดี/data.json',
+            'README.txt',
+            'autofill.js',
+            'data.json',
+        ], array_keys($files));
+        $this->assertArrayNotHasKey('idCardFilePath', json_decode($files['data.json'], true)[0]);
+    }
+
+    public function test_folder_names_are_safe_on_windows(): void
+    {
+        [$schedule, $booking] = $this->round();
+        $booking->passengers->first()->update(['name' => 'ก.เก้ง: "แม่"/ลูก... ']);
+
+        $files = $this->unzip(app(FormFillExportService::class)->zip($schedule, 'first_name'));
+
+        $this->assertArrayHasKey('01-ก.เก้ง แม่ ลูก/data.json', $files);
     }
 
     private function signature(): string

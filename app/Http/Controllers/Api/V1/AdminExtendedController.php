@@ -584,20 +584,33 @@ class AdminExtendedController extends Controller
         return $this->success($documents->summary(TripSchedule::findOrFail($id)));
     }
 
+    /** ช่องติ๊ก "จะเอาข้อมูลอะไรบ้าง" ของปุ่มข้อมูลกรอกฟอร์ม — มาจาก config/form_fill.php */
+    public function formFillOptions(FormFillExportService $export): JsonResponse
+    {
+        return $this->success(['groups' => $export->options()]);
+    }
+
     /**
-     * ข้อมูลผู้เดินทางทั้งรอบให้สคริปต์กรอกฟอร์มออนไลน์ — ZIP (data.json + id_card_N.*)
-     * หรือ `?format=json` ได้แค่ JSON array คำถามตั้งใน config/form_fill.php
+     * ข้อมูลผู้เดินทางทั้งรอบให้สคริปต์กรอกฟอร์มออนไลน์ — ZIP โฟลเดอร์ละคน (data.json +
+     * id_card.* + permit.pdf) + data.json ทั้งรอบ หรือ `?format=json` ได้แค่ JSON array
+     * `?fields=first_name,last_name,...` = ช่องที่ติ๊ก (ไม่ส่ง = ค่าเริ่มต้นใน config)
      */
     public function formFillExport(Request $request, int $id, FormFillExportService $export): Response|JsonResponse
     {
         $schedule = TripSchedule::with('trip')->findOrFail($id);
+        $raw = $request->query('fields');
+        $fields = is_array($raw) || is_string($raw) ? $raw : null;
+
+        if ($fields !== null && $export->selection($fields) === []) {
+            return $this->error('เลือกข้อมูลที่จะส่งออกอย่างน้อย 1 ช่อง', 422);
+        }
 
         // มีเลขบัตรประชาชน/เบอร์โทร — ห้ามเก็บไว้ใน cache ของเบราว์เซอร์หรือ proxy
         if ($request->query('format') === 'json') {
-            return response()->json($export->rows($schedule), 200, ['Cache-Control' => 'no-store'], JSON_UNESCAPED_UNICODE);
+            return response()->json($export->rows($schedule, $fields), 200, ['Cache-Control' => 'no-store'], JSON_UNESCAPED_UNICODE);
         }
 
-        return response()->download($export->zip($schedule), $export->zipName($schedule), [
+        return response()->download($export->zip($schedule, $fields), $export->zipName($schedule), [
             'Content-Type' => 'application/zip',
             'Cache-Control' => 'no-store',
         ])->deleteFileAfterSend();
