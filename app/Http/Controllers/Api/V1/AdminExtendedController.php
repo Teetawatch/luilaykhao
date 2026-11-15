@@ -22,6 +22,7 @@ use App\Models\VehicleMaintenance;
 use App\Rules\ThaiName;
 use App\Services\BookingDocumentService;
 use App\Services\CoinService;
+use App\Services\FormFillExportService;
 use App\Services\PassengerCheckInService;
 use App\Services\PermitFormService;
 use App\Services\ScheduleDocumentService;
@@ -581,6 +582,25 @@ class AdminExtendedController extends Controller
     public function scheduleDocuments(int $id, ScheduleDocumentService $documents): JsonResponse
     {
         return $this->success($documents->summary(TripSchedule::findOrFail($id)));
+    }
+
+    /**
+     * ข้อมูลผู้เดินทางทั้งรอบให้สคริปต์กรอกฟอร์มออนไลน์ — ZIP (data.json + id_card_N.*)
+     * หรือ `?format=json` ได้แค่ JSON array คำถามตั้งใน config/form_fill.php
+     */
+    public function formFillExport(Request $request, int $id, FormFillExportService $export): Response|JsonResponse
+    {
+        $schedule = TripSchedule::with('trip')->findOrFail($id);
+
+        // มีเลขบัตรประชาชน/เบอร์โทร — ห้ามเก็บไว้ใน cache ของเบราว์เซอร์หรือ proxy
+        if ($request->query('format') === 'json') {
+            return response()->json($export->rows($schedule), 200, ['Cache-Control' => 'no-store'], JSON_UNESCAPED_UNICODE);
+        }
+
+        return response()->download($export->zip($schedule), $export->zipName($schedule), [
+            'Content-Type' => 'application/zip',
+            'Cache-Control' => 'no-store',
+        ])->deleteFileAfterSend();
     }
 
     /** ZIP เอกสารทั้งรอบ (โฟลเดอร์ละคน) หรือ `?passenger_id=` / `?staff_user_id=` เฉพาะคนเดียว */

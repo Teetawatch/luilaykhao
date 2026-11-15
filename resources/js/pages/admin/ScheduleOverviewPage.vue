@@ -1367,6 +1367,16 @@
                 <span class="material-symbols-rounded">{{ roundDocs.downloading === 'permit' ? 'hourglass_top' : 'picture_as_pdf' }}</span>
                 แบบฟอร์มอุทยานรวมไฟล์เดียว
               </button>
+              <button
+                v-if="roundDocs.data.total"
+                class="btn-secondary"
+                :disabled="!!roundDocs.downloading"
+                title="data.json + รูปบัตรประชาชน + แบบฟอร์มอุทยานรายคน + autofill.js สำหรับกรอก Google Form อัตโนมัติ"
+                @click="downloadFormFill"
+              >
+                <span class="material-symbols-rounded">{{ roundDocs.downloading === 'form-fill' ? 'hourglass_top' : 'data_object' }}</span>
+                ข้อมูลกรอกฟอร์ม (data.json)
+              </button>
               <button v-if="roundDocsUnsignedTotal" class="btn-secondary" @click="copyAllSignLinks">
                 <span class="material-symbols-rounded">{{ roundDocs.copied === 'all' ? 'check' : 'content_copy' }}</span>
                 {{ roundDocs.copied === 'all' ? 'ก๊อปแล้ว' : `ก๊อปลิงก์ทุกคนที่ยังไม่เซ็น (${roundDocsUnsignedTotal})` }}
@@ -3089,6 +3099,21 @@ async function downloadRoundPermitPdf() {
     saveBlob(res.data, 'application/pdf', `แบบฟอร์ม-${safeFileName(data.permit_form.name)}-${data.departure_date || data.schedule_id}.pdf`);
   } catch (e) {
     alert(await blobErrorMessage(e, 'สร้างแบบฟอร์มไม่สำเร็จ'));
+  } finally {
+    roundDocs.downloading = null;
+  }
+}
+
+// data.json แถวละคน + id_card_N.* ใน ZIP เดียว — คำถามที่ส่งออกตั้งใน config/form_fill.php
+async function downloadFormFill() {
+  const data = roundDocs.data;
+  if (!data || roundDocs.downloading) return;
+  roundDocs.downloading = 'form-fill';
+  try {
+    const res = await api.get(`/admin/calendar/schedules/${data.schedule_id}/form-fill`, { responseType: 'blob' });
+    saveBlob(res.data, 'application/zip', `data-json-${safeFileName(data.trip_title)}-${data.departure_date || data.schedule_id}.zip`);
+  } catch (e) {
+    alert(await blobErrorMessage(e, 'ส่งออกข้อมูลไม่สำเร็จ'));
   } finally {
     roundDocs.downloading = null;
   }
