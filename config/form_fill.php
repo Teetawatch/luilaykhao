@@ -71,10 +71,10 @@ return [
     ],
 
     'choice_fields' => [
-        'title' => ['label' => 'คำนำหน้า', 'keyword' => 'คำนำหน้า', 'exclude' => ['ฉุกเฉิน', 'อังกฤษ'], 'source' => 'title', 'default' => true],
-        'gender' => ['label' => 'เพศ (เดาจากคำนำหน้า)', 'keyword' => 'เพศ', 'source' => 'gender', 'default' => true],
-        'nationality' => ['label' => 'สัญชาติ', 'keyword' => 'สัญชาติ', 'source' => 'nationality', 'default' => false],
-        'blood_group' => ['label' => 'กรุ๊ปเลือด', 'keyword' => 'กรุ๊ปเลือด', 'source' => 'blood_group', 'default' => false],
+        'title' => ['label' => 'คำนำหน้า', 'keyword' => 'คำนำหน้า', 'keywords' => ['คำนำหน้า', 'คํานําหน้า', 'title', 'prefix'], 'exclude' => ['ฉุกเฉิน', 'อังกฤษ'], 'source' => 'title', 'default' => true],
+        'gender' => ['label' => 'เพศ (เดาจากคำนำหน้า)', 'keyword' => 'เพศ', 'keywords' => ['เพศ', 'gender', 'sex'], 'source' => 'gender', 'default' => true],
+        'nationality' => ['label' => 'สัญชาติ', 'keyword' => 'สัญชาติ', 'keywords' => ['สัญชาติ', 'nationality'], 'source' => 'nationality', 'default' => false],
+        'blood_group' => ['label' => 'กรุ๊ปเลือด', 'keyword' => 'กรุ๊ปเลือด', 'keywords' => ['กรุ๊ปเลือด', 'หมู่เลือด', 'blood'], 'source' => 'blood_group', 'default' => false],
     ],
 
     // ช่องพิเศษที่ไม่ได้อยู่ในรายการ keyword

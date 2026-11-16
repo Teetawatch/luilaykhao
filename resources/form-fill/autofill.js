@@ -192,6 +192,15 @@ function scanForm() {
     }
     return true;
   });
+  // ฟอร์มในหน้าต่างเด้ง (modal) ที่เปิดอยู่ — กรอกเฉพาะในนั้น ไม่ไปโดนช่องค้นหา/ช่องของหน้าข้างหลัง
+  // (นับเฉพาะหน้าต่างที่มีช่องพิมพ์/ช่องเลือก — แถบยอมรับคุกกี้มีแต่ checkbox ไม่นับ)
+  const dialogs = [...document.querySelectorAll('dialog[open], [role="dialog"], [aria-modal="true"], .modal.show, .modal.in')].filter(shown);
+  if (dialogs.length) {
+    const inDialog = controls.filter((el) => dialogs.some((d) => d.contains(el)));
+    const typing = (el) =>
+      el.tagName === 'SELECT' || el.tagName === 'TEXTAREA' || ['text', 'email', 'tel', 'number', 'date'].includes(typeOf(el));
+    if (inDialog.some(typing)) controls = inDialog;
+  }
   const set = new Set(controls);
 
   // รวม radio ชื่อเดียวกัน / checkbox ชื่อเดียวกันเป็นข้อเดียว
@@ -393,11 +402,11 @@ const titleHas = (title, k) => title.includes(norm(k));
  *   upload    true = เฉพาะข้ออัปโหลดไฟล์ · false = เฉพาะข้อที่มีช่องให้ตอบ
  * ข้ามข้อที่กรอกไปแล้วในรอบนี้ — คนถัดไปในหน้าเดียวกันจึงลงช่องชุดถัดไป
  */
-function pick(questions, keywords, { require = [], exclude = [], upload = false } = {}) {
+function pick(questions, keywords, { require = [], exclude = [], upload = false, includeDone = false } = {}) {
   for (const k of asList(keywords)) {
     let best = null;
     for (const q of questions) {
-      if (q.done || !q.title) continue;
+      if ((q.done && !includeDone) || !q.title) continue;
       if (upload ? !q.upload : q.upload) continue;
       const title = norm(q.title);
       if (!titleHas(title, k)) continue;
@@ -420,11 +429,29 @@ async function markDone(q) {
     .catch(() => {});
 }
 
-/** เริ่มคนใหม่บนหน้าเดิม (เช่น ส่งแล้วกด "ลงทะเบียนอีกคน") — ลืมว่าช่องไหนเคยกรอก */
-async function clearDone(page) {
+/**
+ * ก่อนกรอกรอบใหม่บนหน้าเดิม
+ *   all = false  ลืมเฉพาะช่องที่ว่างแล้ว (ส่งแล้วเว็บล้างฟอร์มให้ลงคนต่อไป) — ช่องที่ยังมีค่า
+ *                ของคนก่อนถูกข้าม คนถัดไปจึงลงชุดช่องถัดไปในเว็บที่มีหลายคนในหน้าเดียว
+ *   all = true   ลืมทั้งหมด กรอกทับของเดิม (พิมพ์เลขตามด้วย !)
+ */
+async function clearDone(page, all = true) {
   for (const frame of page.frames()) {
     await frame
-      .evaluate(() => document.querySelectorAll('[data-llk-done]').forEach((el) => el.removeAttribute('data-llk-done')))
+      .evaluate((all) => {
+        const hasValue = (el) => {
+          if (el.matches('input[type="radio"], input[type="checkbox"]')) return el.checked;
+          if (el.tagName === 'SELECT') return el.selectedIndex > 0;
+          if (el.matches('input, textarea')) return el.value !== '' || (el.type === 'file' && el.files.length > 0);
+          if (el.getAttribute('aria-checked') === 'true') return true;
+          // กล่องคำถามของ Google Form / ช่องเลือกที่ทำเอง — ดูว่าข้างในมีอะไรกรอกไว้ไหม
+          return [...el.querySelectorAll('input, textarea')].some((i) => i.type !== 'hidden' && i.value !== '') ||
+            !!el.querySelector('[aria-checked="true"]');
+        };
+        document.querySelectorAll('[data-llk-done]').forEach((el) => {
+          if (all || !hasValue(el)) el.removeAttribute('data-llk-done');
+        });
+      }, all)
       .catch(() => {});
   }
 }
@@ -571,12 +598,22 @@ async function chooseCombo(q, value) {
   await options.first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
   const texts = await options.allInnerTexts().catch(() => []);
   const i = optionIndex(texts, value);
-  if (i === -1) {
-    await q.page.keyboard.press('Escape').catch(() => {});
-    return false;
+  if (i !== -1) {
+    await options.nth(i).click({ timeout: 3000 });
+    return true;
   }
-  await options.nth(i).click({ timeout: 3000 });
-  return true;
+  // บางชุดเครื่องมือ (เช่น Ant Design) วาดตัวเลือกเป็น div ธรรมดา — คลิกข้อความที่ตรงกันที่เพิ่งโผล่
+  // (ตัวท้ายสุด: รายการที่เด้งขึ้นมามักต่อท้ายหน้า)
+  const spellings = [value, ...(ALIASES.find((g) => g.includes(value)) || []).filter((t) => t !== value)];
+  for (const text of spellings) {
+    const match = q.frame.getByText(new RegExp(`^\\s*${escapeRegex(text)}\\s*$`, 'i')).locator('visible=true');
+    if ((await match.count().catch(() => 0)) > 0) {
+      await match.last().click({ timeout: 3000 });
+      return true;
+    }
+  }
+  await q.page.keyboard.press('Escape').catch(() => {});
+  return false;
 }
 
 async function answerGeneric(q, value) {
@@ -779,8 +816,11 @@ async function fillGoogleBirthDate(box, birthDate) {
 
 /** @returns {Promise<string|null>} คำเตือน หรือ null = กรอกแล้ว */
 async function fillBirthDate(page, birthDate, warnings) {
-  const q = pick(await scanAll(page), BIRTH_KEYWORDS, { exclude: BIRTH_EXCLUDE });
-  if (!q) return 'ไม่พบคำถามวันเกิด';
+  const questions = await scanAll(page);
+  const q = pick(questions, BIRTH_KEYWORDS, { exclude: BIRTH_EXCLUDE });
+  if (!q) {
+    return pick(questions, BIRTH_KEYWORDS, { exclude: BIRTH_EXCLUDE, includeDone: true }) ? SKIPPED : 'ไม่พบคำถามวันเกิด';
+  }
 
   if (q.kind === 'gform') {
     const w = await fillGoogleBirthDate(gbox(q), birthDate);
@@ -869,10 +909,22 @@ async function uploadFile(q, filePath) {
 
 // ====== กรอกหนึ่งคน ======
 
+const SKIPPED = Symbol('skipped');
+
 async function fillPerson(page, data) {
   const warnings = [];
   const has = (key) => Object.prototype.hasOwnProperty.call(data, key);
-  const find = async (keywords, rule) => pick(await scanAll(page), keywords, rule);
+  // ข้อที่เจอแต่มีค่าของคนก่อนอยู่แล้ว — ข้ามไว้ ไม่กรอกทับ (เว็บที่มีหลายคนในหน้าเดียว)
+  const skipped = [];
+  const find = async (keywords, rule, label) => {
+    const questions = await scanAll(page);
+    const q = pick(questions, keywords, rule);
+    if (!q && pick(questions, keywords, { ...rule, includeDone: true })) {
+      skipped.push(label);
+      return SKIPPED;
+    }
+    return q;
+  };
 
   // A. ช่องข้อความ
   for (const item of data.textFields || []) {
@@ -880,7 +932,8 @@ async function fillPerson(page, data) {
       warnings.push(`ไม่มี "${item.keyword}" ในระบบ — กรอกเอง`);
       continue;
     }
-    const q = await find(item.keywords || item.keyword, { require: item.require, exclude: item.exclude });
+    const q = await find(item.keywords || item.keyword, { require: item.require, exclude: item.exclude }, item.keyword);
+    if (q === SKIPPED) continue;
     if (!q) warnings.push(`ไม่พบคำถาม "${item.keyword}"`);
     else if (!(await answer(q, item.value, 'text'))) warnings.push(`คำถาม "${item.keyword}" ใส่ค่าไม่ได้ — กรอกเอง`);
   }
@@ -897,7 +950,8 @@ async function fillPerson(page, data) {
       warnings.push(`ไม่มี${label}ในระบบ — กรอกเอง`);
       continue;
     }
-    const q = await find(PHONE_KEYWORDS, rule);
+    const q = await find(PHONE_KEYWORDS, rule, label);
+    if (q === SKIPPED) continue;
     if (!q || !(await answer(q, phones[key], 'text'))) warnings.push(`ไม่พบช่อง${label}`);
   }
 
@@ -905,7 +959,8 @@ async function fillPerson(page, data) {
   if (has('birthDate')) {
     if (data.birthDate) {
       const w = await fillBirthDate(page, data.birthDate, warnings);
-      if (w) warnings.push(w);
+      if (w === SKIPPED) skipped.push('วันเกิด');
+      else if (w) warnings.push(w);
     } else {
       warnings.push('ไม่มีวันเกิดในระบบ — กรอกเอง');
     }
@@ -917,7 +972,8 @@ async function fillPerson(page, data) {
       warnings.push(`ไม่มี "${choice.keyword}" ในระบบ — เลือกเอง`);
       continue;
     }
-    const q = await find(choice.keywords || choice.keyword, { require: choice.require, exclude: choice.exclude });
+    const q = await find(choice.keywords || choice.keyword, { require: choice.require, exclude: choice.exclude }, choice.keyword);
+    if (q === SKIPPED) continue;
     if (!q) warnings.push(`ไม่พบคำถาม "${choice.keyword}"`);
     else if (!(await answer(q, choice.value, 'choice'))) warnings.push(`"${choice.keyword}" ไม่มีตัวเลือก "${choice.value}"`);
   }
@@ -942,8 +998,8 @@ async function fillPerson(page, data) {
       warnings.push(`ไม่พบไฟล์ ${data[key]} (แตก ZIP ครบหรือยัง?)`);
       continue;
     }
-    const q = await find(UPLOAD_KEYWORDS[kind], { upload: true });
-    if (!q) continue; // ฟอร์มนี้ไม่ได้ขอไฟล์นี้
+    const q = await find(UPLOAD_KEYWORDS[kind], { upload: true }, label);
+    if (!q || q === SKIPPED) continue; // ฟอร์มนี้ไม่ได้ขอไฟล์นี้ / แนบของคนก่อนไว้แล้ว
     if (!AUTO_UPLOAD) {
       warnings.push(`ลาก ${file} (${label}) วางเอง`);
       continue;
@@ -951,6 +1007,12 @@ async function fillPerson(page, data) {
     const w = await uploadFile(q, file);
     if (w) warnings.push(`${label}: ${w} — ไฟล์อยู่ที่ ${file}`);
     else await markDone(q);
+  }
+
+  if (skipped.length) {
+    warnings.push(
+      `ข้าม ${skipped.join(', ')} — ช่องเหล่านี้มีข้อมูลของคนก่อนอยู่แล้ว ถ้าจะกรอกทับให้พิมพ์เลขตามด้วย ! (เช่น 3!)`
+    );
   }
 
   return warnings;
@@ -992,11 +1054,38 @@ function printPeople(people, done) {
   people.forEach((p, i) => console.log(`   ${done.has(i) ? '✅' : '  '} ${who(p, i)}`));
 }
 
+/** ข้อมูลที่ระบบไม่มี — บอกตั้งแต่ก่อนเริ่ม จะได้ตามขอจากลูกทริป/สตาฟก่อนไปถึงหน้าเว็บ */
+function printMissing(people) {
+  const lines = [];
+  const unsigned = [];
+  people.forEach((p, i) => {
+    const gaps = [
+      ...(p.textFields || []).filter((f) => !f.value).map((f) => f.keyword),
+      ...Object.entries(p.phoneFields || {}).filter(([, v]) => !v).map(([k]) => (k === 'emergencyPhone' ? 'เบอร์ฉุกเฉิน' : 'เบอร์โทร')),
+      ...(Object.prototype.hasOwnProperty.call(p, 'birthDate') && !p.birthDate ? ['วันเกิด'] : []),
+      ...(p.choiceFields || []).filter((f) => !f.value).map((f) => f.keyword),
+      ...(Object.prototype.hasOwnProperty.call(p, 'idCardFilePath') && !p.idCardFilePath ? ['รูปบัตร'] : []),
+    ];
+    if (gaps.length) lines.push(`   ${who(p, i)} — ${gaps.join(', ')}`);
+    if (p.permitSigned === false) unsigned.push(i + 1);
+  });
+  if (!lines.length && !unsigned.length) {
+    console.log('✅ ข้อมูลในระบบครบทุกคน');
+    return;
+  }
+  if (lines.length) {
+    console.log(`\n⚠️ ข้อมูลที่ระบบยังไม่มี ${lines.length} คน (ต้องกรอกเองบนเว็บ):`);
+    lines.forEach((l) => console.log(l));
+  }
+  if (unsigned.length) console.log(`🖊️ ยังไม่เซ็นแบบฟอร์มอุทยาน: คนที่ ${unsigned.join(', ')} — อย่าเพิ่งส่งของคนเหล่านี้`);
+}
+
 function printHelp() {
   console.log('\n👉 เปิดหน้าลงทะเบียนในหน้าต่าง Chrome ที่สคริปต์เปิดไว้ (เว็บไหนก็ได้ ไม่ต้องเป็น Google Form)');
   console.log('   แล้วพิมพ์ที่หน้าต่างดำนี้:');
   console.log('     เลขคน เช่น 3      = กรอกคนนั้นลงหน้าที่เปิดอยู่ (Enter เฉย ๆ = คนถัดไป)');
   console.log('     หลายคน เช่น 1-4   = กรอกต่อกันในหน้าเดียว (เว็บที่มีช่องของหลายคนในหน้าเดียว)');
+  console.log('     เลขตามด้วย ! เช่น 3! = กรอกทับช่องที่มีข้อมูลอยู่แล้ว (ปกติสคริปต์ข้ามช่องที่กรอกไว้)');
   console.log('     ลิงก์ https://...  = เปิดลิงก์นั้นในแท็บที่เปิดอยู่');
   console.log('     a = เปิดแท็บละคน ทุกคน (Google Form) · l = ดูรายชื่อ · q = ออก');
 }
@@ -1156,7 +1245,7 @@ async function fillOne(page, data, i) {
 }
 
 /** กรอกลงหน้าที่เปิดอยู่ — หลายคนลงหน้าเดียวกันต่อกัน (ช่องที่กรอกแล้วถูกข้ามไปชุดถัดไป) */
-async function fillHere(context, people, indices, done) {
+async function fillHere(context, people, indices, done, overwrite = false) {
   const page = await activePage(context);
   if (!page) {
     console.log('❌ ยังไม่เห็นหน้าเว็บ — เปิดหน้าลงทะเบียนในหน้าต่าง Chrome ของสคริปต์ก่อน (หรือวางลิงก์ที่นี่)');
@@ -1169,7 +1258,7 @@ async function fillHere(context, people, indices, done) {
     return;
   }
   rememberFormUrl(page.url());
-  await clearDone(page);
+  await clearDone(page, overwrite);
 
   console.log(`🚀 กรอกลงหน้า: ${(await page.title().catch(() => '')) || page.url()}`);
   for (const i of indices) {
@@ -1240,6 +1329,7 @@ async function main() {
   const people = loaded.people;
   const staffCount = people.filter((p) => p.isStaff).length;
   console.log(`📄 ${people.length} คน${staffCount ? ` (ทีมงาน ${staffCount})` : ''} จาก ${loaded.source}`);
+  printMissing(people);
 
   // 2. เชื่อมต่อกับ Chrome พอร์ต 9222 — ยังไม่ได้เปิดไว้ สคริปต์เปิดให้เอง
   if (!(await ensureBrowser())) return;
@@ -1281,10 +1371,13 @@ async function main() {
         } else if (answer === '') {
           if (next === -1) console.log('   ครบทุกคนแล้ว — พิมพ์เลขคนเพื่อกรอกซ้ำ หรือ q = ออก');
           else await fillHere(context, people, [next], done);
+        } else if (answer === '!') {
+          if (next !== -1) await fillHere(context, people, [next], done, true);
         } else {
-          const picked = parseSelection(answer, people.length);
+          const overwrite = answer.endsWith('!');
+          const picked = parseSelection(answer.replace(/!$/, ''), people.length);
           if (!picked) console.log(`   ไม่เข้าใจ "${answer}" — พิมพ์เลข 1-${people.length} หรือ l ดูวิธีใช้`);
-          else await fillHere(context, people, picked, done);
+          else await fillHere(context, people, picked, done, overwrite);
         }
       } catch (e) {
         console.log(`❌ ${String(e?.message || e).split('\n')[0]}`);

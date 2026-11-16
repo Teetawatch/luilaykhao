@@ -150,8 +150,8 @@ class FormFillExportTest extends TestCase
             ],
             'phoneFields' => ['applicantPhone' => '0812345678', 'emergencyPhone' => '0898765432'],
             'choiceFields' => [
-                ['keyword' => 'คำนำหน้า', 'value' => 'นาย', 'exclude' => ['ฉุกเฉิน', 'อังกฤษ']],
-                ['keyword' => 'เพศ', 'value' => 'ชาย'],
+                ['keyword' => 'คำนำหน้า', 'value' => 'นาย', 'keywords' => ['คำนำหน้า', 'คํานําหน้า', 'title', 'prefix'], 'exclude' => ['ฉุกเฉิน', 'อังกฤษ']],
+                ['keyword' => 'เพศ', 'value' => 'ชาย', 'keywords' => ['เพศ', 'gender', 'sex']],
             ],
             'idCardFilePath' => null,
             'permitFilePath' => null,
