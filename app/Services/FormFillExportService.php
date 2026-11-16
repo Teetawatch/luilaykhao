@@ -28,7 +28,9 @@ use Illuminate\Support\Facades\Storage;
  * — สคริปต์จึงแยกได้ว่า "ไม่ได้เลือก" (เงียบ) กับ "ไม่มีในระบบ" (เตือนให้กรอกเอง)
  *
  * ผู้เดินทางชุดเดียวกับหน้าเอกสารของรอบ (ScheduleDocumentService::passengers):
- * ใบจองที่ยังไม่ยกเลิก ไม่รวมคนที่แจ้งว่าไม่ไป ไม่รวมสตาฟ
+ * ใบจองที่ยังไม่ยกเลิก ไม่รวมคนที่แจ้งว่าไม่ไป แล้วต่อท้ายด้วยทีมงานประจำรอบ
+ * (PermitFormService::staffFor — ข้อมูลจากโปรไฟล์สตาฟ, แถวมี `isStaff: true`,
+ * โฟลเดอร์ "NN-ทีมงาน-ชื่อ", ไม่มีรูปบัตรเพราะสตาฟไม่มีใบจองให้แนบ)
  */
 class FormFillExportService
 {
@@ -156,15 +158,23 @@ class FormFillExportService
         $passengers = $this->documents->passengers($schedule)->values();
         // อีเมลไล่หาจากบัญชีที่ผูกกับที่นั่ง — โหลดทีเดียวทั้งรอบ
         $passengers->load('member.user');
+        // ทีมงานต่อท้ายลูกทริป — อุทยานลงทะเบียนทุกคนที่เข้าพื้นที่ (ชุดเดียวกับ ZIP แบบฟอร์มอุทยาน)
+        // ข้อมูลมาจากโปรไฟล์ของสตาฟ ผ่านผู้เดินทางชั่วคราวที่ไม่บันทึกลงฐานข้อมูล
+        $staff = $this->forms->staffFor($schedule);
         // ช่อง "กลุ่มคณะ ... คน" บนแบบฟอร์มนับสตาฟด้วย — ใช้ตัวเลขเดียวกับ PDF ที่โหลดจากหน้าอื่น
-        $groupSize = $form ? $this->forms->groupSize($schedule) : $passengers->count();
+        $groupSize = $passengers->count() + $staff->count();
         $on = fn (string $id) => in_array($id, $selected, true);
         $people = [];
 
-        foreach ($passengers as $i => $passenger) {
+        $everyone = $passengers->map(fn (BookingPassenger $p) => ['passenger' => $p, 'user' => null])
+            ->concat($staff->map(fn (array $s) => ['passenger' => $s['passenger'], 'user' => $s['user']]))
+            ->values();
+
+        foreach ($everyone as $i => ['passenger' => $passenger, 'user' => $staffUser]) {
             $n = $i + 1;
-            $folder = sprintf('%02d-%s', $n, $this->safeName((string) $passenger->name, 'ผู้เดินทาง'));
-            $values = $this->values($passenger, $schedule, $groupSize);
+            $isStaff = $staffUser !== null;
+            $folder = sprintf('%02d-%s%s', $n, $isStaff ? 'ทีมงาน-' : '', $this->safeName((string) $passenger->name, $isStaff ? 'ทีมงาน' : 'ผู้เดินทาง'));
+            $values = $this->values($passenger, $schedule, $groupSize, $staffUser);
             $files = [];
 
             $row = [
@@ -172,6 +182,9 @@ class FormFillExportService
                 'name' => trim((string) $passenger->name),
                 'bookingRef' => (string) $passenger->booking?->booking_ref,
             ];
+            if ($isStaff) {
+                $row['isStaff'] = true;
+            }
 
             if ($on('birth_date')) {
                 $row['birthDate'] = $passenger->birth_date?->format('Y-m-d');
@@ -186,7 +199,8 @@ class FormFillExportService
             $row['choiceFields'] = $this->fields('choice_fields', $selected, $values);
 
             if ($on('id_card_file')) {
-                $file = $this->idCardFile($passenger, config('form_fill.id_card_documents', []), $withFiles);
+                // สตาฟไม่มีใบจอง จึงไม่มีรูปบัตรที่แนบไว้ — สคริปต์เตือนให้แนบเอง
+                $file = $isStaff ? null : $this->idCardFile($passenger, config('form_fill.id_card_documents', []), $withFiles);
                 $row['idCardFilePath'] = null;
                 if ($file !== null) {
                     $row['idCardFilePath'] = "./id_card.{$file['ext']}";
@@ -229,13 +243,24 @@ class FormFillExportService
     }
 
     /** ค่าที่ config อ้างถึงได้ — ของแบบฟอร์มอุทยาน + ที่ฟอร์มออนไลน์มักถามเพิ่ม */
-    private function values(BookingPassenger $passenger, TripSchedule $schedule, int $groupSize): array
+    private function values(BookingPassenger $passenger, TripSchedule $schedule, int $groupSize, ?User $staff = null): array
     {
         $values = PermitFormFields::values($passenger, $schedule, $groupSize);
         $values['gender'] = self::genderFromTitle($values['title'] ?? '');
-        $values['email'] = $this->emailOf($passenger, (string) ($values['email'] ?? ''));
+        $values['email'] = $staff
+            ? ($this->realEmail($staff) ?? '')
+            : $this->emailOf($passenger, (string) ($values['email'] ?? ''));
 
         return $values;
+    }
+
+    /** อีเมลจริงของบัญชี — บัญชีที่เข้าผ่าน LINE/โซเชียล (@social.local) หรือแอดมินเปิดแทนไม่มี */
+    private function realEmail(?User $user): ?string
+    {
+        return $user && filled($user->email)
+            && ! str_ends_with(strtolower((string) $user->email), '@social.local')
+            && ! $user->hasPlaceholderEmail()
+            ? (string) $user->email : null;
     }
 
     /**
@@ -246,10 +271,7 @@ class FormFillExportService
      */
     private function emailOf(BookingPassenger $passenger, string $own): string
     {
-        $real = fn (?User $user) => $user && filled($user->email)
-            && ! str_ends_with(strtolower((string) $user->email), '@social.local')
-            && ! $user->hasPlaceholderEmail()
-            ? (string) $user->email : null;
+        $real = fn (?User $user) => $this->realEmail($user);
 
         if (trim($own) !== '') {
             return trim($own);

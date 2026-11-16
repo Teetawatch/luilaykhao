@@ -1371,7 +1371,7 @@
                 v-if="roundDocs.data.total"
                 class="btn-secondary"
                 :class="{ active: formFill.open }"
-                title="data.json + รูปบัตรประชาชน + แบบฟอร์มอุทยาน โฟลเดอร์ละคน + autofill.js สำหรับกรอก Google Form อัตโนมัติ"
+                title="data.json (ลูกทริป + ทีมงาน) + รูปบัตรประชาชน + แบบฟอร์มอุทยาน โฟลเดอร์ละคน + autofill.js กรอกหน้าลงทะเบียนที่เปิดอยู่ให้อัตโนมัติ (Google Form หรือเว็บอื่น)"
                 @click="toggleFormFill"
               >
                 <span class="material-symbols-rounded">data_object</span>
@@ -1398,7 +1398,7 @@
             <div v-if="formFill.open" class="ff-panel">
               <div class="ff-head">
                 <strong>เลือกข้อมูลที่จะส่งออก</strong>
-                <small>ZIP มี data.json ทั้งรอบ + โฟลเดอร์ละคน (ส่งต่อให้คนช่วยลงทะเบียนได้) + autofill.js</small>
+                <small>ZIP มี data.json ทั้งรอบ (ลูกทริป + ทีมงาน) + โฟลเดอร์ละคน (ส่งต่อให้คนช่วยลงทะเบียนได้) + autofill.js ใช้กับ Google Form หรือเว็บลงทะเบียนอื่นก็ได้</small>
               </div>
               <p v-if="formFill.loading" class="ff-muted">กำลังโหลดรายการ...</p>
               <p v-else-if="formFill.error" class="ff-error">{{ formFill.error }}</p>

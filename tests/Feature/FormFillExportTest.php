@@ -131,10 +131,22 @@ class FormFillExportTest extends TestCase
             'bookingRef' => $rows[0]['bookingRef'],
             'birthDate' => '1994-02-14',
             'textFields' => [
-                ['keyword' => 'ชื่อจริง', 'value' => 'สมชาย', 'exclude' => ['ฉุกเฉิน', 'ผู้ติดต่อ']],
-                ['keyword' => 'นามสกุล', 'value' => 'ใจดีมาก', 'exclude' => ['ชื่อ-นามสกุล', 'ชื่อ - นามสกุล', 'ชื่อและนามสกุล', 'ฉุกเฉิน', 'ผู้ติดต่อ', 'อังกฤษ']],
+                [
+                    'keyword' => 'ชื่อจริง', 'value' => 'สมชาย',
+                    'keywords' => config('form_fill.text_fields.first_name.keywords'),
+                    'exclude' => config('form_fill.text_fields.first_name.exclude'),
+                ],
+                [
+                    'keyword' => 'นามสกุล', 'value' => 'ใจดีมาก',
+                    'keywords' => config('form_fill.text_fields.last_name.keywords'),
+                    'exclude' => config('form_fill.text_fields.last_name.exclude'),
+                ],
                 ['keyword' => 'อายุ', 'value' => '32', 'exclude' => ['หมดอายุ', 'บัตร']],
-                ['keyword' => 'เลขบัตรประชาชน', 'value' => '1103700123456'],
+                [
+                    'keyword' => 'เลขบัตรประชาชน', 'value' => '1103700123456',
+                    'keywords' => config('form_fill.text_fields.id_card.keywords'),
+                    'exclude' => config('form_fill.text_fields.id_card.exclude'),
+                ],
             ],
             'phoneFields' => ['applicantPhone' => '0812345678', 'emergencyPhone' => '0898765432'],
             'choiceFields' => [
@@ -150,6 +162,52 @@ class FormFillExportTest extends TestCase
         $this->assertNull($rows[1]['birthDate']);
         $this->assertSame('', $rows[1]['phoneFields']['applicantPhone']);
         $this->assertSame('หญิง', $rows[1]['choiceFields'][1]['value']);
+    }
+
+    public function test_web_forms_that_just_say_name_still_match_first_name_before_anything_else(): void
+    {
+        $first = config('form_fill.text_fields.first_name');
+
+        // ลองตามลำดับ — "ชื่อจริง" ก่อน คำกว้าง "ชื่อ" สำหรับเว็บที่เขียนแค่นั้น
+        $this->assertSame(['ชื่อจริง', 'ชื่อ'], array_slice($first['keywords'], 0, 2));
+        foreach (['นามสกุล', 'เล่น', 'ฉุกเฉิน', 'อังกฤษ'] as $word) {
+            $this->assertContains($word, $first['exclude'], "\"ชื่อ\" ต้องไม่ไปลงข้อที่มีคำว่า {$word}");
+        }
+    }
+
+    /** อุทยานลงทะเบียนทุกคนที่เข้าพื้นที่ — ทีมงานต้องอยู่ในไฟล์ด้วย ต่อท้ายลูกทริป */
+    public function test_round_staff_are_appended_from_their_profiles(): void
+    {
+        $form = $this->form();
+        [$schedule] = $this->round($form);
+        $staff = User::factory()->create([
+            'title' => 'นาย', 'name' => 'ทีมงาน หนึ่ง', 'phone' => '090-111-2222',
+            'birth_date' => '1990-05-01', 'id_card' => '3100500123456', 'email' => 'staff@example.com',
+        ]);
+        $lineStaff = User::factory()->create(['name' => 'สตาฟ ไลน์', 'email' => 'line_U9@social.local']);
+        $schedule->staff()->attach($staff->id, ['assigned_by' => $this->admin->id]);
+        $schedule->staff()->attach($lineStaff->id, ['assigned_by' => $this->admin->id]);
+
+        $rows = app(FormFillExportService::class)->rows($schedule, 'first_name,email,applicant_phone,birth_date,id_card_file,permit_file');
+
+        $this->assertCount(4, $rows, 'ลูกทริป 2 + ทีมงาน 2');
+        $this->assertArrayNotHasKey('isStaff', $rows[0]);
+        $this->assertSame(3, $rows[2]['id']);
+        $this->assertTrue($rows[2]['isStaff']);
+        $this->assertSame('ทีมงาน หนึ่ง', $rows[2]['name']);
+        $this->assertSame('', $rows[2]['bookingRef']);
+        $this->assertSame(['ทีมงาน', 'staff@example.com'], array_column($rows[2]['textFields'], 'value'));
+        $this->assertSame('0901112222', $rows[2]['phoneFields']->applicantPhone);
+        $this->assertSame('1990-05-01', $rows[2]['birthDate']);
+        $this->assertNull($rows[2]['idCardFilePath'], 'สตาฟไม่มีใบจอง จึงไม่มีรูปบัตรที่แนบไว้');
+        $this->assertFalse($rows[2]['permitSigned']);
+        $this->assertSame('', $rows[3]['textFields'][1]['value'], 'บัญชี LINE ไม่มีอีเมลจริง');
+
+        $files = $this->unzip(app(FormFillExportService::class)->zip($schedule, 'first_name,permit_file'));
+        $this->assertArrayHasKey('03-ทีมงาน-ทีมงาน หนึ่ง/data.json', $files);
+        $this->assertStringStartsWith('%PDF', $files['03-ทีมงาน-ทีมงาน หนึ่ง/permit.pdf']);
+        $round = json_decode($files['data.json'], true);
+        $this->assertSame('./03-ทีมงาน-ทีมงาน หนึ่ง/permit.pdf', $round[2]['permitFilePath']);
     }
 
     public function test_unticked_fields_are_left_out_entirely(): void
