@@ -334,6 +334,12 @@ class Trip extends Model
         return $this->belongsToMany(Place::class, 'place_trip');
     }
 
+    /** ที่พักชุมชนใกล้ทริปนี้ — App\Services\StayBookingService */
+    public function stays(): BelongsToMany
+    {
+        return $this->belongsToMany(Stay::class, 'stay_trip')->withPivot('distance_note')->withTimestamps();
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);

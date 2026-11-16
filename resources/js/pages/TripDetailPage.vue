@@ -1407,6 +1407,34 @@
           </div>
         </section>
 
+        <!-- ที่พักชุมชนใกล้ทริปนี้ — คืนก่อน/หลังทริป -->
+        <section v-if="nearbyStays.length" class="mt-16 pt-16 border-t border-gray-200">
+          <div class="flex items-end justify-between gap-4 mb-8">
+            <div>
+              <header class="ed-head mb-2">
+                <span class="ed-kicker">ที่พักชุมชน</span>
+                <h2 class="ed-title">พักใกล้ ๆ คืนก่อนหรือหลังทริป</h2>
+              </header>
+              <p class="text-[var(--color-text-muted)] font-medium">โฮมสเตย์ของคนในพื้นที่ เงินส่วนใหญ่ถึงมือเจ้าของบ้านโดยตรง</p>
+            </div>
+            <router-link :to="{ path: '/stays', query: { trip: trip.slug } }" class="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[var(--color-accent)] font-bold hover:gap-2.5 transition-all">
+              ดูทั้งหมด
+              <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
+            </router-link>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <router-link v-for="s in nearbyStays" :key="s.id" :to="stayLink(s)" class="flex gap-4 rounded-[1.5rem] bg-white border border-gray-100 p-3 group">
+              <img v-if="s.cover_image" :src="s.cover_image" :alt="s.name" loading="lazy" class="h-24 w-24 shrink-0 rounded-2xl object-cover" />
+              <div class="min-w-0 py-1">
+                <p class="truncate font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)]">{{ s.name }}</p>
+                <p v-if="s.distance_note" class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ s.distance_note }}</p>
+                <p class="mt-1 text-[12px] font-bold text-[var(--color-accent)]">{{ Math.round(s.community_share_percent) }}% ถึงชุมชน</p>
+                <p v-if="s.price_from !== null" class="text-[14px] font-black text-[var(--color-text-dark)]">เริ่ม ฿{{ Math.round(s.price_from).toLocaleString('th-TH') }}/คืน</p>
+              </div>
+            </router-link>
+          </div>
+        </section>
+
         <!-- Related trips — "you may also like" -->
         <section v-if="relatedTrips.length" class="mt-16 pt-16 border-t border-gray-200">
           <div class="flex items-end justify-between gap-4 mb-8">
@@ -2033,6 +2061,16 @@ import { thaiShort } from '../lib/thaiDate';
 const route = useRoute();
 const trip = ref(null);
 const relatedTrips = ref([]);
+const nearbyStays = ref([]);
+
+/** ลิงก์ที่พัก — ถ้าเลือกรอบไว้แล้ว เติมวันให้เป็นคืนก่อนวันเดินทาง */
+function stayLink(stay) {
+  const departure = selectedSchedule.value?.departure_date?.slice(0, 10);
+  if (!departure) return `/stays/${stay.slug}`;
+  const d = new Date(departure + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return { path: `/stays/${stay.slug}`, query: { check_in: d.toISOString().slice(0, 10), check_out: departure } };
+}
 
 // เบอร์ฉุกเฉินของประเทศปลายทาง — backend ส่งมาเป็น object {ป้าย: เบอร์}
 // แปลงเป็นอาเรย์เพื่อให้ template วนได้แน่นอน (ลำดับคีย์ของ object ไม่การันตี)
@@ -3029,6 +3067,9 @@ onMounted(async () => {
     // Related trips — non-blocking, never breaks the page if it fails
     api.get(`/trips/${route.params.slug}/related`)
       .then((r) => { relatedTrips.value = r.data.data || []; })
+      .catch(() => {});
+    api.get(`/trips/${route.params.slug}/stays`)
+      .then((r) => { nearbyStays.value = r.data.data || []; })
       .catch(() => {});
 
     typeBadgeClass.value = typeMap[trip.value.type]?.class || 'bg-[#6B8F7A] text-white';

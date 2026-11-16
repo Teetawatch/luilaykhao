@@ -277,6 +277,16 @@ const menuGroups = ref([
     isOpen: false
   },
   {
+    id: 'stays',
+    label: 'ที่พักชุมชน',
+    icon: 'fas fa-house-chimney',
+    items: [
+      { to: '/admin/stay-bookings', icon: 'fas fa-bed', label: 'ใบจองที่พัก' },
+      { to: '/admin/stays', icon: 'fas fa-house-chimney', label: 'ที่พักและห้อง' },
+    ],
+    isOpen: false
+  },
+  {
     id: 'transport',
     label: 'ขนส่งและรถตู้',
     icon: 'fas fa-shuttle-van',

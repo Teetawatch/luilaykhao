@@ -28,6 +28,7 @@ use App\Http\Controllers\TripStoryController;
 use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\Place;
+use App\Models\Stay;
 use App\Models\Tag;
 use App\Models\Trip;
 use App\Support\CalendarShell;
@@ -54,6 +55,7 @@ Route::get('/sitemap.xml', function () {
     return response()->view('sitemap', [
         'trips' => $trips,
         'places' => Place::published()->orderBy('name')->get(),
+        'stays' => Stay::active()->orderBy('name')->get(),
         'articles' => Article::published()->orderByDesc('published_at')->get(),
         'articleCategories' => ArticleCategory::whereHas('articles', fn ($q) => $q->published())->get(),
         'articleTags' => Tag::whereHas('articles', fn ($q) => $q->published())->get(),

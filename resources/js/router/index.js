@@ -217,6 +217,32 @@ const routes = [
     component: () => import('../pages/PlaceDetailPage.vue'),
     meta: { ogType: 'article' }
   },
+  // ── ที่พักชุมชน ──
+  {
+    path: '/stays',
+    name: 'stays',
+    component: () => import('../pages/StaysPage.vue'),
+    meta: {
+      title: 'ที่พักชุมชนใกล้ทริป | โฮมสเตย์ เงินถึงมือชุมชน',
+      description: 'จองโฮมสเตย์และที่พักชุมชนใกล้ทริปเดินป่าและธรรมชาติ ดูห้องว่างและราคาจริง เงินส่วนใหญ่ถึงมือเจ้าของที่พักในชุมชนโดยตรง',
+      ogType: 'website'
+    }
+  },
+  {
+    path: '/stays/bookings/:ref',
+    name: 'stay-booking',
+    component: () => import('../pages/StayBookingPage.vue'),
+    meta: { requiresAuth: true, title: 'ใบจองที่พัก', robots: 'noindex, nofollow' }
+  },
+  {
+    path: '/stays/:slug',
+    name: 'stay-detail',
+    component: () => import('../pages/StayDetailPage.vue'),
+    meta: { ogType: 'article' }
+  },
+  { path: '/my-stays', name: 'my-stays', component: () => import('../pages/MyStaysPage.vue'), meta: { requiresAuth: true, title: 'ที่พักของฉัน', robots: 'noindex, nofollow' } },
+  // หน้าของเจ้าของที่พัก — ลิงก์ลับที่ทีมงานส่งให้ทาง LINE ไม่ต้องล็อกอิน
+  { path: '/host/:token', name: 'stay-host', component: () => import('../pages/StayHostPage.vue'), meta: { title: 'จัดการที่พัก', robots: 'noindex, nofollow' } },
   {
     path: '/seasons',
     name: 'seasons',
@@ -353,6 +379,8 @@ const routes = [
       { path: 'gallery', name: 'admin-gallery', component: () => import('../pages/admin/GalleryPage.vue') },
       { path: 'schedule-photos', name: 'admin-schedule-photos', component: () => import('../pages/admin/SchedulePhotosPage.vue') },
       { path: 'places', name: 'admin-places', component: () => import('../pages/admin/PlacesPage.vue') },
+      { path: 'stays', name: 'admin-stays', component: () => import('../pages/admin/StaysPage.vue') },
+      { path: 'stay-bookings', name: 'admin-stay-bookings', component: () => import('../pages/admin/StayBookingsPage.vue') },
       { path: 'content', name: 'admin-content', component: () => import('../pages/admin/ContentPagesPage.vue') },
       { path: 'content/:key', name: 'admin-content-edit', component: () => import('../pages/admin/ContentEditPage.vue') },
       { path: 'articles', name: 'admin-articles', component: () => import('../pages/admin/ArticlesPage.vue') },

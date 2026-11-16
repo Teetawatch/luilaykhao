@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Place;
+use App\Models\Stay;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use Illuminate\Support\Str;
@@ -59,6 +60,13 @@ class SeoMeta
 
         if (preg_match('#^/places/([^/]+)$#', $path, $matches)) {
             $resolved = self::place(urldecode($matches[1]), $path);
+            if ($resolved) {
+                return $resolved;
+            }
+        }
+
+        if (preg_match('#^/stays/([^/]+)$#', $path, $matches) && $matches[1] !== 'bookings') {
+            $resolved = self::stay(urldecode($matches[1]), $path);
             if ($resolved) {
                 return $resolved;
             }
@@ -154,6 +162,62 @@ class SeoMeta
                     'หน้าแรก' => url('/'),
                     'สถานที่ธรรมชาติในไทย' => url('/places'),
                     $place->name => $canonical,
+                ]),
+            ],
+        ]);
+    }
+
+    /** ที่พักชุมชน — ลิงก์ที่ทีมงาน/เจ้าของแชร์ใน LINE ต้องขึ้นรูปและชื่อที่พักจริง */
+    private static function stay(string $slug, string $path): ?array
+    {
+        $stay = Stay::active()->where('slug', $slug)->first();
+
+        if (! $stay) {
+            return null;
+        }
+
+        $canonical = url($path);
+        $image = $stay->coverUrl() ?: self::fallbackImage();
+        $where = collect([$stay->community_name, $stay->province])->filter()->implode(' ');
+        $description = Str::limit(strip_tags((string) ($stay->summary ?: $stay->description)), 155)
+            ?: trim($stay->typeLabel().' '.$stay->name.' '.$where.' จองผ่านลุยเลเขา เงินส่วนใหญ่ถึงมือชุมชน');
+
+        return self::assemble([
+            'title' => $stay->name.($where ? ' '.$where : '').' | ที่พักชุมชน',
+            'description' => $description,
+            'canonical' => $canonical,
+            'image' => $image,
+            'image_alt' => $stay->name.' - ลุยเลเขา',
+            'type' => 'article',
+            'json_ld' => [
+                array_filter([
+                    '@context' => 'https://schema.org',
+                    '@type' => 'LodgingBusiness',
+                    'name' => $stay->name,
+                    'description' => $description,
+                    'url' => $canonical,
+                    'image' => $image,
+                    'address' => array_filter([
+                        '@type' => 'PostalAddress',
+                        'addressLocality' => $stay->district,
+                        'addressRegion' => $stay->province,
+                        'addressCountry' => 'TH',
+                    ]),
+                    'geo' => $stay->latitude && $stay->longitude ? [
+                        '@type' => 'GeoCoordinates',
+                        'latitude' => $stay->latitude,
+                        'longitude' => $stay->longitude,
+                    ] : null,
+                    'aggregateRating' => $stay->rating_count > 0 ? [
+                        '@type' => 'AggregateRating',
+                        'ratingValue' => (float) $stay->rating_avg,
+                        'reviewCount' => (int) $stay->rating_count,
+                    ] : null,
+                ]),
+                self::breadcrumbJsonLd([
+                    'หน้าแรก' => url('/'),
+                    'ที่พักชุมชน' => url('/stays'),
+                    $stay->name => $canonical,
                 ]),
             ],
         ]);

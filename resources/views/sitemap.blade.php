@@ -88,6 +88,19 @@
         <changefreq>daily</changefreq>
         <priority>0.6</priority>
     </url>
+    <url>
+        <loc>{{ url('/stays') }}</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    @foreach (($stays ?? []) as $stay)
+        <url>
+            <loc>{{ url('/stays/' . $stay->slug) }}</loc>
+            <lastmod>{{ $stay->updated_at->toAtomString() }}</lastmod>
+            <changefreq>weekly</changefreq>
+            <priority>0.6</priority>
+        </url>
+    @endforeach
     @foreach (($places ?? []) as $place)
         <url>
             <loc>{{ url('/places/' . $place->slug) }}</loc>

@@ -19,6 +19,7 @@ use App\Jobs\NotifyStalledIntakesJob;
 use App\Jobs\NotifyTripBirthdaysJob;
 use App\Jobs\PingHeartbeatJob;
 use App\Jobs\PostTripChatTimelineJob;
+use App\Jobs\ProcessStayBookingsJob;
 use App\Jobs\ProcessTripAlertsJob;
 use App\Jobs\PruneSosPhotosJob;
 use App\Jobs\PruneVehicleLocationsJob;
@@ -156,6 +157,9 @@ Schedule::job(new ExpireRentalOrdersJob)->everyFifteenMinutes()->withoutOverlapp
 Schedule::job(new SendRentalOrderRemindersJob)->dailyAt('09:30')->timezone('Asia/Bangkok')->withoutOverlapping();
 // คอมพาร์ทเนอร์ของรอบที่กลับมาแล้วและจ่ายครบ → รอโอน
 Schedule::job(new ApprovePartnerCommissionsJob)->dailyAt('06:30')->timezone('Asia/Bangkok')->withoutOverlapping();
+
+// ที่พักชุมชน: ปิดใบที่ไม่จ่ายตามเวลา / คำขอที่ไม่มีใครตอบ / ใบที่เข้าพักจบแล้ว (ถึงรอบจ่ายเจ้าของ)
+Schedule::job(new ProcessStayBookingsJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ReleaseForceMajeureHoldsJob)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new ExpirePendingBookingsJob)->everyMinute()->withoutOverlapping();
 // ตาข่ายรับ webhook ของ Beam ที่หายไป — ถามเกตเวย์เองว่า charge ที่ค้างอยู่จบยังไง

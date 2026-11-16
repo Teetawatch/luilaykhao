@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\AdminSeatHandoverController;
 use App\Http\Controllers\Api\V1\AdminSettingsController;
 use App\Http\Controllers\Api\V1\AdminSosController;
 use App\Http\Controllers\Api\V1\AdminStaffReviewController;
+use App\Http\Controllers\Api\V1\AdminStayController;
 use App\Http\Controllers\Api\V1\AdminUnderfilledEmailController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AnnouncementController;
@@ -110,6 +111,8 @@ use App\Http\Controllers\Api\V1\SplitPaymentController;
 use App\Http\Controllers\Api\V1\StaffController;
 use App\Http\Controllers\Api\V1\StaffPermitController;
 use App\Http\Controllers\Api\V1\StaffPhotoController;
+use App\Http\Controllers\Api\V1\StayController;
+use App\Http\Controllers\Api\V1\StayHostController;
 use App\Http\Controllers\Api\V1\StickerController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\ThaiAddressController;
@@ -209,6 +212,25 @@ Route::prefix('v1')->group(function () {
     Route::get('places', [PlaceController::class, 'index']);
     Route::get('places/seasons', [PlaceController::class, 'seasons']);
     Route::get('places/{slug}', [PlaceController::class, 'show']);
+
+    // ที่พักชุมชน (public read) — ค้นหา ดูห้องว่าง/ราคา ที่พักใกล้ทริป
+    Route::middleware('throttle:api')->group(function () {
+        Route::get('stays', [StayController::class, 'index']);
+        Route::get('stays/{slug}', [StayController::class, 'show']);
+        Route::get('stays/{slug}/availability', [StayController::class, 'availability']);
+        Route::post('stays/{slug}/quote', [StayController::class, 'quote']);
+        Route::get('trips/{slug}/stays', [StayController::class, 'forTrip']);
+    });
+
+    // หน้าของเจ้าของที่พัก — เปิดจากลิงก์ลับ ไม่ต้องล็อกอิน (ลิงก์คือกุญแจ)
+    Route::prefix('host/stays/{token}')->where(['token' => '[A-Za-z0-9]+'])->middleware('throttle:60,1')->group(function () {
+        Route::get('/', [StayHostController::class, 'show']);
+        Route::get('calendar', [StayHostController::class, 'calendar']);
+        Route::post('nights', [StayHostController::class, 'setNights']);
+        Route::post('bookings/{ref}/approve', [StayHostController::class, 'approve']);
+        Route::post('bookings/{ref}/decline', [StayHostController::class, 'decline']);
+        Route::post('reviews/{review}/reply', [StayHostController::class, 'replyReview'])->whereNumber('review');
+    });
 
     // เนื้อหาหน้า "ข้อมูลก่อนไป" (เช็คลิสต์/ระดับความยาก/FAQ/วิธีจอง/ปัญหา)
     Route::get('content/{key}', [PageContentController::class, 'show']);
@@ -395,6 +417,17 @@ Route::prefix('v1')->group(function () {
         Route::post('charter-requests/{charter}/accept', [CharterRequestController::class, 'accept'])->whereNumber('charter');
         Route::post('charter-requests/{charter}/decline', [CharterRequestController::class, 'decline'])->whereNumber('charter');
         Route::post('charter-requests/{charter}/cancel', [CharterRequestController::class, 'cancel'])->whereNumber('charter');
+
+        // ที่พักชุมชน — จอง จ่าย ยกเลิก รีวิว
+        Route::post('stays/{slug}/bookings', [StayController::class, 'store'])->middleware('throttle:10,1');
+        Route::get('stay-bookings', [StayController::class, 'myBookings']);
+        Route::get('stay-bookings/{ref}', [StayController::class, 'showBooking']);
+        Route::get('stay-bookings/{ref}/payment', [StayController::class, 'payment']);
+        Route::post('stay-bookings/{ref}/slip', [StayController::class, 'uploadSlip'])->middleware('throttle:payment');
+        Route::get('stay-bookings/{ref}/cancel-preview', [StayController::class, 'cancelPreview']);
+        Route::post('stay-bookings/{ref}/cancel', [StayController::class, 'cancel']);
+        Route::put('stay-bookings/{ref}/refund-account', [StayController::class, 'refundAccount']);
+        Route::post('stay-bookings/{ref}/review', [StayController::class, 'review']);
 
         // บัตรของขวัญแบบระบุยอดเงิน (ซื้อ/จ่าย/เพิ่มเข้าบัญชี — ใช้ตอนจองผ่าน gift_voucher_code)
         Route::get('gift-vouchers', [GiftVoucherController::class, 'index']);
@@ -1140,6 +1173,32 @@ Route::prefix('v1')->group(function () {
         // การโอนเงินจริง — operator ต้องมีบทบาท finance ด้วย (กติกาเดียวกับหน้างบ)
         Route::post('partners/{partner}/payouts', [AdminPartnerController::class, 'payout'])
             ->whereNumber('partner')->middleware('role:admin|finance');
+
+        // ที่พักชุมชน — ที่พัก ห้อง กิจกรรม ปฏิทิน ใบจอง จ่ายเจ้าของ
+        Route::get('stays', [AdminStayController::class, 'index']);
+        Route::post('stays', [AdminStayController::class, 'store']);
+        Route::get('stays/{id}', [AdminStayController::class, 'show'])->whereNumber('id');
+        Route::put('stays/{id}', [AdminStayController::class, 'update'])->whereNumber('id');
+        Route::delete('stays/{id}', [AdminStayController::class, 'destroy'])->whereNumber('id');
+        Route::post('stays/{id}/host-token', [AdminStayController::class, 'regenerateHostToken'])->whereNumber('id');
+        Route::post('stays/{id}/rooms', [AdminStayController::class, 'storeRoom'])->whereNumber('id');
+        Route::put('stay-rooms/{room}', [AdminStayController::class, 'updateRoom'])->whereNumber('room');
+        Route::delete('stay-rooms/{room}', [AdminStayController::class, 'destroyRoom'])->whereNumber('room');
+        Route::post('stays/{id}/experiences', [AdminStayController::class, 'storeExperience'])->whereNumber('id');
+        Route::put('stay-experiences/{experience}', [AdminStayController::class, 'updateExperience'])->whereNumber('experience');
+        Route::delete('stay-experiences/{experience}', [AdminStayController::class, 'destroyExperience'])->whereNumber('experience');
+        Route::get('stays/{id}/calendar', [AdminStayController::class, 'calendar'])->whereNumber('id');
+        Route::post('stays/{id}/nights', [AdminStayController::class, 'setNights'])->whereNumber('id');
+        Route::get('stays/{id}/payouts', [AdminStayController::class, 'payouts'])->whereNumber('id');
+        // การโอนเงินจริง — กติกาเดียวกับการจ่ายพาร์ทเนอร์
+        Route::post('stays/{id}/payouts', [AdminStayController::class, 'payout'])
+            ->whereNumber('id')->middleware('role:admin|finance');
+        Route::post('stay-reviews/{review}/toggle', [AdminStayController::class, 'toggleReview'])->whereNumber('review');
+        Route::get('stay-bookings', [AdminStayController::class, 'bookings']);
+        Route::get('stay-bookings/{ref}', [AdminStayController::class, 'showBooking']);
+        Route::put('stay-bookings/{ref}/note', [AdminStayController::class, 'bookingNote']);
+        Route::post('stay-bookings/{ref}/{action}', [AdminStayController::class, 'bookingAction'])
+            ->whereIn('action', ['approve', 'decline', 'confirm-payment', 'reject-slip', 'cancel', 'refunded']);
         Route::get('payments/{ref}/qr/{payment}', [AdminPaymentController::class, 'qrStatus']);
 
         // Drivers (ทะเบียนคนขับ)

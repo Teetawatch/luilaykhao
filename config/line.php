@@ -50,6 +50,18 @@ return [
         'refund_requested',
         'refund_processing',
         'refund_account_rejected',
+        // ที่พักชุมชน — ลูกค้า (ยืนยันห้อง/ต้องจ่าย/สลิปไม่ผ่าน/ยกเลิก/คืนเงิน) และเจ้าของที่พัก
+        // (เจ้าของส่วนใหญ่ไม่ลงแอป ข้อความ LINE พร้อมลิงก์หน้าเจ้าของคือช่องทางหลัก)
+        'stay_request_approved',
+        'stay_request_declined',
+        'stay_booking_confirmed',
+        'stay_payment_rejected',
+        'stay_booking_cancelled',
+        'stay_refunded',
+        'stay_host_new_request',
+        'stay_host_new_booking',
+        'stay_host_cancelled',
+        'stay_payout',
         // เงิน
         'payment_confirmed',
         'deposit_paid',

@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ProcessStayBookingsJob;
 use App\Jobs\SendBalanceDueRemindersJob;
 use App\Jobs\SendBookingRemindersJob;
 use App\Jobs\SendCheckInRemindersJob;
@@ -43,6 +44,7 @@ return [
     'monitored_jobs' => [
         SendCheckInRemindersJob::class => 20,          // default ทุก 5 นาที
         SendPendingSmsJob::class => 20,                // sms ทุก 5 นาที
+        ProcessStayBookingsJob::class => 20,           // default ทุก 5 นาที — ห้องที่ไม่จ่ายต้องกลับมาขาย
         SendInstallmentRemindersJob::class => 26 * 60, // reminders 08:00
         SendBalanceDueRemindersJob::class => 26 * 60,  // reminders 08:10
         SendBookingRemindersJob::class => 26 * 60,     // reminders 08:15
