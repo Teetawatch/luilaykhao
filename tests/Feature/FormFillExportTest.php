@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Booking;
 use App\Models\BookingPassenger;
+use App\Models\Driver;
 use App\Models\PermitForm;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -141,7 +142,7 @@ class FormFillExportTest extends TestCase
                     'keywords' => config('form_fill.text_fields.last_name.keywords'),
                     'exclude' => config('form_fill.text_fields.last_name.exclude'),
                 ],
-                ['keyword' => 'อายุ', 'value' => '32', 'exclude' => ['หมดอายุ', 'บัตร']],
+                ['keyword' => 'อายุ', 'value' => '32', 'exclude' => ['หมดอายุ', 'บัตร', 'เกิด', 'birth']],
                 [
                     'keyword' => 'เลขบัตรประชาชน', 'value' => '1103700123456',
                     'keywords' => config('form_fill.text_fields.id_card.keywords'),
@@ -208,6 +209,28 @@ class FormFillExportTest extends TestCase
         $this->assertStringStartsWith('%PDF', $files['03-ทีมงาน-ทีมงาน หนึ่ง/permit.pdf']);
         $round = json_decode($files['data.json'], true);
         $this->assertSame('./03-ทีมงาน-ทีมงาน หนึ่ง/permit.pdf', $round[2]['permitFilePath']);
+    }
+
+    /** ใบจองไม่บังคับวันเกิด — ไล่หาจากบัญชีของคนนั้น / ทะเบียนคนขับของสตาฟ */
+    public function test_birth_date_falls_back_to_the_travellers_account_and_driver_registry(): void
+    {
+        [$schedule, $booking] = $this->round();
+        [, $b] = $booking->passengers->all();
+        $member = User::factory()->create(['birth_date' => '1999-12-31']);
+        $booking->members()->create(['user_id' => $member->id, 'passenger_id' => $b->id, 'role' => 'member', 'status' => 'active']);
+
+        // สตาฟที่โปรไฟล์ไม่มีวันเกิด แต่ทะเบียนคนขับที่ผูกบัญชีนี้มี
+        $driverStaff = User::factory()->create(['name' => 'คนขับ รถตู้', 'birth_date' => null]);
+        Driver::create(['name' => 'คนขับ รถตู้', 'birth_date' => '1985-07-09'])->forceFill(['pin_user_id' => $driverStaff->id])->save();
+        $schedule->staff()->attach($driverStaff->id, ['assigned_by' => $this->admin->id]);
+
+        $rows = app(FormFillExportService::class)->rows($schedule, 'birth_date,age');
+
+        $this->assertSame('1994-02-14', $rows[0]['birthDate'], 'ใบจองมีอยู่แล้วใช้ของใบจอง');
+        $this->assertSame('1999-12-31', $rows[1]['birthDate']);
+        $this->assertSame('27', $rows[1]['textFields'][0]['value'], 'อายุคิดจากวันเกิดที่หาเจอ');
+        $this->assertSame('1985-07-09', $rows[2]['birthDate']);
+        $this->assertNull($b->fresh()->birth_date, 'ไม่เขียนกลับลงใบจอง');
     }
 
     public function test_unticked_fields_are_left_out_entirely(): void

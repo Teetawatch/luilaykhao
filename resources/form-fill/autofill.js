@@ -150,7 +150,11 @@ function scanForm() {
       if (!answerable && !upload) continue;
       const id = String(seq++);
       item.setAttribute(Q, id);
-      out.push({ id, title: clean(heading.innerText), kind: 'gform', upload, done: item.hasAttribute(DONE), options: [] });
+      // ตัวเลือกของข้อ (วงกลม/ติ๊ก หรือรายการใน dropdown) — ใช้หาข้อคำนำหน้า/เพศที่หัวข้อไม่ได้เขียนตรง ๆ
+      const label = (e) => clean(e.getAttribute('aria-label') || e.getAttribute('data-value') || e.innerText);
+      let options = [...item.querySelectorAll('[role="radio"], [role="checkbox"]')].map(label);
+      if (!options.length) options = [...item.querySelectorAll('[role="option"]')].map(label).filter(Boolean);
+      out.push({ id, title: clean(heading.innerText), kind: 'gform', upload, done: item.hasAttribute(DONE), options: options.slice(0, 80) });
     }
     return out;
   }
@@ -301,14 +305,18 @@ function scanForm() {
     return w;
   };
   // ข้อความหลังช่องสุดท้ายในก้อนนี้ — null = ก้อนนี้จบด้วยช่องของข้ออื่น (หยุดหา)
+  // ยกเว้น dropdown ล้วน: แถว "ชื่อ [นาย▾] [______]" ป้ายเดียวใช้ทั้งแถว — ข้าม dropdown คำนำหน้า
+  // ไปเอาป้ายข้างหน้า ช่องชื่อจึงได้หัวข้อ "ชื่อ" ด้วย ("" = ไปต่อ)
   const textAfterLastControl = (el) => {
-    if (set.has(el)) return null;
+    if (set.has(el)) return el.tagName === 'SELECT' ? '' : null;
     const inner = [...el.querySelectorAll(SEL)].filter((c) => set.has(c));
     if (!inner.length) return ownText(el);
     const range = document.createRange();
     range.setStartAfter(inner[inner.length - 1]);
     range.setEnd(el, el.childNodes.length);
-    return clean(range.cloneContents().textContent) || null;
+    const after = clean(range.cloneContents().textContent);
+    if (after) return after;
+    return inner.every((c) => c.tagName === 'SELECT') ? '' : null;
   };
   const precedingText = (w) => {
     let node = w;
@@ -400,14 +408,16 @@ const titleHas = (title, k) => title.includes(norm(k));
  *   require   ต้องมีทุกคำ (เช่น เบอร์ฉุกเฉิน = คำว่าเบอร์ + "ฉุกเฉิน")
  *   exclude   ห้ามมีคำเหล่านี้
  *   upload    true = เฉพาะข้ออัปโหลดไฟล์ · false = เฉพาะข้อที่มีช่องให้ตอบ
+ *   kinds     เฉพาะข้อชนิดเหล่านี้ (ช่องพิมพ์ / ช่องเลือก) — null = ทุกชนิด
  * ข้ามข้อที่กรอกไปแล้วในรอบนี้ — คนถัดไปในหน้าเดียวกันจึงลงช่องชุดถัดไป
  */
-function pick(questions, keywords, { require = [], exclude = [], upload = false, includeDone = false } = {}) {
+function pick(questions, keywords, { require = [], exclude = [], upload = false, includeDone = false, kinds = null } = {}) {
   for (const k of asList(keywords)) {
     let best = null;
     for (const q of questions) {
       if ((q.done && !includeDone) || !q.title) continue;
       if (upload ? !q.upload : q.upload) continue;
+      if (kinds && !kinds.includes(q.kind)) continue;
       const title = norm(q.title);
       if (!titleHas(title, k)) continue;
       if (!asList(require).every((w) => titleHas(title, w))) continue;
@@ -487,6 +497,30 @@ function optionIndex(labels, value) {
     if (best === -1 || l.length < list[best].length) best = i;
   });
   return best;
+}
+
+// ชุดตัวเลือกที่บอกได้ว่าเป็นข้อไหน แม้หัวข้อจะไม่ได้เขียนไว้ (เช่น dropdown นาย/นาง/นางสาว หน้าช่องชื่อ)
+const FAMILIES = [ALIASES.slice(0, 5), ALIASES.slice(5, 7)]; // คำนำหน้า · เพศ
+
+/** ตัวเลือกนี้คือค่านี้ — ตรงทั้งคำ หรือขึ้นต้นด้วยคำนั้น ("นาย (Mr.)") แต่ "เด็กชาย" ไม่นับเป็น "ชาย" */
+function optionHit(label, value) {
+  const l = squash(label);
+  return variantsOf(value).some((w) => l === w || ((isThai(w) || w.length >= 3) && l.startsWith(w)));
+}
+
+/**
+ * หาข้อจากตัวเลือกแทนหัวข้อ — ใช้กับคำนำหน้า/เพศที่หัวข้อไม่ตรงคำที่หา (ไม่มีป้าย, เขียนว่า "ชื่อ")
+ * ต้องมีตัวเลือกในชุดเดียวกันอย่างน้อย 2 ตัว (นาย + นาง) และมีตัวที่ตรงกับค่าของคนนี้
+ */
+function pickByOptions(questions, value) {
+  const family = FAMILIES.find((f) => f.some((g) => g.map(squash).includes(squash(value))));
+  if (!family) return null;
+  for (const q of questions) {
+    if (q.done || q.upload || !q.options || q.options.length < 2) continue;
+    const hits = family.filter((g) => q.options.some((o) => optionHit(o, g[0]))).length;
+    if (hits >= 2 && q.options.some((o) => optionHit(o, value))) return q;
+  }
+  return null;
 }
 
 function monthIndex(text) {
@@ -651,30 +685,36 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** ตัวเลือกแบบวงกลม / ช่องติ๊ก / dropdown — รันซ้ำแท็บเดิมไม่ติ๊กออก */
+/**
+ * ตัวเลือกแบบวงกลม / ช่องติ๊ก / dropdown — รันซ้ำแท็บเดิมไม่ติ๊กออก
+ * เทียบแบบเดียวกับเว็บอื่น (optionIndex): นางสาว = น.ส. = Miss, "นาย (Mr.)" ก็นับ
+ */
 async function pickChoice(page, box, value) {
+  const labelOf = (els) =>
+    els.map((e) => e.getAttribute('aria-label') || e.getAttribute('data-value') || e.innerText || '');
+
   for (const role of ['radio', 'checkbox']) {
-    const option = box.getByRole(role, { name: value, exact: true }).first();
-    if ((await option.count()) > 0) {
-      if ((await option.getAttribute('aria-checked')) !== 'true') await option.click();
-      return true;
-    }
+    const options = box.locator(`[role="${role}"]`);
+    if ((await options.count()) === 0) continue;
+    const i = optionIndex(await options.evaluateAll(labelOf), value);
+    if (i === -1) continue;
+    const option = options.nth(i);
+    if ((await option.getAttribute('aria-checked')) !== 'true') await option.click();
+    return true;
   }
 
   const dropdown = box.locator('[role="listbox"]').first();
   if ((await dropdown.count()) > 0) {
     await dropdown.click();
-    const option = page
-      .locator('[role="option"]:visible')
-      .filter({ hasText: new RegExp(`^\\s*${escapeRegex(value)}\\s*$`) })
-      .first();
-    try {
-      await option.waitFor({ state: 'visible', timeout: 3000 });
-      await option.click();
+    const options = page.locator('[role="option"]:visible');
+    await options.first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    // ตัวแรก "เลือก" มี data-value ว่าง — ไม่มีวันตรง
+    const i = optionIndex(await options.evaluateAll(labelOf).catch(() => []), value);
+    if (i !== -1) {
+      await options.nth(i).click();
       return true;
-    } catch {
-      await page.keyboard.press('Escape');
     }
+    await page.keyboard.press('Escape');
   }
 
   return false;
@@ -706,12 +746,58 @@ async function answer(q, value, prefer) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
-/** ปี พ.ศ. หรือ ค.ศ. — ดูจากคำใบ้บนช่องก่อน ไม่มีคำใบ้: หัวข้อภาษาไทยใช้ พ.ศ. */
+/**
+ * ปี พ.ศ. หรือ ค.ศ. — ดูจากคำใบ้บนช่องก่อน: พ.ศ./ค.ศ., ปปปป (= พ.ศ.) / yyyy (= ค.ศ.),
+ * ปีในวันที่ตัวอย่าง (31/12/2540 = พ.ศ.) · ไม่มีคำใบ้: หัวข้อภาษาไทยใช้ พ.ศ. แต่ sure = false ให้เตือนตรวจ
+ */
 function yearStyle(hint, title) {
-  if (/พ\.?\s?ศ|ปปปป|b\.?e\./i.test(hint)) return { be: true, sure: true };
-  if (/ค\.?\s?ศ|yyyy|a\.?d\./i.test(hint)) return { be: false, sure: true };
+  const h = String(hint || '').toLowerCase();
+  if (/พ\.?\s?ศ|ปปปป|(^|[^a-z])b\.\s?e\.|\(be\)|buddhist/.test(h)) return { be: true, sure: true };
+  if (/ค\.?\s?ศ|yyyy|(^|[^a-z])a\.\s?d\.|\(ad\)|christian|gregorian/.test(h)) return { be: false, sure: true };
+  const year = h.match(/(?:^|\D)(19\d\d|20\d\d|24\d\d|25\d\d)(?!\d)/);
+  if (year) return { be: Number(year[1]) > 2400, sure: true };
   return { be: isThai(title), sure: false };
 }
+
+/**
+ * วันเกิดเป็นข้อความตามรูปแบบที่ช่องบอกไว้ (placeholder / pattern / หัวข้อ / วันที่ตัวอย่าง):
+ * ลำดับ วัน-เดือน-ปี, ตัวคั่น, ปี พ.ศ./ค.ศ., ปี 2 หลัก · ไม่บอกอะไรเลย = วว/ดด/ปปปป
+ * @returns {{ text: string, be: boolean, sure: boolean }}
+ */
+function birthText(birthDate, hint, title, maxLength = 0) {
+  const [y, m, d] = birthDate.split('-').map(Number);
+  const h = String(hint || '').toLowerCase();
+  const style = yearStyle(h, title);
+  const TOKEN = '(dd|วว|mm|ดด|yyyy|ปปปป|yy|ปป)';
+  const roleOf = (t) => (/^(dd|วว)$/.test(t) ? 'd' : /^(mm|ดด)$/.test(t) ? 'm' : 'y');
+  let order = ['d', 'm', 'y'];
+  let sep = '/';
+  let shortYear = false;
+
+  const fmt = h.match(new RegExp(`${TOKEN}\\s*([/.\\-])?\\s*${TOKEN}\\s*\\2\\s*${TOKEN}`));
+  const roles = fmt ? [fmt[1], fmt[3], fmt[4]].map(roleOf) : [];
+  if (fmt && new Set(roles).size === 3) {
+    order = roles;
+    sep = fmt[2] || '';
+    shortYear = [fmt[1], fmt[3], fmt[4]][roles.indexOf('y')].length === 2;
+  } else {
+    // วันที่ตัวอย่าง เช่น 31/12/2540 หรือ 1997-12-31
+    const ex = h.match(/(\d{1,4})\s*([/.\-])\s*(\d{1,2})\s*\2\s*(\d{1,4})/);
+    if (ex) {
+      sep = ex[2];
+      if (ex[1].length === 4) order = ['y', 'm', 'd'];
+      else if (Number(ex[3]) > 12 && Number(ex[1]) <= 12) order = ['m', 'd', 'y'];
+    } else if (maxLength === 8) {
+      sep = ''; // ช่องรับ 8 ตัว = วันที่ติดกันไม่มีตัวคั่น
+    }
+  }
+
+  const year = String(style.be ? y + 543 : y);
+  const parts = { d: pad(d), m: pad(m), y: shortYear ? year.slice(-2) : year };
+  return { text: order.map((r) => parts[r]).join(sep), be: style.be, sure: style.sure };
+}
+
+const eraLabel = (be) => (be ? 'พ.ศ.' : 'ค.ศ.');
 
 /**
  * รันในหน้าเว็บ — วันเกิดที่แยกเป็น 3 ช่อง (วัน/เดือน/ปี) ข้างช่องที่หาเจอ ติดป้าย data-llk-p
@@ -752,12 +838,13 @@ function partRole(p) {
     if (nums.length >= 28 && Math.max(...nums) === 31) return 'd';
     if (nums.length >= 12 && Math.max(...nums) === 12) return 'm';
   }
-  if (/year|ปี|yyyy|yy|พ\.ศ/.test(p.hint)) return 'y';
+  if (/year|ปี|yyyy|yy|พ\.?ศ|ค\.?ศ/.test(p.hint)) return 'y';
   if (/month|เดือน|mm/.test(p.hint)) return 'm';
   if (/day|วัน|dd/.test(p.hint)) return 'd';
   return null;
 }
 
+/** @returns {Promise<{ ok: boolean, guessed?: boolean, be?: boolean }>} guessed = เดาปี พ.ศ./ค.ศ. ในช่องพิมพ์ */
 async function fillDateParts(q, parts, [y, m, d], title) {
   let roles = parts.map(partRole);
   for (const r of ['d', 'm', 'y']) {
@@ -765,65 +852,139 @@ async function fillDateParts(q, parts, [y, m, d], title) {
   }
   if (new Set(roles).size !== 3) roles = ['d', 'm', 'y'];
 
-  const style = yearStyle(parts.map((p) => p.hint).join(' '), title);
+  const style = yearStyle(`${parts.map((p) => p.hint).join(' ')} ${title}`, title);
+  let guessed = false;
   for (const [i, part] of parts.entries()) {
     const loc = q.frame.locator(`[data-llk-p="${i}"]`);
     const role = roles[i];
     if (part.select) {
-      const idx = part.options.findIndex(({ text, value }) => {
-        const n = parseInt(value, 10) || parseInt(text, 10);
+      // ข้อความที่เห็นก่อน (value บางเว็บนับเดือนจาก 0) — ปีในรายการเป็น พ.ศ. หรือ ค.ศ. ก็เจอ
+      const hit = (s) => {
+        const n = parseInt(s, 10);
         if (role === 'd') return n === d;
-        if (role === 'm') return monthIndex(text) === m - 1 || n === m;
+        if (role === 'm') return monthIndex(s) === m - 1 || n === m;
         return n === y || n === y + 543;
-      });
-      if (idx === -1 || !(await selectIndex(loc, idx))) return false;
+      };
+      let idx = part.options.findIndex((o) => hit(o.text));
+      if (idx === -1) idx = part.options.findIndex((o) => hit(o.value));
+      if (idx === -1 || !(await selectIndex(loc, idx))) return { ok: false };
     } else {
-      const text = role === 'd' ? pad(d) : role === 'm' ? pad(m) : String(style.be ? y + 543 : y);
-      if (!(await setValue(loc, text))) return false;
+      let text = role === 'd' ? pad(d) : role === 'm' ? pad(m) : String(style.be ? y + 543 : y);
+      if (role === 'y' && part.maxLength === 2) text = text.slice(-2);
+      if (role === 'y' && !style.sure) guessed = true;
+      if (!(await setValue(loc, text))) return { ok: false };
     }
   }
-  return true;
+  return { ok: true, guessed, be: style.be };
 }
 
-/** Google Form: ช่องวันที่ของ Chrome หรือ 3 ช่อง วัน/เดือน/ปี (ค.ศ.) */
-async function fillGoogleBirthDate(box, birthDate) {
+/**
+ * ช่องที่มีปฏิทินของ flatpickr / bootstrap-datepicker (รวมรุ่นไทย พ.ศ.) / jQuery UI / DateTimePicker —
+ * ตั้งผ่านตัวปฏิทินเอง มันรู้รูปแบบและปี พ.ศ./ค.ศ. ของมันเอง และค่าไม่เด้งกลับตอนออกจากช่อง
+ * @returns {Promise<boolean>} true = ตั้งแล้วและช่องมีค่า
+ */
+async function setByPicker(loc, birthDate) {
+  const ok = await loc
+    .evaluate((el, iso) => {
+      const [y, m, d] = iso.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      // flatpickr แบบ altInput: ช่องที่เห็นเป็นช่องใหม่ ตัวปฏิทินอยู่กับช่องจริงที่ซ่อนข้าง ๆ
+      const near = [el, el.previousElementSibling, el.nextElementSibling, ...(el.parentElement ? el.parentElement.querySelectorAll('input') : [])];
+      const fp = near.map((e) => e && e._flatpickr).find(Boolean);
+      if (fp) {
+        fp.setDate(date, true);
+        return true;
+      }
+      const $ = window.jQuery;
+      if (!$ || !$.fn) return false;
+      for (const target of [el, el.closest('.input-group.date, .date')].filter(Boolean)) {
+        const $t = $(target);
+        try {
+          if ($.fn.datepicker && ($t.data('datepicker') || $t.hasClass('hasDatepicker'))) {
+            $t.datepicker('setDate', date);
+            $(el).trigger('change');
+            return true;
+          }
+          const dtp = $t.data('DateTimePicker');
+          if (dtp) {
+            dtp.date(date);
+            return true;
+          }
+        } catch {
+          // ปฏิทินรุ่นที่ API ไม่ตรง — ตกไปพิมพ์เอง
+        }
+      }
+      return false;
+    }, birthDate)
+    .catch(() => false);
+  return ok && (await loc.inputValue().catch(() => 'x')) !== '';
+}
+
+/** คำใบ้รูปแบบวันที่ของช่อง — placeholder / pattern / รูปแบบของปฏิทิน / ค่าที่มีอยู่ */
+async function dateHint(loc) {
+  return loc
+    .evaluate((e) => ({
+      hint: ['placeholder', 'aria-label', 'title', 'pattern', 'data-date-format', 'data-format', 'data-inputmask', 'name', 'id']
+        .map((a) => e.getAttribute(a) || '')
+        .concat(e.value || '')
+        .join(' '),
+      maxLength: e.maxLength > 0 ? e.maxLength : 0,
+    }))
+    .catch(() => ({ hint: '', maxLength: 0 }));
+}
+
+/** Google Form: ช่องวันที่ของ Chrome · ช่อง วัน/เดือน(/ปี) แยก (ค.ศ. เสมอ) · ข้อพิมพ์ข้อความ (ดูรูปแบบจากหัวข้อ) */
+async function fillGoogleBirthDate(q, birthDate, warnings) {
+  const box = gbox(q);
   const dateInput = box.locator('input[type="date"]').first();
   if ((await dateInput.count()) > 0) {
     await dateInput.fill(birthDate); // input date ของ Chrome รับ YYYY-MM-DD เสมอ ไม่ว่าจะแสดงแบบไหน
     return null;
   }
 
-  // บางเครื่องแสดงช่องวัน/เดือน/ปีแยกกัน 3 ช่อง — อ่านป้ายกำกับของแต่ละช่องเพื่อไม่สลับลำดับ
-  const parts = box.locator('input[type="text"], input[type="number"]');
-  if ((await parts.count()) >= 3) {
+  // บางเครื่องแสดงช่องวัน/เดือน/ปีแยกกัน — อ่านป้ายกำกับของแต่ละช่องเพื่อไม่สลับลำดับ
+  const parts = box.locator('input[type="text"], input[type="number"], input[type="tel"]');
+  const labels = await parts
+    .evaluateAll((els) => els.map((el) => `${el.getAttribute('aria-label') || ''} ${el.getAttribute('placeholder') || ''}`.toLowerCase()))
+    .catch(() => []);
+  const isPart = (l) => /วัน|เดือน|ปี|day|month|year|dd|mm|yyyy/.test(l);
+  if (labels.length >= 2 && labels.filter(isPart).length >= 2) {
     const [y, m, d] = birthDate.split('-');
-    const labels = await parts.evaluateAll((els) =>
-      els.map((el) => `${el.getAttribute('aria-label') || ''} ${el.getAttribute('placeholder') || ''}`.toLowerCase())
-    );
     const find = (re, fallback) => {
       const i = labels.findIndex((l) => re.test(l));
       return i === -1 ? fallback : i;
     };
     await parts.nth(find(/วัน|day|dd/, 0)).fill(d);
     await parts.nth(find(/เดือน|month|mm/, 1)).fill(m);
-    await parts.nth(find(/ปี|year|yyyy/, 2)).fill(y);
+    if (labels.length >= 3) await parts.nth(find(/ปี|year|yyyy/, 2)).fill(y);
     return null;
   }
 
-  if (await fillText(box, birthDate)) return null;
+  // ข้อพิมพ์ข้อความธรรมดา — Google ไม่บังคับรูปแบบ ใช้รูปแบบที่หัวข้อ/คำอธิบายบอก (พ.ศ./ค.ศ.)
+  const input = box.locator(TEXT_INPUT).first();
+  if ((await input.count()) > 0) {
+    const description = await box.innerText().catch(() => '');
+    const { hint } = await dateHint(input);
+    const r = birthText(birthDate, `${q.title} ${description} ${hint}`, q.title);
+    await input.fill(r.text);
+    if (!r.sure) warnings.push(`วันเกิดกรอกเป็น ${r.text} (${eraLabel(r.be)}) — ตรวจว่าตรงกับรูปแบบที่ฟอร์มต้องการ`);
+    return null;
+  }
   return 'คำถามวันเกิดไม่มีช่องให้กรอก';
 }
 
-/** @returns {Promise<string|null>} คำเตือน หรือ null = กรอกแล้ว */
+/** @returns {Promise<string|null|symbol>} คำเตือน · null = กรอกแล้ว · SKIPPED = มีของคนก่อนอยู่ */
 async function fillBirthDate(page, birthDate, warnings) {
   const questions = await scanAll(page);
-  const q = pick(questions, BIRTH_KEYWORDS, { exclude: BIRTH_EXCLUDE });
+  const q =
+    pick(questions, BIRTH_KEYWORDS, { exclude: BIRTH_EXCLUDE, kinds: ['date', 'text', 'gform'] }) ||
+    pick(questions, BIRTH_KEYWORDS, { exclude: BIRTH_EXCLUDE });
   if (!q) {
     return pick(questions, BIRTH_KEYWORDS, { exclude: BIRTH_EXCLUDE, includeDone: true }) ? SKIPPED : 'ไม่พบคำถามวันเกิด';
   }
 
   if (q.kind === 'gform') {
-    const w = await fillGoogleBirthDate(gbox(q), birthDate);
+    const w = await fillGoogleBirthDate(q, birthDate, warnings);
     if (!w) await markDone(q);
     return w;
   }
@@ -839,7 +1000,9 @@ async function fillBirthDate(page, birthDate, warnings) {
 
   const parts = await el.evaluate(markDateParts).catch(() => null);
   if (parts) {
-    if (!(await fillDateParts(q, parts, [y, m, d], q.title))) return 'วันเกิดแยกช่อง วัน/เดือน/ปี แต่เลือกให้ไม่ได้ — กรอกเอง';
+    const r = await fillDateParts(q, parts, [y, m, d], q.title);
+    if (!r.ok) return 'วันเกิดแยกช่อง วัน/เดือน/ปี แต่เลือกให้ไม่ได้ — กรอกเอง';
+    if (r.guessed) warnings.push(`ปีเกิดกรอกเป็น ${eraLabel(r.be)} — ตรวจว่าตรงกับที่เว็บต้องการ`);
     await q.frame
       .evaluate(() => document.querySelectorAll('[data-llk-p]').forEach((e) => e.setAttribute('data-llk-done', '1')))
       .catch(() => {});
@@ -849,17 +1012,18 @@ async function fillBirthDate(page, birthDate, warnings) {
 
   if (q.kind !== 'text') return 'วันเกิดเป็นช่องเลือกแบบที่สคริปต์ไม่รู้จัก — เลือกเอง';
 
-  const placeholder = (await el.getAttribute('placeholder').catch(() => '')) || '';
-  const hint = `${q.title} ${placeholder}`.toLowerCase();
-  let text;
-  if (/yyyy-mm-dd|ปปปป-ดด-วว/.test(hint)) {
-    text = birthDate;
-  } else {
-    const style = yearStyle(hint, q.title);
-    text = `${pad(d)}/${pad(m)}/${style.be ? y + 543 : y}`;
-    if (!style.sure) warnings.push(`วันเกิดกรอกเป็น ${text} (${style.be ? 'พ.ศ.' : 'ค.ศ.'}) — ตรวจว่าตรงกับรูปแบบที่เว็บต้องการ`);
+  // ช่องที่มีปฏิทินเด้ง — ให้ปฏิทินตั้งเอง (รู้ พ.ศ./ค.ศ. ของมันเอง) ไม่ได้ค่อยพิมพ์
+  if (await setByPicker(el, birthDate)) {
+    await markDone(q);
+    return null;
   }
-  if (!(await setValue(el, text))) return 'ใส่วันเกิดไม่ได้ — กรอกเอง';
+
+  const { hint, maxLength } = await dateHint(el);
+  const r = birthText(birthDate, `${q.title} ${hint}`, q.title, maxLength);
+  if (!(await setValue(el, r.text))) return 'ใส่วันเกิดไม่ได้ — กรอกเอง';
+  // ปฏิทินที่ไม่รู้จักบางตัวล้างค่าที่พิมพ์ตอนออกจากช่อง
+  if ((await el.inputValue().catch(() => r.text)) === '') return 'ช่องวันเกิดเป็นปฏิทินที่ไม่ยอมให้พิมพ์ — เลือกเอง';
+  if (!r.sure) warnings.push(`วันเกิดกรอกเป็น ${r.text} (${eraLabel(r.be)}) — ตรวจว่าตรงกับรูปแบบที่เว็บต้องการ`);
   await markDone(q);
   return null;
 }
@@ -910,15 +1074,23 @@ async function uploadFile(q, filePath) {
 // ====== กรอกหนึ่งคน ======
 
 const SKIPPED = Symbol('skipped');
+const TYPING_KINDS = ['text', 'gform'];
+const CHOICE_KINDS = ['select', 'radio', 'checkbox', 'combobox', 'gform'];
 
 async function fillPerson(page, data) {
   const warnings = [];
   const has = (key) => Object.prototype.hasOwnProperty.call(data, key);
   // ข้อที่เจอแต่มีค่าของคนก่อนอยู่แล้ว — ข้ามไว้ ไม่กรอกทับ (เว็บที่มีหลายคนในหน้าเดียว)
   const skipped = [];
-  const find = async (keywords, rule, label) => {
+  // kinds = ชนิดช่องที่ลองก่อน: ช่องพิมพ์ลงช่องพิมพ์ ตัวเลือกลงช่องเลือก — หัวข้อเหมือนกัน
+  // (dropdown คำนำหน้าที่ป้ายเขียนแค่ "ชื่อ" ข้างช่องชื่อ) ไม่เอาชื่อไปใส่ dropdown · ไม่เจอค่อยลองทุกชนิด
+  // byValue = ข้อนี้หาจากตัวเลือกได้ด้วย (คำนำหน้า/เพศที่หัวข้อไม่ตรงคำที่หา)
+  const find = async (keywords, rule, label, kinds = null, byValue = null) => {
     const questions = await scanAll(page);
-    const q = pick(questions, keywords, rule);
+    const q =
+      (kinds && pick(questions, keywords, { ...rule, kinds })) ||
+      pick(questions, keywords, rule) ||
+      (byValue ? pickByOptions(questions, byValue) : null);
     if (!q && pick(questions, keywords, { ...rule, includeDone: true })) {
       skipped.push(label);
       return SKIPPED;
@@ -932,7 +1104,7 @@ async function fillPerson(page, data) {
       warnings.push(`ไม่มี "${item.keyword}" ในระบบ — กรอกเอง`);
       continue;
     }
-    const q = await find(item.keywords || item.keyword, { require: item.require, exclude: item.exclude }, item.keyword);
+    const q = await find(item.keywords || item.keyword, { require: item.require, exclude: item.exclude }, item.keyword, TYPING_KINDS);
     if (q === SKIPPED) continue;
     if (!q) warnings.push(`ไม่พบคำถาม "${item.keyword}"`);
     else if (!(await answer(q, item.value, 'text'))) warnings.push(`คำถาม "${item.keyword}" ใส่ค่าไม่ได้ — กรอกเอง`);
@@ -950,7 +1122,7 @@ async function fillPerson(page, data) {
       warnings.push(`ไม่มี${label}ในระบบ — กรอกเอง`);
       continue;
     }
-    const q = await find(PHONE_KEYWORDS, rule, label);
+    const q = await find(PHONE_KEYWORDS, rule, label, TYPING_KINDS);
     if (q === SKIPPED) continue;
     if (!q || !(await answer(q, phones[key], 'text'))) warnings.push(`ไม่พบช่อง${label}`);
   }
@@ -972,7 +1144,13 @@ async function fillPerson(page, data) {
       warnings.push(`ไม่มี "${choice.keyword}" ในระบบ — เลือกเอง`);
       continue;
     }
-    const q = await find(choice.keywords || choice.keyword, { require: choice.require, exclude: choice.exclude }, choice.keyword);
+    const q = await find(
+      choice.keywords || choice.keyword,
+      { require: choice.require, exclude: choice.exclude },
+      choice.keyword,
+      CHOICE_KINDS,
+      choice.value
+    );
     if (q === SKIPPED) continue;
     if (!q) warnings.push(`ไม่พบคำถาม "${choice.keyword}"`);
     else if (!(await answer(q, choice.value, 'choice'))) warnings.push(`"${choice.keyword}" ไม่มีตัวเลือก "${choice.value}"`);
@@ -1389,7 +1567,12 @@ async function main() {
   }
 }
 
-// พิมพ์ q ออกเอง = ปิดเลย · จบเพราะมีปัญหา = ค้างหน้าต่างไว้ให้อ่านข้อความก่อน
-main()
-  .catch((e) => console.log(`❌ ${e?.message || e}`))
-  .then((result) => (result === 'quit' ? process.exit(0) : waitEnter().then(() => process.exit(0))));
+// AUTOFILL_TEST=1 = โหลดเป็นไลบรารีให้เทสต์เรียก fillPerson กับหน้าตัวอย่าง ไม่เปิด Chrome/ไม่ถามอะไร
+if (process.env.AUTOFILL_TEST) {
+  module.exports = { fillPerson, birthText, yearStyle, optionIndex, pickByOptions, clearDone };
+} else {
+  // พิมพ์ q ออกเอง = ปิดเลย · จบเพราะมีปัญหา = ค้างหน้าต่างไว้ให้อ่านข้อความก่อน
+  main()
+    .catch((e) => console.log(`❌ ${e?.message || e}`))
+    .then((result) => (result === 'quit' ? process.exit(0) : waitEnter().then(() => process.exit(0))));
+}

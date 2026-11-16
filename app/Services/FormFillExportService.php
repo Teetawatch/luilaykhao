@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BookingDocument;
 use App\Models\BookingPassenger;
+use App\Models\Driver;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\MediaDisk;
@@ -157,7 +158,7 @@ class FormFillExportService
         $form = $schedule->trip?->permitForm;
         $passengers = $this->documents->passengers($schedule)->values();
         // อีเมลไล่หาจากบัญชีที่ผูกกับที่นั่ง — โหลดทีเดียวทั้งรอบ
-        $passengers->load('member.user');
+        $passengers->loadMissing(['member.user', 'booking.user']);
         // ทีมงานต่อท้ายลูกทริป — อุทยานลงทะเบียนทุกคนที่เข้าพื้นที่ (ชุดเดียวกับ ZIP แบบฟอร์มอุทยาน)
         // ข้อมูลมาจากโปรไฟล์ของสตาฟ ผ่านผู้เดินทางชั่วคราวที่ไม่บันทึกลงฐานข้อมูล
         $staff = $this->forms->staffFor($schedule);
@@ -171,6 +172,7 @@ class FormFillExportService
             ->values();
 
         foreach ($everyone as $i => ['passenger' => $passenger, 'user' => $staffUser]) {
+            $passenger = $this->withBirthDate($passenger, $staffUser);
             $n = $i + 1;
             $isStaff = $staffUser !== null;
             $folder = sprintf('%02d-%s%s', $n, $isStaff ? 'ทีมงาน-' : '', $this->safeName((string) $passenger->name, $isStaff ? 'ทีมงาน' : 'ผู้เดินทาง'));
@@ -254,6 +256,46 @@ class FormFillExportService
         return $values;
     }
 
+    /**
+     * วันเกิดในใบจองไม่บังคับกรอก (แอปรุ่นเก่า/แอดมินเปิดแทน) แต่มักมีอยู่ที่อื่นแล้ว —
+     * ไล่หาต่อจากบัญชีที่ผูกกับที่นั่งนี้ แล้วค่อยบัญชีคนจองถ้าเป็นที่นั่งของคนจองเอง ·
+     * สตาฟ: โปรไฟล์ไม่มีก็เอาจากทะเบียนคนขับที่ผูกบัญชีนี้ (pin_user_id)
+     *
+     * คืนสำเนาที่ใส่วันเกิดแล้ว (อายุ/แบบฟอร์มอุทยานใช้ค่าเดียวกัน) — ไม่แตะแถวในฐานข้อมูล
+     */
+    private function withBirthDate(BookingPassenger $passenger, ?User $staff): BookingPassenger
+    {
+        if ($passenger->birth_date) {
+            return $passenger;
+        }
+
+        $date = $staff
+            ? ($staff->birth_date ?? Driver::where('pin_user_id', $staff->id)->whereNotNull('birth_date')->value('birth_date'))
+            : ($passenger->member?->user?->birth_date
+                ?? ($this->isOwnerSeat($passenger) ? $passenger->booking?->user?->birth_date : null));
+
+        if (! $date) {
+            return $passenger;
+        }
+
+        $copy = clone $passenger;
+        $copy->birth_date = $date;
+
+        return $copy;
+    }
+
+    /** ที่นั่งนี้เป็นของคนจองเอง — เบอร์หรือเลขบัตรตรงกับบัญชีคนจอง */
+    private function isOwnerSeat(BookingPassenger $passenger): bool
+    {
+        $owner = $passenger->booking?->user;
+        $digits = fn ($v) => preg_replace('/\D/', '', (string) $v);
+
+        return $owner !== null && (
+            ($digits($owner->phone) !== '' && $digits($owner->phone) === $digits($passenger->phone))
+            || ($digits($owner->id_card) !== '' && $digits($owner->id_card) === $digits($passenger->id_card))
+        );
+    }
+
     /** อีเมลจริงของบัญชี — บัญชีที่เข้าผ่าน LINE/โซเชียล (@social.local) หรือแอดมินเปิดแทนไม่มี */
     private function realEmail(?User $user): ?string
     {
@@ -281,14 +323,7 @@ class FormFillExportService
             return $email;
         }
 
-        $owner = $passenger->booking?->user;
-        $digits = fn ($v) => preg_replace('/\D/', '', (string) $v);
-        $isOwnerSeat = $owner && (
-            ($digits($owner->phone) !== '' && $digits($owner->phone) === $digits($passenger->phone))
-            || ($digits($owner->id_card) !== '' && $digits($owner->id_card) === $digits($passenger->id_card))
-        );
-
-        return ($isOwnerSeat ? $real($owner) : null) ?? '';
+        return ($this->isOwnerSeat($passenger) ? $real($passenger->booking?->user) : null) ?? '';
     }
 
     /** @return array<int, array{keyword: string, value: string, keywords?: array<int, string>, require?: array<int, string>, exclude?: array<int, string>}> */
