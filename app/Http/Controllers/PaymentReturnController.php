@@ -30,13 +30,14 @@ class PaymentReturnController extends Controller
         Payment::PURPOSE_BALANCE => 'บันทึกยอดคงเหลือให้อัตโนมัติ',
         Payment::PURPOSE_SPLIT_SHARE => 'บันทึกส่วนแบ่งของคุณให้อัตโนมัติ',
         Payment::PURPOSE_EXTRA => 'บันทึกยอดเพิ่มเติมให้อัตโนมัติ',
+        Payment::PURPOSE_STAY => 'ยืนยันห้องพักของคุณอัตโนมัติ',
     ];
 
     public function __invoke(Request $request): View
     {
         $payment = Payment::find($request->query('payment'));
 
-        $bookingRef = $payment?->booking?->booking_ref;
+        $bookingRef = $payment ? $this->refOf($payment) : null;
 
         return view('payment.return', [
             'payment' => $payment,
@@ -47,7 +48,7 @@ class PaymentReturnController extends Controller
             'cancelled' => $payment !== null && $request->boolean('cancelled') && $payment->status !== Payment::STATUS_SUCCEEDED,
             'backUrl' => $this->sameSiteUrl($request->query('back'))
                 ?? ($bookingRef ? $this->backUrl($payment, $bookingRef) : null),
-            'doneUrl' => $bookingRef ? url('/confirmation/'.$bookingRef) : null,
+            'doneUrl' => $bookingRef ? $this->doneUrl($payment, $bookingRef) : null,
         ]);
     }
 
@@ -75,6 +76,7 @@ class PaymentReturnController extends Controller
     private function backUrl(Payment $payment, string $bookingRef): string
     {
         return match ($payment->purpose) {
+            Payment::PURPOSE_STAY => url('/stays/bookings/'.$bookingRef),
             Payment::PURPOSE_INSTALLMENT_DUE => url('/installment-payment/'.$bookingRef),
             Payment::PURPOSE_FULL,
             Payment::PURPOSE_DEPOSIT,
@@ -98,7 +100,23 @@ class PaymentReturnController extends Controller
 
         return [
             'status' => $payment->status,
-            'booking_ref' => $payment->booking?->booking_ref,
+            'booking_ref' => $this->refOf($payment),
         ];
+    }
+
+    /** เลขที่โชว์บนหน้า — เลขการจองทริป หรือเลขใบจองที่พัก (LLK-STAY-…). */
+    private function refOf(Payment $payment): ?string
+    {
+        return $payment->isStay()
+            ? $payment->stayBooking?->ref
+            : $payment->booking?->booking_ref;
+    }
+
+    /** จ่ายเสร็จแล้วพาไปไหน — ที่พักไปหน้าใบจองที่พัก ไม่ใช่หน้ายืนยันการจองทริป. */
+    private function doneUrl(Payment $payment, string $ref): string
+    {
+        return $payment->isStay()
+            ? url('/stays/bookings/'.$ref)
+            : url('/confirmation/'.$ref);
     }
 }

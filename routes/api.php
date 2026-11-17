@@ -424,6 +424,7 @@ Route::prefix('v1')->group(function () {
         Route::get('stay-bookings/{ref}', [StayController::class, 'showBooking']);
         Route::get('stay-bookings/{ref}/payment', [StayController::class, 'payment']);
         Route::post('stay-bookings/{ref}/slip', [StayController::class, 'uploadSlip'])->middleware('throttle:payment');
+        Route::post('stay-bookings/{ref}/beam', [StayController::class, 'beamCharge'])->middleware('throttle:beam-charge');
         Route::get('stay-bookings/{ref}/cancel-preview', [StayController::class, 'cancelPreview']);
         Route::post('stay-bookings/{ref}/cancel', [StayController::class, 'cancel']);
         Route::put('stay-bookings/{ref}/refund-account', [StayController::class, 'refundAccount']);
@@ -1195,6 +1196,7 @@ Route::prefix('v1')->group(function () {
             ->whereNumber('id')->middleware('role:admin|finance');
         Route::post('stay-reviews/{review}/toggle', [AdminStayController::class, 'toggleReview'])->whereNumber('review');
         Route::get('stay-bookings', [AdminStayController::class, 'bookings']);
+        Route::get('stay-bookings/summary', [AdminStayController::class, 'summary']);
         Route::get('stay-bookings/{ref}', [AdminStayController::class, 'showBooking']);
         Route::put('stay-bookings/{ref}/note', [AdminStayController::class, 'bookingNote']);
         Route::post('stay-bookings/{ref}/{action}', [AdminStayController::class, 'bookingAction'])

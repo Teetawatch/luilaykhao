@@ -163,9 +163,11 @@ export function useBeamCharge(onPaid) {
 
   /**
    * @param {object} payload body ของ POST /payments/beam/charge
+   * @param {string} [endpoint] ที่ออกใบ — ค่าที่พักออกที่ /stay-bookings/{ref}/beam (ผลหน้าตาเดียวกัน
+   *   และยัง poll ที่ /payments/beam/{id} เหมือนกัน)
    * @returns {Promise<object|null>} ใบที่ออกได้ หรือ null เมื่อล้มเหลว
    */
-  async function create(payload) {
+  async function create(payload, endpoint = '/payments/beam/charge') {
     if (loading.value) return null;
 
     stop();
@@ -176,7 +178,7 @@ export function useBeamCharge(onPaid) {
     settlingSeconds.value = 0;
 
     try {
-      const res = await api.post('/payments/beam/charge', payload);
+      const res = await api.post(endpoint, payload);
       payment.value = res.data?.data;
       watchPayment();
 

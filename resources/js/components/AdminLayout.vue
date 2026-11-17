@@ -23,6 +23,9 @@
             <div class="group-title-wrapper">
               <i :class="group.icon"></i>
               <span v-if="!sidebarCollapsed">{{ group.label }}</span>
+              <!-- กลุ่มที่พับอยู่ซ่อนตัวเลขของเมนูย่อย — งานที่พักค้างต้องเห็นแม้ไม่ได้กางกลุ่ม -->
+              <span v-if="group.id === 'stays' && !group.isOpen && !sidebarCollapsed && stayAttentionCount"
+                class="nav-badge calm">{{ stayAttentionCount }}</span>
             </div>
             <i 
               v-if="!sidebarCollapsed" 
@@ -43,6 +46,7 @@
               <span>{{ item.label }}</span>
               <span v-if="item.badge === 'sos' && sosCount" class="nav-badge">{{ sosCount }}</span>
               <span v-if="item.badge === 'intake' && intakeCount" class="nav-badge calm">{{ intakeCount }}</span>
+              <span v-if="item.badge === 'stays' && stayAttentionCount" class="nav-badge calm">{{ stayAttentionCount }}</span>
               <span v-if="item.badge === 'finance' && financeOverdueCount" class="nav-badge calm">{{ financeOverdueCount }}</span>
               <span v-if="item.badge === 'tracking' && trackingAttentionCount" class="nav-badge">{{ trackingAttentionCount }}</span>
             </router-link>
@@ -61,6 +65,7 @@
               <i :class="item.icon"></i>
               <span v-if="item.badge === 'sos' && sosCount" class="nav-badge collapsed-badge">{{ sosCount }}</span>
               <span v-if="item.badge === 'intake' && intakeCount" class="nav-badge calm collapsed-badge">{{ intakeCount }}</span>
+              <span v-if="item.badge === 'stays' && stayAttentionCount" class="nav-badge calm collapsed-badge">{{ stayAttentionCount }}</span>
               <span v-if="item.badge === 'finance' && financeOverdueCount" class="nav-badge calm collapsed-badge">{{ financeOverdueCount }}</span>
               <span v-if="item.badge === 'tracking' && trackingAttentionCount" class="nav-badge collapsed-badge">{{ trackingAttentionCount }}</span>
             </router-link>
@@ -180,6 +185,20 @@ const loadIntakeCount = async () => {
   }
 };
 
+// งานที่พักที่รอทีมงาน: คำขอรอยืนยันห้อง + สลิปรอตรวจ + เงินคืนรอโอน — คำขอแบบส่งคำขอ
+// ลูกค้ารอคำตอบอยู่ ถ้าไม่มีใครเห็นจะหมดเวลาเองใน 48 ชม.
+const stayAttentionCount = ref(0);
+let stayTimer = null;
+
+const loadStayAttention = async () => {
+  try {
+    const res = await api.get('/admin/stay-bookings/summary');
+    stayAttentionCount.value = res.data.data.attention || 0;
+  } catch {
+    // เน็ตสะดุด/สิทธิ์ไม่พอ — รอบหน้าค่อยลองใหม่
+  }
+};
+
 /**
  * เมนูที่ต้องมีสิทธิ์การเงินถึงจะเห็น — ตัวเลขกำไร/ต้นทุนของบริษัท
  * ฝั่งเซิร์ฟเวอร์กันด้วย middleware อยู่แล้ว ตรงนี้แค่ไม่โชว์ลิงก์ที่กดไปก็ 403
@@ -281,7 +300,7 @@ const menuGroups = ref([
     label: 'ที่พักชุมชน',
     icon: 'fas fa-house-chimney',
     items: [
-      { to: '/admin/stay-bookings', icon: 'fas fa-bed', label: 'ใบจองที่พัก' },
+      { to: '/admin/stay-bookings', icon: 'fas fa-bed', label: 'ใบจองที่พัก', badge: 'stays' },
       { to: '/admin/stays', icon: 'fas fa-house-chimney', label: 'ที่พักและห้อง' },
     ],
     isOpen: false
@@ -408,6 +427,9 @@ onMounted(() => {
   loadIntakeCount();
   intakeTimer = setInterval(loadIntakeCount, 120000);
 
+  loadStayAttention();
+  stayTimer = setInterval(loadStayAttention, 120000);
+
   loadFinanceOverdueCount();
   financeTimer = setInterval(loadFinanceOverdueCount, 600000);
 
@@ -421,6 +443,7 @@ onBeforeUnmount(() => {
   document.body.style.overflow = '';
   if (sosTimer) clearInterval(sosTimer);
   if (intakeTimer) clearInterval(intakeTimer);
+  if (stayTimer) clearInterval(stayTimer);
   if (financeTimer) clearInterval(financeTimer);
   if (trackingTimer) clearInterval(trackingTimer);
 });

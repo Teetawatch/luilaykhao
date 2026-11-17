@@ -7,6 +7,7 @@ use App\Models\BookingSplitShare;
 use App\Models\InstallmentPayment;
 use App\Models\Payment;
 use App\Models\SmartNotification;
+use App\Models\StayBooking;
 use App\Models\User;
 use App\Services\Beam\BeamClient;
 use App\Services\Beam\BeamException;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * ตัวกลางระหว่างการจองกับ Beam
+ * ตัวกลางระหว่างการจอง (ทริป และใบจองที่พัก) กับ Beam
  *
  * สองหน้าที่เท่านั้น:
  *   startCharge()  ออก QR/ลิงก์จ่าย/หน้าชำระเงินของ Beam หนึ่งใบ แล้วจดไว้ในตาราง
@@ -48,6 +49,7 @@ class BeamPaymentService
         Payment::PURPOSE_BALANCE => 'ยอดคงเหลือ',
         Payment::PURPOSE_SPLIT_SHARE => 'ส่วนแบ่งค่าทริป',
         Payment::PURPOSE_EXTRA => 'ยอดเพิ่มเติม',
+        Payment::PURPOSE_STAY => 'ค่าที่พัก',
     ];
 
     /** สถานะลิงก์ที่แปลว่า "จบแล้ว ไม่มีเงินเข้า" — ปิดแถวได้. */
@@ -60,6 +62,7 @@ class BeamPaymentService
         private BalancePaymentService $balancePaymentService,
         private SplitPaymentService $splitPaymentService,
         private ExtraPaymentService $extraPaymentService,
+        private StayBookingService $stayBookings,
     ) {}
 
     /** ใช้ Beam อยู่ไหม — ต้องทั้งเปิดสวิตช์ และมี credential ครบ. */
@@ -117,9 +120,93 @@ class BeamPaymentService
 
         $payment->update(['reference_id' => $booking->booking_ref.'-'.$payment->id]);
 
+        return $this->sendToBeam($payment, $this->tripItem($booking), $expiresAt, $opts);
+    }
+
+    /**
+     * ออกใบชำระค่าที่พัก — จ่ายก้อนเดียวเต็มจำนวนเสมอ ยอดคือ total_amount ของใบจอง
+     *
+     * กดซ้ำด้วยช่องทางเดิมระหว่างที่ใบเดิมยังใช้ได้ = ได้ใบเดิมคืน ไม่ใช่ QR ใบที่สองที่
+     * ค้างรอ reconcile ไล่ตามเปล่าๆ (ใบหน้าชำระเงินออกใหม่เสมอ เพราะ back_url อาจต่างกัน)
+     *
+     * @param  array{device_type?: string|null, user_id?: int|null, back_url?: string|null}  $opts
+     *
+     * @throws PaymentNotAvailableException|BeamException
+     */
+    public function startStayCharge(StayBooking $stayBooking, string $methodType, array $opts = []): Payment
+    {
+        if (! in_array($methodType, (array) config('payment.beam.methods'), true)) {
+            throw new PaymentNotAvailableException('ยังไม่รองรับช่องทางการชำระเงินนี้');
+        }
+
+        if (! $stayBooking->canPay()) {
+            throw new PaymentNotAvailableException(
+                $stayBooking->status === StayBooking::STATUS_AWAITING_PAYMENT
+                    ? 'เลยเวลาชำระเงินแล้ว ห้องถูกปล่อยให้คนอื่น กรุณาจองใหม่'
+                    : 'ใบจองนี้ไม่ได้รอชำระเงิน'
+            );
+        }
+
+        $amount = round((float) $stayBooking->total_amount, 2);
+
+        if ($amount <= 0) {
+            throw new PaymentNotAvailableException('ใบจองนี้ไม่มียอดที่ต้องชำระ');
+        }
+
+        if ($methodType !== Payment::METHOD_CHECKOUT) {
+            $existing = Payment::where('stay_booking_id', $stayBooking->id)
+                ->where('payment_method_type', $methodType)
+                ->where('status', Payment::STATUS_PENDING)
+                ->where('expires_at', '>', now()->addMinute())
+                ->latest('id')
+                ->first();
+
+            if ($existing && abs((float) $existing->amount - $amount) < 0.01) {
+                return $existing;
+            }
+        }
+
+        $expiresAt = $this->stayExpiry($stayBooking, $methodType);
+
+        $payment = Payment::create([
+            'stay_booking_id' => $stayBooking->id,
+            'purpose' => Payment::PURPOSE_STAY,
+            'provider' => 'beam',
+            'reference_id' => 'tmp-'.uniqid('', true),
+            'amount' => $amount,
+            'currency' => 'THB',
+            'status' => Payment::STATUS_PENDING,
+            'payment_method_type' => $methodType,
+            'user_id' => $opts['user_id'] ?? $stayBooking->user_id,
+            'expires_at' => $expiresAt,
+        ]);
+
+        $payment->update(['reference_id' => $stayBooking->ref.'-'.$payment->id]);
+
+        $stayBooking->loadMissing('stay');
+
+        return $this->sendToBeam($payment, [
+            'title' => (string) ($stayBooking->stay?->name ?: 'ที่พักลุยเลเขา'),
+            'ref' => $stayBooking->ref,
+            'product_id' => 'stay-'.$stayBooking->stay_id,
+        ], $expiresAt, $opts);
+    }
+
+    /**
+     * ยิงคำขอไป Beam แล้วจดผลลงแถว — ขั้นที่ค่าทริปกับค่าที่พักเหมือนกันทุกอย่าง
+     *
+     * @param  array{title: string, ref: string, product_id: string}  $item  บรรทัดรายการบนหน้าชำระเงินของ Beam
+     * @param  array{device_type?: string|null, back_url?: string|null}  $opts
+     *
+     * @throws BeamException
+     */
+    private function sendToBeam(Payment $payment, array $item, Carbon $expiresAt, array $opts): Payment
+    {
+        $methodType = (string) $payment->payment_method_type;
+
         try {
             $response = $payment->isCheckout()
-                ? $this->createCheckoutLink($payment, $booking, $expiresAt, $opts['back_url'] ?? null)
+                ? $this->createCheckoutLink($payment, $item, $expiresAt, $opts['back_url'] ?? null)
                 : $this->beam->createCharge($this->chargePayload($payment, $methodType, $expiresAt, $opts));
         } catch (BeamException $e) {
             $payment->update([
@@ -259,6 +346,13 @@ class BeamPaymentService
         }
 
         $payment = $payment->fresh();
+
+        if ($payment->isStay()) {
+            $this->settleStay($payment);
+
+            return;
+        }
+
         $booking = $payment->booking()->with(['schedule', 'seats'])->first();
 
         if (! $booking) {
@@ -571,32 +665,89 @@ class BeamPaymentService
     }
 
     /**
+     * เงินค่าที่พักเข้าแล้ว — ยืนยันใบจองแบบเดียวกับตอนสลิปผ่าน OCR
+     *
+     * ใบที่หมดเวลา/ถูกยกเลิกไปแล้ว ห้ามยืนยันย้อนหลัง (ห้องอาจขายให้คนอื่นไปแล้ว) และใบที่
+     * ยืนยันไปแล้วด้วยเงินก้อนอื่น (โอน+สลิป) แปลว่าลูกค้าจ่ายซ้ำ — ทั้งสองกรณีต้องมีคน
+     * คืนเงิน
+     */
+    private function settleStay(Payment $payment): void
+    {
+        $stayBooking = $payment->stayBooking;
+
+        if (! $stayBooking) {
+            Log::error('Beam settle has no stay booking', ['payment_id' => $payment->id]);
+
+            return;
+        }
+
+        if (in_array($stayBooking->status, [StayBooking::STATUS_AWAITING_PAYMENT, StayBooking::STATUS_PAYMENT_REVIEW], true)) {
+            $this->stayBookings->confirmPayment($stayBooking, null, [
+                'payment_method' => $this->paymentMethodLabel($payment),
+                'payment_ref' => $payment->reference_id,
+                'paid_amount' => $payment->amount,
+            ]);
+
+            return;
+        }
+
+        $alreadyThisPayment = in_array($stayBooking->status, [StayBooking::STATUS_CONFIRMED, StayBooking::STATUS_COMPLETED], true)
+            && $stayBooking->payment_ref === $payment->reference_id;
+
+        if ($alreadyThisPayment) {
+            return;
+        }
+
+        $why = in_array($stayBooking->status, [StayBooking::STATUS_CONFIRMED, StayBooking::STATUS_COMPLETED], true)
+            ? 'ชำระเงินไปแล้วด้วยรายการอื่น (จ่ายซ้ำ)'
+            : 'ปิดไปแล้ว ('.$stayBooking->statusLabel().')';
+
+        $this->flagNeedsRefund(
+            $payment,
+            $stayBooking->ref,
+            "ใบจองที่พัก {$stayBooking->ref} {$why}",
+            'admin.stay-bookings',
+        );
+    }
+
+    /**
      * เงินเข้าแต่ที่นั่งถูกคืนไปแล้ว — ไม่มีทางแก้อัตโนมัติที่ปลอดภัย ต้องมีคนเข้ามาดู
      */
     private function flagOrphanPayment(Payment $payment, Booking $booking): void
     {
-        Log::error('Beam payment landed on a cancelled booking — refund required', [
+        $this->flagNeedsRefund(
+            $payment,
+            $booking->booking_ref,
+            "การจอง {$booking->booking_ref} ถูกยกเลิกไปแล้ว",
+            'admin.bookings',
+        );
+    }
+
+    private function flagNeedsRefund(Payment $payment, string $ref, string $situation, string $route): void
+    {
+        Log::error('Beam payment landed where it cannot be applied — refund required', [
             'payment_id' => $payment->id,
-            'booking_ref' => $booking->booking_ref,
+            'ref' => $ref,
             'amount' => $payment->amount,
+            'situation' => $situation,
         ]);
 
-        $payment->update(['failure_code' => 'booking_cancelled']);
+        $payment->update(['failure_code' => $payment->isStay() ? 'stay_not_payable' : 'booking_cancelled']);
 
         $amount = number_format((float) $payment->amount, 2);
 
         try {
-            User::role(['admin', 'operator'])->each(function (User $admin) use ($booking, $amount) {
+            User::role(['admin', 'operator'])->each(function (User $admin) use ($ref, $amount, $situation, $route) {
                 SmartNotification::send(
                     $admin->id,
                     'payment_needs_refund',
-                    'รับเงินหลังการจองถูกยกเลิก',
-                    "การจอง {$booking->booking_ref} ถูกยกเลิกไปแล้ว แต่มีเงิน {$amount} บาทเข้ามาหลังจากนั้น กรุณาตรวจสอบและคืนเงินให้ลูกค้า",
-                    ['booking_ref' => $booking->booking_ref, 'route' => 'admin.bookings'],
+                    'รับเงินที่ต้องคืนลูกค้า',
+                    "{$situation} แต่มีเงิน {$amount} บาทเข้ามาผ่าน Beam กรุณาตรวจสอบและคืนเงินให้ลูกค้า",
+                    ['booking_ref' => $ref, 'route' => $route],
                 );
             });
         } catch (\Exception $e) {
-            Log::warning('flagOrphanPayment notification failed — '.$e->getMessage());
+            Log::warning('flagNeedsRefund notification failed — '.$e->getMessage());
         }
     }
 
@@ -707,6 +858,38 @@ class BeamPaymentService
     }
 
     /**
+     * QR ค่าที่พักต้องหมดอายุก่อนห้องถูกปล่อย (payment_due_at) — เผื่อเวลาให้ webhook
+     * เดินทาง 1 นาทีเหมือนฝั่งทริป
+     */
+    private function stayExpiry(StayBooking $stayBooking, string $methodType): Carbon
+    {
+        $ttl = max(1, (int) ($methodType === Payment::METHOD_CHECKOUT
+            ? config('payment.beam.checkout.ttl_minutes')
+            : config('payment.beam.qr_ttl_minutes')));
+        $expiry = now()->addMinutes($ttl);
+
+        if (! $stayBooking->payment_due_at) {
+            return $expiry;
+        }
+
+        $deadline = $stayBooking->payment_due_at->copy()->subMinute();
+
+        return $expiry->lt($deadline) ? $expiry : $deadline;
+    }
+
+    /**
+     * @return array{title: string, ref: string, product_id: string}
+     */
+    private function tripItem(Booking $booking): array
+    {
+        return [
+            'title' => (string) ($booking->schedule?->trip?->title ?: 'ทริปลุยเลเขา'),
+            'ref' => $booking->booking_ref,
+            'product_id' => 'schedule-'.$booking->schedule_id,
+        ];
+    }
+
+    /**
      * @param  array{device_type?: string|null}  $opts
      * @return array<string, mixed>
      */
@@ -752,12 +935,12 @@ class BeamPaymentService
      *
      * @throws BeamException
      */
-    private function createCheckoutLink(Payment $payment, Booking $booking, Carbon $expiresAt, ?string $backUrl): array
+    private function createCheckoutLink(Payment $payment, array $item, Carbon $expiresAt, ?string $backUrl): array
     {
         // งวดผ่อนมีสี่แบบ เรียนรู้ได้ครั้งละหนึ่ง — เกินนี้คือ error อื่นที่ไม่ใช่เรื่องขั้นต่ำ
         for ($attempt = 0; ; $attempt++) {
             try {
-                return $this->beam->createPaymentLink($this->checkoutPayload($payment, $booking, $expiresAt, $backUrl));
+                return $this->beam->createPaymentLink($this->checkoutPayload($payment, $item, $expiresAt, $backUrl));
             } catch (BeamException $e) {
                 if ($attempt >= 4 || ! $this->learnInstallmentMinimum($e)) {
                     throw $e;
@@ -803,27 +986,29 @@ class BeamPaymentService
      * ยอดในรายการ = ยอดรวม (netAmount) เสมอ เป็นบรรทัดเดียว — แตกเป็นค่าทริป/ส่วนลด/
      * ของเช่า จะต้องคำนวณซ้ำกับ PaymentQuote แล้วเสี่ยงยอดไม่ตรงกันทีละสตางค์
      *
+     * @param  array{title: string, ref: string, product_id: string}  $item
      * @return array<string, mixed>
      */
-    private function checkoutPayload(Payment $payment, Booking $booking, Carbon $expiresAt, ?string $backUrl = null): array
+    private function checkoutPayload(Payment $payment, array $item, Carbon $expiresAt, ?string $backUrl = null): array
     {
         $satang = $payment->amountInSatang();
-        $tripTitle = (string) ($booking->schedule?->trip?->title ?: 'ทริปลุยเลเขา');
+        $title = $item['title'];
+        $ref = $item['ref'];
         $purposeLabel = self::PURPOSE_LABELS[$payment->purpose] ?? 'ค่าทริป';
 
         return [
             'order' => [
                 'currency' => 'THB',
                 'netAmount' => $satang,
-                'description' => Str::limit($tripTitle.' · '.$booking->booking_ref, 120, ''),
+                'description' => Str::limit($title.' · '.$ref, 120, ''),
                 'referenceId' => $payment->reference_id,
                 'orderItems' => [[
-                    'itemName' => Str::limit($tripTitle, 120, ''),
-                    'description' => $purposeLabel.' · '.$booking->booking_ref,
+                    'itemName' => Str::limit($title, 120, ''),
+                    'description' => $purposeLabel.' · '.$ref,
                     'price' => $satang,
                     'quantity' => 1,
-                    'productId' => 'schedule-'.$booking->schedule_id,
-                    'sku' => $booking->booking_ref,
+                    'productId' => $item['product_id'],
+                    'sku' => $ref,
                 ]],
             ],
             'linkSettings' => $this->checkoutLinkSettings((float) $payment->amount),

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Payment;
 use App\Models\Stay;
 use App\Models\StayBooking;
 use App\Models\StayExperience;
@@ -38,10 +39,18 @@ class AdminStayController extends Controller
             'roomTypes',
             'bookings as open_requests_count' => fn ($q) => $q->where('status', StayBooking::STATUS_REQUESTED),
             'bookings as upcoming_count' => fn ($q) => $q->where('status', StayBooking::STATUS_CONFIRMED),
+            'bookings as slip_review_count' => fn ($q) => $q->where('status', StayBooking::STATUS_PAYMENT_REVIEW),
+            'roomTypes as active_rooms_count' => fn ($q) => $q->where('is_active', true),
         ])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
+
+        // ยอดรอโอนของทุกที่พักใน query เดียว — เดิมถามทีละที่พัก
+        $pendingPayout = $this->bookings->payableQuery()
+            ->selectRaw('stay_id, SUM(host_amount) as total')
+            ->groupBy('stay_id')
+            ->pluck('total', 'stay_id');
 
         return $this->success([
             'stays' => $stays->map(fn (Stay $s) => [
@@ -56,9 +65,13 @@ class AdminStayController extends Controller
                 'commission_percent' => (float) $s->commission_percent,
                 'cover_image' => $s->coverUrl(),
                 'room_types_count' => $s->room_types_count,
+                'active_rooms_count' => $s->active_rooms_count,
                 'open_requests_count' => $s->open_requests_count,
+                'slip_review_count' => $s->slip_review_count,
                 'upcoming_count' => $s->upcoming_count,
-                'pending_payout' => round((float) $this->bookings->payableQuery($s)->sum('host_amount'), 2),
+                'pending_payout' => round((float) ($pendingPayout[$s->id] ?? 0), 2),
+                'map_ready' => $s->latitude !== null && $s->longitude !== null,
+                'payout_account_ready' => filled($s->payout_account['number'] ?? null),
                 'rating_avg' => $s->rating_avg !== null ? (float) $s->rating_avg : null,
                 'rating_count' => (int) $s->rating_count,
             ])->values()->all(),
@@ -235,6 +248,53 @@ class AdminStayController extends Controller
 
     // ── ใบจอง ───────────────────────────────────────────────────────
 
+    /**
+     * GET /admin/stay-bookings/summary — ภาพรวมของทั้งระบบที่พัก
+     *
+     * attention = งานที่รอคนในทีม (คำขอรอตอบ + สลิปรอตรวจ + เงินคืนรอโอน) ใช้เป็นตัวเลข
+     * บนเมนูข้าง ส่วน month คือใบที่ "ได้เงินแล้ว" ในเดือนนี้ (นับตาม paid_at เวลาไทย)
+     */
+    public function summary(): JsonResponse
+    {
+        $counts = StayBooking::query()
+            ->whereIn('status', [StayBooking::STATUS_REQUESTED, StayBooking::STATUS_PAYMENT_REVIEW, StayBooking::STATUS_AWAITING_PAYMENT])
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+        $refundPending = StayBooking::where('refund_status', StayBooking::REFUND_PENDING)->count();
+
+        $monthStart = now('Asia/Bangkok')->startOfMonth()->utc();
+        $month = StayBooking::whereNotNull('paid_at')
+            ->where('paid_at', '>=', $monthStart)
+            ->whereNotIn('status', [StayBooking::STATUS_CANCELLED])
+            ->selectRaw('COUNT(*) as bookings, COALESCE(SUM(total_amount), 0) as revenue, COALESCE(SUM(commission_amount), 0) as commission, COALESCE(SUM(nights * units), 0) as room_nights')
+            ->first();
+
+        $requested = (int) ($counts[StayBooking::STATUS_REQUESTED] ?? 0);
+        $slipReview = (int) ($counts[StayBooking::STATUS_PAYMENT_REVIEW] ?? 0);
+
+        return $this->success([
+            'attention' => $requested + $slipReview + $refundPending,
+            'requested' => $requested,
+            'payment_review' => $slipReview,
+            'awaiting_payment' => (int) ($counts[StayBooking::STATUS_AWAITING_PAYMENT] ?? 0),
+            'refund_pending' => $refundPending,
+            'upcoming' => StayBooking::where('status', StayBooking::STATUS_CONFIRMED)
+                ->where('check_in', '>=', now('Asia/Bangkok')->toDateString())->count(),
+            'checking_in_today' => StayBooking::where('status', StayBooking::STATUS_CONFIRMED)
+                ->where('check_in', now('Asia/Bangkok')->toDateString())->count(),
+            'active_stays' => Stay::where('status', Stay::STATUS_ACTIVE)->count(),
+            // สูตรเดียวกับปุ่ม "บันทึกว่าโอนแล้ว" ของแต่ละที่พัก
+            'pending_payout_total' => round((float) $this->bookings->payableQuery()->sum('host_amount'), 2),
+            'month' => [
+                'bookings' => (int) ($month->bookings ?? 0),
+                'revenue' => round((float) ($month->revenue ?? 0), 2),
+                'commission' => round((float) ($month->commission ?? 0), 2),
+                'room_nights' => (int) ($month->room_nights ?? 0),
+            ],
+        ]);
+    }
+
     public function bookings(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -269,7 +329,7 @@ class AdminStayController extends Controller
 
     public function showBooking(string $ref): JsonResponse
     {
-        return $this->success(StayPresenter::adminBooking($this->findBooking($ref), detail: true));
+        return $this->success($this->detail($this->findBooking($ref)));
     }
 
     public function bookingAction(Request $request, string $ref, string $action): JsonResponse
@@ -314,7 +374,7 @@ class AdminStayController extends Controller
             return $this->error($e->getMessage(), 422);
         }
 
-        return $this->success(StayPresenter::adminBooking($this->findBooking($booking->ref), detail: true), $message);
+        return $this->success($this->detail($this->findBooking($booking->ref)), $message);
     }
 
     public function bookingNote(Request $request, string $ref): JsonResponse
@@ -323,7 +383,7 @@ class AdminStayController extends Controller
         $booking = $this->findBooking($ref);
         $booking->update(['admin_note' => $data['admin_note'] ?? null]);
 
-        return $this->success(StayPresenter::adminBooking($booking->fresh(['stay', 'user', 'tripBooking']), detail: true), 'บันทึกแล้ว');
+        return $this->success($this->detail($booking->fresh(['stay', 'user', 'tripBooking'])), 'บันทึกแล้ว');
     }
 
     // ── จ่ายเจ้าของ / รีวิว ─────────────────────────────────────────
@@ -387,6 +447,29 @@ class AdminStayController extends Controller
     private function findBooking(string $ref): StayBooking
     {
         return StayBooking::with(['stay', 'user', 'tripBooking'])->where('ref', $ref)->firstOrFail();
+    }
+
+    /**
+     * ใบจองแบบเต็ม + ใบชำระผ่าน Beam ทุกใบ (ทั้งที่ไม่สำเร็จ) และลิงก์เจ้าของที่พัก
+     * — ทีมงานต้องเห็นว่าลูกค้า "พยายามจ่าย" ไปกี่รอบ เวลาลูกค้าโทรมาบอกว่าจ่ายแล้ว
+     *
+     * @return array<string, mixed>
+     */
+    private function detail(StayBooking $booking): array
+    {
+        return StayPresenter::adminBooking($booking, detail: true) + [
+            'host_url' => $booking->stay?->hostUrl(),
+            'beam_payments' => $booking->payments()->limit(20)->get()->map(fn (Payment $p) => [
+                'id' => $p->id,
+                'status' => $p->status,
+                'amount' => (float) $p->amount,
+                'method' => $p->payment_method_type,
+                'reference_id' => $p->reference_id,
+                'failure_code' => $p->failure_code,
+                'created_at' => $p->created_at?->toISOString(),
+                'succeeded_at' => $p->succeeded_at?->toISOString(),
+            ])->all(),
+        ];
     }
 
     private function full(Stay $stay): array

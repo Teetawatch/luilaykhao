@@ -17,7 +17,41 @@
       </div>
     </div>
 
-    <div class="table-card guide-card">
+    <!-- ภาพรวม — กดการ์ดงานค้างแล้วไปหน้าใบจองที่กรองไว้ให้แล้ว -->
+    <div class="stat-grid" v-if="summary">
+      <router-link to="/admin/stay-bookings?status=requested" class="stat-card" :class="{ 'stat-card--alert': summary.requested }">
+        <span class="stat-label">คำขอรอตอบ</span>
+        <strong class="stat-value">{{ summary.requested }}</strong>
+        <span class="stat-sub">ยืนยันห้องว่างให้ลูกค้า</span>
+      </router-link>
+      <router-link to="/admin/stay-bookings?status=payment_review" class="stat-card" :class="{ 'stat-card--alert': summary.payment_review }">
+        <span class="stat-label">สลิปรอตรวจ</span>
+        <strong class="stat-value">{{ summary.payment_review }}</strong>
+        <span class="stat-sub">รอชำระอยู่ {{ summary.awaiting_payment }} ใบ</span>
+      </router-link>
+      <router-link to="/admin/stay-bookings?status=refund_pending" class="stat-card" :class="{ 'stat-card--alert': summary.refund_pending }">
+        <span class="stat-label">เงินคืนรอโอน</span>
+        <strong class="stat-value">{{ summary.refund_pending }}</strong>
+        <span class="stat-sub">ลูกค้าที่ยกเลิกแล้ว</span>
+      </router-link>
+      <router-link to="/admin/stay-bookings?status=confirmed" class="stat-card">
+        <span class="stat-label">รอเข้าพัก</span>
+        <strong class="stat-value">{{ summary.upcoming }}</strong>
+        <span class="stat-sub">เช็คอินวันนี้ {{ summary.checking_in_today }} ใบ</span>
+      </router-link>
+      <div class="stat-card">
+        <span class="stat-label">ได้รับเงินเดือนนี้</span>
+        <strong class="stat-value">{{ baht(summary.month.revenue) }}</strong>
+        <span class="stat-sub">{{ summary.month.bookings }} ใบ · {{ summary.month.room_nights }} ห้อง-คืน · ค่าคอม {{ baht(summary.month.commission) }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">รอโอนให้เจ้าของ</span>
+        <strong class="stat-value">{{ baht(summary.pending_payout_total) }}</strong>
+        <span class="stat-sub">เปิดขายอยู่ {{ summary.active_stays }} แห่ง</span>
+      </div>
+    </div>
+
+    <div class="table-card guide-card" v-if="showGuide">
       <h3><span class="material-symbols-rounded">tips_and_updates</span> เปิดขายที่พักใหม่ใน 4 ขั้น</h3>
       <ol>
         <li>กด <strong>เพิ่มที่พัก</strong> กรอกชื่อ ชุมชน จังหวัด รูป และเรื่องเล่าของชุมชน</li>
@@ -26,6 +60,22 @@
         <li>ตั้งสถานะเป็น <strong>เปิดขาย</strong> แล้วผูกทริปใกล้เคียง ที่พักจะขึ้นในหน้าทริปนั้นด้วย</li>
       </ol>
       <p class="guide-foot">หน้าลูกค้า: <a href="/stays" target="_blank">/stays</a></p>
+    </div>
+
+    <div class="filters-bar" v-if="stays.length">
+      <div class="search-box">
+        <span class="material-symbols-rounded">search</span>
+        <input v-model="search" placeholder="ค้นชื่อที่พัก ชุมชน หรือจังหวัด" />
+      </div>
+      <select v-model="statusFilter">
+        <option value="">ทุกสถานะ</option>
+        <option value="active">เปิดขาย</option>
+        <option value="draft">ฉบับร่าง</option>
+        <option value="paused">พักการขาย</option>
+      </select>
+      <button v-if="!showGuide" class="btn-secondary" @click="guideOpen = true">
+        <span class="material-symbols-rounded">help</span> วิธีเปิดขาย
+      </button>
     </div>
 
     <div class="table-card">
@@ -44,6 +94,7 @@
           <thead>
             <tr>
               <th>ที่พัก</th>
+              <th>ห้อง</th>
               <th>โหมดจอง</th>
               <th>ถึงชุมชน</th>
               <th>คำขอรอตอบ</th>
@@ -54,7 +105,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="s in stays" :key="s.id">
+            <tr v-if="!filteredStays.length">
+              <td colspan="9" class="muted-sub center">ไม่พบที่พักที่ตรงกับคำค้น</td>
+            </tr>
+            <tr v-for="s in filteredStays" :key="s.id">
               <td>
                 <div class="trip-cell">
                   <img :src="s.cover_image || '/images/placeholder.jpg'" class="trip-thumb" />
@@ -64,22 +118,40 @@
                       {{ s.type_label }}<span v-if="s.province"> · {{ s.province }}</span>
                       <span v-if="s.rating_count"> · ★ {{ s.rating_avg?.toFixed(1) }} ({{ s.rating_count }})</span>
                     </div>
+                    <!-- สิ่งที่ยังขาด — เห็นตั้งแต่หน้ารายการ ไม่ต้องเปิดเข้าไปไล่ดู -->
+                    <div class="todo-row" v-if="readinessIssues(s).length">
+                      <span v-for="issue in readinessIssues(s)" :key="issue" class="todo-pill">{{ issue }}</span>
+                    </div>
                   </div>
                 </div>
+              </td>
+              <td>
+                <span v-if="s.active_rooms_count">{{ s.active_rooms_count }} แบบ</span>
+                <span v-else class="warn-pill">ยังไม่มีห้อง</span>
               </td>
               <td>{{ s.booking_mode === 'instant' ? 'จองทันที' : 'ส่งคำขอ' }}</td>
               <td>{{ (100 - s.commission_percent).toFixed(0) }}%</td>
               <td>
-                <span v-if="s.open_requests_count" class="warn-pill">{{ s.open_requests_count }}</span>
+                <router-link v-if="s.open_requests_count || s.slip_review_count" class="pill-link"
+                  :to="`/admin/stay-bookings?stay_id=${s.id}&status=${s.open_requests_count ? 'requested' : 'payment_review'}`">
+                  <span v-if="s.open_requests_count" class="warn-pill">{{ s.open_requests_count }} คำขอ</span>
+                  <span v-if="s.slip_review_count" class="warn-pill">{{ s.slip_review_count }} สลิป</span>
+                </router-link>
                 <span v-else class="muted-sub">—</span>
               </td>
-              <td>{{ s.upcoming_count || '—' }}</td>
+              <td>
+                <router-link v-if="s.upcoming_count" :to="`/admin/stay-bookings?stay_id=${s.id}&status=confirmed`">{{ s.upcoming_count }}</router-link>
+                <span v-else class="muted-sub">—</span>
+              </td>
               <td>{{ s.pending_payout ? baht(s.pending_payout) : '—' }}</td>
               <td>
                 <span class="status-badge" :class="statusClass(s.status)">{{ STATUS_LABEL[s.status] || s.status }}</span>
               </td>
               <td>
                 <div class="action-btns">
+                  <router-link class="btn-icon" :to="`/admin/stay-bookings?stay_id=${s.id}`" title="ใบจองของที่พักนี้">
+                    <span class="material-symbols-rounded">receipt_long</span>
+                  </router-link>
                   <a v-if="s.status === 'active'" class="btn-icon" :href="'/stays/' + encodeURIComponent(s.slug)" target="_blank" title="ดูหน้าเว็บ">
                     <span class="material-symbols-rounded">open_in_new</span>
                   </a>
@@ -502,6 +574,31 @@ const payouts = ref(null);
 const payoutRef = ref('');
 const paying = ref(false);
 const hostQuery = ref('');
+const summary = ref(null);
+const search = ref('');
+const statusFilter = ref('');
+const guideOpen = ref(false);
+
+// ยังไม่มีที่พักไหนเปิดขาย = คนที่เพิ่งเริ่ม ต้องเห็นวิธีทำเลย ส่วนคนที่ใช้เป็นแล้วเปิดดูเองได้
+const showGuide = computed(() => guideOpen.value || !stays.value.some(s => s.status === 'active'));
+
+const filteredStays = computed(() => {
+  const term = search.value.trim().toLowerCase();
+  return stays.value.filter((s) => {
+    if (statusFilter.value && s.status !== statusFilter.value) return false;
+    if (!term) return true;
+    return [s.name, s.community_name, s.province].some(v => (v || '').toLowerCase().includes(term));
+  });
+});
+
+/** สิ่งที่ที่พักนี้ยังขาด ก่อนจะขายได้ดี/โอนเงินได้ */
+function readinessIssues(s) {
+  const issues = [];
+  if (!s.cover_image) issues.push('ไม่มีรูปปก');
+  if (!s.map_ready) issues.push('ไม่มีพิกัด');
+  if (!s.payout_account_ready) issues.push('ไม่มีบัญชีรับเงิน');
+  return issues;
+}
 const hostResults = ref([]);
 
 const highlightsText = computed({
@@ -829,11 +926,20 @@ async function confirmDelete(stay) {
 async function fetchStays() {
   loading.value = true;
   try {
-    const res = await api.get('/admin/stays');
-    stays.value = res.data?.data?.stays || [];
-    options.value = res.data?.data?.options || options.value;
+    const [list] = await Promise.all([api.get('/admin/stays'), fetchSummary()]);
+    stays.value = list.data?.data?.stays || [];
+    options.value = list.data?.data?.options || options.value;
   } finally {
     loading.value = false;
+  }
+}
+
+async function fetchSummary() {
+  try {
+    const res = await api.get('/admin/stay-bookings/summary');
+    summary.value = res.data?.data || null;
+  } catch {
+    summary.value = null;
   }
 }
 
@@ -849,6 +955,22 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@import url('./admin-shared.css');
+
+.heading-icon { font-size: 28px; color: var(--color-accent); vertical-align: text-bottom; }
+.muted-sub { font-size: 12px; color: #9ca3af; }
+.muted-sub.center { text-align: center; padding: 20px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat-card { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 14px; background: #fff; border: 1px solid #e5e7eb; text-decoration: none; color: inherit; }
+a.stat-card:hover { border-color: var(--color-accent); }
+.stat-card--alert { border-color: #fedf89; background: #fffcf5; }
+.stat-label { font-size: 12px; font-weight: 700; color: #6b7280; }
+.stat-value { font-size: 22px; font-weight: 900; color: #111827; line-height: 1.2; }
+.stat-card--alert .stat-value { color: #b54708; }
+.stat-sub { font-size: 11px; color: #9ca3af; }
+.todo-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.todo-pill { font-size: 11px; font-weight: 700; color: #6b7280; background: #f3f4f6; border-radius: 999px; padding: 1px 8px; }
+.pill-link { display: inline-flex; flex-wrap: wrap; gap: 4px; text-decoration: none; }
 .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .stay-modal { max-width: 860px; width: 100%; }
 .guide-card { padding: 18px; margin-bottom: 16px; }
@@ -861,7 +983,7 @@ onMounted(async () => {
 .guide-foot a { color: #006565; font-weight: 700; }
 .hint { font-size: 12px; font-weight: 400; color: #9ca3af; }
 .hint.warn { color: #b54708; }
-.warn-pill { display: inline-flex; font-size: 12px; font-weight: 700; color: #b54708; background: #fffaeb; border: 1px solid #fedf89; border-radius: 999px; padding: 2px 10px; }
+.warn-pill { white-space: nowrap; display: inline-flex; font-size: 12px; font-weight: 700; color: #b54708; background: #fffaeb; border: 1px solid #fedf89; border-radius: 999px; padding: 2px 10px; }
 .tab-row { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid #f3f4f6; overflow-x: auto; }
 .tab-btn { display: inline-flex; align-items: center; gap: 6px; padding: 12px 12px; font-size: 13px; font-weight: 700; color: #6b7280; border: 0; background: none; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
 .tab-btn .material-symbols-rounded { font-size: 18px; }

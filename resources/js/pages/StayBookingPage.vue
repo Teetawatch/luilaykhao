@@ -55,20 +55,77 @@
             <p class="text-2xl font-black text-[var(--color-accent)]">฿{{ money(b.total_amount) }}</p>
           </div>
           <p v-if="b.payment_note" class="mt-3 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">สลิปก่อนหน้าไม่ผ่าน: {{ b.payment_note }}</p>
-          <div v-if="pay" class="mt-4 flex flex-col items-center gap-2 rounded-2xl bg-[var(--color-sand)] p-4">
-            <img :src="pay.qr_data_uri" alt="QR พร้อมเพย์" class="w-56 rounded-xl bg-white p-2" />
-            <p class="text-[13px] font-semibold text-[var(--color-text-mid)]">สแกนจ่ายด้วยแอปธนาคาร · {{ pay.merchant_name }}</p>
-            <p v-if="pay.bank_account" class="text-[13px] text-[var(--color-text-muted)]">หรือโอน {{ pay.bank_name }} {{ pay.bank_account }} ({{ pay.bank_holder }})</p>
-          </div>
-          <label class="slip mt-4" :class="{ 'slip--set': slipPreview }">
-            <input type="file" accept="image/*" hidden @change="onSlip" />
-            <img v-if="slipPreview" :src="slipPreview" alt="สลิป" class="max-h-48 rounded-xl" />
-            <template v-else>
-              <span class="material-symbols-rounded icon-32">upload</span>
-              <span class="font-bold">แนบสลิปการโอน</span>
-            </template>
-          </label>
-          <button class="btn mt-4" :disabled="!slipFile || uploading" @click="uploadSlip">{{ uploading ? 'กำลังส่ง…' : 'ส่งสลิป' }}</button>
+
+          <!-- Beam: จ่ายแล้วระบบยืนยันห้องให้เอง ไม่ต้องแนบสลิป -->
+          <template v-if="useBeam && !manualPay">
+            <div class="mt-4 divide-y divide-gray-100 border-b border-gray-100" role="radiogroup" aria-label="ช่องทางชำระ">
+              <PayMethodRow badge="thaiqr.png" title="QR PromptPay"
+                subtitle="จ่ายแล้วระบบยืนยันห้องให้อัตโนมัติ ไม่ต้องแนบสลิป" :selected="true">
+                <div v-if="beamSettling">
+                  <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow" final-step="ยืนยันห้องพักของคุณอัตโนมัติ">
+                    <template #actions>
+                      <button @click="resumeBeamWaiting"
+                        class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4">
+                        ยังไม่ได้จ่าย · กลับไปสแกน QR
+                      </button>
+                    </template>
+                  </PaymentSettlingPanel>
+                </div>
+                <div v-else class="flex flex-col items-center gap-4 rounded-2xl bg-[var(--color-sand)] px-4 py-6">
+                  <div class="relative flex aspect-square w-full max-w-[260px] items-center justify-center rounded-2xl bg-white p-2">
+                    <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" alt="QR พร้อมเพย์" class="block h-auto w-full rounded-xl" />
+                    <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/90">
+                      <div class="h-9 w-9 animate-spin rounded-full border-4 border-[var(--color-sand-dark)] border-t-[var(--color-accent)]"></div>
+                    </div>
+                    <div v-else-if="beamExpired || !beamPayment" class="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/95 px-6 text-center">
+                      <p v-if="beamExpired" class="text-sm font-bold">QR หมดอายุแล้ว</p>
+                      <button class="rounded-xl bg-[var(--color-accent)] px-5 py-2.5 text-xs font-black text-white" @click="createBeamCharge()">
+                        {{ beamExpired ? 'สร้าง QR ใหม่' : 'แสดง QR' }}
+                      </button>
+                    </div>
+                  </div>
+                  <p v-if="beamPayment && !beamExpired" class="text-xs font-bold text-[var(--color-text-mid)]">
+                    รอชำระ · QR หมดอายุใน <span class="tabular-nums text-[var(--color-accent)]">{{ beamCountdownText }}</span>
+                  </p>
+                  <div v-if="beamPayment && !beamExpired" class="w-full">
+                    <PaymentSettlingPanel stage="waiting" final-step="ยืนยันห้องพักของคุณอัตโนมัติ" />
+                  </div>
+                  <p v-if="beamError" class="text-center text-xs font-bold text-red-600">{{ beamError }}</p>
+                </div>
+              </PayMethodRow>
+
+              <!-- ไม่สะดวกสแกน — บัตร / Apple Pay / ผ่อน / e-Wallet บนหน้าของ Beam -->
+              <PaymentCheckoutMethods v-if="checkoutAvailable"
+                :amount="Number(b.total_amount)"
+                :installment-min="Number(gateway.installment_min_amount || 0)"
+                :loading="beamLoading"
+                @open="createBeamCharge('CHECKOUT')" />
+            </div>
+            <button class="mt-3 text-[13px] font-bold text-[var(--color-text-muted)] underline" @click="manualPay = true">
+              โอนเองแล้วแนบสลิปแทน
+            </button>
+          </template>
+
+          <!-- โอนเอง + แนบสลิป (ทางเดิม และทางสำรองเมื่อเกตเวย์ขัดข้อง) -->
+          <template v-else>
+            <div v-if="pay" class="mt-4 flex flex-col items-center gap-2 rounded-2xl bg-[var(--color-sand)] p-4">
+              <img :src="pay.qr_data_uri" alt="QR พร้อมเพย์" class="w-56 rounded-xl bg-white p-2" />
+              <p class="text-[13px] font-semibold text-[var(--color-text-mid)]">สแกนจ่ายด้วยแอปธนาคาร · {{ pay.merchant_name }}</p>
+              <p v-if="pay.bank_account" class="text-[13px] text-[var(--color-text-muted)]">หรือโอน {{ pay.bank_name }} {{ pay.bank_account }} ({{ pay.bank_holder }})</p>
+            </div>
+            <label class="slip mt-4" :class="{ 'slip--set': slipPreview }">
+              <input type="file" accept="image/*" hidden @change="onSlip" />
+              <img v-if="slipPreview" :src="slipPreview" alt="สลิป" class="max-h-48 rounded-xl" />
+              <template v-else>
+                <span class="material-symbols-rounded icon-32">upload</span>
+                <span class="font-bold">แนบสลิปการโอน</span>
+              </template>
+            </label>
+            <button class="btn mt-4" :disabled="!slipFile || uploading" @click="uploadSlip">{{ uploading ? 'กำลังส่ง…' : 'ส่งสลิป' }}</button>
+            <button v-if="useBeam" class="mt-3 text-[13px] font-bold text-[var(--color-text-muted)] underline" @click="manualPay = false">
+              กลับไปจ่ายผ่าน QR อัตโนมัติ
+            </button>
+          </template>
         </section>
 
         <!-- ติดต่อที่พัก (หลังยืนยัน) -->
@@ -148,6 +205,10 @@ import { computed, defineComponent, h, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
 import { useToast } from '../lib/toast';
+import PayMethodRow from '../components/PayMethodRow.vue';
+import PaymentCheckoutMethods from '../components/PaymentCheckoutMethods.vue';
+import PaymentSettlingPanel from '../components/PaymentSettlingPanel.vue';
+import { useBeamCharge } from '../composables/useBeamCharge';
 
 /** ช่องกรอกบัญชีรับเงินคืน — ใช้ทั้งตอนยกเลิกและตอนแจ้งบัญชีทีหลัง */
 const AccountForm = defineComponent({
@@ -181,6 +242,7 @@ const account = ref({ bank: '', number: '', name: '' });
 const rating = ref(0);
 const comment = ref('');
 const reviewing = ref(false);
+const manualPay = ref(false);
 const now = ref(Date.now());
 const timer = setInterval(() => { now.value = Date.now(); }, 30000);
 onBeforeUnmount(() => clearInterval(timer));
@@ -202,6 +264,35 @@ const dueText = computed(() => {
   const mins = Math.ceil(ms / 60000);
   return mins < 60 ? `${mins} นาที` : `${Math.floor(mins / 60)} ชม. ${mins % 60} นาที`;
 });
+
+// ── Beam ─────────────────────────────────────────────────────
+// ผู้ยืนยันห้องคือ webhook — หน้านี้แค่รอผลแล้วโหลดใบจองใหม่
+const gateway = computed(() => pay.value?.payment_gateway || { provider: 'manual' });
+const useBeam = computed(() => gateway.value.provider === 'beam');
+const checkoutAvailable = computed(() => useBeam.value && gateway.value.methods?.includes('CHECKOUT'));
+
+const {
+  payment: beamPayment,
+  loading: beamLoading,
+  error: beamError,
+  qrSrc: beamQrSrc,
+  expired: beamExpired,
+  settling: beamSettling,
+  settlingSeconds: beamSettlingSeconds,
+  slow: beamSlow,
+  countdownText: beamCountdownText,
+  resumeWaiting: resumeBeamWaiting,
+  create: createBeamPayment,
+  stop: stopBeam,
+} = useBeamCharge(async () => {
+  toast.success('ชำระเงินสำเร็จ ยืนยันที่พักแล้ว');
+  await load();
+});
+
+function createBeamCharge(methodType = 'QR_PROMPT_PAY') {
+  if (!b.value?.can_pay) return null;
+  return createBeamPayment({ payment_method_type: methodType }, `/stay-bookings/${b.value.ref}/beam`);
+}
 
 const mapLink = computed(() => {
   const s = b.value?.stay;
@@ -228,6 +319,7 @@ async function load() {
     b.value = res.data.data;
     document.title = `ใบจอง ${b.value.ref} | ที่พักชุมชน`;
     if (b.value.can_pay) loadPayment();
+    else stopBeam();
   } catch {
     b.value = null;
   } finally {
@@ -239,6 +331,8 @@ async function loadPayment() {
   try {
     const res = await api.get(`/stay-bookings/${b.value.ref}/payment`);
     pay.value = res.data.data;
+    // ออก QR ให้เลย ไม่ต้องกดอีกชั้น — กดรีเฟรชก็ได้ใบเดิมคืน (หลังบ้านคืนใบที่ยังใช้ได้)
+    if (useBeam.value && !manualPay.value && !beamPayment.value) createBeamCharge();
   } catch {
     pay.value = null;
   }

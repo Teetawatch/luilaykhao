@@ -8,12 +8,16 @@ use App\Models\StayBooking;
 use App\Models\StayPayout;
 use App\Models\StayRoomType;
 use App\Models\Trip;
+use App\Services\Beam\BeamException;
+use App\Services\BeamPaymentService;
+use App\Services\PaymentNotAvailableException;
 use App\Services\StayAvailabilityService;
 use App\Services\StayBookingService;
 use App\Services\StayPresenter;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * ที่พักชุมชน ฝั่งลูกค้า — ค้นหา ดูห้องว่าง จอง จ่าย ยกเลิก รีวิว
@@ -194,6 +198,44 @@ class StayController extends Controller
         }
 
         return $this->success($this->bookings->paymentInfo($booking));
+    }
+
+    /**
+     * POST /stay-bookings/{ref}/beam — ออก QR / ลิงก์จ่ายผ่าน Beam
+     *
+     * ผลเหมือน /payments/beam/charge ทุกตัวอักษร (client poll ต่อที่ /payments/beam/{id})
+     * ผู้ยืนยันใบจองคือ webhook ไม่ใช่ endpoint นี้
+     */
+    public function beamCharge(Request $request, string $ref, BeamPaymentService $beam): JsonResponse
+    {
+        $validated = $request->validate([
+            'payment_method_type' => ['nullable', 'string', 'max:40'],
+            'device_type' => ['nullable', 'in:IOS,ANDROID,ios,android'],
+        ]);
+
+        if (! $beam->enabled()) {
+            return $this->error('ระบบชำระเงินอัตโนมัติยังไม่เปิดใช้งาน กรุณาโอนและแนบสลิปตามปกติ', 503);
+        }
+
+        $booking = $this->own($request, $ref);
+
+        try {
+            $payment = $beam->startStayCharge($booking, $validated['payment_method_type'] ?? 'QR_PROMPT_PAY', [
+                'device_type' => $validated['device_type'] ?? null,
+                'user_id' => $request->user()->id,
+            ]);
+        } catch (PaymentNotAvailableException $e) {
+            return $this->error($e->getMessage(), 422);
+        } catch (BeamException $e) {
+            Log::error('Beam stay charge could not be created', [
+                'stay_ref' => $booking->ref,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->error('ระบบชำระเงินขัดข้องชั่วคราว กรุณาโอนและแนบสลิปแทน', 502);
+        }
+
+        return $this->success($payment->toClientArray(), 'สร้างรายการชำระเงินสำเร็จ', 201);
     }
 
     public function uploadSlip(Request $request, string $ref): JsonResponse

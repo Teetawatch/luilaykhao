@@ -530,4 +530,56 @@ class StayBookingTest extends TestCase
         $this->get('/stays/'.$stay->slug)->assertOk()->assertSee('บ้านไม้ริมธาร', false)->assertSee('ตื่นมาเจอทะเลหมอก', false);
         $this->get('/sitemap.xml')->assertOk()->assertSee('/stays/'.$stay->slug, false);
     }
+
+    public function test_admin_summary_counts_the_work_waiting_for_the_team(): void
+    {
+        $admin = $this->admin();
+        $requestStay = $this->stay(['booking_mode' => Stay::MODE_REQUEST]);
+        $requestRoom = $this->room($requestStay);
+        $instantStay = $this->stay();
+        $instantRoom = $this->room($instantStay);
+
+        // คำขอรอตอบ 1 ใบ
+        $this->book(User::factory()->create(), $requestStay, $this->payload($requestRoom, $this->monday()))->assertCreated();
+        // จ่ายแล้ว (นับเป็นรายได้เดือนนี้) 1 ใบ
+        $paidRef = $this->book(User::factory()->create(), $instantStay, $this->payload($instantRoom, $this->monday()))->json('data.ref');
+        app(StayBookingService::class)->confirmPayment(StayBooking::where('ref', $paidRef)->first());
+
+        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/admin/stay-bookings/summary')
+            ->assertOk()
+            ->assertJsonPath('data.requested', 1)
+            ->assertJsonPath('data.attention', 1)
+            ->assertJsonPath('data.upcoming', 1)
+            ->assertJsonPath('data.active_stays', 2)
+            ->assertJsonPath('data.month.bookings', 1)
+            ->assertJsonPath('data.month.room_nights', 2);
+
+        $this->actingAs($admin, 'sanctum')->getJson('/api/v1/admin/stays')
+            ->assertOk()
+            ->assertJsonPath('data.stays.0.active_rooms_count', 1);
+
+        $this->actingAs(User::factory()->create(), 'sanctum')->getJson('/api/v1/admin/stay-bookings/summary')->assertForbidden();
+    }
+
+    public function test_admin_booking_detail_carries_the_host_link_and_can_be_filtered_by_stay(): void
+    {
+        $admin = $this->admin();
+        $stay = $this->stay();
+        $room = $this->room($stay);
+        $other = $this->stay();
+        $otherRoom = $this->room($other);
+
+        $ref = $this->book(User::factory()->create(), $stay, $this->payload($room, $this->monday()))->json('data.ref');
+        $this->book(User::factory()->create(), $other, $this->payload($otherRoom, $this->monday()))->assertCreated();
+
+        $this->actingAs($admin, 'sanctum')->getJson("/api/v1/admin/stay-bookings/{$ref}")
+            ->assertOk()
+            ->assertJsonPath('data.host_url', $stay->fresh()->hostUrl())
+            ->assertJsonPath('data.beam_payments', []);
+
+        $this->actingAs($admin, 'sanctum')->getJson("/api/v1/admin/stay-bookings?stay_id={$stay->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.ref', $ref);
+    }
 }

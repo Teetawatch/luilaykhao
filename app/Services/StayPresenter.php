@@ -175,6 +175,7 @@ class StayPresenter
             'payment_due_at' => $b->payment_due_at?->toISOString(),
             'payment_note' => $b->payment_note,
             'paid_at' => $b->paid_at?->toISOString(),
+            'payment_method' => $b->payment_method,
             'decline_reason' => $b->decline_reason,
             'cancel_reason' => $b->cancel_reason,
             'refund_amount' => (float) $b->refund_amount,
@@ -211,6 +212,8 @@ class StayPresenter
             'payment_due_at' => $b->payment_due_at?->toISOString(),
             'paid_at' => $b->paid_at?->toISOString(),
             'paid_amount' => (float) $b->paid_amount,
+            // promptpay = โอน+สลิป · beam_* = จ่ายผ่าน Beam (คืนเงินผ่าน Beam ได้ถ้าเป็นบัตร)
+            'payment_method' => $b->payment_method,
             'slip_ocr_status' => $b->slip_ocr_status,
             'refund_amount' => (float) $b->refund_amount,
             'refund_status' => $b->refund_status,

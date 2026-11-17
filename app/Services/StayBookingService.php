@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\Payment;
 use App\Models\SmartNotification;
 use App\Models\Stay;
 use App\Models\StayBooking;
@@ -12,6 +13,7 @@ use App\Models\StayRoomNight;
 use App\Models\StayRoomType;
 use App\Models\User;
 use App\Support\MediaDisk;
+use App\Support\PaymentGateway;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonPeriod;
@@ -23,7 +25,7 @@ use Illuminate\Support\Facades\Log;
  * ใบจองที่พักชุมชน — ทุกการเปลี่ยนสถานะผ่านที่นี่ ทุกเมธอดตรวจสถานะใต้ lock
  *
  * กติกาเรื่องเงิน:
- * - ลูกค้าจ่ายเข้าบริษัท (พร้อมเพย์ + สลิป) เหมือนทริป ยอดคิดที่หลังบ้านเสมอ
+ * - ลูกค้าจ่ายเข้าบริษัท (พร้อมเพย์ + สลิป หรือผ่าน Beam เมื่อเปิดใช้) เหมือนทริป ยอดคิดที่หลังบ้านเสมอ
  * - บริษัทเก็บ commission_percent ของยอด ที่เหลือ (host_amount) โอนให้เจ้าของ
  *   หลังแขกเข้าพักจริง (completed) ไม่ใช่ตอนจอง — แขกยกเลิกก่อนเข้าพักจะได้ไม่ต้องตามเงินคืน
  * - ยกเลิกหลังจ่าย: คืนตามนโยบายของที่พัก ส่วนที่ไม่คืน (ยกเลิกกระชั้น) แบ่งตามสัดส่วนเดิม
@@ -162,6 +164,8 @@ class StayBookingService
             'bank_account' => config('payment.bank_account'),
             'bank_holder' => config('payment.bank_holder'),
             'support_phone' => config('payment.support_phone'),
+            // beam = มีปุ่มจ่ายผ่าน Beam (ยืนยันอัตโนมัติ) ให้ด้วย — ทางสลิปยังใช้ได้เสมอ
+            'payment_gateway' => PaymentGateway::publicConfig(),
         ];
     }
 
@@ -198,6 +202,7 @@ class StayBookingService
                 'slip_ocr_result' => null,
                 'status' => StayBooking::STATUS_PAYMENT_REVIEW,
                 'payment_ref' => 'STPAY-'.strtoupper(uniqid()),
+                'payment_method' => 'promptpay',
                 'payment_note' => null,
             ]);
 
@@ -392,11 +397,15 @@ class StayBookingService
     // ── ทีมงาน ──────────────────────────────────────────────────────
 
     /**
-     * ยืนยันการจ่ายเงิน (OCR ผ่าน หรือทีมงานอนุมัติสลิป) — เรียกซ้ำได้
+     * ยืนยันการจ่ายเงิน (OCR ผ่าน / ทีมงานอนุมัติสลิป / Beam แจ้งว่าเงินเข้า) — เรียกซ้ำได้
+     *
+     * $gateway มาจาก BeamPaymentService เท่านั้น — ทางสลิปไม่ส่ง
+     *
+     * @param  array{payment_method?: string, payment_ref?: string, paid_amount?: float|string}  $gateway
      */
-    public function confirmPayment(StayBooking $booking, ?User $reviewer = null): StayBooking
+    public function confirmPayment(StayBooking $booking, ?User $reviewer = null, array $gateway = []): StayBooking
     {
-        $confirmed = DB::transaction(function () use ($booking, $reviewer) {
+        $confirmed = DB::transaction(function () use ($booking, $reviewer, $gateway) {
             $locked = StayBooking::lockForUpdate()->findOrFail($booking->id);
 
             if (in_array($locked->status, [StayBooking::STATUS_CONFIRMED, StayBooking::STATUS_COMPLETED], true)) {
@@ -409,9 +418,11 @@ class StayBookingService
             $locked->update([
                 'status' => StayBooking::STATUS_CONFIRMED,
                 'paid_at' => now(),
-                'paid_amount' => $locked->total_amount,
+                'paid_amount' => $gateway['paid_amount'] ?? $locked->total_amount,
                 'payment_reviewed_by_id' => $reviewer?->id,
                 'slip_ocr_status' => $reviewer ? SlipOcrService::STATUS_APPROVED : $locked->slip_ocr_status,
+                'payment_method' => $gateway['payment_method'] ?? $locked->payment_method ?? 'promptpay',
+                'payment_ref' => $gateway['payment_ref'] ?? $locked->payment_ref,
             ]);
 
             return $locked;
@@ -556,9 +567,10 @@ class StayBookingService
     }
 
     /** ใบที่ถึงรอบจ่ายเจ้าของแล้ว (เข้าพักจบ หรือยกเลิกแต่มีส่วนที่ไม่คืนและคืนเงินลูกค้าเสร็จแล้ว) */
-    public function payableQuery(Stay $stay)
+    public function payableQuery(?Stay $stay = null)
     {
-        return StayBooking::where('stay_id', $stay->id)
+        return StayBooking::query()
+            ->when($stay, fn ($q) => $q->where('stay_id', $stay->id))
             ->whereNotNull('payout_eligible_at')
             ->whereNull('payout_id')
             ->where('host_amount', '>', 0)
@@ -617,6 +629,11 @@ class StayBookingService
         StayBooking::where('status', StayBooking::STATUS_AWAITING_PAYMENT)
             ->whereNotNull('payment_due_at')
             ->where('payment_due_at', '<', now())
+            // QR ของ Beam ที่ยังไม่หมดอายุ — ลูกค้าอาจกำลังสแกนอยู่พอดี (ปกติ QR หมดก่อน
+            // payment_due_at อยู่แล้ว นี่คือตัวกันเผื่อนาฬิกาของ Beam ยืดกว่าที่ขอ)
+            ->whereDoesntHave('payments', fn ($q) => $q
+                ->where('status', Payment::STATUS_PENDING)
+                ->where('expires_at', '>', now()))
             ->with('stay')
             ->each(function (StayBooking $booking) use (&$count) {
                 $changed = StayBooking::whereKey($booking->id)

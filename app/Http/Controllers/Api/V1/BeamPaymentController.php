@@ -94,7 +94,7 @@ class BeamPaymentController extends Controller
             return $this->error('ระบบชำระเงินขัดข้องชั่วคราว กรุณาโอนและแนบสลิปแทน', 502);
         }
 
-        return $this->success($this->present($payment), 'สร้างรายการชำระเงินสำเร็จ', 201);
+        return $this->success($payment->toClientArray(), 'สร้างรายการชำระเงินสำเร็จ', 201);
     }
 
     /**
@@ -112,9 +112,12 @@ class BeamPaymentController extends Controller
      */
     public function status(Request $request, Payment $payment): JsonResponse
     {
-        $booking = $payment->booking;
+        $userId = $request->user()->id;
+        $allowed = $payment->isStay()
+            ? $payment->stayBooking?->user_id === $userId
+            : (bool) $payment->booking?->isAccessibleByUser($userId);
 
-        if (! $booking || ! $booking->isAccessibleByUser($request->user()->id)) {
+        if (! $allowed) {
             return $this->error('คุณไม่มีสิทธิ์ดูรายการชำระเงินนี้', 403);
         }
 
@@ -122,40 +125,12 @@ class BeamPaymentController extends Controller
             $payment = $this->beamPayments->syncForWatcher($payment);
         }
 
-        return $this->success($this->present($payment));
+        return $this->success($payment->toClientArray());
     }
 
     private function canPayShare(Booking $booking, ?int $shareId): bool
     {
         return $shareId !== null
             && BookingSplitShare::whereKey($shareId)->where('booking_id', $booking->id)->exists();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function present(Payment $payment): array
-    {
-        $raw = $payment->raw_response ?? [];
-
-        return [
-            'payment_id' => $payment->id,
-            'charge_id' => $payment->provider_charge_id,
-            'status' => $payment->status,
-            'purpose' => $payment->purpose,
-            'amount' => (float) $payment->amount,
-            'currency' => $payment->currency,
-            'payment_method_type' => $payment->payment_method_type,
-            // หน้าชำระเงินของ Beam (บัตร/ผ่อน/e-Wallet/Apple Pay/Google Pay) ตอบแค่ url —
-            // ให้ client เห็นเป็น REDIRECT แบบเดียวกับแอปธนาคาร จะได้มีทางเดินทางเดียว
-            'action_required' => $payment->isCheckout() ? 'REDIRECT' : ($raw['actionRequired'] ?? null),
-            // PNG ของ QR — client แสดงตรงๆ ได้เลย ไม่ต้องประกอบ payload เอง
-            'qr_image_base64' => data_get($raw, 'encodedImage.imageBase64Encoded'),
-            'qr_raw_data' => data_get($raw, 'encodedImage.rawData'),
-            'redirect_url' => $payment->isCheckout()
-                ? ($raw['url'] ?? null)
-                : data_get($raw, 'redirect.redirectUrl'),
-            'expires_at' => $payment->expires_at?->toISOString(),
-        ];
     }
 }

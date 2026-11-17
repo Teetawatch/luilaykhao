@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -70,7 +71,7 @@ class StayBooking extends Model
         'nightly_prices', 'room_amount', 'extra_guest_amount', 'experiences', 'experiences_amount',
         'total_amount', 'commission_percent', 'commission_amount', 'host_amount', 'cancellation_policy',
         'responded_at', 'responded_by', 'decline_reason',
-        'payment_due_at', 'slip_path', 'slip_ocr_status', 'slip_ocr_result', 'payment_ref',
+        'payment_due_at', 'slip_path', 'slip_ocr_status', 'slip_ocr_result', 'payment_ref', 'payment_method',
         'paid_at', 'paid_amount', 'payment_reviewed_by_id', 'payment_note',
         'cancelled_at', 'cancelled_by', 'cancel_reason', 'refund_amount', 'refund_status',
         'refund_account', 'refunded_at', 'refund_note',
@@ -150,6 +151,12 @@ class StayBooking extends Model
         return $this->belongsTo(StayPayout::class, 'payout_id');
     }
 
+    /** ใบชำระผ่าน Beam ของใบจองนี้ (ทางสลิปไม่มีแถวที่นี่). */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class)->latest('id');
+    }
+
     public function review(): HasOne
     {
         return $this->hasOne(StayReview::class, 'stay_booking_id');
@@ -163,7 +170,7 @@ class StayBooking extends Model
     public static function generateRef(): string
     {
         do {
-            $ref = 'ST-'.now('Asia/Bangkok')->format('ymd').'-'.strtoupper(Str::random(4));
+            $ref = 'LLK-STAY-'.now('Asia/Bangkok')->format('ymd').'-'.strtoupper(Str::random(4));
         } while (self::where('ref', $ref)->exists());
 
         return $ref;
