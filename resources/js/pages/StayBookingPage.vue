@@ -147,10 +147,6 @@
           <div v-if="b.extra_guest_amount" class="row"><span>คนเพิ่ม</span><span>฿{{ money(b.extra_guest_amount) }}</span></div>
           <div v-for="x in b.experiences" :key="x.id" class="row"><span>{{ x.title }} × {{ x.people }}</span><span>฿{{ money(x.amount) }}</span></div>
           <div class="row total"><span>รวม</span><span>฿{{ money(b.total_amount) }}</span></div>
-          <p class="mt-2 text-[13px] font-bold text-[var(--color-accent)]">
-            <span class="material-symbols-rounded icon-16 align-[-3px]">volunteer_activism</span>
-            {{ Math.round(b.stay?.community_share_percent || 0) }}% ของยอดนี้ถึงมือเจ้าของที่พักในชุมชน
-          </p>
           <div v-if="b.refund_status" class="mt-3 rounded-xl bg-[var(--color-sand)] p-3">
             <p class="font-bold">คืนเงิน ฿{{ money(b.refund_amount) }} · {{ b.refund_status === 'refunded' ? 'โอนคืนแล้ว' : 'รอโอนคืน (ภายใน 7 วันทำการ)' }}</p>
             <template v-if="b.refund_status === 'pending'">

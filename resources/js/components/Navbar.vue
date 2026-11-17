@@ -958,7 +958,7 @@ const navLinks = [
       { to: '/explore', icon: 'map', label: 'แผนที่ทริป', desc: 'ดูว่าแต่ละทริปอยู่ตรงไหนของประเทศไทย' },
       { to: '/find', icon: 'travel_explore', label: 'ค้นหาทริปที่ใช่', desc: 'ตอบไม่กี่ข้อ แล้วให้เราแนะนำ' },
       { to: '/assistant', icon: 'auto_awesome', label: 'ถามผู้ช่วย', desc: 'พิมพ์บอกงบและวันที่ไหว แล้วให้ AI หาให้' },
-      { to: '/stays', icon: 'cottage', label: 'ที่พักชุมชน', desc: 'โฮมสเตย์ใกล้ทริป เงินส่วนใหญ่ถึงมือชุมชน' },
+      { to: '/stays', icon: 'cottage', label: 'ที่พักชุมชน', desc: 'โฮมสเตย์ใกล้ทริป จองคืนก่อนหรือหลังทริป' },
     ],
   },
   {

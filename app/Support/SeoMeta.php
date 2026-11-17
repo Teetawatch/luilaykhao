@@ -180,7 +180,7 @@ class SeoMeta
         $image = $stay->coverUrl() ?: self::fallbackImage();
         $where = collect([$stay->community_name, $stay->province])->filter()->implode(' ');
         $description = Str::limit(strip_tags((string) ($stay->summary ?: $stay->description)), 155)
-            ?: trim($stay->typeLabel().' '.$stay->name.' '.$where.' จองผ่านลุยเลเขา เงินส่วนใหญ่ถึงมือชุมชน');
+            ?: trim($stay->typeLabel().' '.$stay->name.' '.$where.' จองผ่านลุยเลเขา');
 
         return self::assemble([
             'title' => $stay->name.($where ? ' '.$where : '').' | ที่พักชุมชน',

@@ -1415,7 +1415,7 @@
                 <span class="ed-kicker">ที่พักชุมชน</span>
                 <h2 class="ed-title">พักใกล้ ๆ คืนก่อนหรือหลังทริป</h2>
               </header>
-              <p class="text-[var(--color-text-muted)] font-medium">โฮมสเตย์ของคนในพื้นที่ เงินส่วนใหญ่ถึงมือเจ้าของบ้านโดยตรง</p>
+              <p class="text-[var(--color-text-muted)] font-medium">โฮมสเตย์และที่พักของคนในพื้นที่ใกล้จุดเริ่มทริป</p>
             </div>
             <router-link :to="{ path: '/stays', query: { trip: trip.slug } }" class="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[var(--color-accent)] font-bold hover:gap-2.5 transition-all">
               ดูทั้งหมด
@@ -1428,7 +1428,7 @@
               <div class="min-w-0 py-1">
                 <p class="truncate font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)]">{{ s.name }}</p>
                 <p v-if="s.distance_note" class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ s.distance_note }}</p>
-                <p class="mt-1 text-[12px] font-bold text-[var(--color-accent)]">{{ Math.round(s.community_share_percent) }}% ถึงชุมชน</p>
+                <p v-if="s.community_name" class="mt-1 truncate text-[12px] font-bold text-[var(--color-accent)]">{{ s.community_name }}</p>
                 <p v-if="s.price_from !== null" class="text-[14px] font-black text-[var(--color-text-dark)]">เริ่ม ฿{{ Math.round(s.price_from).toLocaleString('th-TH') }}/คืน</p>
               </div>
             </router-link>

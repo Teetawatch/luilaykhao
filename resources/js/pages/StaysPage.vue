@@ -3,7 +3,7 @@
     <PageHero
       image="/images/landscape.webp"
       title="ที่พักชุมชนใกล้ทริป"
-      subtitle="โฮมสเตย์และที่พักของคนในพื้นที่ จองคืนก่อนหรือหลังทริปได้ในที่เดียว เงินส่วนใหญ่ถึงมือเจ้าของบ้านโดยตรง"
+      subtitle="โฮมสเตย์และที่พักของคนในพื้นที่ จองคืนก่อนหรือหลังทริปได้ในที่เดียว"
     >
       <template #actions>
         <router-link v-if="auth.isLoggedIn" to="/my-stays" class="hero-btn hero-btn--outline">
@@ -39,7 +39,7 @@
         </div>
       </div>
 
-      <!-- ตัวเลขที่บอกว่าเงินถึงชุมชนจริง -->
+      <!-- ตัวเลขเครือข่ายที่พัก — ไม่บอกยอดเงิน (เจ้าของไม่อยากให้ลูกค้าเห็น) -->
       <div v-if="impact && impact.stays" class="impact mt-6">
         <div class="impact__item">
           <span class="impact__num">{{ impact.stays }}</span>
@@ -52,10 +52,6 @@
         <div v-if="impact.nights_hosted" class="impact__item">
           <span class="impact__num">{{ impact.nights_hosted.toLocaleString('th-TH') }}</span>
           <span class="impact__label">คืนที่ต้อนรับแขก</span>
-        </div>
-        <div v-if="impact.paid_to_communities" class="impact__item">
-          <span class="impact__num">฿{{ Math.round(impact.paid_to_communities).toLocaleString('th-TH') }}</span>
-          <span class="impact__label">โอนถึงชุมชนแล้ว</span>
         </div>
       </div>
 
@@ -91,10 +87,6 @@
             <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent"></div>
             <div class="absolute left-3 top-3 flex flex-wrap gap-1.5">
               <span class="stay-chip">{{ stay.type_label }}</span>
-              <span class="stay-chip stay-chip--community">
-                <span class="material-symbols-rounded icon-14">volunteer_activism</span>
-                {{ Math.round(stay.community_share_percent) }}% ถึงชุมชน
-              </span>
             </div>
             <p class="absolute bottom-3 left-4 right-4 flex items-center gap-1 text-[13px] font-bold text-white/90">
               <span class="material-symbols-rounded icon-16">location_on</span>
@@ -188,5 +180,4 @@ onMounted(load);
 .impact__label { font-size: 13px; font-weight: 700; color: var(--color-text-muted); }
 .stay-card { display: flex; flex-direction: column; overflow: hidden; border-radius: 1.5rem; border: 1px solid var(--color-sand-dark); background: #fff; }
 .stay-chip { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.65rem; border-radius: 999px; background: rgba(255,255,255,.92); font-size: 12px; font-weight: 800; color: var(--color-text-dark); }
-.stay-chip--community { background: var(--color-accent); color: #fff; }
 </style>

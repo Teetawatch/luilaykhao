@@ -26,10 +26,6 @@
         <div class="relative z-10 mx-auto w-full max-w-6xl px-4 pb-10 sm:px-6 md:px-8">
           <div class="flex flex-wrap gap-2">
             <span class="hero-tag">{{ stay.type_label }}</span>
-            <span class="hero-tag hero-tag--accent">
-              <span class="material-symbols-rounded icon-16">volunteer_activism</span>
-              {{ Math.round(stay.community_share_percent) }}% ของค่าที่พักถึงมือชุมชน
-            </span>
           </div>
           <h1 class="mt-4 text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl md:text-5xl">{{ stay.name }}</h1>
           <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] font-semibold text-white/85">
@@ -64,9 +60,6 @@
             <span class="material-symbols-rounded community__icon">diversity_3</span>
             <h2 class="text-xl font-black text-[var(--color-text-dark)]">เรื่องของชุมชน</h2>
             <p class="mt-3 whitespace-pre-line leading-relaxed text-[var(--color-text-mid)]">{{ stay.community_story }}</p>
-            <p class="mt-4 text-sm font-bold text-[var(--color-accent)]">
-              ทุกการจอง {{ Math.round(stay.community_share_percent) }}% ของยอดโอนให้เจ้าของที่พักหลังคุณเข้าพัก
-            </p>
           </section>
 
           <section v-if="stay.amenities.length">
@@ -116,7 +109,7 @@
 
           <section v-if="stay.experiences.length">
             <h2 class="section-kicker">กิจกรรมกับชุมชน</h2>
-            <p class="mt-2 text-sm text-[var(--color-text-muted)]">จองพ่วงไปกับที่พักได้ รายได้เข้าชุมชนเหมือนค่าห้อง</p>
+            <p class="mt-2 text-sm text-[var(--color-text-muted)]">จองพ่วงไปกับที่พักได้ ทำกับคนในชุมชน</p>
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
               <label v-for="x in stay.experiences" :key="x.id" class="exp" :class="{ 'exp--on': chosenExperiences.includes(x.id) }">
                 <input type="checkbox" :value="x.id" v-model="chosenExperiences" class="sr-only" @change="refreshQuote" />
@@ -219,7 +212,6 @@
                   <div v-if="quote.extra_guest_amount" class="row"><span>คนเพิ่ม {{ quote.extra_guests }} คน</span><span>฿{{ money(quote.extra_guest_amount) }}</span></div>
                   <div v-for="x in quote.experiences" :key="x.id" class="row"><span>{{ x.title }} × {{ x.people }}</span><span>฿{{ money(x.amount) }}</span></div>
                   <div class="row total"><span>รวม</span><span>฿{{ money(quote.total_amount) }}</span></div>
-                  <p class="text-[12px] font-bold text-[var(--color-accent)]">฿{{ money(quote.host_amount) }} ถึงมือเจ้าของที่พัก</p>
                 </div>
                 <p v-if="quoteError" class="mt-2 text-sm font-bold text-red-600">{{ quoteError }}</p>
               </div>
@@ -392,7 +384,6 @@ watch(() => route.params.slug, (slug) => slug && load(slug), { immediate: true }
 
 <style scoped>
 .hero-tag { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.3rem 0.8rem; border-radius: 999px; background: rgba(255,255,255,.18); backdrop-filter: blur(6px); color: #fff; font-size: 13px; font-weight: 800; }
-.hero-tag--accent { background: var(--color-accent); }
 .section-kicker { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 15px; font-weight: 800; color: var(--color-text-dark); }
 .section-kicker::before { content: ''; width: 1.5rem; height: 2px; border-radius: 2px; background-color: var(--color-accent); }
 .side-card { padding: 1.25rem; border-radius: 1.25rem; border: 1px solid var(--color-sand-dark); background: #fff; }
