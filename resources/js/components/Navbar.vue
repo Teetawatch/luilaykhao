@@ -10,17 +10,14 @@
       :class="isScrolled ? 'lg:h-0 lg:border-transparent lg:opacity-0' : 'lg:h-[5.5rem]'"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 lg:h-[5.5rem] flex items-center gap-3">
-        <router-link to="/" class="brand-lockup flex items-center gap-2.5 lg:gap-3 shrink-0 rounded-xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
-          <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-11 h-11 lg:w-16 lg:h-16 object-contain" />
-          <span class="flex flex-col leading-none">
-            <span class="text-[20px] lg:text-[26px] font-extrabold tracking-tight text-text-dark">ลุยเลเขา</span>
-            <span class="mt-1 text-[10.5px] lg:text-[12px] font-semibold text-text-muted tracking-wide">Trip &amp; Travel · ใบอนุญาตเลขที่ {{ licence }}</span>
-          </span>
+        <!-- โลโก้อย่างเดียว — ชื่อร้านอยู่ในโลโก้แล้ว ส่วนเลขใบอนุญาตอยู่ที่ TrustStrip และ footer -->
+        <router-link to="/" class="brand-lockup flex items-center shrink-0 rounded-xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
+          <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-12 h-12 lg:w-[4.5rem] lg:h-[4.5rem] object-contain" />
         </router-link>
 
         <!-- ลิงก์บริการลูกค้า + โซเชียล + เบอร์โทร (เดสก์ท็อป) -->
         <div class="hidden lg:flex flex-1 min-w-0 items-center justify-end gap-4 xl:gap-5">
-          <nav aria-label="ลิงก์บริการลูกค้า" class="hidden xl:flex items-center text-[14.5px] font-medium text-text-mid">
+          <nav aria-label="ลิงก์บริการลูกค้า" class="hidden xl:flex items-center text-[13.5px] font-medium text-text-mid">
             <template v-for="(item, i) in utilityLinks" :key="item.to">
               <span v-if="i > 0" aria-hidden="true" class="mx-2.5 h-3.5 w-px bg-sand-dark" :class="item.wide ? 'hidden 2xl:block' : ''"></span>
               <router-link :to="item.to" class="utility-link items-center gap-1 whitespace-nowrap focus-ring rounded" :class="item.wide ? 'hidden 2xl:inline-flex' : 'inline-flex'">
@@ -132,7 +129,7 @@
                     aria-haspopup="true"
                     @click.stop="toggleNavDropdown(link.label)"
                   >
-                    <span class="svc-ico"><span class="material-symbols-rounded icon-18">{{ link.icon }}</span></span>
+                    <span class="svc-ico"><span class="material-symbols-rounded icon-16">{{ link.icon }}</span></span>
                     <span>{{ link.label }}</span>
                     <span
                       class="material-symbols-rounded icon-18 -ml-0.5 text-text-muted transition-transform duration-300"
@@ -195,7 +192,7 @@
                   :class="{ 'is-active': activeNavLabel === link.label }"
                   @mouseenter="onNavItemHover(link.label)"
                 >
-                  <span class="svc-ico"><span class="material-symbols-rounded icon-18">{{ link.icon }}</span></span>
+                  <span class="svc-ico"><span class="material-symbols-rounded icon-16">{{ link.icon }}</span></span>
                   <span>{{ link.label }}</span>
                 </component>
               </template>
@@ -1482,7 +1479,7 @@ async function handleLogout() {
   height: 2.5rem;
   padding: 0 0.5rem;
   border-radius: 0.5rem;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   color: var(--color-text-dark);
@@ -1513,8 +1510,8 @@ async function handleLogout() {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 1.625rem;
+  height: 1.625rem;
   border-radius: 9999px;
   border: 1.5px solid currentColor;
   flex-shrink: 0;

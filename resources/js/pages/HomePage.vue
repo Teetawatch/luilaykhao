@@ -13,6 +13,8 @@
       @mouseleave="resumeSlider"
       @focusin="pauseSlider"
       @focusout="resumeSlider"
+      @touchstart.passive="onHeroTouchStart"
+      @touchend="onHeroTouchEnd"
     >
       <div
         v-for="(slide, index) in heroSlides"
@@ -76,7 +78,8 @@
         </button>
 
         <!-- จุดบอกตำแหน่ง -->
-        <div class="absolute bottom-20 md:bottom-28 inset-x-0 z-20 flex justify-center gap-2.5">
+        <!-- ซ่อนบนมือถือ (ต่ำกว่า 640px) เหมือนลูกศร — จอเล็กใช้นิ้วปัดซ้าย/ขวาแทน (onHeroTouchEnd) -->
+        <div class="absolute bottom-20 md:bottom-28 inset-x-0 z-20 hidden sm:flex justify-center gap-2.5">
           <button
             v-for="(slide, index) in heroSlides"
             :key="`dot-${slide.key}`"
@@ -460,6 +463,26 @@ function restartSlider() {
   sliderInterval = setInterval(() => {
     currentSlide.value = (currentSlide.value + 1) % heroSlides.value.length;
   }, HERO_SLIDE_INTERVAL_MS);
+}
+
+// ปัดเปลี่ยนสไลด์บนจอสัมผัส — นับเฉพาะการปัดแนวนอนที่ชัดเจน การเลื่อนหน้าขึ้นลงไม่นับ
+let touchStartX = null;
+let touchStartY = null;
+
+function onHeroTouchStart(e) {
+  const t = e.changedTouches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+}
+
+function onHeroTouchEnd(e) {
+  if (touchStartX === null) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+  touchStartX = null;
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  goSlide(currentSlide.value + (dx < 0 ? 1 : -1));
 }
 
 function pauseSlider() {
