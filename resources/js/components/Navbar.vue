@@ -175,7 +175,7 @@
           </div>
 
           <!-- เครื่องมือทางขวา (บนพื้นเข้ม) -->
-          <div class="on-dark flex items-center gap-1 shrink-0">
+          <div class="on-dark flex items-center gap-1.5 shrink-0 ml-4 pl-4 border-l border-white/15">
             <!-- Search — โผล่เมื่อเลื่อนลงแล้วเท่านั้น (ตอนบนมีช่องค้นหาใหญ่อยู่แล้ว) -->
             <div v-if="isScrolled" ref="desktopSearchRef" class="relative flex items-center">
               <button
@@ -411,8 +411,7 @@
                   <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
                   <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                 </div>
-                <!-- ชื่อผู้ใช้กินได้ถึง 9rem — โผล่ตอน 2xl ขึ้นไปเท่านั้น ไม่งั้นเบียดแถบหมวดบริการ -->
-                <span class="text-[13px] font-bold text-white hidden 2xl:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
+                <!-- ไม่แสดงชื่อบัญชีในแถบเมนู — จอกว้างเคยดันไอคอนไปชิดเมนู ชื่ออยู่ในเมนูบัญชีเมื่อกดเปิด -->
                 <span class="material-symbols-rounded text-[18px] text-white/70 transition-transform duration-300" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
               </button>
 
@@ -1490,8 +1489,8 @@ async function handleLogout() {
   height: 2.5rem;
   padding: 0 0.7rem;
   border-radius: 0.6rem;
-  font-size: 14.5px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   white-space: nowrap;
   color: rgba(255, 255, 255, 0.82);
   transition: color 0.2s ease, background-color 0.2s ease;
@@ -1503,7 +1502,7 @@ async function handleLogout() {
 }
 .mb-link.is-active {
   color: #fff;
-  font-weight: 700;
+  font-weight: 600;
 }
 /* ขีดเขียวสดใต้เมนูที่อยู่ ชิดขอบล่างของแถบ */
 .mb-link.is-active::after {
