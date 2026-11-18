@@ -1,65 +1,92 @@
 <template>
   <header ref="headerEl" class="site-nav sticky top-0 z-50 w-full">
-    <!-- ── แถบบน (เขียวเข้ม) — ข้อมูลบริษัทกับช่องทางติดต่อ ตัวเล็ก ไม่แย่งที่เมนู ──
-         เดสก์ท็อปเท่านั้น และยุบหายเมื่อเลื่อนลง ให้เหลือแถบหลักสูง 64px พอดี
-         (หน้าอื่นตั้ง sticky top-16 ไว้ตามความสูงนี้) -->
+    <!-- ── ชั้นบน (ขาว): โลโก้ · ช่องค้นหาทริป · LINE + เบอร์โทร ─────────────
+         เดสก์ท็อปยุบหายเมื่อเลื่อนลง เหลือแถบเมนูเขียวสูง 64px (หน้าอื่นตั้ง sticky top-16 ไว้ตามนี้)
+         มือถือ: แถวเดียว 64px เสมอ มีปุ่มบัญชี/เมนูอยู่ในนี้ -->
     <div
-      class="util-bar hidden lg:block bg-[var(--color-primary)] text-white/80 overflow-hidden"
-      :class="isScrolled ? 'lg:h-0 lg:opacity-0' : 'lg:h-9'"
+      class="brand-bar relative bg-white overflow-hidden h-16 border-b border-sand-dark lg:border-0"
+      :class="isScrolled ? 'lg:h-0 lg:opacity-0' : 'lg:h-[5.5rem]'"
     >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-9 flex items-center justify-between gap-6 text-[13px]">
-        <p class="flex items-center gap-1.5 min-w-0 truncate">
-          <span class="material-symbols-rounded icon-16 filled-icon text-[var(--color-accent-light)]">verified_user</span>
-          ใบอนุญาตประกอบธุรกิจนำเที่ยว เลขที่ {{ licence }}
-        </p>
-        <div class="flex items-center gap-4 shrink-0">
-          <span class="hidden xl:inline-flex items-center gap-1.5">
-            <span class="material-symbols-rounded icon-16">schedule</span>
-            {{ supportHours() }}
-          </span>
-          <a :href="supportPhoneHref()" class="util-link">
-            <span class="material-symbols-rounded icon-16">call</span>
-            <span class="tabular-nums">{{ supportPhone() }}</span>
-          </a>
-          <a :href="supportLineUrl()" target="_blank" rel="noopener" class="util-link">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 lg:h-[5.5rem] flex items-center gap-4 xl:gap-8">
+        <router-link to="/" class="flex items-center shrink-0 rounded-xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
+          <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-12 h-12 lg:w-[4.5rem] lg:h-[4.5rem] object-contain" />
+        </router-link>
+
+        <!-- ช่องค้นหาทริป (เดสก์ท็อป) -->
+        <form class="brand-search hidden lg:flex" role="search" @submit.prevent="doSearch">
+          <span class="material-symbols-rounded icon-22 text-text-muted shrink-0">search</span>
+          <input
+            v-model="searchQuery"
+            type="search"
+            aria-label="ค้นหาทริป"
+            placeholder="ค้นหาทริป ชื่อดอย จังหวัด หรือกิจกรรม…"
+            class="min-w-0 flex-1 bg-transparent text-[15px] font-medium text-text-dark placeholder:text-text-muted outline-none"
+          />
+          <button type="submit" class="brand-search-btn">ค้นหา</button>
+        </form>
+
+        <!-- ติดต่อ (เดสก์ท็อป) -->
+        <div class="hidden lg:flex items-center gap-3 shrink-0">
+          <a :href="supportLineUrl()" target="_blank" rel="noopener" class="line-pill focus-ring" aria-label="แชทกับเราทาง LINE">
             <i class="fa-brands fa-line" aria-hidden="true"></i>
-            {{ supportLine() }}
+            <span class="hidden xl:inline">แชท LINE</span>
           </a>
-          <span aria-hidden="true" class="h-3.5 w-px bg-white/20"></span>
-          <router-link
-            v-for="item in utilityLinks"
-            :key="item.to"
-            :to="item.to"
-            class="util-link"
-            :class="{ 'xl-only': item.wide }"
-          >
-            <span v-if="item.icon" class="material-symbols-rounded icon-16">{{ item.icon }}</span>
-            {{ item.label }}
+          <a :href="supportPhoneHref()" class="call-card focus-ring" :aria-label="`โทรหาเรา ${supportPhone()}`">
+            <span class="call-card-ico"><span class="material-symbols-rounded icon-20 filled-icon">call</span></span>
+            <span class="flex flex-col leading-none">
+              <span class="text-[11.5px] font-semibold text-text-muted">โทรจองทริป · {{ supportHours() }}</span>
+              <span class="mt-1 text-[19px] font-extrabold tracking-tight text-text-dark tabular-nums">{{ supportPhone() }}</span>
+            </span>
+          </a>
+        </div>
+
+        <!-- Mobile Actions -->
+        <div class="lg:hidden flex items-center gap-0.5 ml-auto">
+          <template v-if="auth.isLoggedIn">
+            <router-link to="/notifications" class="icon-btn w-10 h-10" aria-label="การแจ้งเตือน">
+              <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
+              <span v-if="unreadNotifications > 0" class="badge">{{ unreadNotifications }}</span>
+            </router-link>
+
+            <button type="button" class="icon-btn w-10 h-10" aria-label="รายการโปรด" @click.stop="openWishlistSheet">
+              <span
+                class="material-symbols-rounded text-[22px]"
+                :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }"
+                :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}"
+              >favorite</span>
+              <span v-if="wishlistStore.favorites.length > 0" class="badge">{{ wishlistStore.favorites.length }}</span>
+            </button>
+
+            <button type="button" class="icon-btn w-10 h-10" aria-label="บัญชีของฉัน" @click.stop="openAccountSheet">
+              <span class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white">
+                <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                <span v-else class="text-white text-[11px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+              </span>
+            </button>
+          </template>
+
+          <router-link v-else to="/login" class="icon-btn w-10 h-10" aria-label="เข้าสู่ระบบ">
+            <span class="material-symbols-rounded text-[22px]">account_circle</span>
           </router-link>
+
+          <button type="button" class="icon-btn w-10 h-10" aria-label="เปิดเมนู" :aria-expanded="mobileOpen" @click.stop="openNavSheet">
+            <span class="material-symbols-rounded text-[24px] text-text-dark">menu</span>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- ── แถบหลัก (ขาว) — โลโก้ · เมนูในแคปซูลกลางแถบ · เครื่องมือ + ปุ่มจองทริป ── -->
-    <div class="main-bar relative bg-white border-b border-sand-dark">
-      <div
-        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-3 transition-[height] duration-300 h-16"
-        :class="isScrolled ? 'lg:h-16' : 'lg:h-[4.5rem]'"
-      >
-        <!-- โลโก้อย่างเดียว — ชื่อร้านอยู่ในโลโก้แล้ว -->
-        <router-link to="/" class="brand-lockup flex items-center shrink-0 rounded-xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
-          <img
-            src="/images/logo.png?v=2"
-            alt="ลุยเลเขา"
-            class="w-12 h-12 object-contain transition-[width,height] duration-300"
-            :class="isScrolled ? 'lg:w-12 lg:h-12' : 'lg:w-14 lg:h-14'"
-          />
-        </router-link>
+    <!-- ── ชั้นเมนู (เขียวเข้มของแบรนด์) — เดสก์ท็อปเท่านั้น ──────────────── -->
+    <nav aria-label="เมนูหลัก" class="menu-bar hidden lg:block bg-[var(--color-primary)]">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center gap-2 transition-[height] duration-300" :class="isScrolled ? 'h-16' : 'h-14'">
+          <!-- โลโก้บนชิปขาวโผล่เมื่อชั้นบนยุบไป (โลโก้สีเขียวเข้มมองไม่เห็นบนพื้นเขียว) -->
+          <router-link v-if="isScrolled" to="/" class="mini-logo shrink-0 mr-2 rounded-xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
+            <img src="/images/logo.png?v=2" alt="" class="w-10 h-10 object-contain" />
+          </router-link>
 
-        <!-- เมนูหลักในแคปซูล (เดสก์ท็อป) -->
-        <nav aria-label="เมนูหลัก" class="hidden lg:flex flex-1 justify-center min-w-0">
-          <div ref="navDropdownRef" class="nav-capsule" @mouseleave="hoveredNavLabel = null">
-            <div ref="navListRef" class="contents">
+          <div ref="navDropdownRef" class="flex flex-1 items-center min-w-0">
+            <div ref="navListRef" class="flex items-center -ml-3" :class="{ 'is-compact': isScrolled }" @mouseleave="hoveredNavLabel = null">
               <template v-for="link in navLinks" :key="link.label">
                 <!-- Dropdown / Mega menu -->
                 <div
@@ -71,15 +98,16 @@
                   <button
                     type="button"
                     :ref="el => setNavItemRef(link.label, el)"
-                    class="cap-link focus-ring"
+                    class="mb-link focus-ring"
                     :class="{ 'is-active': activeNavLabel === link.label, 'is-open': openNavDropdown === link.label }"
                     :aria-expanded="openNavDropdown === link.label"
                     aria-haspopup="true"
                     @click.stop="toggleNavDropdown(link.label)"
                   >
+                    <span class="mb-ico material-symbols-rounded icon-18">{{ link.icon }}</span>
                     <span>{{ link.label }}</span>
                     <span
-                      class="material-symbols-rounded icon-18 -ml-0.5 text-text-muted transition-transform duration-300"
+                      class="material-symbols-rounded icon-18 -ml-0.5 opacity-70 transition-transform duration-300"
                       :class="{ 'rotate-180': openNavDropdown === link.label }"
                     >expand_more</span>
                   </button>
@@ -87,7 +115,7 @@
                   <!-- Panel -->
                   <div
                     v-if="openNavDropdown === link.label"
-                    class="absolute top-full pt-3 z-[60] animation-fade-slide"
+                    class="absolute top-full pt-2 z-[60] animation-fade-slide"
                     :class="isMegaMenu(link)
                       ? 'left-0 w-[min(600px,calc(100vw-3rem))]'
                       : 'left-0 w-[min(340px,calc(100vw-3rem))]'"
@@ -135,21 +163,21 @@
                   :is="link.external ? 'a' : 'router-link'"
                   v-bind="link.external ? { href: link.to } : { to: link.to }"
                   :ref="el => setNavItemRef(link.label, el)"
-                  class="cap-link focus-ring"
+                  class="mb-link focus-ring"
                   :class="{ 'is-active': activeNavLabel === link.label, 'xl-only': link.xlOnly }"
                   @mouseenter="onNavItemHover(link.label)"
                 >
+                  <span class="mb-ico material-symbols-rounded icon-18">{{ link.icon }}</span>
                   <span>{{ link.label }}</span>
                 </component>
               </template>
             </div>
           </div>
-        </nav>
 
-        <!-- เครื่องมือทางขวา: ค้นหา · รายการโปรด · แจ้งเตือน · บัญชี · จองทริป (เดสก์ท็อป) -->
-        <div class="hidden lg:flex items-center gap-1 shrink-0">
-            <!-- Search -->
-            <div ref="desktopSearchRef" class="relative flex items-center">
+          <!-- เครื่องมือทางขวา (บนพื้นเข้ม) -->
+          <div class="on-dark flex items-center gap-1 shrink-0">
+            <!-- Search — โผล่เมื่อเลื่อนลงแล้วเท่านั้น (ตอนบนมีช่องค้นหาใหญ่อยู่แล้ว) -->
+            <div v-if="isScrolled" ref="desktopSearchRef" class="relative flex items-center">
               <button
                 type="button"
                 aria-label="ค้นหาทริป"
@@ -375,7 +403,7 @@
             <div v-if="auth.isLoggedIn" ref="userDropdownRef" class="relative flex items-center ml-1">
               <button
                 type="button"
-                class="flex items-center gap-2 p-1 pr-2.5 rounded-full border border-transparent hover:border-sand-dark hover:bg-sand transition-colors focus-ring"
+                class="flex items-center gap-2 p-1 pr-2.5 rounded-full text-white/85 hover:bg-white/10 transition-colors focus-ring"
                 :aria-expanded="userDropdownOpen"
                 @click.stop="userDropdownOpen = !userDropdownOpen; notificationDropdownOpen = false; wishlistDropdownOpen = false"
               >
@@ -384,8 +412,8 @@
                   <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                 </div>
                 <!-- ชื่อผู้ใช้กินได้ถึง 9rem — โผล่ตอน 2xl ขึ้นไปเท่านั้น ไม่งั้นเบียดแถบหมวดบริการ -->
-                <span class="text-[13px] font-bold text-text-dark hidden 2xl:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
-                <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform duration-300" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
+                <span class="text-[13px] font-bold text-white hidden 2xl:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
+                <span class="material-symbols-rounded text-[18px] text-white/70 transition-transform duration-300" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
               </button>
 
               <!-- เมนูบัญชี: การ์ดโปรไฟล์ → ทางลัด 3 ช่อง → ตาราง 2 คอลัมน์ → งานสตาฟ/แอดมิน → ออกจากระบบ
@@ -467,53 +495,20 @@
             <router-link
               v-else
               to="/login"
-              class="flex items-center gap-1.5 px-3 py-2 rounded-full text-[14px] font-semibold text-text-mid hover:text-primary hover:bg-sand transition-colors focus-ring"
+              class="flex items-center gap-1.5 px-3 py-2 rounded-full text-[14px] font-semibold text-white/85 hover:text-white hover:bg-white/10 transition-colors focus-ring"
             >
               <span class="material-symbols-rounded text-[20px]">account_circle</span>
               <span>เข้าสู่ระบบ</span>
             </router-link>
 
-          <router-link to="/trips" class="book-cta hidden xl:inline-flex ml-1">
-            จองทริป
-            <span class="material-symbols-rounded icon-18">arrow_forward</span>
-          </router-link>
-        </div>
-
-        <!-- Mobile Actions -->
-        <div class="lg:hidden flex items-center gap-0.5 ml-auto">
-          <template v-if="auth.isLoggedIn">
-            <router-link to="/notifications" class="icon-btn w-10 h-10" aria-label="การแจ้งเตือน">
-              <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
-              <span v-if="unreadNotifications > 0" class="badge">{{ unreadNotifications }}</span>
+            <router-link to="/trips" class="book-cta ml-2">
+              จองทริป
+              <span class="material-symbols-rounded icon-18">arrow_forward</span>
             </router-link>
-
-            <button type="button" class="icon-btn w-10 h-10" aria-label="รายการโปรด" @click.stop="openWishlistSheet">
-              <span
-                class="material-symbols-rounded text-[22px]"
-                :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }"
-                :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}"
-              >favorite</span>
-              <span v-if="wishlistStore.favorites.length > 0" class="badge">{{ wishlistStore.favorites.length }}</span>
-            </button>
-
-            <button type="button" class="icon-btn w-10 h-10" aria-label="บัญชีของฉัน" @click.stop="openAccountSheet">
-              <span class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white">
-                <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                <span v-else class="text-white text-[11px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
-              </span>
-            </button>
-          </template>
-
-          <router-link v-else to="/login" class="icon-btn w-10 h-10" aria-label="เข้าสู่ระบบ">
-            <span class="material-symbols-rounded text-[22px]">account_circle</span>
-          </router-link>
-
-          <button type="button" class="icon-btn w-10 h-10" aria-label="เปิดเมนู" :aria-expanded="mobileOpen" @click.stop="openNavSheet">
-            <span class="material-symbols-rounded text-[24px] text-text-dark">menu</span>
-          </button>
+          </div>
         </div>
       </div>
-    </div>
+    </nav>
 
     <!-- ── Mobile: full-screen navigation sheet ─────────────────── -->
     <Teleport to="body">
@@ -834,7 +829,7 @@ import { useAuthStore } from '../stores/auth';
 import { useWishlistStore } from '../stores/wishlist';
 import api from '../lib/axios';
 import { licenceNo } from '../lib/licence';
-import { SOCIAL_LINKS, supportHours, supportLine, supportPhone, supportPhoneHref, supportLineUrl } from '../lib/contact';
+import { SOCIAL_LINKS, supportHours, supportPhone, supportPhoneHref, supportLineUrl } from '../lib/contact';
 
 // อ่านครั้งเดียวตอนสร้างคอมโพเนนต์ — ค่ามากับ shell แล้ว ไม่เปลี่ยนระหว่างหน้า
 const licence = licenceNo();
@@ -960,14 +955,6 @@ const navLinks = computed(() => [
 
 // แผงเมนูมือถือมี "หน้าแรก" นำ เพราะมือถือไม่มีแถวลิงก์บริการลูกค้า
 const sheetLinks = computed(() => [{ to: '/', icon: 'home', label: 'หน้าแรก' }, ...navLinks.value]);
-
-// ลิงก์บริการลูกค้าบนแถบบนสีเข้ม — wide: โผล่เฉพาะจอ xl ขึ้นไป
-const utilityLinks = [
-  { to: '/my-bookings', label: 'เช็ครายการจอง', icon: 'fact_check' },
-  { to: '/how-to-book', label: 'วิธีการจอง' },
-  { to: '/faq', label: 'คำถามที่พบบ่อย', wide: true },
-  { to: '/contact', label: 'ติดต่อเรา', wide: true },
-];
 
 async function fetchTripCategories() {
   try {
@@ -1401,109 +1388,203 @@ async function handleLogout() {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
-/* ── แถบบน (เขียวเข้ม) ──────────────────────────────────────────── */
-.util-bar {
+/* ── ชั้นบน (ขาว) ─────────────────────────────────────────────────── */
+.brand-bar {
   transition: height 0.3s ease, opacity 0.2s ease;
 }
-.util-link {
-  display: inline-flex;
+.brand-search {
+  flex: 1;
+  max-width: 34rem;
+  margin: 0 auto;
   align-items: center;
-  gap: 0.3rem;
-  white-space: nowrap;
-  color: rgba(255, 255, 255, 0.8);
-  transition: color 0.2s ease;
-}
-.util-link i {
-  font-size: 14px;
-  line-height: 1;
-}
-.util-link:hover,
-.util-link.router-link-exact-active {
-  color: #fff;
-}
-
-/* ── เมนูหลักในแคปซูล ───────────────────────────────────────────── */
-.nav-capsule {
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-  padding: 0.25rem;
+  gap: 0.6rem;
+  height: 3rem;
+  padding: 0 0.375rem 0 1.1rem;
   border-radius: 9999px;
-  border: 1px solid var(--color-sand-dark);
+  border: 1.5px solid var(--color-sand-dark);
   background-color: var(--color-sand);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
-.cap-link {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-  height: 2.25rem;
-  padding: 0 0.85rem;
-  border-radius: 9999px;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--color-text-mid);
-  transition: color 0.2s ease, background-color 0.2s ease;
-}
-.cap-link:hover,
-.cap-link.is-open {
+.brand-search:focus-within {
+  border-color: var(--color-accent);
   background-color: #fff;
-  color: var(--color-text-dark);
 }
-.cap-link.is-active {
-  background-color: #fff;
-  color: var(--color-accent);
-  font-weight: 700;
-}
-/* จุดเขียวใต้ชื่อเมนูที่อยู่ — บอกตำแหน่งโดยไม่ต้องใช้เส้นใต้หรือไอคอน */
-.cap-link.is-active::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 3px;
-  width: 4px;
-  height: 4px;
-  margin-left: -2px;
-  border-radius: 9999px;
-  background-color: var(--color-accent);
-}
-@media (min-width: 1280px) {
-  .cap-link { padding: 0 1rem; }
-}
-
-/* ซ่อนที่ 1024–1279px — ใช้คลาสของเราเอง เพราะ display ของ .cap-link/.util-link
-   ใน scoped style ชนะ utility "hidden" ของ Tailwind */
-.cap-link.xl-only,
-.util-link.xl-only {
+.brand-search input::-webkit-search-cancel-button {
   display: none;
 }
-@media (min-width: 1280px) {
-  .cap-link.xl-only { display: flex; }
-  .util-link.xl-only { display: inline-flex; }
-}
-
-.book-cta {
-  align-items: center;
-  gap: 0.3rem;
-  height: 2.5rem;
-  padding: 0 1.1rem 0 1.25rem;
+.brand-search-btn {
+  flex-shrink: 0;
+  height: 2.25rem;
+  padding: 0 1.25rem;
   border-radius: 9999px;
   background-color: var(--color-accent);
   color: #fff;
   font-size: 14.5px;
   font-weight: 700;
-  white-space: nowrap;
   transition: background-color 0.2s ease;
 }
-.book-cta:hover {
+.brand-search-btn:hover {
   background-color: var(--color-accent-mid);
+}
+
+.line-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 0.75rem;
+  border-radius: 9999px;
+  border: 1.5px solid #06c755;
+  color: #05a649;
+  font-size: 14.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.line-pill i {
+  font-size: 20px;
+  line-height: 1;
+}
+@media (min-width: 1280px) {
+  .line-pill { padding: 0 1rem 0 0.85rem; }
+}
+.line-pill:hover {
+  background-color: #06c755;
+  color: #fff;
+}
+
+/* เบอร์โทรเป็นการ์ดเล็ก — ไอคอนในกรอบมนสีเขียวอ่อน + เวลาทำการ ไม่ใช่ตัวเลขยักษ์ */
+.call-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 1rem 0.4rem 0.4rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-sand-dark);
+  white-space: nowrap;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.call-card:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background-color: var(--color-accent-tint);
+}
+.call-card-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background-color: var(--color-accent);
+  color: #fff;
+}
+
+/* ── ชั้นเมนู (เขียวเข้ม) ───────────────────────────────────────────── */
+.mb-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2.5rem;
+  padding: 0 0.7rem;
+  border-radius: 0.6rem;
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.82);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.mb-link:hover,
+.mb-link.is-open {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.mb-link.is-active {
+  color: #fff;
+  font-weight: 700;
+}
+/* ขีดเขียวสดใต้เมนูที่อยู่ ชิดขอบล่างของแถบ */
+.mb-link.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: -0.5rem;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background-color: var(--color-accent-light);
+}
+.mb-ico {
+  display: none;
+  color: var(--color-accent-light);
+}
+@media (min-width: 1280px) {
+  .mb-ico { display: inline-block; }
+  /* ตอนเลื่อนลงมีโลโก้กับปุ่มค้นหาเพิ่มเข้ามาในแถบ — ซ่อนไอคอนเมนูให้พอดีแถว */
+  .is-compact .mb-ico { display: none; }
+}
+
+/* ซ่อนที่ 1024–1279px — ใช้คลาสของเราเอง เพราะ display ของ .mb-link ใน scoped style
+   ชนะ utility "hidden" ของ Tailwind */
+.mb-link.xl-only {
+  display: none;
+}
+@media (min-width: 1280px) {
+  .mb-link.xl-only { display: flex; }
+}
+
+.mini-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem;
+  border-radius: 0.75rem;
+  background-color: #fff;
+  animation: miniLogoIn 0.3s ease both;
+}
+@keyframes miniLogoIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ปุ่มขาวบนพื้นเขียว — เด่นที่สุดในแถบโดยไม่ต้องเพิ่มสีใหม่ */
+.book-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 2.5rem;
+  padding: 0 1.1rem 0 1.3rem;
+  border-radius: 9999px;
+  background-color: #fff;
+  color: var(--color-primary);
+  font-size: 14.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.book-cta:hover {
+  background-color: var(--color-accent-light);
+  color: var(--color-primary);
 }
 .book-cta .material-symbols-rounded {
   transition: transform 0.2s ease;
 }
 .book-cta:hover .material-symbols-rounded {
   transform: translateX(2px);
+}
+
+/* ปุ่มไอคอน (ค้นหา/รายการโปรด/แจ้งเตือน) บนพื้นเข้ม */
+.on-dark .icon-btn {
+  color: rgba(255, 255, 255, 0.85);
+}
+.on-dark .icon-btn:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.on-dark .badge {
+  border-color: var(--color-primary);
 }
 
 .badge {
@@ -1842,7 +1923,8 @@ async function handleLogout() {
 
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .util-bar,
+  .brand-bar,
+  .mini-logo,
   .cta-sheen,
   .sheet-item,
   .sheet-enter-active,
