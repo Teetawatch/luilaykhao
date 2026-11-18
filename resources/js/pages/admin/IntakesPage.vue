@@ -344,7 +344,9 @@
           {{ search ? `ไม่พบกลุ่มที่ตรงกับ "${search}"` : 'ยังไม่มีข้อมูลลูกค้าในหมวดนี้' }}
         </div>
 
-        <div v-else class="table-container">
+        <!-- กลุ่มที่กรอกเข้ามาสะสมทุกวัน — ให้ตารางเลื่อนอยู่ในกรอบของมันเอง หัวตารางค้างไว้
+             หน้าจะได้ไม่ยาวลงไปเรื่อย ๆ จนต้องเลื่อนหาปุ่มเปลี่ยนหน้าที่ก้นหน้า -->
+        <div v-else ref="intakeScroll" class="table-container intake-scroll">
           <table class="data-table">
             <thead>
               <tr>
@@ -379,7 +381,7 @@
                     {{ intake.contact_phone || 'ไม่มีเบอร์' }}
                     <template v-if="intake.source"><span class="dot">·</span>{{ sourceLabel(intake.source) }}</template>
                   </div>
-                  <div v-if="intake.note_excerpt" class="note-line">“{{ intake.note_excerpt }}”</div>
+                  <div v-if="intake.note_excerpt" class="note-line" :title="intake.note_excerpt">“{{ intake.note_excerpt }}”</div>
                   <div v-if="failedBookingLabel(intake)" class="failed-line">
                     <span class="material-symbols-rounded">error</span>
                     {{ failedBookingLabel(intake) }}
@@ -820,9 +822,13 @@ const clearSearch = () => {
   applySearch();
 };
 
-const goPage = (next) => {
+const intakeScroll = ref(null);
+
+const goPage = async (next) => {
   page.value = next;
-  fetchIntakes();
+  await fetchIntakes();
+  // หน้าใหม่ต้องเริ่มที่แถวบนสุด ไม่ใช่ค้างตำแหน่งเลื่อนของหน้าเดิมไว้กลางตาราง
+  intakeScroll.value?.scrollTo?.({ top: 0 });
 };
 
 /**
@@ -1011,20 +1017,24 @@ const pullSelectedIntoBooking = () => {
 
 /**
  * ข้อความพร้อมวางในแชท — ทีมงานส่งลิงก์นี้วันละหลายรอบ ถ้าคัดลอกได้แค่ URL
- * ก็ต้องพิมพ์คำอธิบายเองใหม่ทุกครั้ง และคำอธิบายที่พิมพ์สด ๆ มักลืมบอกว่า
- * "ยังไม่ใช่การจอง" ซึ่งเป็นเรื่องที่เข้าใจผิดกันบ่อยที่สุด
+ * ก็ต้องพิมพ์คำอธิบายเองใหม่ทุกครั้ง
+ *
+ * ตั้งแต่ลิงก์กลุ่มจองและจ่ายเองได้ (IntakeBookingService) ข้อความต้องบอกว่า
+ * "กรอกแล้วจองและชำระเงินต่อได้ทันที" ไม่ใช่ "ยังไม่ใช่การจอง รอทีมงานติดต่อกลับ"
+ * แบบเดิม — ลูกค้าที่เชื่อข้อความเก่าจะนั่งรอทีมงานทั้งที่กดจองเองได้ แล้วที่นั่ง
+ * ก็ถูกคนที่จองในแอปจ่ายตัดหน้าไป ถ้อยคำให้ตรงกับหน้าฟอร์ม (intake/form.blade.php)
  */
 const linkMessage = (link) => {
   const lines = ['สวัสดีครับ 🙏'];
 
   if (link.trip_schedule_id) {
-    lines.push('รบกวนกรอกข้อมูลผู้เดินทางที่ลิงก์นี้ได้เลยครับ');
+    lines.push('กรอกข้อมูลผู้เดินทาง แล้วจองและชำระเงินได้ทันทีที่ลิงก์นี้เลยครับ');
     lines.push('');
     lines.push(`🏔️ ${link.schedule_trip_title || 'ทริป'}`);
     const date = thaiShort(link.schedule_departure_date);
     if (date) lines.push(`📅 วันเดินทาง ${date}`);
   } else {
-    lines.push('รบกวนกรอกข้อมูลผู้เดินทางที่ลิงก์นี้ได้เลยครับ เลือกทริปและรอบที่สนใจได้ในลิงก์เลย');
+    lines.push('กรอกข้อมูลผู้เดินทาง แล้วจองและชำระเงินได้ทันทีที่ลิงก์นี้เลยครับ เลือกทริปและรอบที่สนใจได้ในลิงก์');
   }
 
   // ลิงก์จอยทริปต้องพูดเรื่อง "ไม่มีรถรับ" ตั้งแต่ในแชท ไม่ใช่ให้ไปเจอในฟอร์ม —
@@ -1041,8 +1051,9 @@ const linkMessage = (link) => {
   lines.push('');
   lines.push(link.url);
   lines.push('');
-  lines.push('ใช้เวลาประมาณ 2 นาที กรอกแล้วยังไม่ใช่การจองนะครับ ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่งอีกครั้ง');
-  lines.push('ถ้ามาหลายคน กรอกเสร็จจะมีลิงก์ให้ส่งต่อให้เพื่อนกรอกของตัวเองได้เลยครับ');
+  lines.push('✅ กรอกเสร็จกด "จองและชำระเงิน" สแกน QR พร้อมเพย์แล้วแนบสลิปได้เลย ไม่ต้องรอทีมงานส่ง QR ให้ครับ');
+  lines.push('📱 จองแล้วโหลดแอปลุยเลเขาได้ทันที ดูใบจอง QR ขึ้นรถ และติดตามรถวันเดินทางได้ในแอปเลยครับ');
+  lines.push('👥 ถ้ามาหลายคน กรอกเสร็จจะมีลิงก์ให้ส่งต่อให้เพื่อนกรอกของตัวเอง ให้เพื่อนกรอกครบก่อนแล้วค่อยกดจองทีเดียว ที่นั่งจะได้อยู่ด้วยกันครับ');
 
   return lines.join('\n');
 };
@@ -1303,7 +1314,24 @@ tr.inactive { opacity: .5; }
   border-radius: 999px; padding: 0 6px; font-size: 11px;
 }
 
-.note-line { font-size: 12px; color: #6b7280; margin-top: 4px; font-style: italic; }
+/* โน้ตยาวทำให้แถวสูงจนตารางยืด — เหลือบรรทัดเดียว เต็ม ๆ อยู่ใน "ดูข้อมูล" */
+.note-line {
+  font-size: 12px; color: #6b7280; margin-top: 4px; font-style: italic;
+  max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.intake-scroll {
+  max-height: min(68vh, 760px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.intake-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #FAFAFA;
+  box-shadow: inset 0 -1px 0 #e5e7eb;
+}
 .failed-line {
   display: flex; align-items: center; gap: 4px; margin-top: 4px;
   font-size: 12px; font-weight: 600; color: #b45309;
