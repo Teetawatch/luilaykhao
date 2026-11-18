@@ -35,10 +35,16 @@
         <div class="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/5"></div>
         <div class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/35 to-transparent"></div>
 
-        <div class="relative z-10 h-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 flex items-center">
+        <div class="relative z-10 h-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-20 flex items-center pb-16 md:pb-20">
           <div class="hero-copy max-w-md sm:max-w-lg lg:max-w-xl">
-            <p v-if="slide.kicker" class="hero-kicker text-[13px] md:text-[14.5px] font-semibold text-white/85 mb-2">
-              {{ slide.kicker }}
+            <p v-if="slide.kicker" class="hero-kicker flex flex-wrap items-center gap-2 mb-3">
+              <span class="hero-badge">
+                <span class="material-symbols-rounded icon-16" :style="starFillStyle">recommend</span>
+                {{ slide.kicker }}
+              </span>
+              <span v-if="slide.location" class="inline-flex items-center gap-1 text-[13px] md:text-[14.5px] font-semibold text-white/90">
+                <span class="material-symbols-rounded icon-16">location_on</span>{{ slide.location }}
+              </span>
             </p>
             <component
               :is="index === 0 ? 'h1' : 'h2'"
@@ -50,6 +56,41 @@
             <p v-if="slide.subtitle" class="hero-subtitle mt-3 text-white/90 text-[14px] sm:text-base lg:text-[1.1rem] font-medium leading-relaxed">
               {{ slide.subtitle }}
             </p>
+
+            <!-- ข้อมูลทริป: จำนวนวัน ความยาก คะแนนรีวิว ระยะทาง -->
+            <ul v-if="slide.facts?.length" class="hero-meta mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-white/90 text-[13.5px] sm:text-[15px] font-semibold">
+              <li
+                v-for="(fact, fi) in slide.facts"
+                :key="fact.icon"
+                class="inline-flex items-center gap-1.5"
+                :class="{ 'hidden sm:inline-flex': fi > 2 }"
+              >
+                <span
+                  class="material-symbols-rounded icon-18"
+                  :class="fact.icon === 'star' ? 'text-[#FFC94D]' : 'text-white/75'"
+                  :style="fact.icon === 'star' ? starFillStyle : null"
+                >{{ fact.icon }}</span>
+                {{ fact.text }}
+              </li>
+            </ul>
+
+            <!-- จุดเด่นของแบรนด์ (สไลด์แรก) — ตัวเลขจริงจาก /stats เท่านั้น -->
+            <ul v-if="slide.proof?.length" class="hero-meta mt-4 flex flex-wrap gap-2">
+              <li v-for="item in slide.proof" :key="item.icon" class="hero-chip">
+                <span class="material-symbols-rounded icon-16" :class="item.icon === 'star' ? 'text-[#FFC94D]' : ''" :style="starFillStyle">{{ item.icon }}</span>
+                {{ item.text }}
+              </li>
+            </ul>
+
+            <!-- รอบถัดไปที่ยังจองได้ -->
+            <div v-if="slide.rounds?.length" class="hero-meta mt-4 hidden sm:flex flex-wrap items-center gap-2">
+              <span class="text-[13px] font-semibold text-white/75 mr-0.5">รอบถัดไป</span>
+              <span v-for="round in slide.rounds" :key="round.id" class="hero-chip">
+                {{ round.label }}
+                <span v-if="round.seatsNote" class="text-[#FFB3A8] font-bold">· {{ round.seatsNote }}</span>
+              </span>
+              <span v-if="slide.moreRounds" class="text-[13px] font-semibold text-white/75">+{{ slide.moreRounds }} รอบ</span>
+            </div>
             <!-- หยุดเลื่อนเฉพาะตอนเมาส์ชี้ปุ่ม — กันสไลด์เปลี่ยนตอนกำลังจะกด
                  (เคยหยุดทั้งภาพ เมาส์ที่วางค้างบนภาพใหญ่เลยทำให้สไลด์ดูเหมือนค้างเอง) -->
             <div
@@ -61,6 +102,15 @@
                 {{ slide.cta.label }}
                 <span class="material-symbols-rounded icon-22">chevron_right</span>
               </router-link>
+              <p v-if="slide.price" class="hero-price ml-1 flex flex-col leading-none text-white">
+                <span class="text-[12px] font-semibold text-white/75">
+                  เริ่มต้น
+                  <s v-if="slide.originalPrice" class="ml-1 text-white/60">{{ slide.originalPrice }}</s>
+                </span>
+                <span class="mt-1 text-[22px] sm:text-[26px] font-extrabold tracking-tight tabular-nums">
+                  {{ slide.price }}<span class="ml-1 text-[13px] font-semibold text-white/80">บาท/ท่าน</span>
+                </span>
+              </p>
               <router-link
                 v-if="slide.cta2"
                 :to="slide.cta2.to"
@@ -83,7 +133,7 @@
 
         <!-- จุดบอกตำแหน่ง -->
         <!-- ซ่อนบนมือถือ (ต่ำกว่า 640px) เหมือนลูกศร — จอเล็กใช้นิ้วปัดซ้าย/ขวาแทน (onHeroTouchEnd) -->
-        <div class="absolute bottom-24 md:bottom-32 inset-x-0 z-20 hidden sm:flex justify-center gap-2.5">
+        <div class="absolute bottom-24 md:bottom-32 inset-x-0 z-20 hidden sm:flex justify-center gap-2.5" :class="{ 'lg:hidden': showHeroRail }">
           <button
             v-for="(slide, index) in heroSlides"
             :key="`dot-${slide.key}`"
@@ -94,6 +144,44 @@
             :aria-current="index === currentSlide ? 'true' : undefined"
             @click="goSlide(index)"
           ></button>
+        </div>
+
+        <!-- รายการสไลด์ด้านขวา (จอใหญ่) — เติมพื้นที่ว่างฝั่งขวา และบอกว่ามีทริปอะไรต่อจากนี้
+             แถบเขียวใต้รายการที่เปิดอยู่ไล่ตามเวลาที่เหลือก่อนสไลด์เปลี่ยนเอง -->
+        <div v-if="showHeroRail" class="absolute inset-0 z-20 pointer-events-none hidden lg:block">
+          <div class="h-full max-w-7xl mx-auto px-20 flex items-center justify-end pb-20">
+            <nav class="hero-rail pointer-events-auto" aria-label="เลือกสไลด์">
+              <div class="flex items-baseline justify-between px-1.5 pb-2">
+                <span class="text-[13px] font-bold text-white/90">ทริปแนะนำ</span>
+                <span class="text-[12.5px] font-semibold text-white/65 tabular-nums">
+                  {{ String(currentSlide + 1).padStart(2, '0') }} / {{ String(heroSlides.length).padStart(2, '0') }}
+                </span>
+              </div>
+              <button
+                v-for="(slide, index) in heroSlides"
+                :key="`rail-${slide.key}`"
+                type="button"
+                class="hero-rail-item"
+                :class="{ 'hero-rail-item--active': index === currentSlide }"
+                :aria-current="index === currentSlide ? 'true' : undefined"
+                @click="goSlide(index)"
+              >
+                <img :src="slide.thumb || slide.image" alt="" class="hero-rail-thumb" loading="lazy" />
+                <span class="min-w-0 flex-1 text-left">
+                  <span class="block truncate text-[14px] font-bold text-white">{{ slide.railTitle || slide.title }}</span>
+                  <span class="block truncate text-[12.5px] font-medium text-white/70">{{ slide.railMeta }}</span>
+                </span>
+                <span v-if="index === currentSlide" class="hero-rail-progress" aria-hidden="true">
+                  <span
+                    :key="`bar-${sliderTick}`"
+                    class="hero-rail-progress-bar"
+                    :class="{ 'hero-rail-progress-bar--running': sliderRunning }"
+                    :style="{ animationDuration: `${HERO_SLIDE_INTERVAL_MS}ms` }"
+                  ></span>
+                </span>
+              </button>
+            </nav>
+          </div>
         </div>
       </template>
     </section>
@@ -355,6 +443,10 @@ import TripShowcase from '../components/home/TripShowcase.vue';
 import PopularDestinations from '../components/home/PopularDestinations.vue';
 import GroupTripBand from '../components/home/GroupTripBand.vue';
 import { supportHours, supportLineUrl } from '../lib/contact';
+import { licenceNo } from '../lib/licence';
+import { bangkokToday } from '../lib/bangkokDate';
+import { thaiDayMonth } from '../lib/thaiDate';
+import { bookableSeats } from '../lib/scheduleHelpers';
 
 
 // รูปสำรอง — ใช้เฉพาะตอนแอดมินยังไม่ได้ตั้งสไลด์เลย
@@ -391,6 +483,11 @@ const HERO_SLIDE_INTERVAL_MS = 6000;
 const currentSlide = ref(0);
 const prefersReducedMotion = ref(false);
 let sliderInterval = null;
+// ให้แถบเวลาในรายการด้านขวาเริ่มนับใหม่/หยุดตามตัวจับเวลาจริง
+const sliderRunning = ref(false);
+const sliderTick = ref(0);
+// ตัวเลขจริงของชุมชนสำหรับสไลด์แบรนด์ — ว่างจนกว่า /stats จะตอบ
+const brandStats = ref({ travellers: 0, rating: 0, reviews: 0 });
 // เหตุผลที่หยุดเลื่อนอยู่ตอนนี้ ('hover' = เมาส์ชี้ปุ่ม, 'focus' = ใช้คีย์บอร์ดอยู่ในสไลด์)
 const pauseReasons = new Set();
 
@@ -444,14 +541,53 @@ const BRAND_COPY = {
   cta2: { to: '/calendar', label: 'ปฏิทินทริป' },
 };
 
-function tripSlideSubtitle(trip) {
-  const parts = [];
+const starFillStyle = { fontVariationSettings: "'FILL' 1" };
+// ตัวเลขน้อย ๆ บนสไลด์แรกดูแย่กว่าไม่บอก — โชว์เมื่อถึงเกณฑ์นี้แล้วเท่านั้น
+const MIN_PROOF_TRAVELLERS = 50;
+const MIN_PROOF_REVIEWS = 5;
+
+const DIFFICULTY_LABELS = { easy: 'ระดับง่าย', medium: 'ระดับปานกลาง', hard: 'ระดับท้าทาย' };
+
+function tripDaysLabel(trip) {
   const days = Number(trip.duration_days) || 1;
-  parts.push(days > 1 ? `${days} วัน ${days - 1} คืน` : 'ไปเช้าเย็นกลับ');
-  const price = Number(trip.min_price);
-  if (price > 0) parts.push(`เริ่มต้น ${price.toLocaleString('th-TH')} บาท`);
-  return parts.join(' · ');
+  return days > 1 ? `${days} วัน ${days - 1} คืน` : 'ไปเช้าเย็นกลับ';
 }
+
+function formatBaht(n) {
+  return Number(n).toLocaleString('th-TH');
+}
+
+function tripFacts(trip) {
+  const facts = [{ icon: 'schedule', text: tripDaysLabel(trip) }];
+  if (DIFFICULTY_LABELS[trip.difficulty]) facts.push({ icon: 'terrain', text: DIFFICULTY_LABELS[trip.difficulty] });
+  if (Number(trip.review_count) > 0) {
+    facts.push({ icon: 'star', text: `${Number(trip.rating).toFixed(1)} (${trip.review_count} รีวิว)` });
+  }
+  const km = Number(trip.distance_km);
+  if (km > 0) facts.push({ icon: 'hiking', text: `${km % 1 ? km.toFixed(1) : km} กม.` });
+  return facts;
+}
+
+// รอบที่ยังเปิดจองได้ เรียงใกล้สุดก่อน — เงื่อนไขเดียวกับตารางรอบ (DepartureBoard)
+function openRounds(trip) {
+  const today = bangkokToday();
+  return (trip.schedules || [])
+    .filter((s) => s.status === 'open' && !s.is_charter && s.departure_date && s.departure_date >= today && bookableSeats(s) > 0)
+    .sort((a, b) => a.departure_date.localeCompare(b.departure_date));
+}
+
+const brandProof = computed(() => {
+  const out = [];
+  const no = licenceNo();
+  if (no) out.push({ icon: 'verified', text: `ใบอนุญาตนำเที่ยว ${no}` });
+  const { travellers, rating, reviews } = brandStats.value;
+  if (travellers >= MIN_PROOF_TRAVELLERS) out.push({ icon: 'groups', text: `นักเดินทาง ${formatBaht(travellers)} คน` });
+  if (reviews >= MIN_PROOF_REVIEWS && rating > 0) out.push({ icon: 'star', text: `${Number(rating).toFixed(1)} จาก ${formatBaht(reviews)} รีวิว` });
+  return out;
+});
+
+// รายการด้านขวามีความหมายเมื่อมีทริปแนะนำ — สไลด์แบรนด์ล้วนชื่อซ้ำกันหมด
+const showHeroRail = computed(() => heroSlides.value.some((s) => s.key.startsWith('trip-')));
 
 const heroSlides = computed(() => {
   const brand = {
@@ -459,19 +595,37 @@ const heroSlides = computed(() => {
     image: heroImages.value[0],
     alt: 'ลุยเลเขา',
     ...BRAND_COPY,
+    proof: brandProof.value,
+    railTitle: 'ลุยเลเขา',
+    railMeta: BRAND_COPY.title,
   };
   const tripSlides = featuredTrips.value
     .filter((t) => t.slug && (t.cover_image || tripCardImage(t)))
     .slice(0, 5)
-    .map((t) => ({
-      key: `trip-${t.id}`,
-      image: t.cover_image || tripCardImage(t),
-      alt: t.title,
-      kicker: t.location ? `ทริปแนะนำ · ${t.location}` : 'ทริปแนะนำ',
-      title: t.title,
-      subtitle: tripSlideSubtitle(t),
-      cta: { to: `/trips/${t.slug}`, label: 'ดูรายละเอียด' },
-    }));
+    .map((t) => {
+      const rounds = openRounds(t);
+      const price = Number(t.min_price);
+      const original = Number(t.min_original_price);
+      return {
+        key: `trip-${t.id}`,
+        image: t.cover_image || tripCardImage(t),
+        thumb: tripCardImage(t) || t.cover_image,
+        alt: t.title,
+        kicker: 'ทริปแนะนำ',
+        location: t.location || '',
+        title: t.title,
+        facts: tripFacts(t),
+        rounds: rounds.slice(0, 3).map((s) => {
+          const seats = bookableSeats(s);
+          return { id: s.id, label: thaiDayMonth(s.departure_date), seatsNote: seats <= 5 ? `เหลือ ${seats} ที่` : '' };
+        }),
+        moreRounds: Math.max(0, rounds.length - 3),
+        price: price > 0 ? formatBaht(price) : '',
+        originalPrice: original > price && price > 0 ? formatBaht(original) : '',
+        railMeta: [t.location, price > 0 ? `฿${formatBaht(price)}` : ''].filter(Boolean).join(' · '),
+        cta: { to: `/trips/${t.slug}`, label: 'ดูรายละเอียด' },
+      };
+    });
   if (tripSlides.length) return [brand, ...tripSlides];
   return heroImages.value.map((img, i) => ({ ...brand, key: `brand-${i}`, image: img }));
 });
@@ -486,7 +640,10 @@ function goSlide(index) {
 function restartSlider() {
   clearInterval(sliderInterval);
   sliderInterval = null;
+  sliderRunning.value = false;
+  sliderTick.value += 1;
   if (unmounted || pauseReasons.size || prefersReducedMotion.value || heroSlides.value.length < 2) return;
+  sliderRunning.value = true;
   sliderInterval = setInterval(() => {
     currentSlide.value = (currentSlide.value + 1) % heroSlides.value.length;
   }, HERO_SLIDE_INTERVAL_MS);
@@ -522,6 +679,7 @@ function pauseFor(reason) {
   pauseReasons.add(reason);
   clearInterval(sliderInterval);
   sliderInterval = null;
+  sliderRunning.value = false;
 }
 
 function resumeFrom(reason) {
@@ -746,6 +904,12 @@ onMounted(async () => {
       statItems.value[3].context = c.reviews_count
         ? `จาก ${c.reviews_count.toLocaleString()} รีวิวของคนที่เดินทางจริง`
         : '';
+
+      brandStats.value = {
+        travellers: Number(c.travellers_count) || 0,
+        rating: Number(s.avg_rating) || 0,
+        reviews: Number(c.reviews_count) || 0,
+      };
     }
 
     // รอให้การ์ดสถิติ render ตาม v-if ก่อนค่อยผูก observer
@@ -818,12 +982,128 @@ onMounted(async () => {
 .hero-slide--active .hero-kicker,
 .hero-slide--active .hero-title,
 .hero-slide--active .hero-subtitle,
+.hero-slide--active .hero-meta,
 .hero-slide--active .hero-actions {
   animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .hero-slide--active .hero-title { animation-delay: 0.08s; }
 .hero-slide--active .hero-subtitle { animation-delay: 0.16s; }
-.hero-slide--active .hero-actions { animation-delay: 0.24s; }
+.hero-slide--active .hero-meta { animation-delay: 0.2s; }
+.hero-slide--active .hero-actions { animation-delay: 0.28s; }
+
+.hero-meta {
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* ป้าย "ทริปแนะนำ" */
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem 0.3rem 0.55rem;
+  border-radius: 9999px;
+  background-color: var(--color-accent);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+/* ชิปโปร่งบนภาพ — รอบเดินทาง และจุดเด่นของแบรนด์ */
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-shadow: none;
+  white-space: nowrap;
+}
+
+.hero-price {
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* รายการสไลด์ด้านขวา */
+.hero-rail {
+  width: 19rem;
+  padding: 0.75rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background-color: rgba(10, 24, 18, 0.38);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.hero-rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.45rem;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  opacity: 0.72;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+.hero-rail-item + .hero-rail-item {
+  margin-top: 0.15rem;
+}
+.hero-rail-item:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.hero-rail-item--active {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.14);
+}
+.hero-rail-item:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: -2px;
+}
+.hero-rail-thumb {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  border-radius: 0.6rem;
+  object-fit: cover;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+.hero-rail-progress {
+  position: absolute;
+  left: 0.45rem;
+  right: 0.45rem;
+  bottom: 0.2rem;
+  height: 3px;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+.hero-rail-progress-bar {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background-color: var(--color-accent-light);
+  opacity: 0.45;
+}
+.hero-rail-progress-bar--running {
+  opacity: 1;
+  animation-name: heroRailProgress;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@keyframes heroRailProgress {
+  from { width: 0; }
+  to { width: 100%; }
+}
 
 .hero-cta {
   display: inline-flex;
@@ -899,7 +1179,9 @@ onMounted(async () => {
   .hero-slide--active .hero-kicker,
   .hero-slide--active .hero-title,
   .hero-slide--active .hero-subtitle,
-  .hero-slide--active .hero-actions {
+  .hero-slide--active .hero-meta,
+  .hero-slide--active .hero-actions,
+  .hero-rail-progress-bar--running {
     animation: none;
   }
 }
