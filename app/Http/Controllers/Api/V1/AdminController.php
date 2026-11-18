@@ -4905,6 +4905,8 @@ class AdminController extends Controller
         foreach ($request->ids as $order => $id) {
             HeroSlide::where('id', $id)->update(['sort_order' => $order]);
         }
+        // update() แบบ query builder ไม่ยิง event ของโมเดล — ล้างแคชเอง
+        HeroSlide::flushPublicCache();
 
         return $this->success(null, 'จัดเรียงสไลด์สำเร็จ');
     }

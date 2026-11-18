@@ -357,14 +357,36 @@ import GroupTripBand from '../components/home/GroupTripBand.vue';
 import { supportHours, supportLineUrl } from '../lib/contact';
 
 
-const heroImages = ref([
+// รูปสำรอง — ใช้เฉพาะตอนแอดมินยังไม่ได้ตั้งสไลด์เลย
+const STATIC_HERO_IMAGES = [
   '/images/phusoidao.webp',
   '/images/snorkel.webp',
   '/images/phukradueng.webp',
   '/images/landscape.webp',
   '/images/khaochangphueak.webp',
   '/images/hiking.webp',
-]);
+];
+
+/**
+ * รูปสไลด์ที่เซิร์ฟเวอร์ส่งมากับ HTML (meta llk:hero-images ใน app.blade.php)
+ * null = ไม่มี meta (HTML เก่าในแคช) ต้องไปถาม API เอง
+ * เคยเริ่มจากรูปสำรองแล้วรอ API ทุกครั้งที่รีเฟรชเลยเห็นรูปชุดเก่าวาบหนึ่งก่อน
+ */
+function readShellHeroImages() {
+  const raw = typeof document !== 'undefined'
+    ? document.querySelector('meta[name="llk:hero-images"]')?.content
+    : null;
+  if (raw == null) return null;
+  try {
+    const urls = JSON.parse(raw);
+    return Array.isArray(urls) ? urls.filter((u) => typeof u === 'string' && u) : null;
+  } catch {
+    return null;
+  }
+}
+
+const shellHeroImages = readShellHeroImages();
+const heroImages = ref(shellHeroImages?.length ? shellHeroImages : STATIC_HERO_IMAGES);
 const HERO_SLIDE_INTERVAL_MS = 6000;
 const currentSlide = ref(0);
 const prefersReducedMotion = ref(false);
@@ -665,6 +687,11 @@ onMounted(async () => {
   // Hero slides load alongside everything else (they used to hold the whole page
   // back by one round trip); keep the static fallback if the API returns empty.
   (async () => {
+    if (shellHeroImages) {
+      // ได้รูปจริงมากับ HTML แล้ว ไม่ต้องถามซ้ำ
+      startSliderIfIdle();
+      return;
+    }
     try {
       const heroRes = await api.get('/hero-slides');
       const apiSlides = (heroRes.data.data ?? heroRes.data) || [];

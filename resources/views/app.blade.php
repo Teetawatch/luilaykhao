@@ -49,6 +49,14 @@
         <meta name="apple-itunes-app" content="app-id={{ $appStoreId }}">
     @endif
 
+    {{-- รูปสไลด์หน้าแรกมากับ shell ด้วยเหตุผลเดียวกับเบอร์โทร — ถ้ารอ API
+         ทุกครั้งที่รีเฟรชจะเห็นรูปสำรองชุดเก่าวาบหนึ่งก่อนแล้วค่อยเป็นรูปจริง --}}
+    @php($heroImageUrls = \App\Models\HeroSlide::publicImageUrls())
+    <meta name="llk:hero-images" content="{{ json_encode($heroImageUrls, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}">
+    @if (request()->is('/') && ($heroImageUrls[0] ?? null))
+        <link rel="preload" as="image" href="{{ $heroImageUrls[0] }}" fetchpriority="high">
+    @endif
+
     {{-- ลิงก์ร้านแอปส่งมากับ shell แบบเดียวกับข้อมูลติดต่อ (ดู lib/appLinks.js) --}}
     <meta name="llk:app-ios-url" content="{{ \App\Support\AppLinks::ios() }}">
     <meta name="llk:app-android-url" content="{{ \App\Support\AppLinks::android() }}">
@@ -253,7 +261,10 @@
          live here, inline, because the Vite CSS bundle is exactly the thing
          that has not arrived yet at the moment this is on screen. --}}
     <style>
-        .llk-boot { max-width: 1100px; margin: 0 auto; padding: 48px 20px 64px; }
+        .llk-boot { max-width: 1100px; margin: 0 auto; padding: 48px 20px 64px; animation: llk-boot-reveal 0s linear 1.5s both; }
+        /* ซ่อนไว้ 1.5 วินาทีแรก — รีเฟรชปกติ Vue ขึ้นก่อนนั้น ผู้ใช้จะไม่เห็นหน้าลิงก์
+           ล้วนนี้วาบก่อนหน้าจริง ส่วนเน็ตช้าหรือบอตที่ไม่รัน JS ยังเห็นตามเดิม */
+        @keyframes llk-boot-reveal { from { visibility: hidden; } to { visibility: visible; } }
         .llk-boot__brand { display: inline-block; font-size: 30px; font-weight: 800; color: #0D2B1E; text-decoration: none; }
         .llk-boot__tagline { margin: 8px 0 32px; max-width: 62ch; font-size: 18px; line-height: 1.6; color: #5b6660; }
         .llk-boot__nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 28px; }
