@@ -9,10 +9,8 @@
       class="home-hero relative w-full overflow-hidden bg-[var(--color-primary)] h-[460px] sm:h-[500px] lg:h-[560px] xl:h-[600px]"
       aria-roledescription="carousel"
       aria-label="ทริปแนะนำ"
-      @mouseenter="pauseSlider"
-      @mouseleave="resumeSlider"
-      @focusin="pauseSlider"
-      @focusout="resumeSlider"
+      @focusin="onHeroFocusIn"
+      @focusout="onHeroFocusOut"
       @touchstart.passive="onHeroTouchStart"
       @touchend="onHeroTouchEnd"
     >
@@ -38,21 +36,27 @@
         <div class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/35 to-transparent"></div>
 
         <div class="relative z-10 h-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 flex items-center">
-          <div class="hero-copy max-w-xl lg:max-w-2xl">
-            <p v-if="slide.kicker" class="hero-kicker text-[14px] md:text-[16px] font-semibold text-white/85 mb-3">
+          <div class="hero-copy max-w-md sm:max-w-lg lg:max-w-xl">
+            <p v-if="slide.kicker" class="hero-kicker text-[13px] md:text-[14.5px] font-semibold text-white/85 mb-2">
               {{ slide.kicker }}
             </p>
             <component
               :is="index === 0 ? 'h1' : 'h2'"
-              class="hero-title text-white text-[1.7rem] sm:text-[2.6rem] lg:text-[3.4rem] font-extrabold leading-[1.12] tracking-tight"
+              class="hero-title text-white text-[1.5rem] sm:text-[2rem] lg:text-[2.5rem] font-bold leading-[1.18] tracking-tight"
             >
               {{ slide.title }}
               <span v-if="slide.accent" class="block text-[var(--color-accent-light)]">{{ slide.accent }}</span>
             </component>
-            <p v-if="slide.subtitle" class="hero-subtitle mt-4 text-white/90 text-[15px] sm:text-lg lg:text-xl font-medium leading-relaxed">
+            <p v-if="slide.subtitle" class="hero-subtitle mt-3 text-white/90 text-[14px] sm:text-base lg:text-[1.1rem] font-medium leading-relaxed">
               {{ slide.subtitle }}
             </p>
-            <div class="hero-actions mt-7 flex flex-wrap items-center gap-3">
+            <!-- หยุดเลื่อนเฉพาะตอนเมาส์ชี้ปุ่ม — กันสไลด์เปลี่ยนตอนกำลังจะกด
+                 (เคยหยุดทั้งภาพ เมาส์ที่วางค้างบนภาพใหญ่เลยทำให้สไลด์ดูเหมือนค้างเอง) -->
+            <div
+              class="hero-actions mt-6 flex flex-wrap items-center gap-3"
+              @pointerenter="onActionsPointer($event, true)"
+              @pointerleave="onActionsPointer($event, false)"
+            >
               <router-link :to="slide.cta.to" class="hero-cta" :tabindex="index === currentSlide ? 0 : -1">
                 {{ slide.cta.label }}
                 <span class="material-symbols-rounded icon-22">chevron_right</span>
@@ -361,11 +365,12 @@ const heroImages = ref([
   '/images/khaochangphueak.webp',
   '/images/hiking.webp',
 ]);
-const HERO_SLIDE_INTERVAL_MS = 7000;
+const HERO_SLIDE_INTERVAL_MS = 6000;
 const currentSlide = ref(0);
 const prefersReducedMotion = ref(false);
 let sliderInterval = null;
-let sliderPaused = false;
+// เหตุผลที่หยุดเลื่อนอยู่ตอนนี้ ('hover' = เมาส์ชี้ปุ่ม, 'focus' = ใช้คีย์บอร์ดอยู่ในสไลด์)
+const pauseReasons = new Set();
 
 const featuredTrips = ref([]);
 const loading = ref(true);
@@ -459,7 +464,7 @@ function goSlide(index) {
 function restartSlider() {
   clearInterval(sliderInterval);
   sliderInterval = null;
-  if (unmounted || sliderPaused || prefersReducedMotion.value || heroSlides.value.length < 2) return;
+  if (unmounted || pauseReasons.size || prefersReducedMotion.value || heroSlides.value.length < 2) return;
   sliderInterval = setInterval(() => {
     currentSlide.value = (currentSlide.value + 1) % heroSlides.value.length;
   }, HERO_SLIDE_INTERVAL_MS);
@@ -485,15 +490,37 @@ function onHeroTouchEnd(e) {
   goSlide(currentSlide.value + (dx < 0 ? 1 : -1));
 }
 
-function pauseSlider() {
-  sliderPaused = true;
+// ข้อมูลโหลดเสร็จทีละก้อน (รูปสไลด์ แล้วทริปแนะนำ) — ถ้าตัวจับเวลาเดินอยู่แล้วก็ปล่อยให้เดินต่อ
+// เคยเริ่มนับใหม่ทุกครั้ง สไลด์แรกเลยค้างราว 12 วินาทีแทนที่จะเป็นรอบปกติ
+function startSliderIfIdle() {
+  if (!sliderInterval) restartSlider();
+}
+
+function pauseFor(reason) {
+  pauseReasons.add(reason);
   clearInterval(sliderInterval);
   sliderInterval = null;
 }
 
-function resumeSlider() {
-  sliderPaused = false;
+function resumeFrom(reason) {
+  if (!pauseReasons.delete(reason)) return;
   restartSlider();
+}
+
+// เฉพาะเมาส์จริง — การแตะบนมือถือส่ง pointerenter โดยไม่มี pointerleave ตามมา สไลด์จะค้างไปเลย
+function onActionsPointer(e, entering) {
+  if (e.pointerType !== 'mouse') return;
+  if (entering) pauseFor('hover');
+  else resumeFrom('hover');
+}
+
+// หยุดตอนไล่ปุ่มด้วยคีย์บอร์ดเท่านั้น (:focus-visible) — คลิกลูกศรด้วยเมาส์ไม่นับ
+function onHeroFocusIn(e) {
+  if (e.target instanceof Element && e.target.matches(':focus-visible')) pauseFor('focus');
+}
+
+function onHeroFocusOut(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) resumeFrom('focus');
 }
 
 // ทริปทั้งหมดที่ส่งให้แถบค้นหาบนฮีโร่ (แถบนั้นดูแลรอบเดินทางของตัวเอง)
@@ -649,7 +676,7 @@ onMounted(async () => {
     }
 
     // ออกจากหน้าไปก่อนรูปมา — restartSlider เช็ค unmounted ให้แล้ว
-    restartSlider();
+    startSliderIfIdle();
   })();
 
   try {
@@ -663,7 +690,7 @@ onMounted(async () => {
     // ชุดเดียว 100 ทริป (เรียงตามความนิยม) ป้อนทุก section: ตารางรอบ แท็บแพ็กเกจ ปลายทาง และช่องค้นหา
     allTrips.value = allTripsRes.data.data || [];
     featuredTrips.value = featuredRes.data.data || [];
-    restartSlider();
+    startSliderIfIdle();
     reviews.value = reviewsRes.data.data || [];
     tripCategories.value = categoriesRes.data.data || [];
     
@@ -775,11 +802,11 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.8rem 1.25rem 0.8rem 1.75rem;
+  padding: 0.65rem 1rem 0.65rem 1.4rem;
   border-radius: 9999px;
   background-color: var(--color-accent);
   color: #fff;
-  font-size: 17px;
+  font-size: 15.5px;
   font-weight: 700;
   transition: background-color 0.2s ease;
 }
@@ -787,7 +814,7 @@ onMounted(async () => {
   background-color: var(--color-accent-mid);
 }
 .hero-cta--ghost {
-  padding: 0.8rem 1.75rem;
+  padding: 0.65rem 1.4rem;
   background-color: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.55);
 }
