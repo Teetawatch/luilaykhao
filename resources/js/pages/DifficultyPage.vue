@@ -130,7 +130,7 @@ import GuideNextLinks from '../components/GuideNextLinks.vue';
 
 /** แอดมินเลือกได้แค่ "โทน" ส่วนสีจริงคุมไว้ที่นี่ จะได้ไม่ต้องรู้จัก CSS */
 const TONES = {
-  easy: { color: '#047857', tint: '#ECFDF5' },
+  easy: { color: '#047857', tint: 'var(--color-accent-tint)' },
   medium: { color: '#B45309', tint: '#FFFBEB' },
   hard: { color: '#BE123C', tint: '#FFF1F2' },
 };

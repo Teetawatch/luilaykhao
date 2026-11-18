@@ -93,7 +93,7 @@
               {{ pdfLoading ? 'กำลังเตรียม…' : 'เปิดเป็น PDF' }}
             </button>
 
-            <div v-if="current.signed && !resigning" class="rounded-[16px] bg-[#ECFDF5] border border-[#A7F3D0] p-4 text-sm text-[#065F46] flex items-center justify-between gap-3">
+            <div v-if="current.signed && !resigning" class="rounded-[16px] bg-[var(--color-accent-tint)] border border-accent/20 p-4 text-sm text-[#065F46] flex items-center justify-between gap-3">
               <span>✓ เซ็นแล้ว</span>
               <button v-if="current.open" @click="startResign" class="text-xs underline text-[#505E5E]">เซ็นใหม่</button>
             </div>

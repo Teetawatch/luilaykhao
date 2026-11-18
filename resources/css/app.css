@@ -31,7 +31,10 @@
     --color-accent:        #047857;   /* Emerald 700  — Buttons, links, selected */
     --color-accent-mid:    #065F46;   /* Emerald 800  — Button hover / pressed   */
     --color-accent-light:  #10B981;   /* Emerald 500  — Graphics only, never text */
-    --color-accent-tint:   #ECFDF5;   /* Emerald 50   — Selected backgrounds     */
+    /* เขียวเสจหม่น ไม่ใช่ emerald-50 (#ECFDF5) — มิ้นต์อมฟ้าค่าเริ่มต้นของ Tailwind
+       ดูเหมือนเทมเพลตสำเร็จรูป (เจ้าของสั่งเปลี่ยน 2026-11-18) แอปยังใช้ #ECFDF5 อยู่
+       ข้อความสี accent บนพื้นนี้ยังผ่าน AA (≈4.9:1) */
+    --color-accent-tint:   #E8EFE9;   /* Sage tint    — Selected backgrounds     */
 
     /* ── Category: Ocean / Snorkeling ──────────────────────── */
     --color-ocean:         #1A5F8A;   /* Deep Ocean   — Snorkeling category  */
