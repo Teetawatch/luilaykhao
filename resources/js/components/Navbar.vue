@@ -5,11 +5,11 @@
          มือถือ: แถวเดียว 64px เสมอ มีปุ่มบัญชี/เมนูอยู่ในนี้ -->
     <div
       class="brand-bar relative bg-white overflow-hidden h-16 border-b border-sand-dark lg:border-0"
-      :class="isScrolled ? 'lg:h-0 lg:opacity-0' : 'lg:h-[5.5rem]'"
+      :class="isScrolled ? 'lg:h-0 lg:opacity-0' : 'lg:h-[4.75rem]'"
     >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 lg:h-[5.5rem] flex items-center gap-4 xl:gap-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 lg:h-[4.75rem] flex items-center gap-4 xl:gap-8">
         <router-link to="/" class="flex items-center shrink-0 rounded-xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
-          <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-12 h-12 lg:w-[4.5rem] lg:h-[4.5rem] object-contain" />
+          <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-11 h-11 lg:w-14 lg:h-14 object-contain" />
         </router-link>
 
         <!-- ช่องค้นหาทริป (เดสก์ท็อป) -->
