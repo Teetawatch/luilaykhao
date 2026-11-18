@@ -7,7 +7,7 @@
     <Transition name="booking-banner">
       <div v-if="seatsStore.hasActiveBooking && !isOnActiveBookingPage && !checkingActiveBooking"
         class="sticky z-40 w-full transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
-        :style="{ top: isScrolled ? '64px' : '80px' }">
+        :style="{ top: 'var(--site-header-h, 64px)' }">
         <div class="bg-white/80 backdrop-blur-md border-b border-gray-200/50">
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 md:py-3 flex items-center gap-3">
             <!-- Icon + Status -->

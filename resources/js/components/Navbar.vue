@@ -1,33 +1,36 @@
 <template>
-  <header class="site-nav sticky top-0 z-50 w-full">
-    <!-- Trust Bar (Top Bar) -->
+  <header ref="headerEl" class="site-nav sticky top-0 z-50 w-full">
+    <!-- ── ชั้นที่ 1: แถบแบรนด์ (ขาว) ─────────────────────────────────
+         โลโก้ + ชื่อบริษัท + เลขใบอนุญาต ทางซ้าย, ลิงก์บริการลูกค้า โซเชียล และเบอร์โทร
+         ตัวใหญ่ทางขวา — แบบเว็บบริษัทนำเที่ยวทั่วไปที่คนคุ้นตา
+         เดสก์ท็อป: ยุบหายเมื่อเลื่อนลง เหลือแค่ชั้นที่ 2 สูง 64px (หน้าอื่นตั้ง sticky top-16 ไว้ตามนี้)
+         มือถือ: แถวเดียว 64px เสมอ (มีปุ่มบัญชี/เมนูอยู่ในนี้) -->
     <div
-      class="w-full bg-gradient-to-r from-primary via-primary-mid to-primary text-white overflow-hidden transform-gpu"
-      :class="isScrolled ? 'h-0 max-h-0 opacity-0 border-none' : 'h-10 md:h-11 opacity-100 border-b border-white/5'"
-      style="will-change: height, opacity; transition: height 0.4s ease, opacity 0.3s ease, max-height 0.4s ease;"
+      class="brand-bar relative bg-white border-b border-sand-dark overflow-hidden h-16"
+      :class="isScrolled ? 'lg:h-0 lg:border-transparent lg:opacity-0' : 'lg:h-[5.5rem]'"
     >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between gap-3 animate-trust-bar">
-        <!-- ซ้าย: ความน่าเชื่อถือ -->
-        <div class="flex items-center gap-2.5 min-w-0">
-          <div class="flex items-center gap-2 text-[12px] md:text-[13px] font-semibold tracking-wide">
-            <span class="material-symbols-rounded text-[18px] text-accent-light filled-icon">verified_user</span>
-            <span class="hidden sm:inline">ใบอนุญาตนำเที่ยวเลขที่ {{ licence }}</span>
-            <span class="sm:hidden">ใบอนุญาต {{ licence }}</span>
-          </div>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 lg:h-[5.5rem] flex items-center gap-3">
+        <router-link to="/" class="brand-lockup flex items-center gap-2.5 lg:gap-3 shrink-0 rounded-xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
+          <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-11 h-11 lg:w-16 lg:h-16 object-contain" />
+          <span class="flex flex-col leading-none">
+            <span class="text-[20px] lg:text-[26px] font-extrabold tracking-tight text-text-dark">ลุยเลเขา</span>
+            <span class="mt-1 text-[10.5px] lg:text-[12px] font-semibold text-text-muted tracking-wide">Trip &amp; Travel · ใบอนุญาตเลขที่ {{ licence }}</span>
+          </span>
+        </router-link>
 
-          <!-- ใบ 11 นำเที่ยวได้ทั้งในและต่างประเทศ — ประโยคนี้คือสิ่งที่ใบอนุญาต
-               ใหม่ให้สิทธิ์ และเป็นจุดขายที่คุ้มที่สุดเพราะเห็นได้ทุกหน้า
-               ยอมหายไปก่อนเพื่อน (lg) เพราะฝั่งขวาเป็นช่องทางติดต่อที่กดได้จริง -->
-          <span aria-hidden="true" class="hidden lg:block h-4 w-px bg-white/25"></span>
-          <div class="hidden lg:flex items-center gap-1.5 text-white/80">
-            <span class="material-symbols-rounded text-[15px]">flight_takeoff</span>
-            <span class="text-[11px] tracking-wide font-bold">นำเที่ยวได้ทั้งในและต่างประเทศ</span>
-          </div>
-        </div>
+        <!-- ลิงก์บริการลูกค้า + โซเชียล + เบอร์โทร (เดสก์ท็อป) -->
+        <div class="hidden lg:flex flex-1 min-w-0 items-center justify-end gap-4 xl:gap-5">
+          <nav aria-label="ลิงก์บริการลูกค้า" class="hidden xl:flex items-center text-[14.5px] font-medium text-text-mid">
+            <template v-for="(item, i) in utilityLinks" :key="item.to">
+              <span v-if="i > 0" aria-hidden="true" class="mx-2.5 h-3.5 w-px bg-sand-dark" :class="item.wide ? 'hidden 2xl:block' : ''"></span>
+              <router-link :to="item.to" class="utility-link items-center gap-1 whitespace-nowrap focus-ring rounded" :class="item.wide ? 'hidden 2xl:inline-flex' : 'inline-flex'">
+                <span v-if="item.icon" class="material-symbols-rounded icon-18 filled-icon text-accent">{{ item.icon }}</span>
+                {{ item.label }}
+              </router-link>
+            </template>
+          </nav>
 
-        <!-- ขวา: ช่องทางติดต่อ — โซเชียลหายไปที่จอเล็ก แต่เบอร์โทรอยู่ทุกขนาด -->
-        <div class="flex items-center gap-1 shrink-0">
-          <div class="hidden md:flex items-center gap-1">
+          <div class="hidden xl:flex items-center gap-1.5">
             <a
               v-for="social in socialLinks"
               :key="social.label"
@@ -42,56 +45,76 @@
             </a>
           </div>
 
-          <span aria-hidden="true" class="hidden md:block h-4 w-px bg-white/25 mx-1.5"></span>
+          <span aria-hidden="true" class="hidden xl:block h-8 w-px bg-sand-dark"></span>
 
-          <a :href="supportPhoneHref()" class="phone-chip focus-ring" :aria-label="`โทรหาเรา ${supportPhone()}`">
-            <span class="material-symbols-rounded filled-icon">call</span>
-            <span>{{ supportPhone() }}</span>
+          <a :href="supportPhoneHref()" class="hotline focus-ring" :aria-label="`โทรหาเรา ${supportPhone()}`">
+            <span class="hotline-ico"><span class="material-symbols-rounded icon-22 filled-icon">call</span></span>
+            <span class="flex flex-col leading-none">
+              <span class="text-[11px] font-semibold text-text-muted">สอบถาม / จองทริป</span>
+              <span class="mt-0.5 text-[24px] font-extrabold tracking-tight text-text-dark tabular-nums">{{ supportPhone() }}</span>
+            </span>
           </a>
+        </div>
+
+        <!-- Mobile Actions -->
+        <div class="lg:hidden flex items-center gap-0.5 ml-auto">
+          <template v-if="auth.isLoggedIn">
+            <router-link to="/notifications" class="icon-btn w-10 h-10" aria-label="การแจ้งเตือน">
+              <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
+              <span v-if="unreadNotifications > 0" class="badge">{{ unreadNotifications }}</span>
+            </router-link>
+
+            <button type="button" class="icon-btn w-10 h-10" aria-label="รายการโปรด" @click.stop="openWishlistSheet">
+              <span
+                class="material-symbols-rounded text-[22px]"
+                :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }"
+                :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}"
+              >favorite</span>
+              <span v-if="wishlistStore.favorites.length > 0" class="badge">{{ wishlistStore.favorites.length }}</span>
+            </button>
+
+            <button type="button" class="icon-btn w-10 h-10" aria-label="บัญชีของฉัน" @click.stop="openAccountSheet">
+              <span class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white">
+                <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                <span v-else class="text-white text-[11px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
+              </span>
+            </button>
+          </template>
+
+          <router-link v-else to="/login" class="icon-btn w-10 h-10" aria-label="เข้าสู่ระบบ">
+            <span class="material-symbols-rounded text-[22px]">account_circle</span>
+          </router-link>
+
+          <button type="button" class="icon-btn w-10 h-10" aria-label="เปิดเมนู" :aria-expanded="mobileOpen" @click.stop="openNavSheet">
+            <span class="material-symbols-rounded text-[24px] text-text-dark">menu</span>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Main Navbar -->
+    <!-- ── ชั้นที่ 2: แถบหมวดบริการ (เทาอ่อน) — เดสก์ท็อปเท่านั้น ────── -->
     <nav
-      class="navbar-root border-b transition-[background-color,box-shadow,border-color] duration-500"
-      :class="isScrolled
-        ? 'bg-white/80 supports-[backdrop-filter]:backdrop-blur-xl border-sand-dark/50'
-        : 'bg-white border-sand-dark/30'"
+      aria-label="เมนูหลัก"
+      class="service-bar hidden lg:block border-b transition-[background-color,border-color] duration-300"
+      :class="isScrolled ? 'bg-white border-sand-dark' : 'bg-[#F3F4F3] border-sand-dark'"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
-          class="flex items-center gap-2 transform-gpu"
-          :class="isScrolled ? 'h-16' : 'h-20'"
-          style="will-change: height; transition: height 0.4s ease;"
+          class="flex items-center gap-2 transition-[height] duration-300"
+          :class="isScrolled ? 'h-16' : 'h-14'"
         >
-          <!-- Brand — โลโก้อย่างเดียว ชื่อร้านอยู่ในโลโก้แล้ว และที่ตรงนี้ยกให้แถบเมนู -->
-          <router-link to="/" class="flex items-center shrink-0 group rounded-2xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
-            <img
-              src="/images/logo.png?v=2"
-              alt="ลุยเลเขา"
-              class="object-contain transition-transform duration-500 group-hover:scale-105"
-              :class="isScrolled ? 'w-11 h-11' : 'w-13 h-13'"
-            />
+          <!-- โลโก้เล็กโผล่เมื่อชั้นแบรนด์ยุบไปแล้ว -->
+          <router-link
+            v-if="isScrolled"
+            to="/"
+            class="mini-logo shrink-0 mr-1 rounded-xl focus-ring"
+            aria-label="ลุยเลเขา หน้าแรก"
+          >
+            <img src="/images/logo.png?v=2" alt="" class="w-11 h-11 object-contain" />
           </router-link>
 
-          <!-- Desktop Nav (left-adjacent to brand, with gliding pill indicator) -->
-          <div
-            ref="navDropdownRef"
-            class="hidden lg:flex flex-1 items-center min-w-0"
-          >
-            <div
-              ref="navListRef"
-              class="relative flex items-center ml-1 xl:ml-6"
-              @mouseleave="hoveredNavLabel = null"
-            >
-              <!-- Gliding pill -->
-              <span
-                aria-hidden="true"
-                class="nav-pill absolute top-1/2 -translate-y-1/2 h-9 rounded-full bg-primary/[0.07]"
-                :style="{ left: `${indicator.left}px`, width: `${indicator.width}px`, opacity: indicator.opacity }"
-              ></span>
-
+          <div ref="navDropdownRef" class="flex flex-1 items-center min-w-0">
+            <div ref="navListRef" class="relative flex items-center -ml-2" @mouseleave="hoveredNavLabel = null">
               <template v-for="link in navLinks" :key="link.label">
                 <!-- Dropdown / Mega menu -->
                 <div
@@ -103,15 +126,16 @@
                   <button
                     type="button"
                     :ref="el => setNavItemRef(link.label, el)"
-                    class="nav-link relative z-10 flex items-center gap-0.5 px-2.5 xl:px-4 py-2 rounded-full text-[14px] xl:text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 cursor-pointer focus-ring"
-                    :class="{ 'is-active': activeNavLabel === link.label }"
+                    class="svc-link focus-ring"
+                    :class="{ 'is-active': activeNavLabel === link.label, 'is-open': openNavDropdown === link.label }"
                     :aria-expanded="openNavDropdown === link.label"
                     aria-haspopup="true"
                     @click.stop="toggleNavDropdown(link.label)"
                   >
+                    <span class="svc-ico"><span class="material-symbols-rounded icon-18">{{ link.icon }}</span></span>
                     <span>{{ link.label }}</span>
                     <span
-                      class="material-symbols-rounded text-[18px] transition-transform duration-300"
+                      class="material-symbols-rounded icon-18 -ml-0.5 text-text-muted transition-transform duration-300"
                       :class="{ 'rotate-180': openNavDropdown === link.label }"
                     >expand_more</span>
                   </button>
@@ -119,72 +143,67 @@
                   <!-- Panel -->
                   <div
                     v-if="openNavDropdown === link.label"
-                    class="absolute top-full pt-3 z-[60] animation-fade-slide"
+                    class="absolute top-full pt-2 z-[60] animation-fade-slide"
                     :class="isMegaMenu(link)
                       ? 'left-0 w-[min(600px,calc(100vw-3rem))]'
-                      : 'left-1/2 -translate-x-1/2 w-[min(360px,calc(100vw-3rem))]'"
+                      : 'left-0 w-[min(340px,calc(100vw-3rem))]'"
                   >
-                    <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
-                      <div class="grid gap-1 p-2" :class="isMegaMenu(link) ? 'grid-cols-2' : 'grid-cols-1'">
+                    <div class="bg-white rounded-xl border border-sand-dark overflow-hidden">
+                      <p class="px-4 pt-3 pb-1 text-[12px] font-bold tracking-wide text-text-muted">{{ link.label }}</p>
+                      <div class="grid gap-0.5 p-2 pt-1" :class="isMegaMenu(link) ? 'grid-cols-2' : 'grid-cols-1'">
                         <template v-for="child in link.children" :key="child.to">
                           <component
                             :is="child.external ? 'a' : 'router-link'"
                             v-bind="child.external ? { href: child.to } : { to: child.to }"
                             @click="openNavDropdown = null"
-                            class="menu-item group/item flex items-start gap-3 rounded-xl px-3 py-2.5 transition-colors duration-200 hover:bg-sand focus-ring"
-                            :class="{ 'bg-sand': !child.external && route.path === child.to }"
+                            class="menu-item group/item flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors duration-200 hover:bg-sand focus-ring"
+                            :class="{ 'bg-sand': !child.external && route.fullPath === child.to }"
                           >
-                            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sand text-primary transition-colors duration-200 group-hover/item:bg-accent group-hover/item:text-white">
-                              <span class="material-symbols-rounded text-[19px]">{{ child.icon }}</span>
+                            <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sand-dark bg-white text-accent transition-colors duration-200 group-hover/item:bg-accent group-hover/item:border-accent group-hover/item:text-white">
+                              <span class="material-symbols-rounded icon-18">{{ child.icon }}</span>
                             </span>
                             <span class="min-w-0">
-                              <span class="block text-[14px] font-bold text-text-dark transition-colors duration-200 group-hover/item:text-accent">{{ child.label }}</span>
-                              <span v-if="child.desc" class="mt-0.5 block text-[11.5px] leading-snug text-text-muted">{{ child.desc }}</span>
+                              <span class="block text-[14.5px] font-bold text-text-dark transition-colors duration-200 group-hover/item:text-accent">{{ child.label }}</span>
+                              <span v-if="child.desc" class="mt-0.5 block text-[12px] leading-snug text-text-muted">{{ child.desc }}</span>
                             </span>
                           </component>
                         </template>
                       </div>
 
-                      <div v-if="isMegaMenu(link)" class="flex items-center justify-between gap-3 border-t border-sand-dark/40 bg-sand/40 px-4 py-3">
-                        <p class="text-[12px] font-semibold text-text-muted">มีคำถามเพิ่มเติม? ทีมงานยินดีช่วยเหลือ</p>
+                      <div class="flex items-center justify-between gap-3 border-t border-sand-dark bg-sand/60 px-4 py-3">
+                        <p class="text-[12.5px] font-semibold text-text-muted">สอบถามเพิ่มเติม โทร <a :href="supportPhoneHref()" class="font-bold text-text-dark hover:text-accent">{{ supportPhone() }}</a></p>
                         <router-link
                           to="/contact"
                           @click="openNavDropdown = null"
-                          class="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-primary/5 px-3 py-1.5 text-[12px] font-bold text-primary transition-colors hover:bg-primary/10 focus-ring"
+                          class="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12.5px] font-bold text-accent transition-colors hover:bg-accent-tint focus-ring"
                         >
                           ติดต่อเรา
-                          <span class="material-symbols-rounded text-[15px]">arrow_forward</span>
+                          <span class="material-symbols-rounded icon-16">arrow_forward</span>
                         </router-link>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- External link (server-rendered page, full load) -->
-                <a
-                  v-else-if="link.external"
-                  :ref="el => setNavItemRef(link.label, el)"
-                  :href="link.to"
-                  class="nav-link relative z-10 px-2.5 xl:px-4 py-2 rounded-full text-[14px] xl:text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 focus-ring"
-                  :class="{ 'is-active': activeNavLabel === link.label }"
-                  @mouseenter="onNavItemHover(link.label)"
-                >{{ link.label }}</a>
-
                 <!-- Simple link -->
-                <router-link
+                <component
                   v-else
+                  :is="link.external ? 'a' : 'router-link'"
+                  v-bind="link.external ? { href: link.to } : { to: link.to }"
                   :ref="el => setNavItemRef(link.label, el)"
-                  :to="link.to"
-                  class="nav-link relative z-10 px-2.5 xl:px-4 py-2 rounded-full text-[14px] xl:text-[15px] font-semibold text-text-mid hover:text-primary transition-colors duration-200 focus-ring"
+                  class="svc-link focus-ring"
                   :class="{ 'is-active': activeNavLabel === link.label }"
                   @mouseenter="onNavItemHover(link.label)"
-                >{{ link.label }}</router-link>
+                >
+                  <span class="svc-ico"><span class="material-symbols-rounded icon-18">{{ link.icon }}</span></span>
+                  <span>{{ link.label }}</span>
+                </component>
               </template>
             </div>
           </div>
 
-          <!-- Desktop Actions -->
-          <div class="hidden lg:flex items-center gap-1.5 lg:gap-2 shrink-0">
+          <!-- เครื่องมือทางขวา: ค้นหา · รายการโปรด · แจ้งเตือน · บัญชี -->
+          <div class="flex items-center gap-1 shrink-0">
             <!-- Search -->
             <div ref="desktopSearchRef" class="relative flex items-center">
               <button
@@ -420,8 +439,8 @@
                   <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
                   <span v-else class="text-white text-[12px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
                 </div>
-                <!-- ชื่อผู้ใช้กินได้ถึง 9rem — โผล่ตอน xl ขึ้นไปเท่านั้น ไม่งั้นเบียดแถบเมนูที่ lg -->
-                <span class="text-[13px] font-bold text-text-dark hidden xl:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
+                <!-- ชื่อผู้ใช้กินได้ถึง 9rem — โผล่ตอน 2xl ขึ้นไปเท่านั้น ไม่งั้นเบียดแถบหมวดบริการ -->
+                <span class="text-[13px] font-bold text-text-dark hidden 2xl:block max-w-[9rem] truncate">{{ auth.shortName }}</span>
                 <span class="material-symbols-rounded text-[18px] text-text-muted transition-transform duration-300" :class="{ 'rotate-180': userDropdownOpen }">expand_more</span>
               </button>
 
@@ -509,47 +528,6 @@
               <span class="material-symbols-rounded text-[20px]">account_circle</span>
               <span>เข้าสู่ระบบ</span>
             </router-link>
-
-            <!-- Primary CTA -->
-            <router-link to="/trips" class="cta-btn ml-1">
-              <span class="cta-sheen" aria-hidden="true"></span>
-              <span class="material-symbols-rounded relative text-[20px] transition-transform duration-500 group-hover:rotate-[18deg]">explore</span>
-              <span class="relative">จองทริป</span>
-            </router-link>
-          </div>
-
-          <!-- Mobile Actions -->
-          <div class="lg:hidden flex items-center gap-0.5 ml-auto">
-            <template v-if="auth.isLoggedIn">
-              <router-link to="/notifications" class="icon-btn w-10 h-10" aria-label="การแจ้งเตือน">
-                <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
-                <span v-if="unreadNotifications > 0" class="badge">{{ unreadNotifications }}</span>
-              </router-link>
-
-              <button type="button" class="icon-btn w-10 h-10" aria-label="รายการโปรด" @click.stop="openWishlistSheet">
-                <span
-                  class="material-symbols-rounded text-[22px]"
-                  :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }"
-                  :style="wishlistStore.favorites.length > 0 ? wishlistFilledStyle : {}"
-                >favorite</span>
-                <span v-if="wishlistStore.favorites.length > 0" class="badge">{{ wishlistStore.favorites.length }}</span>
-              </button>
-
-              <button type="button" class="icon-btn w-10 h-10" aria-label="บัญชีของฉัน" @click.stop="openAccountSheet">
-                <span class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white">
-                  <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                  <span v-else class="text-white text-[11px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
-                </span>
-              </button>
-            </template>
-
-            <router-link v-else to="/login" class="icon-btn w-10 h-10" aria-label="เข้าสู่ระบบ">
-              <span class="material-symbols-rounded text-[22px]">account_circle</span>
-            </router-link>
-
-            <button type="button" class="icon-btn w-10 h-10" aria-label="เปิดเมนู" :aria-expanded="mobileOpen" @click.stop="openNavSheet">
-              <span class="material-symbols-rounded text-[24px] text-text-dark">menu</span>
-            </button>
           </div>
         </div>
       </div>
@@ -586,7 +564,7 @@
               </div>
 
               <nav class="space-y-1">
-                <template v-for="(link, i) in navLinks" :key="link.label">
+                <template v-for="(link, i) in sheetLinks" :key="link.label">
                   <div v-if="link.children" class="sheet-item" :style="{ '--i': i + 1 }">
                     <button
                       type="button"
@@ -929,38 +907,32 @@ const socialLinks = [
 ];
 
 /*
-   แถบเมนูรับได้ 6 หัวข้อพอดีหลังจากเอาข้อความ "ลุยเลเขา / TRIP & TRAVEL"
-   ข้างโลโก้ออก — จะเพิ่มหัวข้อที่ 7 ต้องหาที่ตัดก่อน อย่าต่อท้ายเฉย ๆ
+   เมนูหลักชั้นที่ 2 (แถบหมวดบริการ) — 7 หัวข้อพอดีที่จอ 1024px เมื่อไม่มีไอคอน
+   และ 1280px เมื่อมีไอคอน จะเพิ่มหัวข้อต้องหาที่ตัดก่อน อย่าต่อท้ายเฉย ๆ
+   หมวดทริปมาจาก /categories (แอดมินจัดการเอง) — ระหว่างรอ API เมนูยังมีลิงก์ทริปทั้งหมด
 */
-const navLinks = [
-  { to: '/', icon: 'home', label: 'หน้าแรก' },
+const tripCategories = ref([]);
+
+const navLinks = computed(() => [
   {
-    label: 'เกี่ยวกับเรา',
-    icon: 'info',
-    to: '/about',
-    children: [
-      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา', desc: 'เรื่องราวและทีมงานของเรา' },
-      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย', desc: 'สิ่งที่เราตั้งใจทำให้สำเร็จ' },
-      { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง', desc: 'จองทริปได้ง่ายในไม่กี่ขั้นตอน' },
-      { to: '/faq', icon: 'quiz', label: 'FAQ', desc: 'คำถามที่พบบ่อย' },
-      { to: '/problem', icon: 'report', label: 'แจ้งปัญหาการใช้งาน', desc: 'จองไม่ได้ จ่ายไม่ผ่าน บอกเราได้เลย' },
-      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'ข้อตกลงในการใช้บริการ' },
-      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว', desc: 'เราดูแลข้อมูลของคุณอย่างไร' },
-    ],
-  },
-  {
-    label: 'กิจกรรม',
+    label: 'ทริปทั้งหมด',
     icon: 'explore',
     to: '/trips',
     children: [
       { to: '/trips', icon: 'explore', label: 'ทริปทั้งหมด', desc: 'ทุกทริปที่เปิดจองอยู่ตอนนี้' },
-      { to: '/calendar', icon: 'event', label: 'ปฏิทินทริป', desc: 'เดือนนี้เดือนหน้ามีรอบไหนบ้าง' },
-      { to: '/explore', icon: 'map', label: 'แผนที่ทริป', desc: 'ดูว่าแต่ละทริปอยู่ตรงไหนของประเทศไทย' },
+      ...tripCategories.value.map((c) => ({
+        to: `/trips?type=${c.slug}`,
+        icon: c.icon || 'landscape',
+        label: c.name,
+        desc: c.subtitle || '',
+      })),
       { to: '/find', icon: 'travel_explore', label: 'ค้นหาทริปที่ใช่', desc: 'ตอบไม่กี่ข้อ แล้วให้เราแนะนำ' },
       { to: '/assistant', icon: 'auto_awesome', label: 'ถามผู้ช่วย', desc: 'พิมพ์บอกงบและวันที่ไหว แล้วให้ AI หาให้' },
-      { to: '/stays', icon: 'cottage', label: 'ที่พักชุมชน', desc: 'โฮมสเตย์ใกล้ทริป จองคืนก่อนหรือหลังทริป' },
     ],
   },
+  { to: '/calendar', icon: 'event', label: 'ปฏิทินทริป' },
+  { to: '/explore', icon: 'map', label: 'แผนที่ทริป' },
+  { to: '/stays', icon: 'cottage', label: 'ที่พักชุมชน' },
   {
     label: 'ข้อมูลก่อนไป',
     icon: 'menu_book',
@@ -973,26 +945,69 @@ const navLinks = [
     ],
   },
   {
-    label: 'ชุมชน',
-    icon: 'diversity_3',
-    to: '/feed',
+    label: 'รีวิว & ชุมชน',
+    icon: 'reviews',
+    to: '/reviews',
     children: [
-      { to: '/feed', icon: 'dynamic_feed', label: 'ฟีดจากนักเดินทาง', desc: 'รูปที่คนไปมาแล้วโพสต์เอง' },
-      { to: '/gallery', icon: 'photo_library', label: 'รูปจากคนที่ไปมาแล้ว', desc: 'รูปที่ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว' },
       { to: '/reviews', icon: 'reviews', label: 'รีวิวลูกค้า', desc: 'เสียงจริงจากผู้ร่วมทริป' },
+      { to: '/gallery', icon: 'photo_library', label: 'รูปจากคนที่ไปมาแล้ว', desc: 'รูปที่ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว' },
+      { to: '/feed', icon: 'dynamic_feed', label: 'ฟีดจากนักเดินทาง', desc: 'รูปที่คนไปมาแล้วโพสต์เอง' },
       // Blog is server-rendered (Blade) — full page load via a real <a>, not a router-link.
       { to: '/blog', icon: 'article', label: 'บทความ', desc: 'ไอเดียและคู่มือการเดินทาง', external: true },
     ],
   },
-  { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา' },
+  {
+    label: 'เกี่ยวกับเรา',
+    icon: 'info',
+    to: '/about',
+    children: [
+      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา', desc: 'เรื่องราวและทีมงานของเรา' },
+      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย', desc: 'สิ่งที่เราตั้งใจทำให้สำเร็จ' },
+      { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง', desc: 'จองทริปได้ง่ายในไม่กี่ขั้นตอน' },
+      { to: '/faq', icon: 'quiz', label: 'คำถามที่พบบ่อย', desc: 'รวมคำตอบเรื่องการจอง การจ่าย และการเดินทาง' },
+      { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา', desc: 'โทร LINE อีเมล และเวลาทำการ' },
+      { to: '/problem', icon: 'report', label: 'แจ้งปัญหาการใช้งาน', desc: 'จองไม่ได้ จ่ายไม่ผ่าน บอกเราได้เลย' },
+      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'ข้อตกลงในการใช้บริการ' },
+      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว', desc: 'เราดูแลข้อมูลของคุณอย่างไร' },
+    ],
+  },
+]);
+
+// แผงเมนูมือถือมี "หน้าแรก" นำ เพราะมือถือไม่มีแถวลิงก์บริการลูกค้า
+const sheetLinks = computed(() => [{ to: '/', icon: 'home', label: 'หน้าแรก' }, ...navLinks.value]);
+
+// แถวลิงก์บริการลูกค้าบนชั้นแบรนด์ (จอ xl ขึ้นไป) — "เช็ครายการจอง" ไปหน้าการจองของฉัน
+const utilityLinks = [
+  { to: '/', label: 'หน้าแรก' },
+  { to: '/how-to-book', label: 'วิธีการจอง' },
+  // wide: โผล่เฉพาะจอ 2xl — ที่ 1280–1535px แถวนี้ต้องแบ่งที่กับโซเชียลและเบอร์โทร
+  { to: '/faq', label: 'คำถามที่พบบ่อย', wide: true },
+  { to: '/contact', label: 'ติดต่อเรา' },
+  { to: '/my-bookings', label: 'เช็ครายการจอง', icon: 'check_box' },
 ];
 
-/* ── Gliding pill indicator ──────────────────────────────────────
-   The pill tracks whichever nav item is hovered, has an open
-   dropdown, or matches the current route — in that priority. */
+async function fetchTripCategories() {
+  try {
+    const res = await api.get('/categories');
+    tripCategories.value = (res.data.data || []).slice(0, 8);
+  } catch {
+    // เมนูยังใช้ได้ด้วยลิงก์ทริปทั้งหมด
+  }
+}
+
+/* ความสูงจริงของหัวเว็บ → --site-header-h ให้ของที่ติดใต้หัว (แถบการจองค้าง) วางตัวตาม
+   หัวเว็บสูงไม่เท่ากันระหว่างก่อน/หลังเลื่อน และระหว่างมือถือ/เดสก์ท็อป */
+const headerEl = ref(null);
+let headerObserver = null;
+
+function publishHeaderHeight() {
+  const h = headerEl.value?.offsetHeight;
+  if (h) document.documentElement.style.setProperty('--site-header-h', `${h}px`);
+}
+
+/* ── Desktop service bar ───────────────────────────────────────── */
 const navListRef = ref(null);
 const hoveredNavLabel = ref(null);
-const indicator = ref({ left: 0, width: 0, opacity: 0 });
 const navItemEls = new Map();
 
 // Hover-to-open only makes sense on devices with a real pointer.
@@ -1014,13 +1029,14 @@ function isMegaMenu(link) {
    เทียบขอบด้วย `/` ปิดท้าย ไม่ใช่ startsWith เปล่า ๆ ไม่งั้น /contact-us
    จะไปปลุกหัวข้อ /contact */
 function matchesPath(to, path) {
+  to = to.split('?')[0];
   if (to === '/') return path === '/';
   return path === to || path.startsWith(`${to}/`);
 }
 
 const activeNavLabel = computed(() => {
   const path = route.path;
-  for (const link of navLinks) {
+  for (const link of navLinks.value) {
     if (link.children) {
       if (link.children.some(child => matchesPath(child.to, path))) return link.label;
     } else if (matchesPath(link.to, path)) {
@@ -1030,30 +1046,11 @@ const activeNavLabel = computed(() => {
   return null;
 });
 
-const indicatorLabel = computed(() => hoveredNavLabel.value ?? openNavDropdown.value ?? activeNavLabel.value);
-
-function syncIndicator() {
-  const el = indicatorLabel.value ? navItemEls.get(indicatorLabel.value) : null;
-  if (!el || !navListRef.value) {
-    indicator.value = { ...indicator.value, opacity: 0 };
-    return;
-  }
-  // Measure against the list itself: dropdown triggers sit inside a `relative`
-  // wrapper, so their offsetLeft is relative to that wrapper, not the list.
-  const listRect = navListRef.value.getBoundingClientRect();
-  const rect = el.getBoundingClientRect();
-  indicator.value = { left: rect.left - listRect.left, width: rect.width, opacity: 1 };
-}
-
-watch(indicatorLabel, () => nextTick(syncIndicator));
-watch(isScrolled, () => nextTick(syncIndicator));
-watch(() => route.path, () => nextTick(syncIndicator));
-
 function onNavItemHover(label) {
   hoveredNavLabel.value = label;
   if (!canHover) return;
   clearTimeout(dropdownCloseTimer);
-  const link = navLinks.find(l => l.label === label);
+  const link = navLinks.value.find(l => l.label === label);
   openNavDropdown.value = link?.children ? label : null;
 }
 
@@ -1325,18 +1322,22 @@ onMounted(() => {
   fetchUnreadCount();
   pollInterval = setInterval(fetchUnreadCount, 60000);
   window.addEventListener('scroll', handleScroll);
-  window.addEventListener('resize', syncIndicator);
   document.addEventListener('click', handleClickOutside);
   document.addEventListener('touchstart', handleClickOutside);
   document.addEventListener('keydown', handleKeydown);
-  nextTick(syncIndicator);
+  fetchTripCategories();
+  publishHeaderHeight();
+  if (typeof ResizeObserver !== 'undefined' && headerEl.value) {
+    headerObserver = new ResizeObserver(publishHeaderHeight);
+    headerObserver.observe(headerEl.value);
+  }
 });
 
 onUnmounted(() => {
   clearInterval(pollInterval);
   clearTimeout(dropdownCloseTimer);
+  headerObserver?.disconnect();
   window.removeEventListener('scroll', handleScroll);
-  window.removeEventListener('resize', syncIndicator);
   document.removeEventListener('click', handleClickOutside);
   document.removeEventListener('touchstart', handleClickOutside);
   document.removeEventListener('keydown', handleKeydown);
@@ -1414,54 +1415,129 @@ async function handleLogout() {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 35%, transparent);
 }
 
-/* ── Trust-bar contact cluster ──────────────────────────────────── */
+/* ── ชั้นที่ 1: แถบแบรนด์ ─────────────────────────────────────────── */
+.brand-bar {
+  transition: height 0.35s ease, opacity 0.25s ease, border-color 0.25s ease;
+}
+
+.utility-link {
+  color: var(--color-text-mid);
+  transition: color 0.2s ease;
+}
+.utility-link:hover,
+.utility-link.router-link-exact-active {
+  color: var(--color-accent);
+}
+
+/* โซเชียลแบบวงกลมทึบ อ่านเป็น "ช่องทางทางการ" มากกว่าไอคอนลอย ๆ */
 .social-dot {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.625rem;
-  height: 1.625rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 9999px;
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: var(--color-primary);
   color: #fff;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.15s ease;
 }
 .social-dot i {
   /* Font Awesome ปรับขนาดที่ตัว <i> เท่านั้น ตั้งที่นี่แทน utility class */
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
 }
 .social-dot:hover {
-  background-color: #fff;
-  color: var(--color-primary);
+  background-color: var(--color-accent);
+  transform: translateY(-1px);
 }
 
-.phone-chip {
+.hotline {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 0.75rem;
+  white-space: nowrap;
+}
+.hotline-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  background-color: var(--color-accent);
+  color: #fff;
+  transition: background-color 0.2s ease;
+}
+.hotline:hover .hotline-ico {
+  background-color: var(--color-accent-mid);
+}
+
+/* ── ชั้นที่ 2: แถบหมวดบริการ ──────────────────────────────────────── */
+.svc-link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.25rem 0.75rem 0.25rem 0.5rem;
-  border-radius: 9999px;
-  background-color: #fff;
-  color: var(--color-primary);
-  font-size: 12.5px;
-  font-weight: 800;
+  height: 2.5rem;
+  padding: 0 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 15px;
+  font-weight: 600;
   white-space: nowrap;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  color: var(--color-text-dark);
+  transition: color 0.2s ease, background-color 0.2s ease;
 }
-/* ชนะกฎ font-size 24px ของ .material-symbols-rounded ใน app.css ด้วยความเฉพาะเจาะจงที่สูงกว่า */
-.phone-chip .material-symbols-rounded {
-  font-size: 17px;
+.svc-link:hover,
+.svc-link.is-open {
+  color: var(--color-accent);
 }
-.phone-chip:hover {
+.svc-link.is-active {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+/* เส้นใต้เมนูที่อยู่ — แทนพิลล์ลอยแบบเดิม ให้ดูเรียบแบบเว็บองค์กร */
+.svc-link.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: -0.25rem;
+  height: 2px;
+  border-radius: 2px;
   background-color: var(--color-accent);
+}
+
+/* ไอคอนในวงกลมเส้นขอบ แบบเมนูหมวดบริการของเว็บนำเที่ยว — ซ่อนที่ lg ให้เมนูพอดีจอ 1024 */
+.svc-ico {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 9999px;
+  border: 1.5px solid currentColor;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+@media (min-width: 1280px) {
+  .svc-link { padding: 0 0.625rem; }
+  .svc-ico { display: flex; }
+}
+.svc-link:hover .svc-ico,
+.svc-link.is-open .svc-ico,
+.svc-link.is-active .svc-ico {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
   color: #fff;
 }
 
-@media (min-width: 768px) {
-  .phone-chip {
-    font-size: 13.5px;
-  }
+.mini-logo {
+  animation: miniLogoIn 0.3s ease both;
+}
+@keyframes miniLogoIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .badge {
@@ -1481,20 +1557,6 @@ async function handleLogout() {
   font-size: 9px;
   font-weight: 900;
   line-height: 1;
-}
-
-/* ── Gliding pill under the desktop nav ─────────────────────────── */
-.nav-pill {
-  transition:
-    left 0.38s cubic-bezier(0.16, 1, 0.3, 1),
-    width 0.38s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.2s ease;
-  pointer-events: none;
-}
-
-.nav-link.is-active {
-  color: var(--color-primary);
-  font-weight: 800;
 }
 
 .filled-icon {
@@ -1814,7 +1876,8 @@ async function handleLogout() {
 
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .nav-pill,
+  .mini-logo,
+  .brand-bar,
   .cta-sheen,
   .sheet-item,
   .sheet-enter-active,

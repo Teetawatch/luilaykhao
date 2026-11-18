@@ -1,23 +1,42 @@
 <template>
-  <footer class="bg-white text-text-dark mt-auto border-t border-sand-dark/40 relative overflow-hidden">
-    <!-- Subtle background decoration -->
-    <div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-sand/30 blur-3xl -z-10 pointer-events-none"></div>
+  <footer class="site-footer mt-auto bg-[var(--color-primary)] text-white/75">
+    <!-- แถบติดต่อด่วน — แบบเว็บบริษัทนำเที่ยว: เบอร์โทรตัวใหญ่ + LINE ก่อนถึงคอลัมน์ลิงก์ -->
+    <div class="border-b border-white/10">
+      <div class="max-w-7xl mx-auto px-6 lg:px-8 py-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <p class="text-xl md:text-2xl font-bold text-white">สอบถามข้อมูลและจองทริป</p>
+          <p class="mt-1 text-[15px] text-white/65">{{ supportHours() }} · ตอบทุกคำถามก่อนตัดสินใจ</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <a :href="supportPhoneHref()" class="footer-cta footer-cta--light">
+            <span class="material-symbols-rounded icon-22" style="font-variation-settings:'FILL' 1">call</span>
+            <span class="tabular-nums">{{ supportPhone() }}</span>
+          </a>
+          <a :href="supportLineUrl()" target="_blank" rel="noopener" class="footer-cta footer-cta--line">
+            <i class="fa-brands fa-line" aria-hidden="true"></i>
+            ติดต่อเราผ่านไลน์
+          </a>
+        </div>
+      </div>
+    </div>
 
-    <div class="max-w-7xl mx-auto px-6 py-16 relative z-10">
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 lg:gap-12">
-        
-        <!-- Brand & About -->
-        <!-- Brand & About -->
-        <div class="md:col-span-6 lg:col-span-4">
-          <router-link to="/" class="flex items-center gap-3 mb-6">
-            <img src="/images/logo.png?v=2" alt="ลุยเลเขา Logo" class="w-24 h-24 object-contain" />
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 py-14">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
+        <!-- แบรนด์ -->
+        <div class="lg:col-span-4">
+          <router-link to="/" class="inline-flex items-center gap-3">
+            <span class="w-16 h-16 rounded-2xl bg-white flex items-center justify-center p-1.5">
+              <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-full h-full object-contain" />
+            </span>
+            <span class="flex flex-col leading-none">
+              <span class="text-2xl font-extrabold text-white">ลุยเลเขา</span>
+              <span class="mt-1.5 text-[13px] font-semibold text-white/60">Trip &amp; Travel</span>
+            </span>
           </router-link>
-          <p class="text-m text-text-muted leading-relaxed max-w-sm mb-6">
-            เราไม่ได้อยากเป็นแค่แพลตฟอร์มจองทริป แต่อยากเป็น "เพื่อน" ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น และมีความสุขมากขึ้นในทุกการเดินทาง
+          <p class="mt-5 text-[15px] leading-relaxed max-w-sm">
+            บริษัทนำเที่ยวเดินป่า ดำน้ำ และรถตู้รับส่ง บอกระยะทาง ความสูงสะสม จุดรับ และเวลาออกของทุกรอบไว้ล่วงหน้า
           </p>
-          
-          <!-- Social Icons — ชุดเดียวกับ Navbar และกับ sameAs ใน structured data -->
-          <div class="flex items-center gap-3">
+          <div class="mt-6 flex items-center gap-2.5">
             <a
               v-for="social in socialLinks"
               :key="social.label"
@@ -25,141 +44,113 @@
               target="_blank"
               rel="noopener"
               :aria-label="social.label"
-              class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300"
+              class="footer-social"
             >
               <i :class="social.icon" aria-hidden="true"></i>
             </a>
-            <a :href="supportLineUrl()" target="_blank" rel="noopener" aria-label="LINE Official" class="w-9 h-9 rounded-full border border-sand-dark/60 flex items-center justify-center text-text-muted hover:bg-accent hover:border-accent hover:text-white transition-all duration-300">
-              <i class="fa-brands fa-line text-lg" aria-hidden="true"></i>
+            <a :href="supportLineUrl()" target="_blank" rel="noopener" aria-label="LINE Official" class="footer-social">
+              <i class="fa-brands fa-line" aria-hidden="true"></i>
             </a>
           </div>
+        </div>
 
-      </div>
-
-        <!-- Activities -->
-        <div class="md:col-span-3 lg:col-span-2 lg:pl-4">
-          <h4 class="font-anuphan font-bold text-lg mb-6 text-text-dark">
-            กิจกรรมยอดนิยม
-          </h4>
-          <ul v-if="categories.length > 0" class="space-y-3 text-sm text-text-muted">
-            <li v-for="cat in categories" :key="cat.id">
-              <router-link :to="`/trips?type=${cat.slug}`" class="group flex items-center gap-3 hover:text-accent transition-colors">
-                <span class="w-8 h-8 rounded-lg bg-sand/50 flex items-center justify-center group-hover:bg-accent/10 group-hover:text-accent transition-colors">
-                  <span class="material-symbols-rounded text-[18px]">{{ cat.icon || 'explore' }}</span>
-                </span>
-                <span class="font-medium">{{ cat.name }}</span>
-              </router-link>
-            </li>
-          </ul>
-          <!-- Skeleton / Loading state -->
-          <ul v-else-if="loading" class="space-y-3">
-            <li v-for="i in 3" :key="i" class="flex items-center gap-3 animate-pulse">
-              <div class="w-8 h-8 rounded-lg bg-sand/50"></div>
-              <div class="h-4 bg-sand/50 rounded w-20"></div>
-            </li>
+        <!-- ทริปของเรา -->
+        <div class="lg:col-span-2">
+          <h4 class="footer-heading">ทริปของเรา</h4>
+          <ul class="footer-list">
+            <li><router-link to="/trips">ทริปทั้งหมด</router-link></li>
+            <template v-if="categories.length">
+              <li v-for="cat in categories" :key="cat.id">
+                <router-link :to="`/trips?type=${cat.slug}`">{{ cat.name }}</router-link>
+              </li>
+            </template>
+            <template v-else-if="loading">
+              <li v-for="i in 3" :key="i"><span class="block h-4 w-20 rounded bg-white/10 animate-pulse"></span></li>
+            </template>
+            <li><router-link to="/calendar">ปฏิทินทริป</router-link></li>
+            <li><router-link to="/stays">ที่พักชุมชน</router-link></li>
           </ul>
         </div>
 
-        <!-- Contact -->
-        <div class="md:col-span-3 lg:col-span-3">
-          <h4 class="font-anuphan font-bold text-lg mb-6 text-text-dark">
-            ติดต่อเรา
-          </h4>
-          <ul class="space-y-4 text-sm text-text-muted">
-            <li>
-              <a :href="supportLineUrl()" target="_blank" class="flex items-start gap-3.5 group">
-                <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
-                  <i class="fa-brands fa-line text-lg"></i>
-                </div>
-                <div class="pt-1.5">
-                  <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">LINE Official</p>
-                  <p>{{ supportLine() }}</p>
-                </div>
-              </a>
-            </li>
-            <li>
-              <a :href="supportPhoneHref()" class="flex items-start gap-3.5 group">
-                <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
-                  <span class="material-symbols-rounded text-[18px]">call</span>
-                </div>
-                <div class="pt-1.5">
-                  <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">โทรศัพท์</p>
-                  <p>{{ supportPhone() }}</p>
-                  <p class="text-xs text-text-muted mt-0.5">{{ supportHours() }}</p>
-                </div>
-              </a>
-            </li>
-            <li>
-              <a :href="supportEmailHref()" class="flex items-start gap-3.5 group">
-                <div class="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
-                  <span class="material-symbols-rounded text-[18px]">mail</span>
-                </div>
-                <div class="pt-1.5">
-                  <p class="font-semibold text-text-dark leading-none mb-1 group-hover:text-accent transition-colors">อีเมล</p>
-                  <p>{{ supportEmail() }}</p>
-                </div>
-              </a>
-            </li>
+        <!-- ข้อมูลและบริการ -->
+        <div class="lg:col-span-3">
+          <h4 class="footer-heading">ข้อมูลและบริการ</h4>
+          <ul class="footer-list sm:columns-2 lg:columns-1 xl:columns-2 gap-6">
+            <li><router-link to="/about">เกี่ยวกับเรา</router-link></li>
+            <li><router-link to="/how-to-book">วิธีการจอง</router-link></li>
+            <li><router-link to="/faq">คำถามที่พบบ่อย</router-link></li>
+            <li><router-link to="/reviews">รีวิวลูกค้า</router-link></li>
+            <li><router-link to="/gallery">รูปจากลูกค้า</router-link></li>
+            <li><a href="/blog">บทความ</a></li>
+            <li><router-link to="/places">สถานที่ธรรมชาติ</router-link></li>
+            <li><router-link to="/seasons">เดือนไหนไปไหนดี</router-link></li>
+            <li><router-link to="/checklist">เช็คลิสต์ของที่ต้องเตรียม</router-link></li>
+            <li><router-link to="/problem">แจ้งปัญหาการใช้งาน</router-link></li>
           </ul>
         </div>
 
-        <!-- Download App -->
-        <div class="md:col-span-12 lg:col-span-3 lg:pl-4">
-          <h4 class="font-anuphan font-bold text-lg mb-6 text-text-dark">
-            ดาวน์โหลด Luilaykhao
-          </h4>
-          <!-- ป้ายสโตร์ทั้งสองเป็นไฟล์จัตุรัส 1024x1024 ที่มีขอบโปร่งใสเยอะ
-               margin ติดลบชุดนี้คือการครอบขอบนั้นออก ไม่ใช่ของหลงเหลือ —
-               แก้ตัวเลขเมื่อไหร่ต้องดูของจริงด้วย -->
-          <div class="flex items-center gap-3 ">
-            <div class="shrink-0 -mt-10">
-              <img src="/images/logo.png?v=2" alt="ไอคอนแอปลุยเลเขา" class="w-20 h-20 rounded-[1.25rem] border border-gray-100 bg-white p-2 object-contain" />
-            </div>
-            <div class="flex flex-col gap-0 -mt-10">
-              <a href="https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th" target="_blank" rel="noopener" aria-label="ดาวน์โหลดบน App Store" class="block hover:opacity-80 transition-opacity">
-                <img src="/images/icon-appstore.webp" alt="App Store" class="w-28 h-28 object-contain" />
-              </a>
-              <a href="https://play.google.com/store/apps/details?id=com.luilaykhao.app&hl=th" target="_blank" rel="noopener" aria-label="ดาวน์โหลดบน Google Play" class="block -mt-15 hover:opacity-80 transition-opacity">
-                <img src="/images/icon-playstore.webp" alt="Google Play" class="w-28 h-28 object-contain" />
-              </a>
-            </div>
+        <!-- ติดต่อเรา + แอป -->
+        <div class="lg:col-span-3">
+          <h4 class="footer-heading">ติดต่อเรา</h4>
+          <ul class="space-y-3 text-[15px]">
+            <li class="flex items-start gap-2.5">
+              <span class="material-symbols-rounded icon-20 text-[var(--color-accent-light)] mt-0.5">call</span>
+              <a :href="supportPhoneHref()" class="hover:text-white">{{ supportPhone() }}</a>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <i class="fa-brands fa-line text-[18px] text-[var(--color-accent-light)] mt-1 w-5 text-center" aria-hidden="true"></i>
+              <a :href="supportLineUrl()" target="_blank" rel="noopener" class="hover:text-white">{{ supportLine() }}</a>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <span class="material-symbols-rounded icon-20 text-[var(--color-accent-light)] mt-0.5">mail</span>
+              <a :href="supportEmailHref()" class="hover:text-white break-all">{{ supportEmail() }}</a>
+            </li>
+            <li v-if="address" class="flex items-start gap-2.5">
+              <span class="material-symbols-rounded icon-20 text-[var(--color-accent-light)] mt-0.5">location_on</span>
+              <span>{{ address }}</span>
+            </li>
+          </ul>
+
+          <p class="mt-7 text-[14px] font-semibold text-white">ดาวน์โหลดแอปลุยเลเขา</p>
+          <div class="mt-3 flex items-center gap-2">
+            <a href="https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th" target="_blank" rel="noopener" aria-label="ดาวน์โหลดบน App Store" class="store-badge">
+              <i class="fa-brands fa-apple" aria-hidden="true"></i>
+              <span class="flex flex-col leading-none"><span class="text-[10px] opacity-75">Download on the</span><span class="text-[15px] font-bold">App Store</span></span>
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.luilaykhao.app&hl=th" target="_blank" rel="noopener" aria-label="ดาวน์โหลดบน Google Play" class="store-badge">
+              <i class="fa-brands fa-google-play" aria-hidden="true"></i>
+              <span class="flex flex-col leading-none"><span class="text-[10px] opacity-75">GET IT ON</span><span class="text-[15px] font-bold">Google Play</span></span>
+            </a>
           </div>
         </div>
       </div>
-      
+
       <!-- ตัวตนตามใบอนุญาต — สิ่งที่แยกผู้ประกอบการจริงออกจากเพจขายทริป
            และเป็นที่แรกที่คนมองหาเวลาจะเช็คว่าเว็บนี้เชื่อได้ไหม -->
-      <div class="border-t border-sand-dark/40 mt-16 pt-8 flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
-        <div class="w-10 h-10 rounded-full bg-accent/10 text-accent flex items-center justify-center shrink-0">
-          <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1">verified_user</span>
-        </div>
-        <div class="text-sm text-text-muted leading-relaxed space-y-1">
-          <p class="font-semibold text-text-dark">
+      <div class="mt-12 rounded-xl border border-white/10 bg-white/[0.04] p-5 flex flex-col sm:flex-row sm:items-start gap-4">
+        <span class="w-10 h-10 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center shrink-0">
+          <span class="material-symbols-rounded icon-20" style="font-variation-settings:'FILL' 1">verified_user</span>
+        </span>
+        <div class="text-[14px] leading-relaxed space-y-1">
+          <p class="font-semibold text-white">
             ใบอนุญาตประกอบธุรกิจนำเที่ยวเลขที่ {{ licence }}
             <a v-if="licenceImage" :href="licenceImage" target="_blank" rel="noopener"
-              class="font-medium text-accent hover:underline ml-1">ดูใบอนุญาต</a>
+              class="font-medium text-[var(--color-accent-light)] hover:underline ml-1">ดูใบอนุญาต</a>
           </p>
           <p>ได้รับอนุญาตให้นำเที่ยวได้ทั้งในประเทศและต่างประเทศ โดยกรมการท่องเที่ยว กระทรวงการท่องเที่ยวและกีฬา</p>
           <p v-if="operator">ผู้ประกอบการ: {{ operator }}</p>
-          <p v-if="address">ที่อยู่: {{ address }}</p>
         </div>
       </div>
+    </div>
 
-      <!-- Bottom Bar -->
-      <div class="border-t border-sand-dark/40 mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div class="text-sm text-text-muted font-medium">
-          &copy; {{ new Date().getFullYear() }} ลุยเลเขา. All rights reserved.
-        </div>
-        <!-- แถวลิงก์ยาวขึ้นเรื่อย ๆ ตามหน้าที่เพิ่ม จึงต้องยอมให้ตกบรรทัดแทนที่จะดันจนล้น -->
-        <div class="flex flex-wrap justify-center md:justify-end gap-x-6 gap-y-2 text-sm font-medium text-text-muted">
-          <router-link to="/calendar" class="hover:text-accent transition-colors">ปฏิทินทริป</router-link>
-          <a href="/blog" class="hover:text-accent transition-colors">บทความ</a>
-          <router-link to="/places" class="hover:text-accent transition-colors">สถานที่ธรรมชาติ</router-link>
-          <router-link to="/seasons" class="hover:text-accent transition-colors">เดือนไหนไปไหนดี</router-link>
-          <router-link to="/checklist" class="hover:text-accent transition-colors">เช็คลิสต์ของที่ต้องเตรียม</router-link>
-          <router-link to="/gallery" class="hover:text-accent transition-colors">รูปจากคนที่ไปมาแล้ว</router-link>
-          <router-link to="/terms" class="hover:text-accent transition-colors">เงื่อนไขการให้บริการ</router-link>
-          <router-link to="/privacy" class="hover:text-accent transition-colors">นโยบายความเป็นส่วนตัว</router-link>
+    <!-- Bottom Bar -->
+    <div class="bg-black/20">
+      <div class="max-w-7xl mx-auto px-6 lg:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-3 text-[13.5px] text-white/60">
+        <p>&copy; {{ new Date().getFullYear() }} ลุยเลเขา. สงวนลิขสิทธิ์</p>
+        <div class="flex flex-wrap justify-center gap-x-5 gap-y-1.5">
+          <router-link to="/terms" class="hover:text-white transition-colors">เงื่อนไขการให้บริการ</router-link>
+          <router-link to="/privacy" class="hover:text-white transition-colors">นโยบายความเป็นส่วนตัว</router-link>
+          <router-link to="/contact" class="hover:text-white transition-colors">ติดต่อเรา</router-link>
         </div>
       </div>
     </div>
@@ -199,3 +190,94 @@ onMounted(async () => {
 });
 </script>
 
+
+<style scoped>
+.footer-heading {
+  margin-bottom: 1.1rem;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+}
+.footer-list {
+  font-size: 15px;
+}
+.footer-list li {
+  margin-bottom: 0.65rem;
+  break-inside: avoid;
+}
+.footer-list a {
+  transition: color 0.2s ease;
+}
+.footer-list a:hover {
+  color: #fff;
+}
+
+.footer-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: background-color 0.2s ease;
+}
+.footer-social i {
+  font-size: 15px;
+  line-height: 1;
+}
+.footer-social:hover {
+  background-color: var(--color-accent);
+}
+
+.footer-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border-radius: 9999px;
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.footer-cta i {
+  font-size: 19px;
+  line-height: 1;
+}
+.footer-cta--light {
+  background-color: #fff;
+  color: var(--color-primary);
+}
+.footer-cta--light:hover {
+  background-color: var(--color-accent-tint);
+}
+.footer-cta--line {
+  background-color: #06c755;
+  color: #fff;
+}
+.footer-cta--line:hover {
+  background-color: #05b34c;
+}
+
+.store-badge {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: #000;
+  color: #fff;
+  transition: border-color 0.2s ease;
+}
+.store-badge i {
+  font-size: 20px;
+  line-height: 1;
+}
+.store-badge:hover {
+  border-color: #fff;
+}
+</style>

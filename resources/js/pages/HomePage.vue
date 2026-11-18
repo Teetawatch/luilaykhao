@@ -2,72 +2,122 @@
   <div class="homepage bg-[var(--color-sand)] font-anuphan selection:bg-[var(--color-accent)] selection:text-white">
 
     <!-- ══════════════════════════════════════════
-         HERO SECTION
+         HERO — สไลด์เต็มความกว้าง หัวข้อชิดซ้าย ปุ่มเดียว ลูกศรซ้าย/ขวา จุดบอกหน้าใต้ภาพ
+         สไลด์แรกคือแบรนด์ (มี h1) สไลด์ถัดไปคือทริปแนะนำจาก /trips/featured
     ══════════════════════════════════════════ -->
-    <section class="relative min-h-[calc(100svh-8rem)] md:h-[90vh] md:min-h-[700px] w-full flex items-center justify-center overflow-hidden md:-mt-16">
-      <!-- Background Slider -->
-      <div class="hero-slider absolute inset-0 overflow-hidden">
-        <div
-          v-for="(img, index) in heroImages"
-          :key="img"
-          class="hero-slide absolute inset-0"
-          :class="{ 'hero-slide--active': index === currentSlide }"
-        >
-          <img
-            :src="img"
-            alt="ลุยเลเขา"
-            class="hero-slide-img w-full h-full object-cover"
-          />
+    <section
+      class="home-hero relative w-full overflow-hidden bg-[var(--color-primary)] h-[460px] sm:h-[500px] lg:h-[560px] xl:h-[600px]"
+      aria-roledescription="carousel"
+      aria-label="ทริปแนะนำ"
+      @mouseenter="pauseSlider"
+      @mouseleave="resumeSlider"
+      @focusin="pauseSlider"
+      @focusout="resumeSlider"
+    >
+      <div
+        v-for="(slide, index) in heroSlides"
+        :key="slide.key"
+        class="hero-slide absolute inset-0"
+        :class="{ 'hero-slide--active': index === currentSlide }"
+        :aria-hidden="index !== currentSlide"
+        role="group"
+        aria-roledescription="slide"
+        :aria-label="`${index + 1} จาก ${heroSlides.length}`"
+      >
+        <img
+          :src="slide.image"
+          :alt="slide.alt"
+          class="hero-slide-img absolute inset-0 w-full h-full object-cover"
+          :loading="index === 0 ? 'eager' : 'lazy'"
+          :fetchpriority="index === 0 ? 'high' : 'auto'"
+        />
+        <!-- เงาไล่จากซ้ายให้ตัวหนังสืออ่านออกบนทุกภาพ -->
+        <div class="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/5"></div>
+        <div class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/35 to-transparent"></div>
+
+        <div class="relative z-10 h-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 flex items-center">
+          <div class="hero-copy max-w-xl lg:max-w-2xl">
+            <p v-if="slide.kicker" class="hero-kicker text-[14px] md:text-[16px] font-semibold text-white/85 mb-3">
+              {{ slide.kicker }}
+            </p>
+            <component
+              :is="index === 0 ? 'h1' : 'h2'"
+              class="hero-title text-white text-[1.7rem] sm:text-[2.6rem] lg:text-[3.4rem] font-extrabold leading-[1.12] tracking-tight"
+            >
+              {{ slide.title }}
+              <span v-if="slide.accent" class="block text-[var(--color-accent-light)]">{{ slide.accent }}</span>
+            </component>
+            <p v-if="slide.subtitle" class="hero-subtitle mt-4 text-white/90 text-[15px] sm:text-lg lg:text-xl font-medium leading-relaxed">
+              {{ slide.subtitle }}
+            </p>
+            <div class="hero-actions mt-7 flex flex-wrap items-center gap-3">
+              <router-link :to="slide.cta.to" class="hero-cta" :tabindex="index === currentSlide ? 0 : -1">
+                {{ slide.cta.label }}
+                <span class="material-symbols-rounded icon-22">chevron_right</span>
+              </router-link>
+              <router-link
+                v-if="slide.cta2"
+                :to="slide.cta2.to"
+                class="hero-cta hero-cta--ghost"
+                :tabindex="index === currentSlide ? 0 : -1"
+              >{{ slide.cta2.label }}</router-link>
+            </div>
+          </div>
         </div>
-        <div class="hero-slider-vignette absolute inset-0 z-[2]" aria-hidden="true"></div>
-        <!-- Legibility overlay: darker top & bottom for text, clean fade into page -->
-        <div class="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-[var(--color-sand)] z-[3]"></div>
       </div>
 
-      <!-- Content -->
-      <div class="hero-content relative z-10 text-center px-4 max-w-6xl w-full pt-10 md:pt-24 pb-28 md:pb-12">
-        
-        <!-- Headline -->
-        <h1 class="hero-title font-anuphan text-white text-[1.75rem] sm:text-[2.15rem] md:text-[2.75rem] lg:text-[3.25rem] font-extrabold mb-5 leading-[1.2] md:leading-[1.25] tracking-tight">
-          เดินป่า ดำน้ำ ขึ้นดอย<br />
-          <span class="text-[var(--color-accent-light)]">รู้ทุกอย่างก่อนออกเดินทาง</span>
-        </h1>
+      <!-- ลูกศรเปลี่ยนสไลด์ -->
+      <template v-if="heroSlides.length > 1">
+        <button type="button" class="hero-arrow left-2 sm:left-4 lg:left-6" aria-label="สไลด์ก่อนหน้า" @click="goSlide(currentSlide - 1)">
+          <span class="material-symbols-rounded icon-48">chevron_left</span>
+        </button>
+        <button type="button" class="hero-arrow right-2 sm:right-4 lg:right-6" aria-label="สไลด์ถัดไป" @click="goSlide(currentSlide + 1)">
+          <span class="material-symbols-rounded icon-48">chevron_right</span>
+        </button>
 
-        <!-- Subheadline -->
-        <p class="hero-subtitle text-white/85 text-base md:text-xl mb-10 font-normal max-w-2xl mx-auto leading-relaxed">
-          ทุกรอบบอกระยะทาง ความสูงสะสม จุดรับ และเวลาออกไว้ล่วงหน้า<br class="hidden md:block" />
-          ระหว่างทางที่บ้านตามดูตำแหน่งรถได้ตลอด
+        <!-- จุดบอกตำแหน่ง -->
+        <div class="absolute bottom-5 md:bottom-7 inset-x-0 z-20 flex justify-center gap-2.5">
+          <button
+            v-for="(slide, index) in heroSlides"
+            :key="`dot-${slide.key}`"
+            type="button"
+            class="hero-dot"
+            :class="{ 'hero-dot--active': index === currentSlide }"
+            :aria-label="`ไปสไลด์ที่ ${index + 1}`"
+            :aria-current="index === currentSlide ? 'true' : undefined"
+            @click="goSlide(index)"
+          ></button>
+        </div>
+      </template>
+    </section>
+
+    <!-- แถบใบอนุญาต + ช่องทางติดต่อ ใต้ภาพหลัก (ชุดเดียวกับทุกหน้า) -->
+    <TrustStrip />
+
+    <!-- ══════════════════════════════════════════
+         ค้นหารอบเดินทาง — เลือกทริป → เลือกรอบ
+    ══════════════════════════════════════════ -->
+    <section class="bg-white pt-8 pb-10 md:pt-10 md:pb-14">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <p class="text-center text-[15px] md:text-base font-semibold text-[var(--color-text-mid)] mb-4">
+          ค้นหารอบเดินทางที่ว่าง เลือกทริปแล้วเลือกวันได้เลย
         </p>
-
-        <!-- แถบค้นหา: เลือกทริป → เลือกรอบ (แผงของเราเอง ไม่ใช่ <select> ของเบราว์เซอร์) -->
         <HeroSearchBar :trips="allTrips" :loading="loading" />
-
-        <!-- สิ่งที่ระบบทำได้จริง — ไม่ใช่คำโฆษณาแบบ "ปลอดภัยที่สุด" -->
-        <div class="hero-trust flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-7 text-white/85 text-xs md:text-sm font-medium">
+        <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-6 text-[var(--color-text-muted)] text-[13px] md:text-sm font-medium">
           <span class="inline-flex items-center gap-1.5">
-            <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">near_me</span>
+            <span class="material-symbols-rounded icon-18 text-[var(--color-accent)]">near_me</span>
             ติดตามตำแหน่งรถได้ระหว่างเดินทาง
           </span>
-          <span class="hidden sm:inline w-px h-4 bg-white/25"></span>
           <span class="inline-flex items-center gap-1.5">
-            <span class="material-symbols-rounded text-[18px] text-[var(--color-accent-light)]">receipt_long</span>
+            <span class="material-symbols-rounded icon-18 text-[var(--color-accent)]">receipt_long</span>
             โอนแล้วระบบตรวจสลิปให้อัตโนมัติ
           </span>
+          <router-link to="/find" class="inline-flex items-center gap-1.5 font-bold text-[var(--color-accent)] hover:underline underline-offset-2">
+            <span class="material-symbols-rounded icon-18">auto_awesome</span>
+            ยังเลือกไม่ถูก? ให้เราช่วยหาทริปที่ใช่
+          </router-link>
         </div>
-
-        <!-- Trip Finder CTA -->
-        <router-link
-          to="/find"
-          class="group inline-flex items-center gap-2 mt-6 text-white/90 hover:text-white font-bold text-sm md:text-base bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/25 px-5 py-2.5 rounded-full transition-all duration-300 hover:-translate-y-0.5"
-        >
-          <span class="material-symbols-rounded text-[20px] text-[var(--color-accent-light)]">auto_awesome</span>
-          ยังเลือกไม่ถูก? ให้เราช่วยหาทริปที่ใช่ใน 1 นาที
-          <span class="material-symbols-rounded text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-        </router-link>
       </div>
-
-      <!-- Bottom fade -->
-      <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[var(--color-sand)] to-transparent z-0"></div>
     </section>
 
     <!-- ══════════════════════════════════════════
@@ -76,14 +126,15 @@
     <section
       v-if="visibleStats.length"
       ref="statsSection"
-      class="bg-[var(--color-sand)] relative z-10 pb-28 pt-4"
+      class="bg-[var(--color-sand)] relative z-10 py-16 md:py-20"
     >
       <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="grid grid-cols-2 gap-4 md:gap-8 -mt-20 md:-mt-24 relative z-20" :class="statsGridColsClass">
+        <SectionTitle class="mb-10 md:mb-12" title="ตัวเลขจากการเดินทางจริง" subtitle="คำนวณจากรอบที่เดินทางจบแล้วในระบบ อัปเดตอัตโนมัติทุกชั่วโมง" />
+        <div class="grid grid-cols-2 gap-4 md:gap-6 relative z-20" :class="statsGridColsClass">
           <div
             v-for="(stat, index) in visibleStats"
             :key="stat.label"
-            class="bg-white rounded-2xl p-6 lg:p-7 flex flex-col items-center text-center border border-black/[0.06] transition-opacity duration-500"
+            class="bg-white rounded-xl p-6 lg:p-7 flex flex-col items-center text-center border border-[var(--color-sand-dark)] transition-opacity duration-500"
             :class="[isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6']"
             :style="{ transitionDelay: `${index * 120}ms` }"
           >
@@ -112,9 +163,6 @@
           </div>
         </div>
 
-        <p class="text-center text-xs text-[var(--color-text-muted)] mt-6">
-          ตัวเลขทั้งหมดคำนวณจากรอบที่เดินทางจบแล้วในระบบ อัปเดตอัตโนมัติทุกชั่วโมง
-        </p>
       </div>
     </section>
 
@@ -127,12 +175,9 @@
     <!-- ══════════════════════════════════════════
          ALMOST-FULL RAIL — รีบจองก่อนเต็ม
     ══════════════════════════════════════════ -->
-    <section v-if="almostFullTrips.length" class="bg-[var(--color-sand)] pb-4">
+    <section v-if="almostFullTrips.length" class="bg-white py-16 md:py-20">
       <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="flex items-center gap-2 mb-5">
-          <span class="material-symbols-rounded text-[var(--color-text-muted)]">event_available</span>
-          <h2 class="text-xl md:text-2xl font-black text-[var(--color-text-dark)]">รอบที่ใกล้เต็ม</h2>
-        </div>
+        <SectionTitle class="mb-10" title="รอบที่ใกล้เต็ม" subtitle="รอบที่ที่นั่งเหลือน้อย ถ้าสนใจควรรีบจองก่อนเต็ม" />
         <div class="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
           <div v-for="t in almostFullTrips" :key="t.id" class="snap-start shrink-0 w-72">
             <TripCard :trip="t" />
@@ -144,21 +189,13 @@
     <!-- ══════════════════════════════════════════
          CATEGORIES SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-28 md:py-32 bg-[var(--color-sand)] relative overflow-hidden">
-      <!-- Decorative background text -->
-      <div class="absolute -top-12 -left-12 text-[15rem] md:text-[19rem] font-black text-[var(--color-primary)]/[0.04] select-none pointer-events-none whitespace-nowrap z-0 tracking-tighter leading-none">
-        ลุยเลเขา
-      </div>
-
+    <section class="py-16 md:py-24 bg-[var(--color-sand)] relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="flex flex-col md:flex-row md:items-end justify-between mb-16 md:mb-20 gap-8">
-          <div class="max-w-2xl">
-            <h2 class="font-anuphan text-4xl md:text-6xl font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.1]">เราพาไป<br /><span class="text-[var(--color-primary)]">แบบไหนบ้าง</span></h2>
-          </div>
-          <p class="text-[var(--color-text-muted)] text-lg max-w-sm md:text-right font-medium leading-relaxed">
-            แต่ละแบบใช้แรงและความพร้อมต่างกัน เลือกจากสิ่งที่คุณอยากเจอ ไม่ใช่จากราคา
-          </p>
-        </div>
+        <SectionTitle
+          class="mb-10 md:mb-14"
+          title="บริการของเรา"
+          subtitle="แต่ละแบบใช้แรงและความพร้อมต่างกัน เลือกจากสิ่งที่คุณอยากเจอ"
+        />
 
         <div class="relative">
         <div
@@ -172,13 +209,13 @@
             :key="cat.type"
             :to="`/trips?type=${cat.type}`"
             :class="[
-              'group relative rounded-[2.5rem] overflow-hidden block isolate h-[480px] lg:h-[560px] border border-white/10 transition-[transform,box-shadow] duration-700 ease-out hover:-translate-y-3',
+              'group relative rounded-2xl overflow-hidden block isolate h-[380px] lg:h-[440px] transition-transform duration-500 ease-out hover:-translate-y-1',
               isCategoryRail ? 'snap-start shrink-0 w-[80vw] sm:w-[360px] lg:w-[300px]' : '',
             ]"
             :style="`--cat-color: ${cat.color}; background-color: ${cat.bgColor}`"
           >
             <!-- Premium Background Image with Dynamic Zoom -->
-            <div class="absolute inset-0 z-0 overflow-hidden rounded-[2.5rem]">
+            <div class="absolute inset-0 z-0 overflow-hidden rounded-2xl">
               <img
                 :src="cat.image"
                 :alt="cat.label"
@@ -193,7 +230,7 @@
                 :style="`background: linear-gradient(to top, ${cat.color}cc, transparent 60%)`"
               ></div>
               <!-- Inner edge highlight -->
-              <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-[2.5rem] pointer-events-none"></div>
+              <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-2xl pointer-events-none"></div>
             </div>
 
             <div class="p-8 lg:p-10 flex flex-col h-full relative z-10">
@@ -218,7 +255,7 @@
               <!-- Content Area -->
               <div class="mt-auto">
                 <div class="transform transition-transform duration-500 group-hover:-translate-y-1">
-                  <h3 class="text-4xl lg:text-[2.75rem] font-black text-white tracking-tight mb-3 leading-none">
+                  <h3 class="text-3xl lg:text-[2.25rem] font-bold text-white tracking-tight mb-3 leading-none">
                     {{ cat.label }}
                   </h3>
                   <p class="text-white/75 text-[15px] font-medium leading-relaxed max-w-[92%] mb-6 transition-colors duration-500 group-hover:text-white/90">
@@ -227,7 +264,7 @@
                 </div>
 
                 <!-- Actionable CTA -->
-                <div class="inline-flex items-center gap-3 text-sm font-black text-white tracking-wide bg-white/10 backdrop-blur-xl pl-6 pr-5 py-3.5 rounded-2xl border border-white/25 transition-all duration-500 group-hover:bg-white group-hover:text-[var(--cat-color)] group-hover:border-white">
+                <div class="inline-flex items-center gap-3 text-sm font-bold text-white tracking-wide bg-white/10 backdrop-blur-xl pl-6 pr-5 py-3 rounded-full border border-white/25 transition-all duration-500 group-hover:bg-white group-hover:text-[var(--cat-color)] group-hover:border-white">
                   <span>{{ cat.ctaText }}</span>
                   <span class="material-symbols-rounded text-[20px] transition-transform duration-500 group-hover:translate-x-1">arrow_forward</span>
                 </div>
@@ -265,30 +302,13 @@
     <!-- ══════════════════════════════════════════
          POPULAR EXPERIENCES SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-24 relative overflow-hidden bg-white">
-      <!-- Decorative Background Image -->
-      <div class="absolute inset-0 z-0 pointer-events-none opacity-50">
-        <img 
-          src="/images/experience_overlay.webp" 
-          alt="" 
-          class="w-full h-full object-cover"
-        />
-      </div>
-
+    <section class="py-16 md:py-24 relative overflow-hidden bg-white">
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="flex flex-col md:flex-row md:justify-between md:items-end mb-12 md:mb-16 gap-8">
-          <div class="max-w-xl">
-            <h2 class="font-anuphan text-4xl md:text-[3.15rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.05]">ทริปที่คนจองเยอะที่สุด</h2>
-            <p class="mt-3.5 text-[var(--color-text-muted)] text-base md:text-lg font-medium leading-relaxed">เรียงจากยอดจองจริงในระบบ ไม่ใช่ทริปที่เราอยากดัน</p>
-          </div>
-          <router-link
-            to="/trips"
-            class="group shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full border-2 border-[var(--color-sand-dark)] hover:border-[var(--color-accent)] text-[var(--color-text-dark)] hover:text-[var(--color-accent)] font-bold transition-all duration-300"
-          >
-            ดูทั้งหมด
-            <span class="material-symbols-rounded text-[20px] group-hover:translate-x-1 transition-transform duration-300">arrow_right_alt</span>
-          </router-link>
-        </div>
+        <SectionTitle
+          class="mb-10 md:mb-14"
+          title="ทริปยอดนิยม"
+          subtitle="เรียงจากยอดจองจริงในระบบ อัปเดตรอบเดินทางล่าสุด"
+        />
 
         <!-- Loading -->
         <div v-if="loading" class="flex justify-center py-20">
@@ -304,10 +324,10 @@
             v-for="trip in trips"
             :key="trip.id"
             :to="`/trips/${trip.slug}`"
-            class="group relative flex flex-col bg-white rounded-[1.75rem] overflow-hidden ring-1 ring-black/[0.05] transition-[transform,box-shadow] duration-500 ease-out hover:-translate-y-2"
+            class="group relative flex flex-col bg-white rounded-xl overflow-hidden border border-[var(--color-sand-dark)] transition-[transform,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-[var(--color-accent)]/40"
           >
             <!-- Image -->
-            <div class="relative overflow-hidden aspect-[4/5]">
+            <div class="relative overflow-hidden aspect-[4/3]">
               <img
                 v-if="tripCardImage(trip)"
                 :src="tripCardImage(trip)"
@@ -375,9 +395,9 @@
                 </div>
               </div>
 
-              <h4 class="text-[1.1rem] font-extrabold text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-accent)] transition-colors duration-300 leading-snug line-clamp-2">
+              <h3 class="text-[1.1rem] font-bold text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-accent)] transition-colors duration-300 leading-snug line-clamp-2">
                 {{ trip.title }}
-              </h4>
+              </h3>
 
               <div class="mt-auto pt-4 flex justify-between items-end border-t border-[var(--color-sand-dark)]">
                 <div class="flex flex-col min-w-0">
@@ -398,13 +418,13 @@
         </div>
 
         <!-- View all CTA -->
-        <div class="text-center mt-16">
+        <div class="text-center mt-12">
           <router-link
             to="/trips"
-            class="inline-flex items-center gap-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-mid)] text-white px-10 py-4 rounded-full font-bold text-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+            class="inline-flex items-center gap-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-mid)] text-white px-9 py-3.5 rounded-full font-bold text-base transition-colors duration-200 cursor-pointer"
           >
-            ค้นหากิจกรรมทั้งหมด
-            <span class="material-symbols-rounded text-[24px]">explore</span>
+            ดูทริปทั้งหมด
+            <span class="material-symbols-rounded icon-22">chevron_right</span>
           </router-link>
         </div>
       </div>
@@ -413,7 +433,7 @@
     <!-- ══════════════════════════════════════════
          FEATURED / ASYMMETRIC SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-24 bg-[var(--color-primary)] relative overflow-hidden" v-if="featuredTrips.length > 0">
+    <section class="py-16 md:py-24 bg-[var(--color-primary)] relative overflow-hidden" v-if="featuredTrips.length > 0">
       <!-- Decorative Background Image -->
       <div class="absolute inset-0 z-0 pointer-events-none opacity-20">
         <img 
@@ -424,20 +444,18 @@
       </div>
       
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="mb-14 flex flex-col md:flex-row justify-between items-end gap-6">
-          <div>
-            <h2 class="font-anuphan text-[1.75rem] md:text-4xl font-bold text-white tracking-tight">ทริปที่เราอยากแนะนำ</h2>
-          </div>
-          <p class="text-white/65 max-w-sm md:text-right font-medium text-[0.95rem] leading-relaxed">
-            เส้นทางที่ทีมเราไปมาเองแล้วคิดว่าคุ้มค่าที่จะไป
-          </p>
-        </div>
+        <SectionTitle
+          class="mb-10 md:mb-14"
+          dark
+          title="ทริปแนะนำ"
+          subtitle="เส้นทางที่ทีมเราไปมาเองแล้วคิดว่าคุ้มค่าที่จะไป"
+        />
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           <!-- Main Hero Featured Card (Large) -->
           <router-link
             :to="`/trips/${featuredTrips[0].slug}`"
-            class="lg:col-span-8 group relative overflow-hidden rounded-[3rem] h-[550px] lg:h-[650px] cursor-pointer block isolate"
+            class="lg:col-span-8 group relative overflow-hidden rounded-2xl h-[550px] lg:h-[650px] cursor-pointer block isolate"
           >
             <!-- Premium Image Background with Zoom -->
             <img
@@ -447,7 +465,7 @@
             />
             <!-- Multiple Overlay Layers for Depth & Contrast -->
             <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-700"></div>
-            <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-[3rem]"></div>
+            <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-2xl"></div>
             
             <div class="absolute inset-0 p-10 md:p-14 flex flex-col justify-end">
               <div class="flex flex-wrap items-center gap-2.5 mb-7 transform transition-transform duration-500 group-hover:-translate-y-2">
@@ -502,7 +520,7 @@
               v-for="(trip, idx) in featuredTrips.slice(1, 3)"
               :key="trip.id"
               :to="`/trips/${trip.slug}`"
-              class="flex-1 group relative overflow-hidden rounded-[2.5rem] bg-gray-900 cursor-pointer block p-8 md:p-10 flex flex-col justify-between transition-all duration-500 transform hover:-translate-y-2 isolate"
+              class="flex-1 group relative overflow-hidden rounded-2xl bg-gray-900 cursor-pointer block p-8 md:p-10 flex flex-col justify-between transition-all duration-500 transform hover:-translate-y-2 isolate"
             >
               <!-- Background Image -->
                <img
@@ -557,7 +575,7 @@
             <router-link
               v-if="featuredTrips.length === 1"
               to="/trips"
-              class="flex-1 group cursor-pointer bg-white/5 backdrop-blur-md rounded-[2.5rem] p-10 flex flex-col items-center justify-center hover:bg-white/10 transition-all duration-500 border-2 border-dashed border-white/20 text-center gap-6"
+              class="flex-1 group cursor-pointer bg-white/5 backdrop-blur-md rounded-2xl p-10 flex flex-col items-center justify-center hover:bg-white/10 transition-all duration-500 border-2 border-dashed border-white/20 text-center gap-6"
             >
               <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:scale-110 group-hover:bg-[var(--color-accent-light)] transition-all duration-500">
                 <span class="material-symbols-rounded text-[40px]">explore</span>
@@ -575,12 +593,9 @@
     <!-- ══════════════════════════════════════════
          TESTIMONIALS SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-24 bg-[var(--color-sand)] relative overflow-hidden">
+    <section class="py-16 md:py-24 bg-[var(--color-sand)] relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="flex flex-col items-center text-center mb-14 md:mb-16">
-          <h2 class="font-anuphan text-4xl md:text-[3.15rem] font-extrabold text-[var(--color-text-dark)] tracking-tight leading-[1.05]">นักเดินทางพูดถึงเรา</h2>
-          <p class="mt-3.5 text-[var(--color-text-muted)] text-base md:text-lg font-medium leading-relaxed max-w-xl">เสียงจริงจากผู้ร่วมทริปที่ออกเดินทางไปกับเรา</p>
-        </div>
+        <SectionTitle class="mb-10 md:mb-12" title="รีวิวจากลูกค้า" subtitle="เสียงจริงจากผู้ร่วมทริปที่ออกเดินทางไปกับเรา" />
       </div>
 
       <!-- Continuous marquee slider (full-bleed) -->
@@ -592,7 +607,7 @@
           <div
             v-for="(review, idx) in marqueeReviews"
             :key="review.id + '-' + idx"
-            class="reviews-marquee__card bg-white rounded-[1.75rem] p-7 transition-[transform,box-shadow] duration-500 ease-out relative ring-1 ring-black/[0.05] hover:-translate-y-1.5"
+            class="reviews-marquee__card bg-white rounded-xl p-7 transition-[transform,box-shadow] duration-500 ease-out relative ring-1 ring-black/[0.05] hover:-translate-y-1.5"
           >
             <!-- Quote accent -->
             <div class="absolute top-6 right-6 text-[var(--color-accent)]/10 pointer-events-none">
@@ -633,7 +648,7 @@
         </div>
       </div>
       <div v-else class="max-w-7xl mx-auto px-6 md:px-8">
-        <div class="text-center py-12 bg-white/50 rounded-[2rem] border-2 border-dashed border-gray-200">
+        <div class="text-center py-12 bg-white/50 rounded-xl border-2 border-dashed border-gray-200">
           <p class="text-[var(--color-text-muted)] font-bold">ยังไม่มีรีวิวจากนักเดินทาง</p>
         </div>
       </div>
@@ -642,25 +657,20 @@
     <!-- ══════════════════════════════════════════
          WHY US SECTION
     ══════════════════════════════════════════ -->
-    <section class="py-32 bg-white relative overflow-hidden">
-      <!-- Decorative background elements -->
-      <div class="absolute top-0 right-0 w-96 h-96 bg-[var(--color-primary)]/5 rounded-full blur-3xl -mr-48 -mt-48 pointer-events-none"></div>
-      <div class="absolute bottom-0 left-0 w-96 h-96 bg-[var(--color-accent)]/5 rounded-full blur-3xl -ml-48 -mb-48 pointer-events-none"></div>
+    <section class="py-16 md:py-24 bg-white relative overflow-hidden">
 
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
-        <div class="text-center max-w-3xl mx-auto mb-20">
-          <h2 class="font-anuphan text-4xl md:text-5xl font-black text-[var(--color-text-dark)] tracking-tight mb-6">ทำไมต้องก้าวไปกับ <span class="text-[var(--color-primary)]">ลุยเลเขา?</span></h2>
-          <p class="text-[var(--color-text-muted)] text-lg font-medium leading-relaxed">
-            เราไม่ได้อยากเป็นแค่แพลตฟอร์มจองทริปแต่อยากเป็น "เพื่อน"<br class="hidden md:block" /> ที่ช่วยให้คุณออกไปเที่ยวได้ง่ายขึ้น และมีความสุขมากขึ้นในทุกการเดินทางที่คุณเลือกไปกับเรา
-          </p>
-        </div>
+        <SectionTitle
+          class="mb-6"
+          title="ทำไมต้องเดินทางกับลุยเลเขา"
+          subtitle="บริษัทนำเที่ยวที่จดทะเบียนถูกต้อง ดูแลตั้งแต่ก่อนออกเดินทางจนกลับถึงบ้าน"
+        />
         
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 mt-16 md:mt-12 items-stretch">
           <div
             v-for="(trust, idx) in trustItems"
             :key="trust.title"
-            class="bg-white p-8 md:p-10 pt-28 md:pt-32 rounded-[3rem] transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 cursor-default group relative mt-24 text-center flex flex-col justify-between"
-            :class="{ 'lg:translate-y-8': idx % 2 === 1 }"
+            class="bg-white p-8 md:p-10 pt-28 md:pt-32 rounded-2xl transition-all duration-500 border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)]/30 cursor-default group relative mt-24 text-center flex flex-col justify-between"
           >
             <!-- Image Wrapper (Out-of-bound) -->
             <div class="absolute -top-24 md:-top-28 left-1/2 -translate-x-1/2 z-20 transition-all duration-700 group-hover:scale-110 group-hover:-translate-y-4">
@@ -672,7 +682,7 @@
             </div>
 
             <div class="relative z-10 flex flex-col items-center h-full">
-              <h3 class="text-2xl font-bold text-[var(--color-text-dark)] mb-4 group-hover:text-[var(--color-accent)] transition-colors">{{ trust.title }}</h3>
+              <h3 class="text-xl md:text-2xl font-bold text-[var(--color-text-dark)] mb-3 group-hover:text-[var(--color-accent)] transition-colors">{{ trust.title }}</h3>
               <p class="text-[var(--color-text-mid)] text-base font-medium leading-relaxed mx-auto max-w-xs">{{ trust.desc }}</p>
               <!-- Decorative Line mimicking AboutPage -->
               <div class="mt-auto pt-8">
@@ -771,6 +781,8 @@ import TripCard from '../components/TripCard.vue';
 import CommunityFeedStrip from '../components/CommunityFeedStrip.vue';
 import LatestArticles from '../components/LatestArticles.vue';
 import HeroSearchBar from '../components/HeroSearchBar.vue';
+import TrustStrip from '../components/TrustStrip.vue';
+import SectionTitle from '../components/SectionTitle.vue';
 import { supportHours, supportLineUrl } from '../lib/contact';
 import { licenceNo } from '../lib/licence';
 
@@ -786,10 +798,11 @@ const heroImages = ref([
   '/images/khaochangphueak.webp',
   '/images/hiking.webp',
 ]);
-const HERO_SLIDE_INTERVAL_MS = 6500;
+const HERO_SLIDE_INTERVAL_MS = 7000;
 const currentSlide = ref(0);
 const prefersReducedMotion = ref(false);
 let sliderInterval = null;
+let sliderPaused = false;
 
 const trips = ref([]);
 const featuredTrips = ref([]);
@@ -798,6 +811,78 @@ const loading = ref(true);
 
 
 
+
+/*
+ * สไลด์ฮีโร่: สไลด์แรกเป็นแบรนด์เสมอ (ใช้ภาพแรกจาก /hero-slides และถือ h1 ของหน้า)
+ * ตามด้วยทริปแนะนำไม่เกิน 5 ทริป — แต่ละสไลด์บอกชื่อ ปลายทาง จำนวนวัน และราคาเริ่มต้นจริง
+ * ถ้ายังไม่มีทริปแนะนำ ใช้ภาพที่เหลือจาก /hero-slides เป็นสไลด์แบรนด์แทน
+ */
+const BRAND_COPY = {
+  title: 'เดินป่า ดำน้ำ ขึ้นดอย',
+  accent: 'รู้ทุกอย่างก่อนออกเดินทาง',
+  subtitle: 'ทุกรอบบอกระยะทาง ความสูงสะสม จุดรับ และเวลาออกไว้ล่วงหน้า ระหว่างทางที่บ้านตามดูตำแหน่งรถได้ตลอด',
+  cta: { to: '/trips', label: 'ดูทริปที่เปิดจอง' },
+  cta2: { to: '/calendar', label: 'ปฏิทินทริป' },
+};
+
+function tripSlideSubtitle(trip) {
+  const parts = [];
+  const days = Number(trip.duration_days) || 1;
+  parts.push(days > 1 ? `${days} วัน ${days - 1} คืน` : 'ไปเช้าเย็นกลับ');
+  const price = Number(trip.min_price);
+  if (price > 0) parts.push(`เริ่มต้น ${price.toLocaleString('th-TH')} บาท`);
+  return parts.join(' · ');
+}
+
+const heroSlides = computed(() => {
+  const brand = {
+    key: 'brand',
+    image: heroImages.value[0],
+    alt: 'ลุยเลเขา',
+    ...BRAND_COPY,
+  };
+  const tripSlides = featuredTrips.value
+    .filter((t) => t.slug && (t.cover_image || tripCardImage(t)))
+    .slice(0, 5)
+    .map((t) => ({
+      key: `trip-${t.id}`,
+      image: t.cover_image || tripCardImage(t),
+      alt: t.title,
+      kicker: t.location ? `ทริปแนะนำ · ${t.location}` : 'ทริปแนะนำ',
+      title: t.title,
+      subtitle: tripSlideSubtitle(t),
+      cta: { to: `/trips/${t.slug}`, label: 'ดูรายละเอียด' },
+    }));
+  if (tripSlides.length) return [brand, ...tripSlides];
+  return heroImages.value.map((img, i) => ({ ...brand, key: `brand-${i}`, image: img }));
+});
+
+function goSlide(index) {
+  const n = heroSlides.value.length;
+  if (!n) return;
+  currentSlide.value = (index + n) % n;
+  restartSlider();
+}
+
+function restartSlider() {
+  clearInterval(sliderInterval);
+  sliderInterval = null;
+  if (unmounted || sliderPaused || prefersReducedMotion.value || heroSlides.value.length < 2) return;
+  sliderInterval = setInterval(() => {
+    currentSlide.value = (currentSlide.value + 1) % heroSlides.value.length;
+  }, HERO_SLIDE_INTERVAL_MS);
+}
+
+function pauseSlider() {
+  sliderPaused = true;
+  clearInterval(sliderInterval);
+  sliderInterval = null;
+}
+
+function resumeSlider() {
+  sliderPaused = false;
+  restartSlider();
+}
 
 // ทริปทั้งหมดที่ส่งให้แถบค้นหาบนฮีโร่ (แถบนั้นดูแลรอบเดินทางของตัวเอง)
 const allTrips = ref([]);
@@ -1048,12 +1133,8 @@ onMounted(async () => {
       // keep static fallback
     }
 
-    // ออกจากหน้าไปก่อนรูปมา — อย่าตั้งตัวจับเวลาที่ไม่มีใครล้าง
-    if (!unmounted && !prefersReducedMotion.value && heroImages.value.length > 1) {
-      sliderInterval = setInterval(() => {
-        currentSlide.value = (currentSlide.value + 1) % heroImages.value.length;
-      }, HERO_SLIDE_INTERVAL_MS);
-    }
+    // ออกจากหน้าไปก่อนรูปมา — restartSlider เช็ค unmounted ให้แล้ว
+    restartSlider();
   })();
 
   try {
@@ -1070,6 +1151,7 @@ onMounted(async () => {
     // ชุด 100 ใบที่ได้มาแล้ว ไม่ต้องยิง /trips?per_page=8 ซ้ำ
     trips.value = allTrips.value.slice(0, 8);
     featuredTrips.value = featuredRes.data.data || [];
+    restartSlider();
     almostFullTrips.value = almostFullRes.data.data || [];
     reviews.value = reviewsRes.data.data || [];
 
@@ -1143,63 +1225,124 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Hero Slider */
-.hero-slider {
-  isolation: isolate;
-  background: #0b1510;
-}
-
+/* Hero carousel */
 .hero-slide {
   opacity: 0;
-  transition: opacity 2.4s cubic-bezier(0.22, 1, 0.36, 1);
+  visibility: hidden;
+  transition: opacity 0.9s ease, visibility 0s linear 0.9s;
   z-index: 0;
-  will-change: opacity;
 }
-
-.hero-slide-img {
-  transform: scale(1.04) translate3d(0, 0, 0);
-  filter: saturate(1.06) contrast(1.04) brightness(0.78);
-  transition:
-    transform 8.5s cubic-bezier(0.2, 0.6, 0.2, 1),
-    filter 2.4s ease;
-  will-change: transform, filter;
-}
-
 .hero-slide--active {
   opacity: 1;
+  visibility: visible;
+  transition: opacity 0.9s ease, visibility 0s;
   z-index: 1;
 }
-
+.hero-slide-img {
+  transform: scale(1.04);
+  transition: transform 7s ease-out;
+}
 .hero-slide--active .hero-slide-img {
-  transform: scale(1.14) translate3d(0, 0, 0);
-  filter: saturate(1.12) contrast(1.08) brightness(0.9);
+  transform: scale(1);
 }
 
-.hero-slider-vignette {
-  background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.28) 100%);
-}
-
-/* Hero animations */
-.hero-content {
-  animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Legible, restrained text shadows (no heavy drop-shadow) */
 .hero-title {
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35);
 }
-.hero-subtitle {
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
+.hero-subtitle,
+.hero-kicker {
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
 
-/* Staggered entrance */
-.search-bar,
-.hero-trust {
-  opacity: 0;
-  animation: fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* ข้อความในสไลด์ที่เพิ่งขึ้นมาไล่เข้าทีละบรรทัด */
+.hero-slide--active .hero-kicker,
+.hero-slide--active .hero-title,
+.hero-slide--active .hero-subtitle,
+.hero-slide--active .hero-actions {
+  animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.search-bar { animation-delay: 0.3s; }
-.hero-trust { animation-delay: 0.45s; }
+.hero-slide--active .hero-title { animation-delay: 0.08s; }
+.hero-slide--active .hero-subtitle { animation-delay: 0.16s; }
+.hero-slide--active .hero-actions { animation-delay: 0.24s; }
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.8rem 1.25rem 0.8rem 1.75rem;
+  border-radius: 9999px;
+  background-color: var(--color-accent);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  transition: background-color 0.2s ease;
+}
+.hero-cta:hover {
+  background-color: var(--color-accent-mid);
+}
+.hero-cta--ghost {
+  padding: 0.8rem 1.75rem;
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+.hero-cta--ghost:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+.hero-cta:focus-visible,
+.hero-arrow:focus-visible,
+.hero-dot:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
+}
+
+.hero-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 4rem;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.85);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.hero-arrow:hover {
+  color: #fff;
+}
+@media (max-width: 639px) {
+  .hero-arrow { display: none; }
+}
+
+.hero-dot {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 9999px;
+  border: 2px solid #fff;
+  background-color: transparent;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.hero-dot:hover {
+  transform: scale(1.15);
+}
+.hero-dot--active {
+  background-color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide,
+  .hero-slide--active,
+  .hero-slide-img {
+    transition: none;
+  }
+  .hero-slide--active .hero-kicker,
+  .hero-slide--active .hero-title,
+  .hero-slide--active .hero-subtitle,
+  .hero-slide--active .hero-actions {
+    animation: none;
+  }
+}
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(40px); }

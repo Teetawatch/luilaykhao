@@ -1,27 +1,18 @@
 <template>
   <section v-if="photos.length" class="bg-[var(--color-sand)] py-12 md:py-16">
     <div class="max-w-7xl mx-auto px-6 md:px-8">
-      <div class="flex items-end justify-between gap-6 mb-6">
-        <div>
-          <div class="flex items-center gap-2 mb-1.5">
-            <span class="relative flex h-2 w-2">
-              <span class="absolute inline-flex h-full w-full rounded-full bg-[var(--color-accent)] opacity-60"></span>
-              <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-accent)]"></span>
-            </span>
-            <span class="text-[13px] font-bold tracking-wide text-[var(--color-text-muted)]">จากทริปที่เพิ่งกลับมา</span>
-          </div>
-          <h2 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">
-            รูปจริงจากคนที่ไปมาแล้ว
-          </h2>
-        </div>
-        <router-link
-          to="/gallery"
-          class="hidden sm:inline-flex items-center gap-1 text-sm font-bold text-[var(--color-primary)] hover:text-[var(--color-accent)] transition-colors shrink-0"
-        >
-          ดูทั้งหมด
-          <span class="material-symbols-rounded text-[18px]">arrow_forward</span>
-        </router-link>
-      </div>
+      <SectionTitle
+        class="mb-8 md:mb-10"
+        title="รูปจริงจากคนที่ไปมาแล้ว"
+        subtitle="จากทริปที่เพิ่งกลับมา ผู้ร่วมทริปถ่ายและโพสต์เอง"
+      >
+        <template #action>
+          <router-link to="/gallery" class="section-more">
+            ดูทั้งหมด
+            <span class="material-symbols-rounded icon-18">chevron_right</span>
+          </router-link>
+        </template>
+      </SectionTitle>
 
       <!-- แถวรูปแนวนอน — ให้ "รูป" เป็นพระเอก ไม่ใส่ effect ทับ -->
       <div class="flex gap-3 md:gap-4 overflow-x-auto pb-3 snap-x feed-strip">
@@ -55,6 +46,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
+import SectionTitle from './SectionTitle.vue';
 
 /** จำนวนรูปสูงสุดบนแถบหน้าแรก — พอให้เลื่อนได้ ไม่ถ่วงการโหลด */
 const MAX_PHOTOS = 18;

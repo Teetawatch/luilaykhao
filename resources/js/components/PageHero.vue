@@ -1,6 +1,7 @@
 <template>
   <!-- หัวหน้าเนื้อหา (problem / reviews / about / goal / faq / ...) ใช้ชุดเดียวกันหมด
        พื้นเขียวป่า รูปจาง ไล่เงาจากซ้าย ตัวอักษรขาวชิดซ้าย -->
+  <div class="page-hero">
   <section class="relative overflow-hidden bg-[var(--color-primary)]">
     <div class="absolute inset-0">
       <!-- ภาพยื่นขึ้นไปเหนือกรอบ 10% ไว้ให้ parallax เลื่อนลงได้โดยไม่เห็นขอบ -->
@@ -32,9 +33,14 @@
       </div>
     </div>
   </section>
+  <!-- แถบใบอนุญาต + โทร/LINE ชุดเดียวกับหน้าแรก ให้ทุกหน้าเปิดมาเจอข้อมูลบริษัทเหมือนกัน -->
+  <TrustStrip v-if="strip" />
+  </div>
 </template>
 
 <script setup>
+import TrustStrip from './TrustStrip.vue';
+
 defineProps({
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
@@ -43,6 +49,8 @@ defineProps({
   loading: { type: Boolean, default: false },
   /** หน้าเอกสารยาว (เงื่อนไข/นโยบาย) ใช้หัวเตี้ยลง ให้เนื้อหาโผล่เร็วขึ้น */
   compact: { type: Boolean, default: false },
+  /** ซ่อนแถบใบอนุญาตใต้หัว (หน้าที่มีข้อมูลติดต่อเต็ม ๆ อยู่แล้ว) */
+  strip: { type: Boolean, default: true },
 });
 </script>
 

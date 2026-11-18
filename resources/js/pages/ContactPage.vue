@@ -1,22 +1,12 @@
 <template>
   <div class="contact-page font-anuphan bg-[var(--color-sand)] min-h-screen">
     
-    <!-- Hero Section — พื้นเขียวทึบสีเดียว (Dark Pine) ไม่ไล่เฉด ไม่มีแสงเบลอ -->
-    <section class="py-16 md:py-24 bg-[var(--color-primary-mid)]">
-      <div class="max-w-7xl mx-auto px-6 md:px-8 text-center">
-        <div class="inline-flex items-center gap-3 justify-center text-[var(--color-gold)] font-bold tracking-wider uppercase text-sm mb-6">
-          <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
-          พร้อมดูแลคุณตลอดการเดินทาง
-          <span class="w-8 h-[2px] bg-[var(--color-gold)]"></span>
-        </div>
-        <h1 class="text-3xl md:text-5xl font-extrabold text-white mb-5">
-          มีคำถามเกี่ยวกับทริป?<br />เราพร้อมช่วยคุณวางแผน
-        </h1>
-        <p class="text-base md:text-lg text-white/80 max-w-2xl mx-auto leading-relaxed">
-          ทักมาหาเราได้เลย ทีมงาน "ลุยเลเขา" สแตนด์บายรอช่วยเหลือคุณอยู่ ไม่ว่าจะเป็นการเลือกทริปที่ใช่ หรือสอบถามสิ่งที่สงสัย เรายินดีให้คำปรึกษาฟรีครับ
-        </p>
-      </div>
-    </section>
+    <PageHero
+      title="ติดต่อเรา"
+      subtitle="มีคำถามเกี่ยวกับทริป ทีมงานลุยเลเขายินดีช่วยเลือกทริปที่ใช่และตอบทุกข้อสงสัย ให้คำปรึกษาฟรี"
+      image="/images/landscape.webp"
+      :strip="false"
+    />
 
     <!-- Contact Info & Form -->
     <section class="py-10 md:py-16 px-6 md:px-8">
@@ -287,6 +277,7 @@ import {
   supportLine, supportLineUrl, supportPhone, supportPhoneHref,
 } from '../lib/contact'
 import { licenceNo } from '../lib/licence'
+import PageHero from '../components/PageHero.vue'
 
 const auth = useAuthStore()
 const toast = useToast()

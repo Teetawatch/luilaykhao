@@ -1,23 +1,18 @@
 <template>
   <section v-if="articles.length" class="bg-white py-16 md:py-20">
     <div class="max-w-7xl mx-auto px-6 md:px-8">
-      <div class="flex items-end justify-between gap-6 mb-8">
-        <div>
-          <h2 class="text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">
-            อ่านก่อนออกเดินทาง
-          </h2>
-          <p class="text-[var(--color-text-muted)] text-sm md:text-base mt-2 max-w-xl leading-relaxed">
-            คู่มือเตรียมตัว รีวิวเส้นทาง และเรื่องที่ควรรู้ก่อนไป เขียนจากทริปที่เราพาไปเอง
-          </p>
-        </div>
-        <a
-          href="/blog"
-          class="hidden sm:inline-flex items-center gap-1 text-sm font-bold text-[var(--color-primary)] hover:text-[var(--color-accent)] transition-colors shrink-0"
-        >
-          บทความทั้งหมด
-          <span class="material-symbols-rounded text-[18px]">arrow_forward</span>
-        </a>
-      </div>
+      <SectionTitle
+        class="mb-8 md:mb-10"
+        title="บทความแนะนำ"
+        subtitle="คู่มือเตรียมตัว รีวิวเส้นทาง และเรื่องที่ควรรู้ก่อนไป เขียนจากทริปที่เราพาไปเอง"
+      >
+        <template #action>
+          <a href="/blog" class="section-more">
+            บทความทั้งหมด
+            <span class="material-symbols-rounded icon-18">chevron_right</span>
+          </a>
+        </template>
+      </SectionTitle>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <a
@@ -63,6 +58,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
+import SectionTitle from './SectionTitle.vue';
 
 /** โชว์ 3 บทความล่าสุด — พอให้เห็นว่ามีเนื้อหา ไม่แย่งพื้นที่ทริป */
 const MAX_ARTICLES = 3;

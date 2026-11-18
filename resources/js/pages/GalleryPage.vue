@@ -1,21 +1,10 @@
 <template>
   <div class="gallery-page font-anuphan bg-[var(--color-sand)] min-h-screen">
-    <!-- Hero -->
-    <section class="relative min-h-[300px] flex items-center overflow-hidden -mt-16 bg-[var(--color-primary)]">
-      <div class="absolute inset-0">
-        <img src="/images/landscape.webp" alt="รูปจากคนที่ไปมาแล้ว" class="w-full h-full object-cover" />
-        <div class="absolute inset-0 bg-black/40"></div>
-      </div>
-      <div class="relative z-10 w-full px-6 md:px-8 py-24 md:py-32 text-center flex flex-col items-center">
-        <div class="w-16 h-1.5 bg-[var(--color-accent)] mb-6 rounded-full"></div>
-        <h1 class="text-4xl md:text-6xl font-black text-white leading-tight mb-4 tracking-tight">
-          รูปจากคนที่ไปมาแล้ว
-        </h1>
-        <p class="text-lg md:text-xl text-white/80 font-bold max-w-2xl mx-auto tracking-wide">
-          ทุกรูปในหน้านี้ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว ทีมงานไม่ได้คัดออก
-        </p>
-      </div>
-    </section>
+    <PageHero
+      title="รูปจากคนที่ไปมาแล้ว"
+      subtitle="ทุกรูปในหน้านี้ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว ทีมงานไม่ได้คัดออก"
+      image="/images/landscape.webp"
+    />
 
     <section class="py-14 md:py-20">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
@@ -130,6 +119,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import api from '../lib/axios';
+import PageHero from '../components/PageHero.vue';
 
 const PER_PAGE = 48;
 
