@@ -265,8 +265,8 @@ function rowSummary(row) {
 }
 
 .cf-chip--on {
-  background: #006565;
-  border-color: #006565;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #fff;
 }
 
@@ -282,9 +282,9 @@ function rowSummary(row) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid #006565;
+  border: 1px solid var(--color-accent);
   background: #fff;
-  color: #006565;
+  color: var(--color-accent);
   border-radius: 10px;
   padding: 5px 12px;
   font-size: 12px;

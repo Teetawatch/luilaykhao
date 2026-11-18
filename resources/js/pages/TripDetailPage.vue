@@ -1451,7 +1451,7 @@
             </router-link>
           </div>
           <div v-reveal.stagger class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
-            <TripCard v-for="t in relatedTrips" :key="t.id" :trip="t" />
+            <PackageCard v-for="t in relatedTrips" :key="t.id" :trip="t" />
           </div>
         </section>
 
@@ -2036,7 +2036,7 @@ import { viewTrip } from '../lib/analytics';
 import SeatMap from '../components/SeatMap.vue';
 import ScheduleCalendar from '../components/ScheduleCalendar.vue';
 import TripPostsFeed from '../components/TripPostsFeed.vue';
-import TripCard from '../components/TripCard.vue';
+import PackageCard from '../components/PackageCard.vue';
 import WeatherBadge from '../components/WeatherBadge.vue';
 import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
 import WaitlistJoinCard from '../components/WaitlistJoinCard.vue';

@@ -195,7 +195,7 @@ onMounted(fetchMonth);
 .cal-nav { width: 36px; height: 36px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .cal-rooms { display: flex; gap: 6px; flex-wrap: wrap; }
 .cal-room { padding: 6px 12px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; font-size: 13px; font-weight: 700; color: #6b7280; cursor: pointer; }
-.cal-room.on { background: #006565; color: #fff; border-color: #006565; }
+.cal-room.on { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
 .cal-hint { font-size: 12px; color: #9ca3af; margin: 0; }
 .cal-hint.err { color: #b42318; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
@@ -204,20 +204,20 @@ onMounted(fetchMonth);
 .cal-day:disabled { cursor: default; opacity: .35; }
 .cal-day.full { background: #fef3f2; border-color: #fecdca; }
 .cal-day.closed { background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(0,0,0,.04) 6px 12px); }
-.cal-day.sel { border-color: #006565; box-shadow: inset 0 0 0 1px #006565; background: #e6f4f4; }
+.cal-day.sel { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); background: #e6f4f4; }
 .cal-date { font-size: 11px; color: #6b7280; }
 .cal-avail { font-size: 17px; font-weight: 900; color: #111827; line-height: 1.1; }
 .cal-day.full .cal-avail { color: #b42318; }
 .cal-price { font-size: 10px; color: #6b7280; }
 .cal-price.special { color: #b54708; font-weight: 800; }
-.cal-booked { font-size: 9px; font-weight: 700; color: #006565; }
+.cal-booked { font-size: 9px; font-weight: 700; color: var(--color-accent); }
 .cal-panel { border: 1px solid #e5e7eb; border-radius: 14px; padding: 12px; display: grid; gap: 10px; }
 .cal-sel { margin: 0; font-weight: 800; font-size: 14px; }
 .cal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .cal-actions label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: #374151; }
 .cal-actions input { padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; }
 .cal-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.cal-btn { padding: 8px 14px; border-radius: 10px; border: 0; background: #006565; color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; }
+.cal-btn { padding: 8px 14px; border-radius: 10px; border: 0; background: var(--color-accent); color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; }
 .cal-btn.ghost { background: #f3f4f6; color: #374151; }
 .cal-btn:disabled { opacity: .5; }
 </style>

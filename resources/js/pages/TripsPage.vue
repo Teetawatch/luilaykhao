@@ -1,69 +1,56 @@
 <template>
   <div class="pb-24 bg-[var(--color-sand)] font-anuphan selection:bg-[var(--color-accent)] selection:text-white">
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-6 md:pt-10">
-
-      <!-- ══════════════════════════════════════════
-           HERO — พาดหัวและแท็บปลายทาง
-           แท็บในประเทศ/ต่างประเทศอยู่ที่นี่ ไม่ใช่ในแถบตัวกรอง เพราะเป็นการแบ่งที่
-           ใหญ่กว่าประเภทกิจกรรม และต้องเห็นได้ทันทีทั้งบนจอเล็กและจอใหญ่
-      ══════════════════════════════════════════ -->
-      <!-- หัวหน้าแบบเปิด ไม่มีกล่องสีพื้นครอบ ให้ทริปเป็นสิ่งที่เด่นที่สุดในหน้า
-           พาดหัวกับช่องค้นหาอยู่แถวเดียวกันบนจอใหญ่ แท็บปลายทางวางบนเส้นคั่นด้านล่าง -->
-      <section class="border-b border-gray-200">
-        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 lg:gap-10">
-          <div class="min-w-0 max-w-2xl">
-            <p class="text-[var(--color-accent)] text-[11px] md:text-xs font-extrabold tracking-[0.14em] uppercase mb-1.5 md:mb-2">
-              {{ heroCopy.eyebrow }}
-            </p>
-            <h1 class="text-[var(--color-text-dark)] text-[1.6rem] sm:text-3xl md:text-[2.25rem] font-extrabold tracking-tight leading-[1.25]">
-              {{ heroCopy.title }}
-            </h1>
-            <p class="text-[var(--color-text-muted)] text-[15px] font-medium leading-relaxed mt-1.5 md:mt-2">
-              {{ heroCopy.subtitle }}
-            </p>
-          </div>
-
-          <div class="relative w-full lg:w-[22rem] xl:w-[26rem] shrink-0">
-            <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
-            <!-- text-base ไว้เท่าเดิม ถ้าเล็กกว่า 16px ซาฟารีบน iOS จะซูมหน้าจอตอนกดพิมพ์ -->
-            <input v-model="searchTerm" type="text" placeholder="ค้นหาชื่อทริปหรือสถานที่..."
-              aria-label="ค้นหาทริป"
-              class="w-full bg-white border border-gray-200 rounded-full pl-12 pr-11 py-3 text-base font-medium text-[var(--color-text-dark)] placeholder:text-gray-400 outline-none hover:border-gray-300 focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[var(--color-accent)]/10 transition-all" />
-            <button v-if="searchTerm" type="button" @click="clearSearch" aria-label="ล้างคำค้นหา"
-              class="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors">
-              <span class="material-symbols-rounded text-[16px]">close</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- แท็บปลายทาง ขีดเส้นใต้ทับเส้นคั่นของหัวหน้า (-mb-px)
-             บนมือถือเป็นสามช่องเท่ากันเต็มกว้าง ไอคอนซ่อนไว้ ชื่อยาว ๆ ตัดท้ายได้ -->
-        <nav class="mt-5 md:mt-7 -mb-px grid grid-cols-3 sm:flex sm:gap-8" aria-label="ปลายทาง">
-          <button v-for="tab in destinationTabs" :key="tab.value" type="button"
-            @click="selectDestination(tab.value)"
-            :aria-pressed="tripsStore.filters.destination === tab.value"
-            class="min-w-0 inline-flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 border-b-2 pb-3 text-sm sm:text-[15px] font-extrabold transition-colors duration-300 cursor-pointer"
-            :class="tripsStore.filters.destination === tab.value
-              ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-              : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-dark)]'">
-            <span class="material-symbols-rounded text-[20px] hidden sm:inline">{{ tab.icon }}</span>
-            <span class="truncate">{{ tab.label }}</span>
-            <span v-if="tabCount(tab.value) !== null"
-              class="shrink-0 text-[10px] sm:text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-full"
-              :class="tripsStore.filters.destination === tab.value
-                ? 'bg-[var(--color-accent)] text-white'
-                : 'bg-gray-200/70 text-[var(--color-text-muted)]'">
-              {{ tabCount(tab.value) }}
-            </span>
+    <!-- หัวหน้า: ชื่อ/คำอธิบายเปลี่ยนตามตัวกรอง ช่องค้นหาอยู่ฝั่งขวา
+         แท็บในประเทศ/ต่างประเทศวางเส้นใต้ทับขอบล่างของหัว (flush + -mb-px) -->
+    <PageHeader
+      :title="heroCopy.title"
+      :subtitle="heroCopy.subtitle"
+      crumb-label="ทริปทั้งหมด"
+      container="max-w-[1600px] px-4 sm:px-6 md:px-8 lg:px-12"
+      flush
+    >
+      <template #actions>
+        <div class="relative w-full md:w-[22rem] xl:w-[26rem]">
+          <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
+          <!-- text-base ไว้เท่าเดิม ถ้าเล็กกว่า 16px ซาฟารีบน iOS จะซูมหน้าจอตอนกดพิมพ์ -->
+          <input v-model="searchTerm" type="text" placeholder="ค้นหาชื่อทริปหรือสถานที่..."
+            aria-label="ค้นหาทริป"
+            class="w-full bg-white border border-gray-200 rounded-full pl-12 pr-11 py-3 text-base font-medium text-[var(--color-text-dark)] placeholder:text-gray-400 outline-none hover:border-gray-300 focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[var(--color-accent)]/10 transition-all" />
+          <button v-if="searchTerm" type="button" @click="clearSearch" aria-label="ล้างคำค้นหา"
+            class="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors">
+            <span class="material-symbols-rounded text-[16px]">close</span>
           </button>
-        </nav>
-      </section>
+        </div>
+      </template>
+
+      <nav class="mt-5 md:mt-7 -mb-px grid grid-cols-3 sm:flex sm:gap-8" aria-label="ปลายทาง">
+        <button v-for="tab in destinationTabs" :key="tab.value" type="button"
+          @click="selectDestination(tab.value)"
+          :aria-pressed="tripsStore.filters.destination === tab.value"
+          class="min-w-0 inline-flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 border-b-2 pb-3 text-sm sm:text-[15px] font-extrabold transition-colors duration-300 cursor-pointer"
+          :class="tripsStore.filters.destination === tab.value
+            ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
+            : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-dark)]'">
+          <!-- ห่อไว้ เพราะ .material-symbols-rounded ใน app.css ตั้ง display ทับคลาส hidden -->
+          <span class="hidden sm:inline-flex"><span class="material-symbols-rounded text-[20px]">{{ tab.icon }}</span></span>
+          <span class="truncate">{{ tab.label }}</span>
+          <span v-if="tabCount(tab.value) !== null"
+            class="shrink-0 text-[10px] sm:text-[11px] font-black tabular-nums px-1.5 py-0.5 rounded-full"
+            :class="tripsStore.filters.destination === tab.value
+              ? 'bg-[var(--color-accent)] text-white'
+              : 'bg-gray-200/70 text-[var(--color-text-muted)]'">
+            {{ tabCount(tab.value) }}
+          </span>
+        </button>
+      </nav>
+    </PageHeader>
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-6 md:pt-8">
 
       <!-- ══════════════════════════════════════════
            แถบปลายทางย่อย — ในประเทศเลือกภาค ต่างประเทศเลือกประเทศ
            แสดงเฉพาะที่มีทริปอยู่จริง จะได้ไม่มีปุ่มที่กดแล้วเจอหน้าว่าง
       ══════════════════════════════════════════ -->
-      <section v-if="subRail.items.length" class="mt-7">
+      <section v-if="subRail.items.length">
         <h2 class="text-xs font-extrabold tracking-[0.14em] uppercase text-[var(--color-text-muted)] mb-3">
           {{ subRail.label }}
         </h2>
@@ -90,7 +77,7 @@
         ══════════════════════════════════════════ -->
         <aside class="lg:w-72 xl:w-80 shrink-0">
           <div class="hidden lg:block lg:sticky lg:top-28">
-            <div class="bg-white rounded-[1.75rem] border border-gray-100 p-7">
+            <div class="bg-white rounded-[0.875rem] border border-[var(--color-sand-dark)] p-6">
               <TripFilters
               :categories="categories"
               :difficulties="difficulties"
@@ -191,7 +178,7 @@
           <!-- ผลลัพธ์ -->
           <div v-else>
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-x-6 gap-y-10">
-              <TripCard
+              <PackageCard
                 v-for="(trip, index) in tripsStore.trips"
                 :key="trip.id"
                 :trip="trip"
@@ -289,7 +276,8 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import TripCard from '../components/TripCard.vue';
+import PackageCard from '../components/PackageCard.vue';
+import PageHeader from '../components/PageHeader.vue';
 import TripFilters from '../components/TripFilters.vue';
 import { useTripsStore } from '../stores/trips';
 import { useCategoriesStore } from '../stores/categories';

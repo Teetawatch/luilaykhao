@@ -1,28 +1,22 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6">
-
-      <section class="mb-8 flex items-end justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-            การแจ้งเตือน
-          </h1>
-          <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-            {{ unreadCount > 0 ? `คุณมี ${unreadCount} รายการใหม่ที่ยังไม่ได้อ่าน` : 'คุณอ่านการแจ้งเตือนครบทุกรายการแล้ว' }}
-          </p>
-        </div>
-        <button
-          v-if="unreadCount > 0"
-          @click="markAllRead"
-          class="flex items-center gap-1.5 text-sm text-[#006565] font-semibold hover:text-[#004f4f] bg-[#006565]/10 hover:bg-[#006565]/15 px-4 py-2.5 rounded-full transition-all"
-          style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-          <span class="material-symbols-rounded text-[20px]">done_all</span>
-          <span>อ่านทั้งหมด</span>
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32">
+    <PageHeader
+      title="การแจ้งเตือน"
+      :subtitle="unreadCount > 0 ? `คุณมี ${unreadCount} รายการใหม่ที่ยังไม่ได้อ่าน` : 'คุณอ่านการแจ้งเตือนครบทุกรายการแล้ว'"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-3xl px-4 sm:px-6"
+    >
+      <template #actions>
+        <button v-if="unreadCount > 0" type="button" class="ph-btn" @click="markAllRead">
+          <span class="material-symbols-rounded icon-20">done_all</span>
+          อ่านทั้งหมด
         </button>
-      </section>
+      </template>
+    </PageHeader>
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
         <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">กำลังโหลดข้อมูล...</p>
       </div>
 
@@ -39,11 +33,11 @@
           v-for="n in notifications"
           :key="n.id"
           @click="handleNotificationClick(n)"
-          class="group relative bg-white rounded-[20px] p-5 flex gap-4 cursor-pointer transition-all duration-300 border border-[#E8EEEF] hover:border-[#006565]/30 overflow-hidden"
+          class="group relative bg-white rounded-[20px] p-5 flex gap-4 cursor-pointer transition-all duration-300 border border-[#E8EEEF] hover:border-[var(--color-accent)]/30 overflow-hidden"
           :class="{ 'opacity-80': n.is_read }">
           
           <!-- Unread Indicator Line -->
-          <div v-if="!n.is_read" class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#006565]"></div>
+          <div v-if="!n.is_read" class="absolute left-0 top-0 bottom-0 w-1.5 bg-[var(--color-accent)]"></div>
 
           <div
             class="w-14 h-14 rounded-[16px] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
@@ -81,6 +75,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
@@ -147,7 +142,7 @@ function notifStyle(type) {
     loyalty: { bg: 'bg-[#FFF7ED]', text: 'text-[#EA580C]' },
     loyalty_points_received: { bg: 'bg-[#FFF7ED]', text: 'text-[#EA580C]' },
   };
-  return map[type] || { bg: 'bg-[#E3F2F2]', text: 'text-[#006565]' };
+  return map[type] || { bg: 'bg-[#E3F2F2]', text: 'text-[var(--color-accent)]' };
 }
 
 function timeAgo(dateStr) {

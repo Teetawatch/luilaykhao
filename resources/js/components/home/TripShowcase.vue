@@ -52,7 +52,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import SectionTitle from '../SectionTitle.vue';
-import PackageCard from './PackageCard.vue';
+import PackageCard from '../PackageCard.vue';
 
 const props = defineProps({
   trips: { type: Array, default: () => [] },

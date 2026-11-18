@@ -1,17 +1,16 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6">
-
-      <section class="mb-8">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2">สมุดสะสมการเดินทาง</h1>
-        <p class="text-[#505E5E] text-sm">
-          ทุกทริปที่คุณเดินจบแล้ว รวมกันเป็นตัวเลขของคุณเอง
-        </p>
-      </section>
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32">
+    <PageHeader
+      title="สมุดสะสมการเดินทาง"
+      subtitle="ทุกทริปที่คุณเดินจบแล้ว รวมกันเป็นตัวเลขของคุณเอง"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-3xl px-4 sm:px-6"
+    />
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
 
       <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
         <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดข้อมูล...</p>
       </div>
 
@@ -25,7 +24,7 @@
           </p>
           <router-link
             to="/trips"
-            class="inline-flex items-center gap-1.5 rounded-[14px] bg-[#006565] text-white text-sm font-bold px-5 py-3"
+            class="inline-flex items-center gap-1.5 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3"
           >
             <span class="material-symbols-rounded text-[18px]">explore</span>
             ดูทริปที่เปิดอยู่
@@ -91,7 +90,7 @@
                 <p class="text-[#505E5E] text-[12px] font-bold">จุดสูงสุดที่เคยยืน (ม.)</p>
               </div>
             </div>
-            <router-link to="/my-tracks" class="mt-4 inline-flex items-center gap-1 text-[13px] font-bold text-[#006565]">
+            <router-link to="/my-tracks" class="mt-4 inline-flex items-center gap-1 text-[13px] font-bold text-[var(--color-accent)]">
               ดูบันทึกการเดินทั้งหมด
               <span class="material-symbols-rounded text-[16px]">chevron_right</span>
             </router-link>
@@ -169,7 +168,7 @@
                 :key="badge.key"
                 class="rounded-[14px] border p-3.5"
                 :class="badge.earned
-                  ? 'border-[#006565]/25 bg-[#006565]/[0.04]'
+                  ? 'border-[var(--color-accent)]/25 bg-[var(--color-accent)]/[0.04]'
                   : 'border-[#EDF1F1] bg-[#FAFBFB]'"
               >
                 <p class="text-[26px] leading-none mb-2" :class="badge.earned ? '' : 'grayscale opacity-40'">
@@ -180,7 +179,7 @@
                 </p>
                 <p class="text-[11px] text-[#8A9A9A] mt-0.5 leading-snug">{{ badge.description }}</p>
 
-                <p v-if="badge.earned && badge.earned_at" class="text-[11px] font-bold text-[#006565] mt-1.5">
+                <p v-if="badge.earned && badge.earned_at" class="text-[11px] font-bold text-[var(--color-accent)] mt-1.5">
                   ปลดล็อก {{ thaiShort(badge.earned_at) }}
                 </p>
 
@@ -224,6 +223,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import api from '../lib/axios';
 import { loadLeaflet } from '../lib/leaflet';
@@ -364,7 +364,7 @@ onBeforeUnmount(() => {
   height: 30px;
   margin: -15px 0 0 -15px;
   border-radius: 999px;
-  background: #006565;
+  background: var(--color-accent);
   border: 2px solid #fff;
   color: #fff;
   font-size: 12px;

@@ -51,7 +51,7 @@
             <p class="text-sm font-bold text-[#1a1c1c] mb-2.5">เลือกรอบเดินทางใหม่</p>
 
             <div v-if="loading" class="py-10 flex justify-center">
-              <div class="w-8 h-8 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+              <div class="w-8 h-8 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
             </div>
 
             <p v-else-if="loadError" class="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] p-3">
@@ -76,10 +76,10 @@
                 @click="selectSchedule(s)"
                 class="w-full text-left rounded-[14px] border-2 px-4 py-3 flex items-center gap-3 transition"
                 :class="selected?.id === s.id
-                  ? 'border-[#006565] bg-[#F0FAFA]'
-                  : s.fits ? 'border-[#E8EEEF] hover:border-[#006565]/40 bg-white' : 'border-[#E8EEEF] bg-[#F9FAFA] opacity-60 cursor-not-allowed'">
+                  ? 'border-[var(--color-accent)] bg-[#F0FAFA]'
+                  : s.fits ? 'border-[#E8EEEF] hover:border-[var(--color-accent)]/40 bg-white' : 'border-[#E8EEEF] bg-[#F9FAFA] opacity-60 cursor-not-allowed'">
                 <span class="material-symbols-rounded text-[20px]"
-                  :class="selected?.id === s.id ? 'text-[#006565]' : 'text-[#A0B0B0]'"
+                  :class="selected?.id === s.id ? 'text-[var(--color-accent)]' : 'text-[#A0B0B0]'"
                   :style="selected?.id === s.id ? 'font-variation-settings:\'FILL\' 1' : ''">
                   {{ selected?.id === s.id ? 'radio_button_checked' : 'radio_button_unchecked' }}
                 </span>
@@ -92,7 +92,7 @@
                     กันที่ไว้ให้คุณ {{ s.hold.seat_count }} ที่ ถึง {{ s.hold.expires_label }}
                   </span>
                 </span>
-                <span class="text-xs font-bold shrink-0" :class="s.fits ? 'text-[#006565]' : 'text-[#DC2626]'">
+                <span class="text-xs font-bold shrink-0" :class="s.fits ? 'text-[var(--color-accent)]' : 'text-[#DC2626]'">
                   {{ s.fits ? `ว่าง ${s.seatsLeft} ที่` : 'ที่นั่งไม่พอ' }}
                 </span>
               </button>
@@ -105,19 +105,19 @@
             <div class="grid grid-cols-2 gap-2 mb-3">
               <button type="button" @click="pickSeats = false"
                 class="rounded-[12px] border-2 px-3 py-2.5 text-sm font-bold transition"
-                :class="!pickSeats ? 'border-[#006565] bg-[#F0FAFA] text-[#006565]' : 'border-[#E8EEEF] text-[#505E5E]'">
+                :class="!pickSeats ? 'border-[var(--color-accent)] bg-[#F0FAFA] text-[var(--color-accent)]' : 'border-[#E8EEEF] text-[#505E5E]'">
                 จัดที่นั่งให้อัตโนมัติ
               </button>
               <button type="button" @click="enableSeatPicking"
                 class="rounded-[12px] border-2 px-3 py-2.5 text-sm font-bold transition"
-                :class="pickSeats ? 'border-[#006565] bg-[#F0FAFA] text-[#006565]' : 'border-[#E8EEEF] text-[#505E5E]'">
+                :class="pickSeats ? 'border-[var(--color-accent)] bg-[#F0FAFA] text-[var(--color-accent)]' : 'border-[#E8EEEF] text-[#505E5E]'">
                 เลือกที่นั่งเอง
               </button>
             </div>
 
             <template v-if="pickSeats">
               <div v-if="seatsLoading" class="py-6 flex justify-center">
-                <div class="w-7 h-7 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+                <div class="w-7 h-7 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
               </div>
               <p v-else-if="!seatMap?.has_seat_map" class="text-xs text-[#505E5E]">
                 รอบนี้ไม่มีผังที่นั่งให้เลือก ทีมงานจะจัดที่นั่งให้ครับ
@@ -133,8 +133,8 @@
                     @click="toggleSeat(seat.id)"
                     class="h-10 rounded-[10px] border-2 text-xs font-bold transition"
                     :class="selectedSeats.includes(seat.id)
-                      ? 'bg-[#006565] border-[#006565] text-white'
-                      : isSeatFree(seat) ? 'bg-accent-tint border-accent/40 text-[#1a1c1c] hover:border-[#006565]' : 'bg-[#F4F7F6] border-[#E8EEEF] text-[#A0B0B0] cursor-not-allowed line-through'">
+                      ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-white'
+                      : isSeatFree(seat) ? 'bg-accent-tint border-accent/40 text-[#1a1c1c] hover:border-[var(--color-accent)]' : 'bg-[#F4F7F6] border-[#E8EEEF] text-[#A0B0B0] cursor-not-allowed line-through'">
                     {{ seat.label || seat.id }}
                   </button>
                 </div>
@@ -153,7 +153,7 @@
             ปิด
           </button>
           <button @click="submit" :disabled="!canSubmit"
-            class="flex-1 py-3 rounded-[14px] bg-[#006565] text-white text-sm font-bold hover:bg-[#004f4f] disabled:opacity-50 flex items-center justify-center gap-2">
+            class="flex-1 py-3 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[var(--color-accent-mid)] disabled:opacity-50 flex items-center justify-center gap-2">
             <span v-if="submitting" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
             {{ submitting ? 'กำลังย้ายรอบ...' : selected ? `ยืนยันรอบ ${formatShortDate(selected.departure_date)}` : 'เลือกรอบก่อน' }}
           </button>

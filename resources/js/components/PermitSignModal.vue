@@ -26,7 +26,7 @@
 
         <div class="p-5 space-y-4 overflow-y-auto">
           <div v-if="loading" class="flex justify-center py-12">
-            <div class="w-8 h-8 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+            <div class="w-8 h-8 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
           </div>
 
           <p v-else-if="loadError" class="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] p-3">{{ loadError }}</p>
@@ -54,13 +54,13 @@
                 <button @click="openPassenger(p)"
                   class="shrink-0 py-2 px-4 rounded-[12px] font-bold text-sm transition-all"
                   :class="p.signed
-                    ? 'bg-white text-[#006565] border border-[#BCDFDF] hover:bg-[#F0FAFA]'
-                    : 'bg-[#006565] text-white hover:bg-[#004D4D]'">
+                    ? 'bg-white text-[var(--color-accent)] border border-[#BCDFDF] hover:bg-[#F0FAFA]'
+                    : 'bg-[var(--color-accent)] text-white hover:bg-[#004D4D]'">
                   {{ p.signed ? 'ดูแบบฟอร์ม' : 'อ่านและเซ็น' }}
                 </button>
               </div>
               <button v-if="p.sign_url && !p.signed" @click="copyLink(p)"
-                class="mt-2 text-xs text-[#006565] font-bold inline-flex items-center gap-1 hover:underline">
+                class="mt-2 text-xs text-[var(--color-accent)] font-bold inline-flex items-center gap-1 hover:underline">
                 <span class="material-symbols-rounded text-[16px]">link</span>
                 ก๊อปลิงก์ให้ {{ p.name }} เซ็นเอง
               </button>
@@ -88,7 +88,7 @@
             </div>
 
             <button @click="openPdf" :disabled="pdfLoading"
-              class="text-sm text-[#006565] font-bold inline-flex items-center gap-1 hover:underline">
+              class="text-sm text-[var(--color-accent)] font-bold inline-flex items-center gap-1 hover:underline">
               <span class="material-symbols-rounded text-[18px]">picture_as_pdf</span>
               {{ pdfLoading ? 'กำลังเตรียม…' : 'เปิดเป็น PDF' }}
             </button>
@@ -105,7 +105,7 @@
                 <p class="text-xs text-[#505E5E]">อุทยานบังคับกรอกทุกช่อง — ใช้เฉพาะในแบบฟอร์มฉบับนี้ ไม่เก็บไว้ในการจอง และลบทิ้งหลังจบทริป</p>
                 <div v-if="current.address_suggestions?.length" class="flex flex-wrap gap-2">
                   <button v-for="(sug, si) in current.address_suggestions" :key="si" @click="applyExtra(sug.extra)"
-                    class="text-xs font-bold text-[#006565] border border-[#BCDFDF] rounded-full px-3 py-1 hover:bg-[#F0FAFA]">
+                    class="text-xs font-bold text-[var(--color-accent)] border border-[#BCDFDF] rounded-full px-3 py-1 hover:bg-[#F0FAFA]">
                     ใช้ที่อยู่เดียวกับ {{ sug.name }}
                   </button>
                 </div>
@@ -119,7 +119,7 @@
                         class="px-3 py-2 text-sm border-t first:border-t-0 border-[#F1F5F9] cursor-pointer hover:bg-[#F0FAFA]">{{ addressLabel(r) }}</li>
                     </ul>
                     <p v-else-if="addrQuery.trim().length >= 2 && addrRows" class="mt-1 text-xs text-[#889696]">ไม่พบ ลองพิมพ์ชื่อตำบลหรืออำเภอ</p>
-                    <p v-if="askValues.province" class="mt-1 text-sm font-bold text-[#006565]">✓ {{ addressLabel([askValues.sub_district, askValues.district, askValues.province, '']) }}</p>
+                    <p v-if="askValues.province" class="mt-1 text-sm font-bold text-[var(--color-accent)]">✓ {{ addressLabel([askValues.sub_district, askValues.district, askValues.province, '']) }}</p>
                   </div>
                   <div v-else>
                     <label class="block text-xs font-bold text-[#505E5E] mb-1">{{ item.label }}</label>
@@ -156,7 +156,7 @@
               </label>
               <p v-if="signError" class="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] p-3">{{ signError }}</p>
               <button @click="submit" :disabled="!drawn || !accepted || signing || !askComplete"
-                class="w-full bg-[#006565] text-white py-3 rounded-[12px] font-bold text-sm hover:bg-[#004D4D] disabled:opacity-50 transition-all">
+                class="w-full bg-[var(--color-accent)] text-white py-3 rounded-[12px] font-bold text-sm hover:bg-[#004D4D] disabled:opacity-50 transition-all">
                 {{ signing ? 'กำลังบันทึก…' : 'ยืนยันลายเซ็น' }}
               </button>
               <p class="text-[11px] text-[#889696]">เราเก็บลายเซ็นไว้เฉพาะเพื่อยื่นแบบฟอร์มนี้กับอุทยาน และลบทิ้งหลังจบทริป</p>

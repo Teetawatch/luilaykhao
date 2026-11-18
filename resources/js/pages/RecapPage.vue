@@ -11,7 +11,7 @@
         <span class="material-symbols-rounded text-[44px] text-[#B4C4C4]">sentiment_dissatisfied</span>
         <p class="text-[#1a1c1c] font-bold mt-3 mb-1">ยังดูสรุปทริปนี้ไม่ได้</p>
         <p class="text-[#505E5E] text-sm mb-5">{{ error }}</p>
-        <router-link to="/my-bookings" class="inline-flex rounded-[14px] bg-[#006565] text-white text-sm font-bold px-5 py-3">
+        <router-link to="/my-bookings" class="inline-flex rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3">
           กลับไปการจองของฉัน
         </router-link>
       </div>
@@ -24,7 +24,7 @@
           <p class="text-[#505E5E] text-sm mb-5">
             สรุปการเดินทางจะขึ้นให้ดูหลังกลับจาก {{ recap.trip.title }} แล้ว
           </p>
-          <router-link to="/my-bookings" class="inline-flex rounded-[14px] bg-[#006565] text-white text-sm font-bold px-5 py-3">
+          <router-link to="/my-bookings" class="inline-flex rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3">
             กลับไปการจองของฉัน
           </router-link>
         </div>

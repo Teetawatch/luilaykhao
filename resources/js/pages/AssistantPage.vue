@@ -1,15 +1,12 @@
 <template>
-  <div class="min-h-screen bg-[var(--color-sand)]/40">
-    <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
-
-      <header class="mb-8">
-        <h1 class="text-2xl sm:text-3xl font-black text-[var(--color-text-dark)] tracking-tight">
-          ถามหาทริปที่ใช่
-        </h1>
-        <p class="text-[var(--color-text-muted)] mt-2">
-          พิมพ์แบบที่คิดในหัวได้เลย เช่น งบเท่าไหร่ ไปกี่วัน ไหวแค่ไหน แล้วเราจะหาทริปที่เปิดจองอยู่จริงมาให้
-        </p>
-      </header>
+  <div class="min-h-screen bg-[var(--color-sand)]">
+    <PageHeader
+      title="ถามหาทริปที่ใช่"
+      crumb-label="ถามผู้ช่วย"
+      subtitle="พิมพ์แบบที่คิดในหัวได้เลย เช่น งบเท่าไหร่ ไปกี่วัน ไหวแค่ไหน แล้วเราจะหาทริปที่เปิดจองอยู่จริงมาให้"
+      container="max-w-2xl px-4 sm:px-6"
+    />
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
 
       <!-- คำถามตัวอย่าง — ลดแรงเสียดทานของช่องเปล่า -->
       <div v-if="!turns.length" class="flex flex-wrap gap-2 mb-8">
@@ -90,6 +87,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { ref } from 'vue';
 import api from '../lib/axios';
 

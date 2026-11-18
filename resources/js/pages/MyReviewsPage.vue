@@ -1,15 +1,12 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6">
-
-      <section class="mb-8 relative">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-          รีวิวของฉัน
-        </h1>
-        <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-          แบ่งปันประสบการณ์การเดินทางของคุณ
-        </p>
-      </section>
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32">
+    <PageHeader
+      title="รีวิวของฉัน"
+      subtitle="แบ่งปันประสบการณ์การเดินทางของคุณ"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-3xl px-4 sm:px-6"
+    />
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
 
       <!-- Write Review Modal -->
       <div v-if="showModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all pr-4 sm:pr-6 md:pr-0">
@@ -34,7 +31,7 @@
                 <span class="material-symbols-rounded text-4xl" :style="s <= form.rating ? 'font-variation-settings:\'FILL\' 1;' : 'font-variation-settings:\'FILL\' 0;'">star</span>
               </button>
             </div>
-            <p class="text-sm font-bold mt-3 transition-colors" :class="form.rating ? 'text-[#006565]' : 'text-[#A0B0B0]'" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+            <p class="text-sm font-bold mt-3 transition-colors" :class="form.rating ? 'text-[var(--color-accent)]' : 'text-[#A0B0B0]'" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               {{ ratingLabels[form.rating] }}
             </p>
           </div>
@@ -48,7 +45,7 @@
               v-model="form.comment"
               rows="4"
               placeholder="เล่าประสบการณ์การเดินทางของคุณ..."
-              class="w-full border border-[#E8EEEF] bg-[#F9FAFA] rounded-[16px] px-4 py-3 text-[15px] text-[#1a1c1c] resize-none focus:outline-none focus:bg-white focus:border-[#006565] focus:ring-4 focus:ring-[#006565]/10 transition-all font-anuphan"
+              class="w-full border border-[#E8EEEF] bg-[#F9FAFA] rounded-[16px] px-4 py-3 text-[15px] text-[#1a1c1c] resize-none focus:outline-none focus:bg-white focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[var(--color-accent)]/10 transition-all font-anuphan"
               style="font-family:'DB Heavent', 'Anuphan',sans-serif;"></textarea>
           </div>
 
@@ -72,12 +69,12 @@
               </div>
               <label
                 v-if="form.images.length < 5"
-                class="w-[72px] h-[72px] border-2 border-dashed border-[#A0B0B0] bg-[#F9FAFA] rounded-[12px] flex items-center justify-center cursor-pointer hover:border-[#006565] hover:bg-[#E3F2F2] transition-colors group">
-                <span class="material-symbols-rounded text-[#A0B0B0] group-hover:text-[#006565] text-[28px]">add_photo_alternate</span>
+                class="w-[72px] h-[72px] border-2 border-dashed border-[#A0B0B0] bg-[#F9FAFA] rounded-[12px] flex items-center justify-center cursor-pointer hover:border-[var(--color-accent)] hover:bg-[#E3F2F2] transition-colors group">
+                <span class="material-symbols-rounded text-[#A0B0B0] group-hover:text-[var(--color-accent)] text-[28px]">add_photo_alternate</span>
                 <input type="file" accept="image/*" class="hidden" @change="handleImageUpload" :disabled="uploading" />
               </label>
             </div>
-            <p v-if="uploading" class="text-[13px] font-bold text-[#006565] animate-pulse flex items-center gap-1.5 mt-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+            <p v-if="uploading" class="text-[13px] font-bold text-[var(--color-accent)] animate-pulse flex items-center gap-1.5 mt-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                <span class="material-symbols-rounded text-[16px] animate-spin">progress_activity</span>กำลังอัปโหลด...
             </p>
           </div>
@@ -92,7 +89,7 @@
             <button
               @click="submitReview"
               :disabled="!form.rating || submitting"
-              class="flex-1 bg-[#006565] text-white py-3.5 rounded-[16px] font-bold text-[15px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#004f4f] transition-all shadow-sm/20 flex justify-center items-center gap-2"
+              class="flex-1 bg-[var(--color-accent)] text-white py-3.5 rounded-[16px] font-bold text-[15px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-accent-mid)] transition-all shadow-sm/20 flex justify-center items-center gap-2"
               style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <span v-if="submitting" class="material-symbols-rounded text-[20px] animate-spin border-0">progress_activity</span>
               {{ submitting ? 'กำลังบันทึก...' : (editingReview ? 'บันทึก' : 'ส่งรีวิว') }}
@@ -103,7 +100,7 @@
 
       <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
         <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">กำลังโหลดข้อมูลรีวิว...</p>
       </div>
 
@@ -139,7 +136,7 @@
               </div>
               <button
                 @click="openWriteReview(b)"
-                class="w-full sm:w-auto shrink-0 bg-white border-2 border-[#006565] text-[#006565] px-5 py-2.5 rounded-[12px] text-sm font-bold hover:bg-[#E3F2F2] transition-colors flex items-center justify-center gap-1.5"
+                class="w-full sm:w-auto shrink-0 bg-white border-2 border-[var(--color-accent)] text-[var(--color-accent)] px-5 py-2.5 rounded-[12px] text-sm font-bold hover:bg-[#E3F2F2] transition-colors flex items-center justify-center gap-1.5"
                 style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span class="material-symbols-rounded text-[18px]">edit_square</span>
                 เขียนรีวิว
@@ -151,7 +148,7 @@
         <!-- My Reviews -->
         <div>
           <h2 class="text-xl font-bold text-[#1a1c1c] mb-4 flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-            <span class="material-symbols-rounded text-[#006565]">reviews</span>
+            <span class="material-symbols-rounded text-[var(--color-accent)]">reviews</span>
             รีวิวที่เขียนแล้ว ({{ myReviews.length }})
           </h2>
 
@@ -164,7 +161,7 @@
                เมื่อคุณเดินทางร่วมกับเราเสร็จสิ้น คุณจะสามารถเขียนรีวิวบอกเล่าเรื่องราวความประทับใจได้ที่นี่
              </p>
              <router-link to="/my-bookings"
-                class="inline-flex items-center gap-2 bg-[#006565] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[#004f4f] transition-all"
+                class="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[var(--color-accent-mid)] transition-all"
                 style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                ไปดูการจองของฉัน
                <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
@@ -175,7 +172,7 @@
             <div
               v-for="r in myReviews"
               :key="r.id"
-              class="bg-white rounded-[20px] p-5 md:p-6 border border-[#E8EEEF] hover:border-[#006565]/30 transition-all">
+              class="bg-white rounded-[20px] p-5 md:p-6 border border-[#E8EEEF] hover:border-[var(--color-accent)]/30 transition-all">
               
               <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
                 <div class="flex-1 min-w-0">
@@ -185,7 +182,7 @@
                   </div>
                 </div>
                 <div class="flex gap-2 shrink-0 bg-[#F4F7F6] p-1 rounded-[12px] border border-[#E8EEEF]">
-                  <button @click="openEditReview(r)" class="flex items-center justify-center p-1.5 text-[#006565] hover:bg-white rounded-[8px] transition-colors" title="แก้ไข">
+                  <button @click="openEditReview(r)" class="flex items-center justify-center p-1.5 text-[var(--color-accent)] hover:bg-white rounded-[8px] transition-colors" title="แก้ไข">
                     <span class="material-symbols-rounded text-[20px]">edit</span>
                   </button>
                   <button @click="deleteReview(r.id)" class="flex items-center justify-center p-1.5 text-[#DC2626] hover:bg-[#FEF2F2] rounded-[8px] transition-colors" title="ลบ">
@@ -204,10 +201,10 @@
 
               <!-- Admin Reply -->
               <div v-if="r.admin_reply" class="bg-[#F9FAFA] rounded-[16px] p-4 border border-[#E8EEEF] mt-2 relative overflow-hidden">
-                <div class="absolute left-0 top-0 bottom-0 w-1 bg-[#006565]"></div>
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-[var(--color-accent)]"></div>
                 <div class="flex items-center gap-1.5 mb-1.5">
-                  <span class="material-symbols-rounded text-[18px] text-[#006565]">forum</span>
-                  <p class="text-[13px] font-bold text-[#006565]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+                  <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">forum</span>
+                  <p class="text-[13px] font-bold text-[var(--color-accent)]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                     ตอบกลับโดยทีมงาน
                   </p>
                 </div>
@@ -231,6 +228,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
 import { useBookingStore } from '../stores/booking';

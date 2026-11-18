@@ -1,16 +1,15 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32">
-    <div class="max-w-2xl mx-auto px-4 sm:px-6">
-
-      <section class="mb-8">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2">บันทึกการเดินของฉัน</h1>
-        <p class="text-[#505E5E] text-sm">
-          ระยะและความสูงที่วัดจาก GPS ของคุณเอง ไม่ใช่ตัวเลขประมาณการของเส้นทาง
-        </p>
-      </section>
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32">
+    <PageHeader
+      title="บันทึกการเดินของฉัน"
+      subtitle="ระยะและความสูงที่วัดจาก GPS ของคุณเอง ไม่ใช่ตัวเลขประมาณการของเส้นทาง"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-2xl px-4 sm:px-6"
+    />
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-8">
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
         <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดบันทึก...</p>
       </div>
 
@@ -47,7 +46,7 @@
             <button
               type="button"
               class="w-full text-left bg-white rounded-[20px] border border-[#E8EEEF] p-4 sm:p-5"
-              :class="{ 'border-[#006565]': openRef === track.booking_ref }"
+              :class="{ 'border-[var(--color-accent)]': openRef === track.booking_ref }"
               :disabled="!track.booking_ref"
               @click="toggle(track)"
             >
@@ -79,7 +78,7 @@
             <!-- รายละเอียด: เส้นทาง + กราฟความชัน -->
             <div v-if="openRef === track.booking_ref" class="mt-2 bg-white rounded-[20px] border border-[#E8EEEF] overflow-hidden">
               <div v-if="detailLoading" class="py-12 flex justify-center">
-                <div class="w-8 h-8 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+                <div class="w-8 h-8 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
               </div>
 
               <template v-else-if="detail">
@@ -90,8 +89,8 @@
                   <template v-if="profile.points.length > 1">
                     <h3 class="text-[13px] font-bold text-[#505E5E] mb-3">โปรไฟล์ความสูง</h3>
                     <svg :viewBox="`0 0 ${PROFILE_W} ${PROFILE_H}`" class="w-full h-32" preserveAspectRatio="none">
-                      <polygon :points="profile.area" fill="#006565" fill-opacity="0.12" />
-                      <polyline :points="profile.line" fill="none" stroke="#006565" stroke-width="2" vector-effect="non-scaling-stroke" />
+                      <polygon :points="profile.area" fill="#047857" fill-opacity="0.12" />
+                      <polyline :points="profile.line" fill="none" stroke="#047857" stroke-width="2" vector-effect="non-scaling-stroke" />
                     </svg>
                     <div class="flex justify-between text-[11px] text-[#8A9A9A] mt-1">
                       <span>0 กม.</span>
@@ -138,6 +137,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../lib/axios';
 import { loadLeaflet } from '../lib/leaflet';
@@ -249,7 +249,7 @@ async function drawRoute(el) {
     attribution: '&copy; OpenStreetMap',
   }).addTo(map);
 
-  L.polyline(points, { color: '#006565', weight: 4 }).addTo(map);
+  L.polyline(points, { color: '#047857', weight: 4 }).addTo(map);
   L.circleMarker(points[0], { radius: 6, color: '#fff', weight: 2, fillColor: '#0F3D3E', fillOpacity: 1 }).addTo(map);
   L.circleMarker(points[points.length - 1], { radius: 6, color: '#fff', weight: 2, fillColor: '#B42318', fillOpacity: 1 }).addTo(map);
 

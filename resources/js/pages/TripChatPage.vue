@@ -29,7 +29,7 @@
       </div>
       <p class="text-[#1a1c1c] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ไม่สามารถเข้าถึงได้</p>
       <p class="text-sm text-[#505E5E]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ errorMsg }}</p>
-      <button @click="$router.push('/my-bookings')" class="mt-5 px-5 py-2.5 bg-[#006565] text-white rounded-full text-sm font-bold" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+      <button @click="$router.push('/my-bookings')" class="mt-5 px-5 py-2.5 bg-[var(--color-accent)] text-white rounded-full text-sm font-bold" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
         กลับหน้าการจอง
       </button>
     </div>
@@ -37,7 +37,7 @@
     <template v-else>
       <!-- Load older messages -->
       <div class="shrink-0 text-center py-2" v-if="hasMore">
-        <button @click="loadOlder" :disabled="loadingOlder" class="text-xs font-bold text-[#006565] hover:underline disabled:opacity-50" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+        <button @click="loadOlder" :disabled="loadingOlder" class="text-xs font-bold text-[var(--color-accent)] hover:underline disabled:opacity-50" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           {{ loadingOlder ? 'กำลังโหลด...' : 'โหลดข้อความก่อนหน้า' }}
         </button>
       </div>
@@ -45,7 +45,7 @@
       <!-- Message Thread -->
       <div ref="threadEl" class="flex-1 overflow-y-auto px-4 py-3 space-y-3" @scroll="onScroll">
         <div v-if="loading" class="flex justify-center py-8">
-          <div class="w-8 h-8 border-3 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+          <div class="w-8 h-8 border-3 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
         </div>
 
         <template v-else>
@@ -58,9 +58,9 @@
 
           <!-- ข้อความอัตโนมัติจากระบบ (ไทม์ไลน์ทริป) — การ์ดเต็มความกว้าง อ่านเป็นย่อหน้า -->
           <template v-for="m in messages" :key="m.id">
-          <div v-if="m.sender_role === 'system'" class="rounded-2xl border border-[#006565]/20 bg-[#006565]/[0.06] px-4 py-3">
+          <div v-if="m.sender_role === 'system'" class="rounded-2xl border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/[0.06] px-4 py-3">
             <div class="flex items-center justify-between mb-1.5">
-              <span class="text-[10px] font-black tracking-wide text-[#006565]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ข้อความจากทีมงาน</span>
+              <span class="text-[10px] font-black tracking-wide text-[var(--color-accent)]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ข้อความจากทีมงาน</span>
               <span class="text-[10px] text-[#A0B0B0]">{{ formatTime(m.created_at) }}</span>
             </div>
             <!-- v-html ปลอดภัย: escape ทั้งก้อนก่อน แล้วค่อยแปลงเฉพาะเบอร์โทรเป็นลิงก์ tel: -->
@@ -83,10 +83,10 @@
             <!-- "รับทราบ" ใต้ประกาศของทีมงาน — แทนการพิมพ์ "รับทราบครับ" ตามกันทั้งห้อง -->
             <div v-if="m.ack" class="mt-2 flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <button v-if="m.ack.acked_by_me === false" @click="ackMessage(m)" :disabled="ackingId === m.id"
-                class="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#006565] text-white text-[12.5px] font-bold disabled:opacity-60">
+                class="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[var(--color-accent)] text-white text-[12.5px] font-bold disabled:opacity-60">
                 <span class="material-symbols-rounded ack-icon">thumb_up</span> รับทราบ
               </button>
-              <span v-else-if="m.ack.acked_by_me" class="flex items-center gap-1 text-[12px] font-bold text-[#006565]">
+              <span v-else-if="m.ack.acked_by_me" class="flex items-center gap-1 text-[12px] font-bold text-[var(--color-accent)]">
                 <span class="material-symbols-rounded ack-icon">check_circle</span> คุณรับทราบแล้ว
               </span>
               <span class="text-[11.5px] font-bold text-[#889696]">{{ m.ack.count }}/{{ m.ack.total }} คน</span>
@@ -123,7 +123,7 @@
               <div v-if="m.poll" class="w-full bg-white border border-[#E8EEEF] rounded-2xl px-3.5 py-3"
                 style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <div class="flex items-start gap-1.5 mb-1">
-                  <span class="material-symbols-rounded text-[18px] text-[#006565] shrink-0">bar_chart</span>
+                  <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)] shrink-0">bar_chart</span>
                   <p class="text-sm font-bold text-[#1a1c1c] leading-snug">{{ m.poll.question }}</p>
                 </div>
                 <p class="text-[11px] text-[#889696] mb-2.5">{{ pollMeta(m.poll) }}</p>
@@ -134,12 +134,12 @@
                   @click="votePoll(m, opt)"
                   :disabled="m.poll.is_closed || votingPollId === m.poll.id"
                   class="relative w-full mb-1.5 overflow-hidden rounded-xl border text-left transition-all disabled:cursor-default"
-                  :class="opt.voted_by_me ? 'border-[#006565]' : 'border-[#E8EEEF] hover:border-[#006565]/40'"
+                  :class="opt.voted_by_me ? 'border-[var(--color-accent)]' : 'border-[#E8EEEF] hover:border-[var(--color-accent)]/40'"
                 >
-                  <span class="absolute inset-y-0 left-0 bg-[#006565]/10"
+                  <span class="absolute inset-y-0 left-0 bg-[var(--color-accent)]/10"
                     :style="{ width: pollPercent(m.poll, opt) + '%' }"></span>
                   <span class="relative flex items-center gap-2 px-3 py-2.5">
-                    <span v-if="opt.voted_by_me" class="material-symbols-rounded text-[15px] text-[#006565]">check_circle</span>
+                    <span v-if="opt.voted_by_me" class="material-symbols-rounded text-[15px] text-[var(--color-accent)]">check_circle</span>
                     <span class="flex-1 text-[13px] text-[#1a1c1c]" :class="opt.voted_by_me ? 'font-bold' : 'font-medium'">{{ opt.label }}</span>
                     <span class="text-[11px] font-bold text-[#889696]">
                       {{ opt.vote_count === 0 ? '—' : opt.vote_count + ' · ' + pollPercent(m.poll, opt) + '%' }}
@@ -148,7 +148,7 @@
                 </button>
 
                 <button v-if="canClosePoll(m.poll) && !m.poll.is_closed" @click="closePoll(m)"
-                  class="mt-1 flex items-center gap-1 text-[11px] font-bold text-[#889696] hover:text-[#006565]">
+                  class="mt-1 flex items-center gap-1 text-[11px] font-bold text-[#889696] hover:text-[var(--color-accent)]">
                   <span class="material-symbols-rounded text-[14px]">lock</span> ปิดโหวต
                 </button>
               </div>
@@ -160,7 +160,7 @@
               <!-- Bubble -->
               <div v-else class="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-line"
                 :class="m.is_mine
-                  ? 'bg-[#006565] text-white rounded-tr-sm'
+                  ? 'bg-[var(--color-accent)] text-white rounded-tr-sm'
                   : 'bg-white text-[#1a1c1c] border border-[#E8EEEF] rounded-tl-sm'"
                 style="font-family:'DB Heavent', 'Anuphan',sans-serif; word-break: break-word;">
                 <!-- Image -->
@@ -177,10 +177,10 @@
             <!-- "รับทราบ" ใต้ประกาศของทีมงาน — แทนการพิมพ์ "รับทราบครับ" ตามกันทั้งห้อง -->
             <div v-if="m.ack" class="flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <button v-if="m.ack.acked_by_me === false" @click="ackMessage(m)" :disabled="ackingId === m.id"
-                class="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#006565] text-white text-[12.5px] font-bold disabled:opacity-60">
+                class="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[var(--color-accent)] text-white text-[12.5px] font-bold disabled:opacity-60">
                 <span class="material-symbols-rounded ack-icon">thumb_up</span> รับทราบ
               </button>
-              <span v-else-if="m.ack.acked_by_me" class="flex items-center gap-1 text-[12px] font-bold text-[#006565]">
+              <span v-else-if="m.ack.acked_by_me" class="flex items-center gap-1 text-[12px] font-bold text-[var(--color-accent)]">
                 <span class="material-symbols-rounded ack-icon">check_circle</span> คุณรับทราบแล้ว
               </span>
               <span class="text-[11.5px] font-bold text-[#889696]">{{ m.ack.count }}/{{ m.ack.total }} คน</span>
@@ -201,7 +201,7 @@
           v-for="s in infoShortcuts"
           :key="s.key"
           @click="openInfo(s.key)"
-          class="flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full border border-[#E8EEEF] text-[12.5px] font-bold text-[#505E5E] hover:border-[#006565]/40 hover:text-[#006565] transition-all"
+          class="flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full border border-[#E8EEEF] text-[12.5px] font-bold text-[#505E5E] hover:border-[var(--color-accent)]/40 hover:text-[var(--color-accent)] transition-all"
           style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
         >
           <span class="material-symbols-rounded info-chip-icon">{{ s.icon }}</span>
@@ -245,7 +245,7 @@
 
         <button @click="send" :disabled="sending || (!draft.trim() && !imageFile)"
           class="w-9 h-9 rounded-[10px] flex items-center justify-center transition-all shrink-0"
-          :class="(draft.trim() || imageFile) && !sending ? 'bg-[#006565] text-white' : 'bg-[#E8EEEF] text-[#A0B0B0]'">
+          :class="(draft.trim() || imageFile) && !sending ? 'bg-[var(--color-accent)] text-white' : 'bg-[#E8EEEF] text-[#A0B0B0]'">
           <span v-if="sending" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
           <span v-else class="material-symbols-rounded text-[20px]">send</span>
         </button>
@@ -593,7 +593,7 @@ function roleAvatarClass(role) {
   return {
     staff: 'bg-[#0C4A6E]',
     admin: 'bg-[#92400E]',
-    customer: 'bg-[#006565]',
+    customer: 'bg-[var(--color-accent)]',
   }[role] || 'bg-[#A0B0B0]';
 }
 
@@ -601,7 +601,7 @@ function roleTagClass(role) {
   return {
     staff: 'bg-cyan-50 text-cyan-700',
     admin: 'bg-amber-50 text-amber-700',
-    customer: 'bg-[#E3F2F2] text-[#006565]',
+    customer: 'bg-[#E3F2F2] text-[var(--color-accent)]',
   }[role] || 'bg-gray-100 text-gray-500';
 }
 
@@ -627,7 +627,7 @@ function systemBodyHtml(body) {
   return escaped.replace(
     /(^|[^\d])(0\d{1,2}[-\s]?\d{3}[-\s]?\d{3,4})(?!\d)/g,
     (_all, before, phone) =>
-      `${before}<a href="tel:${phone.replace(/[^0-9+]/g, '')}" class="font-bold text-[#006565] underline">${phone}</a>`,
+      `${before}<a href="tel:${phone.replace(/[^0-9+]/g, '')}" class="font-bold text-[var(--color-accent)] underline">${phone}</a>`,
   );
 }
 

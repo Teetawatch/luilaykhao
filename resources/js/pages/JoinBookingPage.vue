@@ -4,7 +4,7 @@
 
       <!-- Loading -->
       <div v-if="loading" class="flex justify-center py-24">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
       </div>
 
       <!-- คำเชิญใช้ไม่ได้ (หมดอายุ/ถูกใช้แล้ว/ลิงก์ผิด) -->
@@ -17,14 +17,14 @@
         </p>
         <router-link
           to="/"
-          class="inline-flex items-center gap-1.5 bg-[#006565] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
+          class="inline-flex items-center gap-1.5 bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
           <span class="material-symbols-rounded text-[18px]">home</span> กลับหน้าแรก
         </router-link>
       </div>
 
       <template v-else-if="preview">
         <section class="mb-6">
-          <p class="text-xs font-bold text-[#006565] tracking-wider mb-1">คำเชิญร่วมทริป</p>
+          <p class="text-xs font-bold text-[var(--color-accent)] tracking-wider mb-1">คำเชิญร่วมทริป</p>
           <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight" style="font-family:'DB Heavent','Anuphan',sans-serif;">
             {{ preview.invited_by ? `${preview.invited_by} ชวนคุณไปทริปนี้` : 'มีคนชวนคุณไปทริปนี้' }}
           </h1>
@@ -35,11 +35,11 @@
           <h2 class="text-lg font-black text-[#1a1c1c] leading-snug mb-3">{{ preview.trip_title || 'ทริป' }}</h2>
           <div class="space-y-2">
             <p v-if="departureText" class="flex items-center gap-2 text-sm font-bold text-[#505E5E]">
-              <span class="material-symbols-rounded text-[18px] text-[#006565]">event</span>
+              <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">event</span>
               เดินทาง {{ departureText }}
             </p>
             <p v-if="preview.booking_ref" class="flex items-center gap-2 text-sm font-bold text-[#505E5E]">
-              <span class="material-symbols-rounded text-[18px] text-[#006565]">confirmation_number</span>
+              <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">confirmation_number</span>
               {{ preview.booking_ref }}
             </p>
           </div>
@@ -47,7 +47,7 @@
           <div class="border-t border-[#E8EEEF] mt-5 pt-5 space-y-3">
             <p class="text-xs font-black text-[#889696] tracking-wide">เข้าร่วมแล้วคุณจะได้</p>
             <div v-for="item in benefits" :key="item.icon" class="flex items-start gap-3">
-              <span class="material-symbols-rounded text-[20px] text-[#006565] shrink-0">{{ item.icon }}</span>
+              <span class="material-symbols-rounded text-[20px] text-[var(--color-accent)] shrink-0">{{ item.icon }}</span>
               <div>
                 <p class="text-sm font-bold text-[#1a1c1c]">{{ item.title }}</p>
                 <p class="text-xs text-[#889696] leading-relaxed">{{ item.body }}</p>
@@ -66,7 +66,7 @@
           <p class="text-sm font-bold text-green-700 mb-3">คุณเข้าร่วมการจองนี้อยู่แล้ว</p>
           <router-link
             to="/my-bookings"
-            class="inline-flex items-center gap-1.5 bg-[#006565] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
+            class="inline-flex items-center gap-1.5 bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
             ไปที่การจองของฉัน
           </router-link>
         </div>
@@ -76,7 +76,7 @@
           v-else
           :disabled="joining"
           @click="join"
-          class="w-full bg-[#006565] hover:bg-[#005252] disabled:opacity-60 text-white py-3.5 rounded-full font-extrabold text-sm flex items-center justify-center gap-2 transition">
+          class="w-full bg-[var(--color-accent)] hover:bg-[#005252] disabled:opacity-60 text-white py-3.5 rounded-full font-extrabold text-sm flex items-center justify-center gap-2 transition">
           <span class="material-symbols-rounded text-[20px]">group_add</span>
           {{ joining ? 'กำลังเข้าร่วม...' : 'เข้าร่วมการจองนี้' }}
         </button>

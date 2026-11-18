@@ -44,7 +44,7 @@ function toastClass(type) {
     success: 'bg-accent/95 text-white',
     error:   'bg-red-600/95 text-white',
     warning: 'bg-amber-500/95 text-white',
-    info:    'bg-[#006565]/95 text-white',
+    info:    'bg-[var(--color-accent)]/95 text-white',
   }[type] ?? 'bg-gray-800/95 text-white';
 }
 </script>

@@ -1,22 +1,20 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32 font-anuphan">
-    <div class="max-w-2xl mx-auto px-4 sm:px-6">
-
-      <!-- Header -->
-      <section class="mb-6">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'DB Heavent','Anuphan',sans-serif;">
-          ชวนเพื่อน รับแต้ม
-        </h1>
-        <p class="text-[#505E5E] text-sm">แชร์โค้ดให้เพื่อน เมื่อเพื่อนจองทริปแรกสำเร็จ รับแต้มทั้งคู่</p>
-      </section>
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32 font-anuphan">
+    <PageHeader
+      title="ชวนเพื่อน รับแต้ม"
+      subtitle="แชร์โค้ดให้เพื่อน เมื่อเพื่อนจองทริปแรกสำเร็จ รับแต้มทั้งคู่"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-2xl px-4 sm:px-6"
+    />
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-8">
 
       <div v-if="loading" class="flex justify-center py-24">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
       </div>
 
       <template v-else-if="data">
         <!-- Referral code card -->
-        <div class="bg-gradient-to-br from-[#006565] to-[#00A3A3] rounded-[24px] p-7 text-white mb-5 relative overflow-hidden">
+        <div class="bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-light)] rounded-[24px] p-7 text-white mb-5 relative overflow-hidden">
           <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
           <div class="absolute -right-2 bottom-2 w-20 h-20 rounded-full bg-white/5"></div>
           <p class="text-white/80 text-xs font-bold uppercase tracking-wider mb-2">โค้ดชวนเพื่อนของคุณ</p>
@@ -31,7 +29,7 @@
           <div class="flex gap-2.5 flex-wrap">
             <button
               @click="share"
-              class="flex-1 min-w-[130px] bg-white text-[#006565] py-2.5 px-4 rounded-full font-extrabold text-sm hover:bg-white/90 transition flex items-center justify-center gap-1.5">
+              class="flex-1 min-w-[130px] bg-white text-[var(--color-accent)] py-2.5 px-4 rounded-full font-extrabold text-sm hover:bg-white/90 transition flex items-center justify-center gap-1.5">
               <span class="material-symbols-rounded text-[18px]">share</span> แชร์ลิงก์ชวนเพื่อน
             </button>
             <button
@@ -46,12 +44,12 @@
         <div class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 mb-5">
           <div class="flex items-center gap-4">
             <div class="flex-1 text-center">
-              <p class="text-2xl font-black text-[#006565]">+{{ data.referrer_points }}</p>
+              <p class="text-2xl font-black text-[var(--color-accent)]">+{{ data.referrer_points }}</p>
               <p class="text-xs font-bold text-[#889696] mt-0.5">แต้มสำหรับคุณ</p>
             </div>
             <div class="w-px h-10 bg-[#E8EEEF]"></div>
             <div class="flex-1 text-center">
-              <p class="text-2xl font-black text-[#00A3A3]">+{{ data.referee_points }}</p>
+              <p class="text-2xl font-black text-[var(--color-accent-light)]">+{{ data.referee_points }}</p>
               <p class="text-xs font-bold text-[#889696] mt-0.5">แต้มสำหรับเพื่อน</p>
             </div>
           </div>
@@ -71,7 +69,7 @@
             <p class="text-[11px] font-bold text-[#889696] mt-0.5">สำเร็จ</p>
           </div>
           <div class="bg-white rounded-[16px] border border-[#E8EEEF] p-4 text-center">
-            <p class="text-xl font-black text-[#006565]">{{ data.summary.points_earned }}</p>
+            <p class="text-xl font-black text-[var(--color-accent)]">{{ data.summary.points_earned }}</p>
             <p class="text-[11px] font-bold text-[#889696] mt-0.5">แต้มที่ได้</p>
           </div>
         </div>
@@ -81,7 +79,7 @@
           <h2 class="text-sm font-black text-[#1a1c1c] mb-3">เพื่อนที่คุณชวน</h2>
           <div class="space-y-2.5">
             <div v-for="(f, i) in data.friends" :key="i" class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-full bg-[#F4F7F6] flex items-center justify-center text-[#006565] font-black text-sm shrink-0">
+              <div class="w-9 h-9 rounded-full bg-[#F4F7F6] flex items-center justify-center text-[var(--color-accent)] font-black text-sm shrink-0">
                 {{ (f.name || '?').charAt(0) }}
               </div>
               <div class="flex-1 min-w-0">
@@ -113,6 +111,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
 import { useHead } from '@unhead/vue';

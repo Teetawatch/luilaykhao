@@ -1,16 +1,15 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32">
-    <div class="max-w-2xl mx-auto px-4 sm:px-6">
-
-      <section class="mb-8">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2">กลุ่มไปด้วยกัน</h1>
-        <p class="text-[#505E5E] text-sm">
-          กลุ่มที่คุณตั้งเองหรือถูกเพื่อนชวน — แต่ละคนเลือกที่นั่งของตัวเอง แล้วค่อยจองรวมทีเดียว
-        </p>
-      </section>
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32">
+    <PageHeader
+      title="กลุ่มไปด้วยกัน"
+      subtitle="กลุ่มที่คุณตั้งเองหรือถูกเพื่อนชวน แต่ละคนเลือกที่นั่งของตัวเอง แล้วค่อยจองรวมทีเดียว"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-2xl px-4 sm:px-6"
+    />
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-8">
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
         <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดกลุ่ม...</p>
       </div>
 
@@ -22,7 +21,7 @@
         </p>
         <router-link
           to="/trips"
-          class="inline-flex items-center gap-1.5 rounded-[14px] bg-[#006565] text-white text-sm font-bold px-5 py-3"
+          class="inline-flex items-center gap-1.5 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3"
         >
           <span class="material-symbols-rounded text-[18px]">explore</span>
           ดูทริปที่เปิดอยู่
@@ -50,7 +49,7 @@
                   <span
                     class="rounded-full px-2.5 py-0.5 text-[11px] font-bold shrink-0"
                     :class="plan.booking_ref
-                      ? 'bg-[#006565]/10 text-[#006565]'
+                      ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
                       : plan.is_open ? 'bg-accent-tint text-accent' : 'bg-[#F4F7F6] text-[#8A9A9A]'"
                   >
                     {{ plan.booking_ref ? 'จองแล้ว' : plan.is_open ? 'กำลังรวมกลุ่ม' : 'ปิดรับแล้ว' }}
@@ -95,6 +94,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { onMounted, ref } from 'vue';
 import api from '../lib/axios';
 import { thaiShort } from '../lib/thaiDate';

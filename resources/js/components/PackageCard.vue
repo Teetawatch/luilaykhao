@@ -1,5 +1,5 @@
 <template>
-  <!-- การ์ดแพ็กเกจบนหน้าแรก — ภาพ 3:2 ป้ายจำนวนวันบนภาพ ราคาเริ่มต้นชัด ๆ ด้านล่าง
+  <!-- การ์ดทริปของทั้งเว็บ (หน้าแรก ทริปทั้งหมด ทริปใกล้เคียง ผลค้นหาทริปที่ใช่) — ภาพ 3:2 ป้ายจำนวนวันบนภาพ ราคาเริ่มต้นชัด ๆ ด้านล่าง
        ส่วนลดขึ้นเฉพาะตอนราคาก่อนลดสูงกว่าราคาขายจริง ไม่มีป้าย "ขายดี" ที่ระบบไม่ได้คำนวณ -->
   <router-link :to="`/trips/${trip.slug}`" class="pkg group">
     <div class="pkg-media zoom-media">
@@ -69,6 +69,7 @@
               <span class="font-medium text-[var(--color-text-muted)]">({{ trip.review_count }})</span>
             </p>
             <p v-if="nextDeparture" class="mt-0.5 text-[var(--color-text-muted)]">รอบถัดไป {{ nextDeparture }}</p>
+            <p v-if="lastSeats" class="mt-0.5 font-semibold text-amber-700">{{ lastSeats }}</p>
           </div>
         </div>
       </div>
@@ -78,10 +79,11 @@
 
 <script setup>
 import { computed } from 'vue';
-import { useWishlistStore } from '../../stores/wishlist';
-import { tripCardImage } from '../../lib/tripImage';
-import { thaiDayMonth } from '../../lib/thaiDate';
-import { bangkokToday } from '../../lib/bangkokDate';
+import { useWishlistStore } from '../stores/wishlist';
+import { tripCardImage } from '../lib/tripImage';
+import { thaiDayMonth } from '../lib/thaiDate';
+import { bangkokToday } from '../lib/bangkokDate';
+import { tripScarcityLevel, tripSeatsLeft } from '../lib/scheduleHelpers';
 
 const props = defineProps({
   trip: { type: Object, required: true },
@@ -119,6 +121,13 @@ const facts = computed(() => {
   if (Number(t.distance_km) > 0) out.push(`เดิน ${Number(t.distance_km).toLocaleString()} กม.`);
   if (Number(t.elevation_gain_m) > 0) out.push(`ขึ้น ${Number(t.elevation_gain_m).toLocaleString()} ม.`);
   return out;
+});
+
+// ที่นั่งเหลือน้อยจริงเท่านั้น (≤2) — ตัวหนังสือเรียบ ๆ ไม่กะพริบ เหมือนการ์ดเดิม
+const lastSeats = computed(() => {
+  if (tripScarcityLevel(props.trip) !== 'last') return null;
+  const left = tripSeatsLeft(props.trip);
+  return left ? `เหลือ ${left} ที่` : null;
 });
 
 const nextDeparture = computed(() => {

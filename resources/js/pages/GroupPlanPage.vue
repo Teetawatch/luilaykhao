@@ -4,7 +4,7 @@
 
       <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
         <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดกลุ่ม...</p>
       </div>
 
@@ -13,7 +13,7 @@
         <span class="material-symbols-rounded text-[44px] text-[#B4C4C4]">link_off</span>
         <p class="text-[#1a1c1c] font-bold mt-3 mb-1">ไม่พบกลุ่มนี้</p>
         <p class="text-[#505E5E] text-sm mb-5">ลิงก์อาจหมดอายุ หรือหัวหน้ากลุ่มยกเลิกไปแล้ว</p>
-        <router-link to="/trips" class="inline-flex items-center gap-1.5 rounded-[14px] bg-[#006565] text-white text-sm font-bold px-5 py-3">
+        <router-link to="/trips" class="inline-flex items-center gap-1.5 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3">
           ดูทริปที่เปิดอยู่
         </router-link>
       </div>
@@ -36,7 +36,7 @@
             <router-link
               v-if="plan.trip?.slug"
               :to="`/trips/${plan.trip.slug}`"
-              class="text-sm font-bold text-[#006565] mt-1 inline-block"
+              class="text-sm font-bold text-[var(--color-accent)] mt-1 inline-block"
             >
               {{ plan.trip.title }}
             </router-link>
@@ -83,7 +83,7 @@
             <button
               type="button"
               @click="copyShareUrl"
-              class="rounded-[12px] bg-[#006565] text-white px-4 py-2.5 text-[13px] font-bold shrink-0"
+              class="rounded-[12px] bg-[var(--color-accent)] text-white px-4 py-2.5 text-[13px] font-bold shrink-0"
             >
               คัดลอก
             </button>
@@ -103,7 +103,7 @@
             type="button"
             :disabled="!plan.is_open || busy"
             @click="joinPlan"
-            class="w-full rounded-[14px] bg-[#006565] text-white text-sm font-bold px-5 py-3.5 disabled:opacity-40"
+            class="w-full rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3.5 disabled:opacity-40"
           >
             {{ plan.is_open ? 'เข้าร่วมกลุ่ม' : 'กลุ่มนี้ปิดรับแล้ว' }}
           </button>
@@ -117,7 +117,7 @@
           </p>
 
           <div v-if="seatsLoading" class="py-10 flex justify-center">
-            <div class="w-8 h-8 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+            <div class="w-8 h-8 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
           </div>
 
           <div v-else-if="!seats.length" class="text-center py-8 text-sm text-[#8A9A9A]">
@@ -205,7 +205,7 @@
             type="button"
             :disabled="busy || claimedCount === 0"
             @click="checkout"
-            class="w-full rounded-[14px] bg-[#006565] text-white text-sm font-bold px-5 py-3.5 disabled:opacity-40"
+            class="w-full rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3.5 disabled:opacity-40"
           >
             {{ claimedCount === 0 ? 'ยังไม่มีใครเลือกที่นั่ง' : `จองรวม ${claimedCount} ที่นั่ง` }}
           </button>
@@ -217,7 +217,7 @@
           <p class="text-sm text-[#1a1c1c] font-bold mb-4">หมายเลขการจอง {{ plan.booking_ref }}</p>
           <router-link
             :to="`/payment/${plan.booking_ref}`"
-            class="inline-flex items-center gap-1.5 rounded-[14px] bg-[#006565] text-white text-sm font-bold px-5 py-3"
+            class="inline-flex items-center gap-1.5 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3"
           >
             ไปหน้าชำระเงิน
           </router-link>
@@ -292,7 +292,7 @@
             <button
               type="submit"
               :disabled="busy || !claimForm.name"
-              class="flex-1 rounded-[14px] bg-[#006565] text-white text-sm font-bold py-3 disabled:opacity-40"
+              class="flex-1 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold py-3 disabled:opacity-40"
             >
               ยืนยันที่นั่งนี้
             </button>
@@ -370,7 +370,7 @@ const statusLabel = computed(() => {
 });
 
 const statusChipClass = computed(() => {
-  if (plan.value?.booking_ref) return 'bg-[#006565]/10 text-[#006565]';
+  if (plan.value?.booking_ref) return 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]';
   return plan.value?.is_open
     ? 'bg-accent-tint text-accent'
     : 'bg-[#F4F7F6] text-[#8A9A9A]';
@@ -411,10 +411,10 @@ function seatDisabled(seat) {
 
 function seatClass(seat) {
   const claimer = memberBySeat.value[seat.id];
-  if (claimer?.is_me) return 'border-[#006565] bg-[#006565] text-white';
-  if (claimer) return 'border-[#006565]/30 bg-[#006565]/[0.06] text-[#0F3D3E]';
+  if (claimer?.is_me) return 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white';
+  if (claimer) return 'border-[var(--color-accent)]/30 bg-[var(--color-accent)]/[0.06] text-[#0F3D3E]';
   if (seatTaken(seat)) return 'border-[#EDF1F1] bg-[#F4F7F6] text-[#B4C4C4]';
-  return 'border-[#E8EEEF] bg-white text-[#1a1c1c] hover:border-[#006565]';
+  return 'border-[#E8EEEF] bg-white text-[#1a1c1c] hover:border-[var(--color-accent)]';
 }
 
 function seatCaption(seat) {
@@ -620,6 +620,6 @@ onMounted(async () => {
 
 .field:focus {
   outline: none;
-  border-color: #006565;
+  border-color: var(--color-accent);
 }
 </style>

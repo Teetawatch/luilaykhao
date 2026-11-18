@@ -1,13 +1,12 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6">
-
-      <section class="mb-8">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2">ฟีดจากนักเดินทาง</h1>
-        <p class="text-[#505E5E] text-sm">
-          รูปที่คนไปมาแล้วโพสต์เอง ไม่ได้ผ่านการคัดของทีมงาน
-        </p>
-      </section>
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32">
+    <PageHeader
+      title="ฟีดจากนักเดินทาง"
+      subtitle="รูปที่คนไปมาแล้วโพสต์เอง ไม่ได้ผ่านการคัดของทีมงาน"
+      :crumbs="[{ to: '/reviews', label: 'รีวิว & ชุมชน' }]"
+      container="max-w-5xl px-4 sm:px-6"
+    />
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
 
       <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div
@@ -74,7 +73,7 @@
               <router-link
                 v-if="post.trip?.slug"
                 :to="`/trips/${post.trip.slug}`"
-                class="text-[12px] font-bold text-[#006565] truncate"
+                class="text-[12px] font-bold text-[var(--color-accent)] truncate"
               >
                 {{ post.trip.title }}
               </router-link>
@@ -110,7 +109,7 @@
           <button
             type="button"
             :disabled="loadingMore"
-            class="inline-flex items-center gap-2 rounded-[14px] border border-[#E8EEEF] bg-white px-6 py-3 text-sm font-bold text-[#006565] disabled:opacity-50"
+            class="inline-flex items-center gap-2 rounded-[14px] border border-[#E8EEEF] bg-white px-6 py-3 text-sm font-bold text-[var(--color-accent)] disabled:opacity-50"
             @click="loadMore"
           >
             {{ loadingMore ? 'กำลังโหลด...' : 'ดูเพิ่มเติม' }}
@@ -164,7 +163,7 @@
 
               <!-- คอมเมนต์ -->
               <div v-if="commentsLoading" class="py-6 flex justify-center">
-                <div class="w-6 h-6 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+                <div class="w-6 h-6 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
               </div>
 
               <ul v-else-if="comments.length" class="space-y-3">
@@ -203,13 +202,13 @@
             <button
               type="submit"
               :disabled="!commentBody || posting"
-              class="rounded-[12px] bg-[#006565] text-white px-4 py-2.5 text-[13px] font-bold shrink-0 disabled:opacity-40"
+              class="rounded-[12px] bg-[var(--color-accent)] text-white px-4 py-2.5 text-[13px] font-bold shrink-0 disabled:opacity-40"
             >
               ส่ง
             </button>
           </form>
           <p v-else class="p-4 border-t border-[#E8EEEF] text-[13px] text-[#8A9A9A] text-center">
-            <router-link to="/login" class="font-bold text-[#006565]">เข้าสู่ระบบ</router-link>
+            <router-link to="/login" class="font-bold text-[var(--color-accent)]">เข้าสู่ระบบ</router-link>
             เพื่อกดถูกใจและแสดงความเห็น
           </p>
         </div>
@@ -219,6 +218,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';

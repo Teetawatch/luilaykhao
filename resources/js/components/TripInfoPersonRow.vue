@@ -14,7 +14,7 @@
     <a
       v-if="phone"
       :href="`tel:${phone}`"
-      class="w-9 h-9 rounded-[10px] bg-[#006565] flex items-center justify-center shrink-0"
+      class="w-9 h-9 rounded-[10px] bg-[var(--color-accent)] flex items-center justify-center shrink-0"
       :aria-label="`โทรหา ${name}`"
     >
       <span class="material-symbols-rounded pr-icon pr-icon-call text-white">call</span>

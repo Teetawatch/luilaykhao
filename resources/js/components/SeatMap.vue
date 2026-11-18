@@ -13,7 +13,7 @@
         <span class="text-[11px] font-bold text-gray-500">ว่าง</span>
       </div>
       <div v-if="!readonly" class="flex items-center gap-1.5">
-        <div class="w-5 h-5 rounded-lg border-2" :class="isWomenOnly ? 'bg-[#db2777] border-[#db2777]' : 'bg-[#006565] border-[#006565]'"></div>
+        <div class="w-5 h-5 rounded-lg border-2" :class="isWomenOnly ? 'bg-[#db2777] border-[#db2777]' : 'bg-[var(--color-accent)] border-[var(--color-accent)]'"></div>
         <span class="text-[11px] font-bold text-gray-500">กำลังเลือก</span>
       </div>
       <div class="flex items-center gap-1.5">
@@ -28,7 +28,7 @@
       </div>
       <div v-if="hasOwnSeats" class="flex items-center gap-1.5">
         <div class="w-5 h-5 rounded-lg border-2 border-dashed"
-          :class="isWomenOnly ? 'bg-pink-50 border-[#db2777]' : 'bg-accent-tint border-[#006565]'"></div>
+          :class="isWomenOnly ? 'bg-pink-50 border-[#db2777]' : 'bg-accent-tint border-[var(--color-accent)]'"></div>
         <span class="text-[11px] font-bold text-gray-500">ที่นั่งของคุณ</span>
       </div>
     </div>
@@ -37,7 +37,7 @@
     <div v-if="hasOwnSeats" class="flex items-start gap-2 px-4 py-3 rounded-2xl border"
       :class="isWomenOnly ? 'bg-pink-50/60 border-pink-100' : 'bg-accent-tint/60 border-accent/15'">
       <span class="material-symbols-rounded text-[18px] shrink-0 mt-px"
-        :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'"
+        :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'"
         style="font-variation-settings:'FILL' 1,'wght' 400">how_to_reg</span>
       <span class="text-[11px] font-bold leading-relaxed" :class="isWomenOnly ? 'text-[#9d174d]' : 'text-[#0f5132]'">
         ที่นั่ง {{ ownSeatIds.join(', ') }} เป็นของคุณอยู่แล้ว
@@ -48,7 +48,7 @@
     <!-- Booking note -->
     <div v-if="!readonly" class="flex items-start gap-2 px-4 py-3 rounded-2xl border"
       :class="isWomenOnly ? 'bg-pink-50/60 border-pink-100' : 'bg-accent-tint/60 border-accent/15'">
-      <span class="material-symbols-rounded text-[18px] shrink-0 mt-px" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'"
+      <span class="material-symbols-rounded text-[18px] shrink-0 mt-px" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'"
         style="font-variation-settings:'FILL' 1,'wght' 400">info</span>
       <span class="text-[11px] font-bold leading-relaxed" :class="isWomenOnly ? 'text-[#9d174d]' : 'text-[#0f5132]'">
         การจองหลายท่าน คือต้องเลือกหลายที่นั่ง ตามจำนวนคน
@@ -91,10 +91,10 @@
               <div class="w-12 h-12 rounded-2xl flex items-center justify-center border-2"
                 :class="isWomenOnly ? 'bg-pink-50 border-pink-200' : 'bg-accent-tint border-accent/25'">
                 <span class="material-symbols-rounded text-[20px]"
-                  :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'"
+                  :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'"
                   style="font-variation-settings:'FILL' 1,'wght' 400">{{ layoutConfig.staff_icon }}</span>
               </div>
-              <span class="text-[10px] font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'">สตาฟ</span>
+              <span class="text-[10px] font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'">สตาฟ</span>
             </div>
 
             <!-- Front passenger seat -->
@@ -132,7 +132,7 @@
           <!-- Front label -->
           <div class="flex-1 flex justify-center self-center">
             <span class="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase transition-colors duration-300"
-              :class="isWomenOnly ? 'bg-pink-50 text-[#db2777] border border-pink-100' : 'bg-accent-tint text-[#006565] border border-accent/15'">
+              :class="isWomenOnly ? 'bg-pink-50 text-[#db2777] border border-pink-100' : 'bg-accent-tint text-[var(--color-accent)] border border-accent/15'">
               {{ layoutConfig.front_label }}
             </span>
           </div>
@@ -229,7 +229,7 @@
       <span v-else class="text-[11px] font-bold text-gray-400">เลือกที่นั่งได้เลย</span>
     </div>
     <div v-else class="text-center text-sm text-gray-400">
-      ว่าง <span class="font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]'">{{ seatMap.available_seats }}</span> / {{ seatMap.total_seats }} ที่นั่ง
+      ว่าง <span class="font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'">{{ seatMap.available_seats }}</span> / {{ seatMap.total_seats }} ที่นั่ง
     </div>
   </div>
 </template>
@@ -305,7 +305,7 @@ function seatBgClass(seat) {
   if (isOwnBooking(seat)) {
     return props.isWomenOnly
       ? 'bg-pink-50 border-[#db2777] border-dashed'
-      : 'bg-accent-tint border-[#006565] border-dashed';
+      : 'bg-accent-tint border-[var(--color-accent)] border-dashed';
   }
   // ไฟจราจร: ว่าง = เขียว, จองแล้ว = แดง + ไอคอนล็อค — อ่านออกตั้งแต่ระยะสายตาแรก
   // โดยไม่ต้องอ่านคำอธิบายสี
@@ -313,12 +313,12 @@ function seatBgClass(seat) {
   if (isSelected(seat)) {
     return props.isWomenOnly
       ? 'bg-[#db2777] border-[#db2777] scale-105'
-      : 'bg-[#006565] border-[#006565] scale-105';
+      : 'bg-[var(--color-accent)] border-[var(--color-accent)] scale-105';
   }
   if (isOwnLock(seat)) {
     return props.isWomenOnly
       ? 'bg-pink-50 border-[#db2777] border-dashed group-hover:bg-pink-100'
-      : 'bg-accent-tint border-[#006565] border-dashed group-hover:bg-accent/10';
+      : 'bg-accent-tint border-[var(--color-accent)] border-dashed group-hover:bg-accent/10';
   }
   if (seat.status === 'locked') return 'bg-amber-50 border-amber-200';
   if (props.readonly) return 'bg-accent-tint border-accent/25';
@@ -327,20 +327,20 @@ function seatBgClass(seat) {
 
 function seatIconClass(seat) {
   if (!seat) return 'text-gray-200';
-  if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
+  if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]';
   if (seat.status === 'booked') return 'text-rose-400';
   if (isSelected(seat)) return 'text-white';
-  if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
+  if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]';
   if (seat.status === 'locked') return 'text-amber-400';
   return 'text-accent';
 }
 
 function seatLabelClass(seat) {
   if (!seat) return 'text-gray-300';
-  if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
+  if (isOwnBooking(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]';
   if (seat.status === 'booked') return 'text-rose-400';
-  if (isSelected(seat)) return props.isWomenOnly ? 'text-[#db2777] font-black' : 'text-[#006565] font-black';
-  if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]';
+  if (isSelected(seat)) return props.isWomenOnly ? 'text-[#db2777] font-black' : 'text-[var(--color-accent)] font-black';
+  if (isOwnLock(seat)) return props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]';
   if (seat.status === 'locked') return 'text-amber-500';
   if (props.readonly) return 'text-gray-400';
   return 'text-gray-400 group-hover:text-accent';
@@ -432,17 +432,17 @@ function handleSeatClick(seat) {
 // คำกำกับใต้ที่นั่งเหลือไว้เฉพาะที่นั่งของตัวเอง — เขียน "จองแล้ว" ใต้ที่นั่ง
 // ทุกที่ที่คนอื่นจองไป คือคำเดิมสิบรอบบนหน้าจอเดียว สถานะที่เหลือใช้สีกับไอคอนมุมบอก
 function seatStatusLabel(seat) {
-  if (isOwnBooking(seat)) return { text: 'คุณจองแล้ว', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]' };
-  if (isOwnLock(seat)) return { text: 'ของคุณ', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[#006565]' };
+  if (isOwnBooking(seat)) return { text: 'คุณจองแล้ว', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]' };
+  if (isOwnLock(seat)) return { text: 'ของคุณ', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]' };
   return null;
 }
 
 /// ไอคอนมุมที่นั่ง — แทนคำว่า "จองแล้ว" / "ล็อค" ที่เคยเขียนใต้ทุกที่นั่ง
 function seatBadge(seat) {
   if (!seat) return null;
-  if (isSelected(seat)) return { icon: 'check', class: 'bg-white text-[#006565]' };
+  if (isSelected(seat)) return { icon: 'check', class: 'bg-white text-[var(--color-accent)]' };
   if (isOwnBooking(seat) || isOwnLock(seat)) {
-    return { icon: 'person', class: props.isWomenOnly ? 'bg-[#db2777] text-white' : 'bg-[#006565] text-white' };
+    return { icon: 'person', class: props.isWomenOnly ? 'bg-[#db2777] text-white' : 'bg-[var(--color-accent)] text-white' };
   }
   if (seat.status === 'booked') return { icon: 'lock', class: 'bg-rose-500 text-white' };
   if (seat.status === 'locked') return { icon: 'schedule', class: 'bg-amber-400 text-white' };

@@ -1,23 +1,22 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32 font-anuphan">
-    <div class="max-w-2xl mx-auto px-4 sm:px-6">
-
-      <section class="mb-6">
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2" style="font-family:'DB Heavent','Anuphan',sans-serif;">
-          พาร์ทเนอร์ช่วยขาย
-        </h1>
-        <p class="text-[#505E5E] text-sm">แชร์ลิงก์ของคุณ ลูกค้าจองและจ่ายเงินกับเราโดยตรง คุณได้ค่าคอมเมื่อทริปเดินทางจริง</p>
-      </section>
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32 font-anuphan">
+    <PageHeader
+      title="พาร์ทเนอร์ช่วยขาย"
+      subtitle="แชร์ลิงก์ของคุณ ลูกค้าจองและจ่ายเงินกับเราโดยตรง คุณได้ค่าคอมเมื่อทริปเดินทางจริง"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-2xl px-4 sm:px-6"
+    />
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-8">
 
       <div v-if="loading" class="flex justify-center py-24">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
       </div>
 
       <div v-else-if="!data" class="bg-white rounded-[20px] border border-[#E8EEEF] p-8 text-center">
         <span class="material-symbols-rounded text-[40px] text-[#889696]">handshake</span>
         <p class="mt-2 font-bold text-[#1a1c1c]">บัญชีนี้ยังไม่ได้เป็นพาร์ทเนอร์</p>
         <p class="mt-1 text-sm text-[#505E5E]">อยากช่วยขายทริปและรับค่าคอม ทักทีมงานได้เลยครับ</p>
-        <router-link to="/contact" class="mt-4 inline-flex rounded-full bg-[#006565] px-5 py-2.5 text-sm font-bold text-white">ติดต่อทีมงาน</router-link>
+        <router-link to="/contact" class="mt-4 inline-flex rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-bold text-white">ติดต่อทีมงาน</router-link>
       </div>
 
       <template v-else>
@@ -141,6 +140,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { computed, onMounted, ref } from 'vue';
 import api from '../lib/axios';
 import { useToast } from '../lib/toast';

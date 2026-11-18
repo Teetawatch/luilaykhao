@@ -6,7 +6,7 @@
           <h1 class="text-3xl font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ตารางงานสตาฟของฉัน</h1>
           <p class="text-sm text-[#505E5E]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ดูว่าคุณได้รับมอบหมายให้ดูแลทริปไหน วันไหนบ้าง</p>
         </div>
-        <button class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#D7E0E1] text-[#006565] font-semibold text-sm hover:bg-[#F7FBFB]" @click="loadData" :disabled="loading" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
+        <button class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#D7E0E1] text-[var(--color-accent)] font-semibold text-sm hover:bg-[#F7FBFB]" @click="loadData" :disabled="loading" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
           <span class="material-symbols-rounded text-[18px]">refresh</span>
           รีเฟรช
         </button>
@@ -24,14 +24,14 @@
         <div class="bg-white border border-[#E8EEEF] rounded-2xl p-4">
           <div class="text-xs text-[#889696] font-bold uppercase mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">จำนวนรีวิวที่ได้รับ</div>
           <div class="flex items-center gap-2">
-            <span class="material-symbols-rounded text-[#006565]">reviews</span>
+            <span class="material-symbols-rounded text-[var(--color-accent)]">reviews</span>
             <span class="text-2xl font-bold text-[#1a1c1c]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ summary.total_reviews || 0 }}</span>
           </div>
         </div>
       </div>
 
       <div v-if="loading" class="flex justify-center py-20">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
       </div>
 
       <div v-else-if="!isStaff" class="bg-white rounded-2xl border border-[#E8EEEF] p-10 text-center">
@@ -58,21 +58,21 @@
 
           <div class="grid sm:grid-cols-3 gap-3 text-sm text-[#334155]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             <div class="info-box">
-              <span class="material-symbols-rounded text-[18px] text-[#006565]">event</span>
+              <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">event</span>
               <div>
                 <div class="text-[#889696] text-xs font-bold uppercase">วันเดินทาง</div>
                 <div class="font-semibold">{{ formatDate(sch.departure_date) }}</div>
               </div>
             </div>
             <div class="info-box">
-              <span class="material-symbols-rounded text-[18px] text-[#006565]">event_repeat</span>
+              <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">event_repeat</span>
               <div>
                 <div class="text-[#889696] text-xs font-bold uppercase">วันกลับ</div>
                 <div class="font-semibold">{{ formatDate(sch.return_date) }}</div>
               </div>
             </div>
             <div class="info-box">
-              <span class="material-symbols-rounded text-[18px] text-[#006565]">airport_shuttle</span>
+              <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">airport_shuttle</span>
               <div>
                 <div class="text-[#889696] text-xs font-bold uppercase">พาหนะ</div>
                 <div class="font-semibold">{{ sch.vehicle?.name || sch.transport_type || '-' }}</div>

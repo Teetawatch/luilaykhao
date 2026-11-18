@@ -3,7 +3,7 @@
     <div class="max-w-lg mx-auto px-4 sm:px-6">
 
       <div v-if="loading" class="flex justify-center py-24">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
       </div>
 
       <!-- ลิงก์ไม่มีอยู่ -->
@@ -12,14 +12,14 @@
         <h1 class="text-xl font-black text-[#1a1c1c] mt-3 mb-2">ใช้ลิงก์นี้ไม่ได้</h1>
         <p class="text-sm text-[#505E5E] leading-relaxed mb-6">{{ notFound }}</p>
         <router-link to="/"
-          class="inline-flex items-center gap-1.5 bg-[#006565] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
+          class="inline-flex items-center gap-1.5 bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
           <span class="material-symbols-rounded text-[18px]">home</span> กลับหน้าแรก
         </router-link>
       </div>
 
       <template v-else-if="preview">
         <section class="mb-6">
-          <p class="text-xs font-bold text-[#006565] tracking-wider mb-1">ส่งต่อที่นั่ง</p>
+          <p class="text-xs font-bold text-[var(--color-accent)] tracking-wider mb-1">ส่งต่อที่นั่ง</p>
           <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight" style="font-family:'DB Heavent','Anuphan',sans-serif;">
             {{ preview.from_name }} ส่งที่นั่งให้คุณ
           </h1>
@@ -33,22 +33,22 @@
             <h2 class="text-lg font-black text-[#1a1c1c] leading-snug mb-3">{{ preview.trip?.title || 'ทริป' }}</h2>
             <div class="space-y-2 text-sm font-bold text-[#505E5E]">
               <p class="flex items-start gap-2">
-                <span class="material-symbols-rounded text-[18px] text-[#006565]">event</span>
+                <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">event</span>
                 <span>
                   {{ preview.schedule?.departure_label }}
                   <span v-if="preview.schedule?.early_departure_label" class="block text-[#B45309]">{{ preview.schedule.early_departure_label }}</span>
                 </span>
               </p>
               <p v-if="preview.seat_label" class="flex items-center gap-2">
-                <span class="material-symbols-rounded text-[18px] text-[#006565]">event_seat</span>
+                <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">event_seat</span>
                 ที่นั่ง {{ preview.seat_label }}
               </p>
               <p v-if="preview.pickup" class="flex items-start gap-2">
-                <span class="material-symbols-rounded text-[18px] text-[#006565]">location_on</span>
+                <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">location_on</span>
                 <span>
                   ขึ้นรถที่ {{ preview.pickup.label }}<template v-if="preview.pickup.time"> · {{ preview.pickup.time }} น.</template>
                   <a v-if="preview.pickup.map_url" :href="preview.pickup.map_url" target="_blank" rel="noopener"
-                    class="block text-[#006565] underline font-semibold">ดูแผนที่</a>
+                    class="block text-[var(--color-accent)] underline font-semibold">ดูแผนที่</a>
                 </span>
               </p>
             </div>
@@ -73,7 +73,7 @@
         <div v-if="!preview.claimable" class="bg-white rounded-[20px] border border-[#FDE68A] p-5 text-center">
           <p class="text-sm font-bold text-[#B45309]">{{ preview.blocked_reason }}</p>
           <router-link v-if="preview.claimed_by_viewer" to="/my-bookings"
-            class="inline-flex items-center gap-1.5 mt-4 bg-[#006565] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
+            class="inline-flex items-center gap-1.5 mt-4 bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
             ไปที่การจองของฉัน
           </router-link>
         </div>
@@ -211,7 +211,7 @@
               <button v-for="opt in [{ v: false, t: 'ไม่ต้องการ' }, { v: true, t: 'ต้องการ' }]" :key="opt.t" type="button"
                 @click="form.halal_food = opt.v"
                 class="flex-1 py-2.5 rounded-[12px] border text-sm font-bold"
-                :class="form.halal_food === opt.v ? 'border-[#006565] bg-[#F0FAFA] text-[#006565]' : 'border-[#D5DEDE] text-[#505E5E]'">
+                :class="form.halal_food === opt.v ? 'border-[var(--color-accent)] bg-[#F0FAFA] text-[var(--color-accent)]' : 'border-[#D5DEDE] text-[#505E5E]'">
                 {{ opt.t }}
               </button>
             </div>
@@ -228,10 +228,10 @@
           </div>
 
           <label class="flex items-start gap-3 text-[13px] text-[#1a1c1c]">
-            <input type="checkbox" v-model="form.accept_terms" class="mt-0.5 w-4 h-4 accent-[#006565]" />
+            <input type="checkbox" v-model="form.accept_terms" class="mt-0.5 w-4 h-4 accent-[var(--color-accent)]" />
             <span>
               ฉันอ่านและยอมรับ
-              <a :href="preview.terms?.url" target="_blank" rel="noopener" class="text-[#006565] underline font-bold">เงื่อนไขการเดินทาง</a>
+              <a :href="preview.terms?.url" target="_blank" rel="noopener" class="text-[var(--color-accent)] underline font-bold">เงื่อนไขการเดินทาง</a>
               ของลุยเลเขา
             </span>
           </label>
@@ -241,7 +241,7 @@
           <p v-if="formError" class="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] p-3">{{ formError }}</p>
 
           <button type="submit" :disabled="submitting || !form.accept_terms"
-            class="w-full bg-[#006565] hover:bg-[#005252] disabled:opacity-60 text-white py-3.5 rounded-full font-extrabold text-sm flex items-center justify-center gap-2 transition">
+            class="w-full bg-[var(--color-accent)] hover:bg-[#005252] disabled:opacity-60 text-white py-3.5 rounded-full font-extrabold text-sm flex items-center justify-center gap-2 transition">
             <span v-if="submitting" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
             <span v-else class="material-symbols-rounded text-[20px]">how_to_reg</span>
             {{ submitting ? 'กำลังรับที่นั่ง...' : 'รับที่นั่งนี้' }}
@@ -389,8 +389,8 @@ onMounted(async () => {
 <style scoped>
 .lbl { display: block; font-size: 0.875rem; font-weight: 700; color: #1a1c1c; margin-bottom: 0.375rem; }
 .inp { width: 100%; border-radius: 12px; border: 1px solid #D5DEDE; padding: 0.625rem 0.75rem; font-size: 0.875rem; background: #fff; }
-.inp:focus { border-color: #006565; outline: none; }
+.inp:focus { border-color: var(--color-accent); outline: none; }
 .inp.err { border-color: #F87171; }
-.inp.doc-picked { border-color: #006565; background: #E6F2F2; color: #006565; }
+.inp.doc-picked { border-color: var(--color-accent); background: #E6F2F2; color: var(--color-accent); }
 .msg { font-size: 0.75rem; color: #DC2626; margin-top: -0.5rem; }
 </style>

@@ -1,28 +1,23 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6">
-
-      <!-- หัวหน้า -->
-      <section class="mb-6">
-        <p class="text-[11px] font-extrabold tracking-[2px] text-[#006565] uppercase mb-2">ปฏิทินทริป</p>
-        <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight mb-2">
-          ทริปเดือน{{ data.month_label || '' }}
-        </h1>
-        <p class="text-[#505E5E] text-sm">
-          ทุกรอบที่เปิดจองในเดือนนี้ พร้อมวันว่างและราคา กดเข้าไปจองได้เลย
-        </p>
-
-        <div class="flex flex-wrap gap-2 mt-4">
-          <button type="button" class="cal-action cal-action--solid" @click="share">
-            <span class="material-symbols-rounded text-[18px]">ios_share</span>
-            ส่งลิงก์นี้ต่อ
-          </button>
-          <button type="button" class="cal-action" @click="copyText">
-            <span class="material-symbols-rounded text-[18px]">content_copy</span>
-            ก๊อปรายการทริปเป็นข้อความ
-          </button>
-        </div>
-      </section>
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32">
+    <PageHeader
+      :title="`ทริปเดือน${data.month_label || ''}`"
+      crumb-label="ปฏิทินทริป"
+      subtitle="ทุกรอบที่เปิดจองในเดือนนี้ พร้อมวันว่างและราคา กดเข้าไปจองได้เลย"
+      container="max-w-4xl px-4 sm:px-6"
+    >
+      <template #actions>
+        <button type="button" class="ph-btn ph-btn--solid" @click="share">
+          <span class="material-symbols-rounded icon-18">ios_share</span>
+          ส่งลิงก์นี้ต่อ
+        </button>
+        <button type="button" class="ph-btn" @click="copyText">
+          <span class="material-symbols-rounded icon-18">content_copy</span>
+          ก๊อปรายการเป็นข้อความ
+        </button>
+      </template>
+    </PageHeader>
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 pt-8">
 
       <!-- เลือกเดือน -->
       <div class="flex gap-2 overflow-x-auto scrollbar-none pb-1 mb-6">
@@ -79,7 +74,7 @@
                 <p class="font-bold text-[#1a1c1c] text-sm leading-snug truncate">{{ round.trip.title }}</p>
                 <p class="text-[11.5px] text-[#505E5E] mt-0.5 truncate">{{ round.date_label }}</p>
                 <p class="mt-1.5 text-sm">
-                  <span class="font-extrabold text-[#006565]">{{ baht(round.price) }}</span>
+                  <span class="font-extrabold text-[var(--color-accent)]">{{ baht(round.price) }}</span>
                   <span v-if="round.original_price" class="text-[11.5px] text-[#96A5A5] line-through ml-1.5">
                     {{ baht(round.original_price) }}
                   </span>
@@ -114,7 +109,7 @@
               class="bg-white rounded-[20px] border border-[#E8EEEF] overflow-hidden"
             >
               <div class="flex items-center gap-2 px-4 pt-3.5 pb-1">
-                <span class="text-[13px] font-extrabold text-[#006565]">{{ day.date_label }}</span>
+                <span class="text-[13px] font-extrabold text-[var(--color-accent)]">{{ day.date_label }}</span>
                 <span class="text-[11.5px] text-[#96A5A5]">{{ day.weekday }}</span>
               </div>
 
@@ -148,7 +143,7 @@
                 </div>
 
                 <div class="text-right shrink-0">
-                  <p class="font-extrabold text-[#006565] text-sm">{{ baht(round.price) }}</p>
+                  <p class="font-extrabold text-[var(--color-accent)] text-sm">{{ baht(round.price) }}</p>
                   <p v-if="round.original_price" class="text-[11px] text-[#96A5A5] line-through">
                     {{ baht(round.original_price) }}
                   </p>
@@ -179,6 +174,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useHead } from '@unhead/vue';
@@ -288,8 +284,8 @@ watch(() => route.params.month, load, { immediate: true });
   color: #1a1c1c;
 }
 .cal-action--solid {
-  background: #006565;
-  border-color: #006565;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #fff;
 }
 .cal-month {
@@ -303,8 +299,8 @@ watch(() => route.params.month, load, { immediate: true });
   color: #505E5E;
 }
 .cal-month--on {
-  background: #006565;
-  border-color: #006565;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: #fff;
 }
 .cal-flag {

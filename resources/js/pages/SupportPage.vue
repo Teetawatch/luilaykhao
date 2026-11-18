@@ -1,16 +1,14 @@
 <template>
-  <div class="font-anuphan bg-[var(--color-sand)] min-h-screen py-8 md:py-12 px-4 md:px-8">
-    <div class="max-w-3xl mx-auto">
+  <div class="font-anuphan bg-[var(--color-sand)] min-h-screen pb-8 md:pb-12">
+    <PageHeader
+      title="ศูนย์ช่วยเหลือ"
+      subtitle="คุยกับทีมงานได้ที่นี่ ข้อความอยู่ในเธรดเดียวกันทั้งหมด ทีมงานเห็นประวัติการจองของคุณอยู่แล้ว ไม่ต้องเล่าใหม่ทุกครั้ง"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-3xl px-4 sm:px-6"
+    />
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-6 md:pt-8">
 
-      <header class="mb-6">
-        <h1 class="text-2xl md:text-3xl font-extrabold text-text-dark">ศูนย์ช่วยเหลือ</h1>
-        <p class="mt-2 text-text-muted leading-relaxed">
-          คุยกับทีมงานได้ที่นี่ ข้อความอยู่ในเธรดเดียวกันทั้งหมด ทีมงานเห็นประวัติการจองของคุณอยู่แล้ว
-          ไม่ต้องเล่าใหม่ทุกครั้ง
-        </p>
-      </header>
-
-      <div class="bg-white rounded-[2rem] border border-sand-dark/30 overflow-hidden flex flex-col h-[calc(100vh-16rem)] min-h-[26rem]">
+      <div class="bg-white rounded-[2rem] border border-sand-dark/30 overflow-hidden flex flex-col h-[calc(100vh-20rem)] min-h-[26rem]">
 
         <!-- Thread -->
         <div ref="threadEl" class="flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-3">
@@ -107,6 +105,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../lib/axios';
 import { useToast } from '../lib/toast';

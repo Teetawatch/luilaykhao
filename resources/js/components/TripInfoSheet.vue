@@ -19,7 +19,7 @@
             :key="t.key"
             @click="active = t.key"
             class="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-1.5 py-2 rounded-[12px] text-[13px] font-bold whitespace-nowrap transition-all"
-            :class="active === t.key ? 'bg-[#006565] text-white' : 'bg-[#F4F7F6] text-[#505E5E] hover:bg-[#E8EEEF]'"
+            :class="active === t.key ? 'bg-[var(--color-accent)] text-white' : 'bg-[#F4F7F6] text-[#505E5E] hover:bg-[#E8EEEF]'"
             style="font-family:'DB Heavent', 'Anuphan',sans-serif;"
           >
             <span class="material-symbols-rounded ti-icon ti-icon-tab">{{ t.icon }}</span>
@@ -37,7 +37,7 @@
 
       <div class="flex-1 overflow-y-auto px-4 py-4" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
         <div v-if="loading" class="flex justify-center py-10">
-          <div class="w-7 h-7 border-[3px] border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+          <div class="w-7 h-7 border-[3px] border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
         </div>
 
         <p v-else-if="errorMsg" class="text-sm text-[#505E5E] text-center py-10">{{ errorMsg }}</p>
@@ -68,7 +68,7 @@
                 <div v-for="(item, ii) in group.items" :key="ii" class="flex gap-3">
                   <span
                     class="shrink-0 w-[52px] pt-0.5 text-[12px] font-bold tabular-nums"
-                    :class="item.time ? 'text-[#006565]' : 'text-[#C4CFCF]'"
+                    :class="item.time ? 'text-[var(--color-accent)]' : 'text-[#C4CFCF]'"
                   >{{ item.time || '—' }}</span>
                   <div class="flex-1 min-w-0 pb-2.5 border-b border-[#F0F4F4]">
                     <p class="text-[13.5px] font-medium text-[#1a1c1c] leading-relaxed">{{ item.title }}</p>
@@ -82,8 +82,8 @@
 
         <!-- ── จุดรับ ─────────────────────────────────────────────────── -->
         <template v-else-if="active === 'pickup'">
-          <div v-if="info.pickup" class="p-4 rounded-[16px] border border-[#006565]/25 bg-[#006565]/[0.04] mb-4">
-            <p class="text-[11px] font-bold text-[#006565] mb-1">จุดรับของคุณ</p>
+          <div v-if="info.pickup" class="p-4 rounded-[16px] border border-[var(--color-accent)]/25 bg-[var(--color-accent)]/[0.04] mb-4">
+            <p class="text-[11px] font-bold text-[var(--color-accent)] mb-1">จุดรับของคุณ</p>
             <p class="text-[15px] font-bold text-[#1a1c1c] leading-snug">{{ info.pickup.location }}</p>
             <p v-if="info.pickup.time" class="text-[13px] text-[#505E5E] mt-1">
               พร้อมกันเวลา {{ info.pickup.time }} น.
@@ -94,7 +94,7 @@
               :href="info.pickup.map_url"
               target="_blank"
               rel="noopener"
-              class="inline-flex items-center gap-1.5 mt-3 px-3.5 py-2 rounded-full bg-[#006565] text-white text-[12.5px] font-bold"
+              class="inline-flex items-center gap-1.5 mt-3 px-3.5 py-2 rounded-full bg-[var(--color-accent)] text-white text-[12.5px] font-bold"
             >
               <span class="material-symbols-rounded ti-icon ti-icon-map">location_on</span> เปิดแผนที่
             </a>
@@ -118,7 +118,7 @@
           <p v-if="!info.meals" class="text-sm text-[#505E5E] text-center py-10">{{ pendingCopy('meals') }}</p>
 
           <template v-else>
-            <div class="p-4 rounded-[16px] border border-[#006565]/25 bg-[#006565]/[0.04] mb-4">
+            <div class="p-4 rounded-[16px] border border-[var(--color-accent)]/25 bg-[var(--color-accent)]/[0.04] mb-4">
               <p class="text-[15px] font-bold text-[#1a1c1c] leading-snug">{{ info.meals.summary }}</p>
               <p v-if="info.meals.self_count > 0" class="text-[12.5px] text-[#505E5E] mt-1">
                 มื้อที่จ่ายเองมีแวะให้ แต่ค่าอาหารไม่รวมในราคาทริป
@@ -218,7 +218,7 @@ function pendingCopy(key) {
 
 /** สีของสถานะมื้อ — เขียว = รวมให้แล้ว, เหลือง = ต้องจ่ายเอง, เทา = ไม่มี */
 function mealTone(status) {
-  if (status === 'included') return 'text-[#006565]';
+  if (status === 'included') return 'text-[var(--color-accent)]';
   if (status === 'self') return 'text-[#B45309]';
   return 'text-[#889696]';
 }

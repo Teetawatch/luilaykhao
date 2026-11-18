@@ -19,7 +19,7 @@
 
         <div class="p-5 space-y-4 overflow-y-auto">
           <div v-if="loading" class="flex justify-center py-12">
-            <div class="w-8 h-8 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+            <div class="w-8 h-8 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
           </div>
 
           <p v-else-if="loadError" class="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] p-3">{{ loadError }}</p>
@@ -67,12 +67,12 @@
                 <p class="text-[11px] text-[#889696]">ลิงก์ใช้ได้ถึง {{ formatDateTime(seat.open_handover.expires_at) }} · ใช้ได้คนเดียว</p>
                 <div class="flex gap-2">
                   <button @click="share(seat)"
-                    class="flex-1 py-2.5 rounded-[12px] bg-[#006565] text-white text-sm font-bold hover:bg-[#005252] flex items-center justify-center gap-1.5">
+                    class="flex-1 py-2.5 rounded-[12px] bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[#005252] flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[18px]">share</span>
                     ส่งลิงก์
                   </button>
                   <button @click="copy(seat.open_handover.url)"
-                    class="px-4 py-2.5 rounded-[12px] border border-[#BCDFDF] text-[#006565] text-sm font-bold hover:bg-[#F0FAFA]">
+                    class="px-4 py-2.5 rounded-[12px] border border-[#BCDFDF] text-[var(--color-accent)] text-sm font-bold hover:bg-[#F0FAFA]">
                     คัดลอก
                   </button>
                   <button @click="cancel(seat)" :disabled="busy === seat.passenger_id"
@@ -89,7 +89,7 @@
                     class="flex items-start gap-3 rounded-[12px] border border-[#E8EEEF] p-3"
                     :class="ownershipDisabled(seat) ? 'opacity-60' : 'cursor-pointer'">
                     <input type="checkbox" v-model="draft.transfers_ownership" :disabled="ownershipDisabled(seat)"
-                      class="mt-0.5 w-4 h-4 accent-[#006565]" />
+                      class="mt-0.5 w-4 h-4 accent-[var(--color-accent)]" />
                     <span class="text-[13px] text-[#1a1c1c]">
                       <span class="font-bold block">นี่คือที่นั่งของฉันเอง</span>
                       <span class="text-[#505E5E]">คนรับจะได้ดูแลการจองนี้แทนคุณ (แชท วันเดินทาง การชำระเงิน) และการจองจะออกจากบัญชีของคุณ</span>
@@ -99,7 +99,7 @@
                   <label class="block">
                     <span class="block text-sm font-bold text-[#1a1c1c] mb-1.5">ฝากข้อความถึงคนรับ (ไม่บังคับ)</span>
                     <textarea v-model="draft.note" maxlength="300" rows="2" placeholder="เช่น ฝากไปแทนด้วยนะ ค่าที่นั่งโอนมาที่เราได้เลย"
-                      class="w-full rounded-[12px] border border-[#D5DEDE] px-3 py-2.5 text-sm focus:border-[#006565] focus:outline-none"></textarea>
+                      class="w-full rounded-[12px] border border-[#D5DEDE] px-3 py-2.5 text-sm focus:border-[var(--color-accent)] focus:outline-none"></textarea>
                   </label>
                   <div class="flex gap-2">
                     <button @click="draftFor = null"
@@ -107,14 +107,14 @@
                       ยกเลิก
                     </button>
                     <button @click="create(seat)" :disabled="busy === seat.passenger_id"
-                      class="flex-1 py-2.5 rounded-[12px] bg-[#006565] text-white text-sm font-bold hover:bg-[#005252] disabled:opacity-50 flex items-center justify-center gap-2">
+                      class="flex-1 py-2.5 rounded-[12px] bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[#005252] disabled:opacity-50 flex items-center justify-center gap-2">
                       <span v-if="busy === seat.passenger_id" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
                       สร้างลิงก์ส่งต่อ
                     </button>
                   </div>
                 </div>
                 <button v-else @click="openDraft(seat)"
-                  class="mt-3 w-full py-2.5 rounded-[12px] border border-[#BCDFDF] text-[#006565] text-sm font-bold hover:bg-[#F0FAFA] flex items-center justify-center gap-1.5">
+                  class="mt-3 w-full py-2.5 rounded-[12px] border border-[#BCDFDF] text-[var(--color-accent)] text-sm font-bold hover:bg-[#F0FAFA] flex items-center justify-center gap-1.5">
                   <span class="material-symbols-rounded text-[18px]">swap_horiz</span>
                   ส่งต่อที่นั่งนี้
                 </button>

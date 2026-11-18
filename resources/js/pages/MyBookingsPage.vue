@@ -1,25 +1,20 @@
 <template>
-  <div class="min-h-screen bg-[#F4F7F6] pt-8 pb-32 font-anuphan relative overflow-hidden">
+  <div class="min-h-screen bg-[var(--color-sand)] pb-32 font-anuphan relative overflow-hidden">
+    <PageHeader
+      title="การจองของฉัน"
+      subtitle="ดูสถานะการจอง ชำระเงินงวดถัดไป และตั๋วเดินทางของทุกทริปได้ที่นี่"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-4xl px-4 sm:px-6"
+    >
+      <template #actions>
+        <router-link to="/trips" class="ph-btn ph-btn--solid">
+          <span class="material-symbols-rounded icon-18">explore</span>
+          จองทริปใหม่
+        </router-link>
+      </template>
+    </PageHeader>
 
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
-
-      <!-- Page Header -->
-      <section class="mb-8">
-        <div class="flex items-center gap-4">
-          <div class="w-14 h-14 rounded-[18px] bg-[#006565] flex items-center justify-center shrink-0">
-            <span class="material-symbols-rounded text-white text-[30px]" style="font-variation-settings:'FILL' 1">luggage</span>
-          </div>
-          <div>
-            <p class="text-[11px] font-bold text-[#008080] uppercase tracking-[0.18em] mb-1">แผนการเดินทางของคุณ</p>
-            <h1 class="text-3xl md:text-4xl font-bold text-[#1a1c1c] tracking-tight leading-none">
-              การจองของฉัน
-            </h1>
-          </div>
-        </div>
-        <p class="text-[#505E5E] text-sm mt-3.5 ml-[4.5rem]">
-          จัดการแผนการเดินทางที่แสนพิเศษของคุณได้ที่นี่
-        </p>
-      </section>
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 pt-8 relative z-10">
 
       <!-- คิวรอที่นั่งของฉัน -->
       <MyWaitlist />
@@ -30,8 +25,8 @@
           @click="activeTab = 'upcoming'"
           class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
           :class="activeTab === 'upcoming'
-            ? 'bg-[#006565] text-white'
-            : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'">
+            ? 'bg-[var(--color-accent)] text-white'
+            : 'text-[#505E5E] hover:text-[var(--color-accent)] hover:bg-[#F4F7F6]'">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'upcoming' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">event_upcoming</span>
           ที่กำลังจะมาถึง
           <span v-if="upcomingCount" class="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center"
@@ -41,8 +36,8 @@
           @click="activeTab = 'past'"
           class="px-5 py-2.5 text-sm font-bold rounded-[12px] transition-all duration-300 flex items-center gap-2"
           :class="activeTab === 'past'
-            ? 'bg-[#006565] text-white'
-            : 'text-[#505E5E] hover:text-[#006565] hover:bg-[#F4F7F6]'">
+            ? 'bg-[var(--color-accent)] text-white'
+            : 'text-[#505E5E] hover:text-[var(--color-accent)] hover:bg-[#F4F7F6]'">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'past' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">history</span>
           ที่ผ่านมาแล้ว
           <span v-if="pastCount" class="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center"
@@ -52,7 +47,7 @@
 
       <!-- Loading -->
       <div v-if="bookingStore.loading" class="flex flex-col items-center justify-center py-24 space-y-4">
-        <div class="w-10 h-10 border-4 border-[#006565]/20 border-t-[#006565] rounded-full animate-spin"></div>
+        <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
         <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดข้อมูลการจอง...</p>
       </div>
 
@@ -71,7 +66,7 @@
                 : 'คุณยังไม่เคยเดินทางกับเรามาก่อน ลองดูทริปที่น่าสนใจสิ' }}
           </p>
           <router-link to="/trips"
-             class="inline-flex items-center gap-2 bg-[#006565] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[#004f4f] transition-all">
+             class="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[var(--color-accent-mid)] transition-all">
             <span class="material-symbols-rounded text-[20px]">explore</span>
             เริ่มค้นหากิจกรรม
             <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
@@ -84,10 +79,10 @@
         <article
           v-for="b in filteredBookings"
           :key="b.id"
-          class="bg-white rounded-[24px] overflow-hidden flex flex-col md:flex-row group border border-[#E8EEEF] transition-all duration-300 hover:border-[#006565]/25 hover:-translate-y-0.5 relative"
+          class="bg-white rounded-[24px] overflow-hidden flex flex-col md:flex-row group border border-[#E8EEEF] transition-all duration-300 hover:border-[var(--color-accent)]/25 hover:-translate-y-0.5 relative"
           :class="{ 'opacity-80': b.status === 'cancelled' || b.status === 'refunded' }">
 
-          <div class="absolute top-0 left-0 w-1.5 h-full bg-[#006565] z-20" v-if="b.status === 'confirmed'"></div>
+          <div class="absolute top-0 left-0 w-1.5 h-full bg-[var(--color-accent)] z-20" v-if="b.status === 'confirmed'"></div>
           <div class="absolute top-0 left-0 w-1.5 h-full bg-[#D97706] z-20" v-if="b.status === 'pending'"></div>
 
           <!-- Image -->
@@ -101,7 +96,7 @@
 
             <!-- Date Badge on Image -->
             <div class="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-[14px] flex flex-col items-center leading-none">
-              <span class="text-[10px] font-bold text-[#008080] uppercase tracking-wide mb-0.5">{{ getMonthShort(b.schedule?.departure_date) }}</span>
+              <span class="text-[10px] font-bold text-[var(--color-accent)] uppercase tracking-wide mb-0.5">{{ getMonthShort(b.schedule?.departure_date) }}</span>
               <span class="text-xl font-extrabold text-[#1a1c1c]">{{ getDay(b.schedule?.departure_date) }}</span>
             </div>
 
@@ -114,7 +109,7 @@
           <!-- Content -->
           <div class="p-5 md:p-6 flex-1 flex flex-col relative w-full">
             <div class="flex flex-col sm:flex-row justify-between items-start mb-3 gap-3">
-              <h2 class="hidden md:block text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[#006565]">
+              <h2 class="hidden md:block text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[var(--color-accent)]">
                 {{ b.schedule?.trip?.title || 'การจอง' }}
               </h2>
               <div class="flex flex-col items-start sm:items-end gap-2 shrink-0 w-full sm:w-auto">
@@ -135,7 +130,7 @@
               <div class="flex items-center justify-between text-[13px] text-[#505E5E]">
                 <div class="flex items-center gap-2.5">
                   <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-[#E8EEEF] shrink-0">
-                    <span class="material-symbols-rounded text-[16px] text-[#006565]">calendar_month</span>
+                    <span class="material-symbols-rounded text-[16px] text-[var(--color-accent)]">calendar_month</span>
                   </div>
                   <span class="font-medium text-[#1a1c1c]" :class="{ 'line-through text-[#889696]': awaitsNewRound(b) }">{{ formatDate(b.schedule?.departure_date) }}</span>
                   <span v-if="awaitsNewRound(b)" class="text-[11px] font-bold text-[#B45309]">รอบนี้ยกเลิก</span>
@@ -151,8 +146,8 @@
             <div class="mb-5">
               <div class="flex justify-between items-end">
                 <div class="text-[11px] font-bold text-[#889696] uppercase tracking-wide">ยอดชำระ</div>
-                <div class="text-xl md:text-2xl font-bold text-[#006565] tracking-tight">
-                  <span class="text-sm text-[#006565] mr-0.5">฿</span>{{ Number(b.total_amount).toLocaleString() }}
+                <div class="text-xl md:text-2xl font-bold text-[var(--color-accent)] tracking-tight">
+                  <span class="text-sm text-[var(--color-accent)] mr-0.5">฿</span>{{ Number(b.total_amount).toLocaleString() }}
                 </div>
               </div>
 
@@ -237,7 +232,7 @@
               <router-link
                 v-if="b.status !== 'pending'"
                 :to="`/confirmation/${b.booking_ref}`"
-                class="flex-1 text-center bg-[#006565] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#004f4f] transition-all flex items-center justify-center gap-1.5">
+                class="flex-1 text-center bg-[var(--color-accent)] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[var(--color-accent-mid)] transition-all flex items-center justify-center gap-1.5">
                 <span v-if="b.status === 'confirmed'" class="material-symbols-rounded text-[18px]">confirmation_number</span>
                 <span v-else class="material-symbols-rounded text-[18px]">visibility</span>
                 {{ b.status === 'confirmed' ? 'ดาวน์โหลดตั๋ว' : 'ดูรายละเอียด' }}
@@ -275,7 +270,7 @@
               <router-link
                 v-if="activeTab === 'past' && b.status === 'completed'"
                 to="/my-reviews"
-                class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
+                class="flex-1 text-center border-2 border-[var(--color-accent)] text-[var(--color-accent)] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">star</span>
                 เขียนรีวิว
               </router-link>
@@ -283,7 +278,7 @@
               <router-link
                 v-if="b.status === 'confirmed'"
                 :to="{ name: 'trip-chat', params: { scheduleId: b.schedule.id }, query: { title: b.schedule?.trip?.title, date: b.schedule?.departure_date } }"
-                class="flex-1 text-center border-2 border-[#006565] text-[#006565] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
+                class="flex-1 text-center border-2 border-[var(--color-accent)] text-[var(--color-accent)] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">chat</span>
                 แชท
               </router-link>
@@ -306,7 +301,7 @@
               <button
                 v-if="b.can_reschedule && !awaitsNewRound(b) && b.viewer_is_owner !== false"
                 @click="openReschedule(b)"
-                class="flex-1 sm:flex-none bg-white text-[#006565] border border-[#BCDFDF] hover:bg-[#F0FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
+                class="flex-1 sm:flex-none bg-white text-[var(--color-accent)] border border-[#BCDFDF] hover:bg-[#F0FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">event_repeat</span>
                 เปลี่ยนวันเดินทาง
               </button>
@@ -322,7 +317,7 @@
               <button
                 v-if="b.seat_handover?.available"
                 @click="handoverTarget = b"
-                class="flex-1 sm:flex-none bg-white text-[#006565] border border-[#BCDFDF] hover:bg-[#F0FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
+                class="flex-1 sm:flex-none bg-white text-[var(--color-accent)] border border-[#BCDFDF] hover:bg-[#F0FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">swap_horiz</span>
                 ส่งต่อที่นั่ง
                 <span v-if="b.seat_handover.open_count > 0"
@@ -376,7 +371,7 @@
               :aria-current="page === currentPage ? 'page' : undefined"
               class="w-9 h-9 rounded-[10px] text-sm font-bold transition-all"
               :class="page === currentPage
-                ? 'bg-[#006565] text-white'
+                ? 'bg-[var(--color-accent)] text-white'
                 : 'bg-white border border-[#E8EEEF] text-[#505E5E] hover:bg-[#F9FAFA]'">
               {{ page }}
             </button>
@@ -425,7 +420,7 @@
                   type="button"
                   @click="staffReviewForm.rating = score"
                   class="h-10 rounded-xl border text-sm font-bold transition"
-                  :class="staffReviewForm.rating === score ? 'bg-[#006565] text-white border-[#006565]' : 'bg-white text-[#475569] border-[#D7E0E1] hover:bg-[#F8FAFC]'"
+                  :class="staffReviewForm.rating === score ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'bg-white text-[#475569] border-[#D7E0E1] hover:bg-[#F8FAFC]'"
                 >
                   {{ score }} ★
                 </button>
@@ -452,7 +447,7 @@
             <button
               @click="submitStaffReview"
               :disabled="reviewSubmitting || !staffReviewForm.staff_user_id"
-              class="px-4 py-2.5 rounded-xl bg-[#006565] text-white text-sm font-bold hover:bg-[#004f4f] disabled:opacity-60"
+              class="px-4 py-2.5 rounded-xl bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[var(--color-accent-mid)] disabled:opacity-60"
             >
               {{ selectedStaffReview ? 'อัปเดตรีวิวสตาฟ' : 'ส่งรีวิวสตาฟ' }}
             </button>
@@ -560,6 +555,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useBookingStore } from '../stores/booking';
 import { useSeatsStore } from '../stores/seats';
@@ -718,7 +714,7 @@ function statusLabel(s) { return statusMap[s] || s; }
 function statusClass(s) {
   const map = {
     pending:   'bg-[#FFFAF0] text-[#D97706] border border-[#FDE68A]',
-    confirmed: 'bg-[#F0FAFA] text-[#006565] border border-[#BCDFDF]',
+    confirmed: 'bg-[#F0FAFA] text-[var(--color-accent)] border border-[#BCDFDF]',
     cancelled: 'bg-[#F4F7F6] text-[#505E5E] border border-[#E8EEEF]',
     refunded:  'bg-[#F4F7F6] text-[#505E5E] border border-[#E8EEEF]',
     completed: 'bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]',
@@ -729,7 +725,7 @@ function statusClass(s) {
 function statusDotClass(s) {
   const map = {
     pending:   'bg-[#D97706]',
-    confirmed: 'bg-[#006565]',
+    confirmed: 'bg-[var(--color-accent)]',
     cancelled: 'bg-[#A0B0B0]',
     refunded:  'bg-[#A0B0B0]',
     completed: 'bg-[#2563EB]',

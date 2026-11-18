@@ -1,13 +1,19 @@
 <template>
-  <div class="font-anuphan bg-[var(--color-sand)] min-h-screen pt-8 pb-24 px-4">
-    <div class="max-w-3xl mx-auto">
-      <div class="flex items-end justify-between gap-3">
-        <div>
-          <h1 class="text-2xl font-black text-[var(--color-text-dark)]">ที่พักของฉัน</h1>
-          <p class="text-sm text-[var(--color-text-muted)]">ใบจองที่พักชุมชนทั้งหมด</p>
-        </div>
-        <router-link to="/stays" class="rounded-full bg-[var(--color-accent)] px-4 py-2 text-sm font-bold text-white press">หาที่พัก</router-link>
-      </div>
+  <div class="font-anuphan bg-[var(--color-sand)] min-h-screen pb-24">
+    <PageHeader
+      title="ที่พักของฉัน"
+      subtitle="ใบจองที่พักชุมชนทั้งหมด"
+      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      container="max-w-3xl px-4 sm:px-6"
+    >
+      <template #actions>
+        <router-link to="/stays" class="ph-btn ph-btn--solid">
+          <span class="material-symbols-rounded icon-18">cottage</span>
+          หาที่พัก
+        </router-link>
+      </template>
+    </PageHeader>
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-2">
 
       <div v-if="loading" class="mt-6 space-y-3">
         <div v-for="i in 3" :key="i" class="h-28 rounded-3xl shimmer"></div>
@@ -37,6 +43,7 @@
 </template>
 
 <script setup>
+import PageHeader from '../components/PageHeader.vue';
 import { onMounted, ref } from 'vue';
 import api from '../lib/axios';
 

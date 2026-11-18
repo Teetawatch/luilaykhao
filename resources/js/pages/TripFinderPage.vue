@@ -1,14 +1,16 @@
 <template>
-  <div class="min-h-screen bg-[var(--color-sand)] py-10 md:py-16 px-4">
-    <div class="max-w-3xl mx-auto">
+  <div class="min-h-screen bg-[var(--color-sand)] pb-16">
+    <PageHeader
+      title="ค้นหาทริปที่ใช่"
+      subtitle="ตอบคำถามสั้น ๆ ไม่กี่ข้อ แล้วเราจะคัดทริปที่เปิดจองอยู่จริงมาให้"
+      container="max-w-3xl px-4 sm:px-6"
+    />
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8 md:pt-10">
 
       <!-- ─── Quiz ─── -->
       <template v-if="phase === 'quiz'">
         <div class="text-center mb-8">
-          <span class="inline-flex items-center gap-2 text-[var(--color-accent)] font-extrabold text-sm tracking-wide uppercase mb-3">
-            <span class="material-symbols-rounded text-[18px]">auto_awesome</span> ค้นหาทริปที่ใช่
-          </span>
-          <h1 class="text-3xl md:text-4xl font-black text-[var(--color-text-dark)] leading-tight">{{ steps[step].title }}</h1>
+          <h2 class="text-2xl md:text-3xl font-bold text-[var(--color-text-dark)] leading-tight">{{ steps[step].title }}</h2>
           <p class="text-[var(--color-text-muted)] text-base md:text-lg font-medium mt-3">{{ steps[step].subtitle }}</p>
         </div>
 
@@ -23,7 +25,7 @@
           <div :key="step" class="grid gap-4" :class="step === 0 ? 'sm:grid-cols-2' : 'sm:grid-cols-2'">
             <button v-for="opt in steps[step].options" :key="opt.key"
               @click="choose(opt)"
-              class="group relative text-left bg-white rounded-[1.75rem] p-6 border-2 border-transparent hover:-translate-y-1.5 hover:border-[var(--color-accent)]/40 transition-all duration-300 cursor-pointer">
+              class="group relative text-left bg-white rounded-[0.875rem] p-6 border border-[var(--color-sand-dark)] hover:-translate-y-1 hover:border-[var(--color-accent)]/40 transition-all duration-300 cursor-pointer">
               <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-[var(--color-accent)]/10 text-[var(--color-accent)] group-hover:bg-[var(--color-accent)] group-hover:text-white transition-all duration-300">
                 <span class="material-symbols-rounded text-[28px]">{{ opt.icon }}</span>
               </div>
@@ -51,9 +53,9 @@
       <!-- ─── Results ─── -->
       <template v-else>
         <div class="text-center mb-8">
-          <h1 class="text-3xl md:text-4xl font-black text-[var(--color-text-dark)] leading-tight">
+          <h2 class="text-2xl md:text-3xl font-bold text-[var(--color-text-dark)] leading-tight">
             {{ loading ? 'กำลังค้นหา…' : results.length ? 'ทริปที่ใช่สำหรับคุณ' : 'ยังไม่เจอทริปที่ตรงเป๊ะ' }}
-          </h1>
+          </h2>
           <p v-if="selectionSummary" class="text-[var(--color-text-muted)] text-base font-medium mt-3">{{ selectionSummary }}</p>
         </div>
 
@@ -68,8 +70,8 @@
             <span>{{ relaxedNote }}</span>
           </div>
 
-          <div v-if="results.length" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            <TripCard v-for="(trip, i) in results" :key="trip.id" :trip="trip"
+          <div v-if="results.length" class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+            <PackageCard v-for="(trip, i) in results" :key="trip.id" :trip="trip"
               class="animate-fade-in-up" :style="{ animationDelay: `${i * 0.07}s` }" />
           </div>
 
@@ -101,7 +103,8 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTripsStore } from '../stores/trips';
 import { useCategoriesStore } from '../stores/categories';
-import TripCard from '../components/TripCard.vue';
+import PackageCard from '../components/PackageCard.vue';
+import PageHeader from '../components/PageHeader.vue';
 
 const router = useRouter();
 const tripsStore = useTripsStore();

@@ -2,7 +2,7 @@
   <!-- Loading -->
   <div v-if="loading" class="flex items-center justify-center min-h-[60vh]">
     <div class="flex flex-col items-center gap-4">
-      <div class="w-12 h-12 rounded-full border-4 border-[#b4eae9] border-t-[#006565] animate-spin"></div>
+      <div class="w-12 h-12 rounded-full border-4 border-[#b4eae9] border-t-[var(--color-accent)] animate-spin"></div>
       <p class="text-[#6e7979] font-['DB Heavent', 'Anuphan']">กำลังโหลด...</p>
     </div>
   </div>
@@ -27,10 +27,10 @@
           <div class="w-10 h-10 rounded-full bg-[#b4eae9] text-[#376b6a] flex items-center justify-center mb-2 font-bold text-sm">2</div>
           <span class="text-xs font-medium text-[#6e7979]">รายละเอียด</span>
         </div>
-        <div class="h-[2px] flex-1 bg-[#b4eae9] overflow-hidden"><div class="h-full bg-[#006565] pay-line"></div></div>
+        <div class="h-[2px] flex-1 bg-[#b4eae9] overflow-hidden"><div class="h-full bg-[var(--color-accent)] pay-line"></div></div>
         <div class="flex flex-col items-center flex-1">
-          <div class="w-10 h-10 rounded-full bg-[#006565] text-white flex items-center justify-center mb-2 font-bold text-sm ring-4 ring-[#93f2f2]/40 pay-current">3</div>
-          <span class="text-xs font-bold text-[#006565]">ชำระเงิน</span>
+          <div class="w-10 h-10 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center mb-2 font-bold text-sm ring-4 ring-[#93f2f2]/40 pay-current">3</div>
+          <span class="text-xs font-bold text-[var(--color-accent)]">ชำระเงิน</span>
         </div>
       </div>
     </div>
@@ -39,11 +39,11 @@
     <div v-if="isOnHold" class="max-w-7xl mx-auto mb-10 pay-rise" style="--d: 60ms">
       <div class="bg-accent-tint border border-accent/15 rounded-3xl p-5 md:p-6 flex items-center gap-4">
         <div class="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-          <span class="material-symbols-rounded text-[#006565] text-2xl">event_seat</span>
+          <span class="material-symbols-rounded text-[var(--color-accent)] text-2xl">event_seat</span>
         </div>
         <div>
           <h3 class="text-[#004b4b] font-bold text-base md:text-lg">ทีมงานกันที่นั่งไว้ให้คุณแล้ว</h3>
-          <p class="text-[#006565] text-sm">
+          <p class="text-[var(--color-accent)] text-sm">
             ชำระเงินได้ถึง {{ holdUntilLabel }} ยังไม่ต้องรีบครับ ถ้าต้องการเวลาเพิ่มทักทีมงานได้เลย
           </p>
         </div>
@@ -1657,7 +1657,7 @@ onBeforeUnmount(() => {
   position: absolute;
   inset: -4px;
   border-radius: 9999px;
-  border: 2px solid #006565;
+  border: 2px solid var(--color-accent);
   opacity: 0;
   animation: pay-halo 1.4s ease-out 0.9s 2;
 }

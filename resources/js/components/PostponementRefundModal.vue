@@ -30,7 +30,7 @@
             <label class="block">
               <span class="block text-sm font-bold text-[#1a1c1c] mb-1.5">ธนาคาร / พร้อมเพย์</span>
               <select v-model="form.bank" required
-                class="w-full rounded-[12px] border border-[#D5DEDE] px-3 py-2.5 text-sm bg-white focus:border-[#006565] focus:outline-none">
+                class="w-full rounded-[12px] border border-[#D5DEDE] px-3 py-2.5 text-sm bg-white focus:border-[var(--color-accent)] focus:outline-none">
                 <option value="" disabled>เลือก…</option>
                 <option v-for="bank in banks" :key="bank" :value="bank">{{ bank }}</option>
               </select>
@@ -41,12 +41,12 @@
               </span>
               <input v-model="form.account_number" required inputmode="numeric" autocomplete="off"
                 :placeholder="form.bank === 'พร้อมเพย์' ? 'เช่น 081-234-5678' : 'เช่น 123-4-56789-0'"
-                class="w-full rounded-[12px] border border-[#D5DEDE] px-3 py-2.5 text-sm focus:border-[#006565] focus:outline-none" />
+                class="w-full rounded-[12px] border border-[#D5DEDE] px-3 py-2.5 text-sm focus:border-[var(--color-accent)] focus:outline-none" />
             </label>
             <label class="block">
               <span class="block text-sm font-bold text-[#1a1c1c] mb-1.5">ชื่อบัญชี</span>
               <input v-model="form.account_name" required maxlength="120" placeholder="ชื่อ-นามสกุลตามบัญชี"
-                class="w-full rounded-[12px] border border-[#D5DEDE] px-3 py-2.5 text-sm focus:border-[#006565] focus:outline-none" />
+                class="w-full rounded-[12px] border border-[#D5DEDE] px-3 py-2.5 text-sm focus:border-[var(--color-accent)] focus:outline-none" />
             </label>
           </template>
 
