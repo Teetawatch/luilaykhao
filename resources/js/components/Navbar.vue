@@ -32,10 +32,10 @@
             <span class="hidden xl:inline">แชท LINE</span>
           </a>
           <a :href="supportPhoneHref()" class="call-card focus-ring" :aria-label="`โทรหาเรา ${supportPhone()}`">
-            <span class="call-card-ico"><span class="material-symbols-rounded icon-20 filled-icon">call</span></span>
+            <span class="call-card-ico"><span class="material-symbols-rounded icon-16 filled-icon">call</span></span>
             <span class="flex flex-col leading-none">
-              <span class="text-[11.5px] font-semibold text-text-muted">โทรจองทริป · {{ supportHours() }}</span>
-              <span class="mt-1 text-[19px] font-extrabold tracking-tight text-text-dark tabular-nums">{{ supportPhone() }}</span>
+              <span class="text-[10.5px] font-semibold text-text-muted">โทรจองทริป · {{ supportHours() }}</span>
+              <span class="mt-0.5 text-[15px] font-bold tracking-tight text-text-dark tabular-nums">{{ supportPhone() }}</span>
             </span>
           </a>
         </div>
@@ -1430,24 +1430,24 @@ async function handleLogout() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  height: 2.75rem;
-  min-width: 2.75rem;
-  padding: 0 0.75rem;
+  gap: 0.35rem;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  padding: 0 0.6rem;
   border-radius: 9999px;
   border: 1.5px solid #06c755;
   color: #05a649;
-  font-size: 14.5px;
+  font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 .line-pill i {
-  font-size: 20px;
+  font-size: 17px;
   line-height: 1;
 }
 @media (min-width: 1280px) {
-  .line-pill { padding: 0 1rem 0 0.85rem; }
+  .line-pill { padding: 0 0.8rem 0 0.7rem; }
 }
 .line-pill:hover {
   background-color: #06c755;
@@ -1458,9 +1458,9 @@ async function handleLogout() {
 .call-card {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.4rem 1rem 0.4rem 0.4rem;
-  border-radius: 1rem;
+  gap: 0.5rem;
+  padding: 0.3rem 0.8rem 0.3rem 0.3rem;
+  border-radius: 0.85rem;
   border: 1px solid var(--color-sand-dark);
   white-space: nowrap;
   transition: border-color 0.2s ease, background-color 0.2s ease;
@@ -1473,9 +1473,9 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.75rem;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 0.6rem;
   background-color: var(--color-accent);
   color: #fff;
 }
