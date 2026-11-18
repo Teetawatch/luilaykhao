@@ -79,7 +79,7 @@
 
         <!-- จุดบอกตำแหน่ง -->
         <!-- ซ่อนบนมือถือ (ต่ำกว่า 640px) เหมือนลูกศร — จอเล็กใช้นิ้วปัดซ้าย/ขวาแทน (onHeroTouchEnd) -->
-        <div class="absolute bottom-20 md:bottom-28 inset-x-0 z-20 hidden sm:flex justify-center gap-2.5">
+        <div class="absolute bottom-24 md:bottom-32 inset-x-0 z-20 hidden sm:flex justify-center gap-2.5">
           <button
             v-for="(slide, index) in heroSlides"
             :key="`dot-${slide.key}`"
@@ -101,7 +101,7 @@
          section เริ่มที่ขอบล่างสไลด์พอดี แผงยื่นขึ้นไปทับสไลด์ 5rem -->
     <section class="home-panel-wrap relative z-20">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="home-panel -mt-20 rounded-2xl bg-white border border-[var(--color-sand-dark)] p-4 sm:p-5 md:p-7">
+        <div class="home-panel -mt-20 rounded-2xl bg-[#fff] border border-[var(--color-sand-dark)] p-4 sm:p-5 md:p-7">
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
             <h2 class="text-[19px] md:text-[22px] font-bold text-[var(--color-text-dark)]">ค้นหารอบเดินทาง</h2>
             <router-link to="/find" class="inline-flex items-center gap-1 text-[14px] font-bold text-[var(--color-accent)] hover:underline underline-offset-2">
@@ -1056,9 +1056,15 @@ input[type="date"] {
   .shortcut-label { font-size: 14.5px; }
 }
 
+/* พื้นรอบแผงเป็นเทาอ่อนของหน้า แผงเป็นขาวล้วน — การ์ดสว่างกว่าพื้นจึงดูลอยขึ้นมาเอง
+   (เคยกลับกัน: แผง #FAFAFA บนพื้น #FFF ดูหม่นเหมือนมีคราบ) และเว้นระยะก่อนแถบความมั่นใจ */
 .home-panel-wrap {
   display: flow-root;
-  background-color: #fff;
+  background-color: var(--color-sand);
+  padding-bottom: 2rem;
+}
+@media (min-width: 768px) {
+  .home-panel-wrap { padding-bottom: 2.5rem; }
 }
 
 /* ── การ์ดทางเลือกปิดท้าย ───────────────────────────────────── */
