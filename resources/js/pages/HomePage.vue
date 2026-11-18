@@ -118,6 +118,22 @@
                 :tabindex="index === currentSlide ? 0 : -1"
               >{{ slide.cta2.label }}</router-link>
             </div>
+
+            <!-- รูปจากทริป ไม่เกิน 4 รูป — โหลดเฉพาะสไลด์ที่เปิดอยู่ ไม่ดึงรูปทุกทริปพร้อมกัน -->
+            <router-link
+              v-if="slide.photos?.length && index === currentSlide"
+              :to="slide.cta.to"
+              class="hero-photos mt-6 hidden sm:flex items-center gap-2"
+              :aria-label="`ดูรูปทริป ${slide.title}`"
+              tabindex="-1"
+            >
+              <span v-for="(photo, pi) in slide.photos" :key="photo" class="hero-photo">
+                <img :src="photo" alt="" loading="lazy" decoding="async" />
+                <span v-if="pi === slide.photos.length - 1 && slide.morePhotos" class="hero-photo-more">
+                  +{{ slide.morePhotos }}
+                </span>
+              </span>
+            </router-link>
           </div>
         </div>
       </div>
@@ -557,6 +573,22 @@ function formatBaht(n) {
   return Number(n).toLocaleString('th-TH');
 }
 
+const HERO_PHOTO_COUNT = 4;
+
+// รูปจากทริปสำหรับแถวรูปเล็กใต้ราคา — รูปที่อัปโหลด (มีไฟล์ย่อ) ก่อน แล้วค่อยเติมจาก gallery
+// ไม่เอารูปที่เป็นพื้นหลังสไลด์อยู่แล้วมาซ้ำ
+function tripPhotos(trip, backgroundUrl) {
+  const urls = [
+    ...(trip.photos || []).map((p) => p.thumb_url || p.url),
+    ...(Array.isArray(trip.gallery) ? trip.gallery : []),
+  ].filter((u) => typeof u === 'string' && u && u !== backgroundUrl);
+  const unique = [...new Set(urls)];
+  return {
+    photos: unique.slice(0, HERO_PHOTO_COUNT),
+    morePhotos: Math.max(0, unique.length - HERO_PHOTO_COUNT),
+  };
+}
+
 function tripFacts(trip) {
   const facts = [{ icon: 'schedule', text: tripDaysLabel(trip) }];
   if (DIFFICULTY_LABELS[trip.difficulty]) facts.push({ icon: 'terrain', text: DIFFICULTY_LABELS[trip.difficulty] });
@@ -606,9 +638,11 @@ const heroSlides = computed(() => {
       const rounds = openRounds(t);
       const price = Number(t.min_price);
       const original = Number(t.min_original_price);
+      const image = t.cover_image || tripCardImage(t);
       return {
         key: `trip-${t.id}`,
-        image: t.cover_image || tripCardImage(t),
+        image,
+        ...tripPhotos(t, image),
         thumb: tripCardImage(t) || t.cover_image,
         alt: t.title,
         kicker: 'ทริปแนะนำ',
@@ -1031,6 +1065,47 @@ onMounted(async () => {
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
 
+/* แถวรูปเล็กจากทริป */
+.hero-slide--active .hero-photos {
+  animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.36s both;
+}
+.hero-photo {
+  position: relative;
+  display: block;
+  width: 4.5rem;
+  height: 3.25rem;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  background-color: rgba(255, 255, 255, 0.12);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.hero-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-photos:hover .hero-photo {
+  border-color: #fff;
+}
+.hero-photo:hover {
+  transform: translateY(-2px);
+}
+.hero-photo-more {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+@media (min-width: 1024px) {
+  .hero-photo { width: 5rem; height: 3.6rem; }
+}
+
 /* รายการสไลด์ด้านขวา */
 .hero-rail {
   width: 19rem;
@@ -1181,6 +1256,7 @@ onMounted(async () => {
   .hero-slide--active .hero-subtitle,
   .hero-slide--active .hero-meta,
   .hero-slide--active .hero-actions,
+  .hero-slide--active .hero-photos,
   .hero-rail-progress-bar--running {
     animation: none;
   }
