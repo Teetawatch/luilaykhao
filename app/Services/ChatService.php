@@ -21,10 +21,36 @@ use Illuminate\Support\Str;
 
 class ChatService
 {
-    /** ข้อความระบบที่มีปุ่มชวนให้กด — แอปวาดปุ่มตาม cta */
+    /**
+     * ข้อความระบบที่มีปุ่มให้กด — แอปวาดปุ่มตาม cta และเปิดหน้าที่ข้อความพูดถึง
+     * ได้จากห้องแชทเลย ไม่ต้องออกไปหาเอง แอปรุ่นเก่าที่ไม่รู้จัก cta ไหนก็แค่ไม่วาดปุ่ม
+     *
+     * - intro / contacts — ชวนแนะนำตัว / แลกคอนแทค
+     * - track_van — แผนที่ติดตามรถ (แอปซ่อนปุ่มนอกวันเดินทางและสำหรับทีมงาน)
+     * - trip_day — หน้า "วันเดินทาง" ของใบจองฉัน
+     * - itinerary — กำหนดการของรอบ
+     * - pickup — จุดรับ/เวลาขึ้นรถของฉัน
+     * - rooms — ห้องพักของรอบ
+     * - review — เขียนรีวิวทริป (ลูกทริปที่ยังไม่ได้รีวิว)
+     * - trip_feed — ฟีดรูปของทริป (เก็บรูปไว้ก่อนห้องแชทถูกลบ)
+     */
     public const CTA_BY_SYSTEM_KEY = [
         'intro_3d' => 'intro',
         'contacts_end' => 'contacts',
+        TripDepartureService::CHAT_KEY => 'track_van',
+        'departure_soon' => 'trip_day',
+        'itinerary_2d' => 'itinerary',
+        'pickup_eve' => 'pickup',
+        'trip_end' => 'review',
+        'photos_expiring' => 'trip_feed',
+    ];
+
+    /** คีย์ที่มีเลขต่อท้าย (ต่อจุดรับ/ต่อวัน/ต่อครั้ง) — จับด้วยคำนำหน้า */
+    public const CTA_BY_SYSTEM_KEY_PREFIX = [
+        'pickup_arrived_' => 'track_van',
+        'pickup_mates_' => 'trip_day',
+        TripChatTimelineService::DAY_BRIEF_PREFIX => 'itinerary',
+        ScheduleRoomService::CHAT_KEY_PREFIX => 'rooms',
     ];
 
     /** อีโมจิที่อนุญาตให้รีแอกชันได้ */
@@ -616,13 +642,33 @@ class ChatService
             'staff_intro' => app(StaffIntroService::class)->forMessage($message),
             // การ์ดแนะนำตัวของลูกทริป
             'intro' => app(ChatIntroService::class)->forMessage($message),
-            // ปุ่มชวนบนข้อความระบบบางตัว (แนะนำตัว D-3 / แลกคอนแทคตอนจบทริป)
-            'cta' => self::CTA_BY_SYSTEM_KEY[$message->system_key] ?? null,
+            // ปุ่มบนข้อความระบบบางตัว (แนะนำตัว, ดูตำแหน่งรถ, กำหนดการ, รีวิว …)
+            'cta' => self::ctaFor($message->system_key),
             // "รับทราบ" ใต้ประกาศ — null = ไม่ได้ขอ
             'ack' => app(ChatAckService::class)->present($message, $currentUserId),
             'is_pinned' => $message->pinned_at !== null,
             'created_at' => $message->created_at?->toISOString(),
         ];
+    }
+
+    /** ปุ่มของข้อความระบบตาม system_key — null = ไม่มีปุ่ม */
+    public static function ctaFor(?string $systemKey): ?string
+    {
+        if ($systemKey === null || $systemKey === '') {
+            return null;
+        }
+
+        if (isset(self::CTA_BY_SYSTEM_KEY[$systemKey])) {
+            return self::CTA_BY_SYSTEM_KEY[$systemKey];
+        }
+
+        foreach (self::CTA_BY_SYSTEM_KEY_PREFIX as $prefix => $cta) {
+            if (str_starts_with($systemKey, $prefix)) {
+                return $cta;
+            }
+        }
+
+        return null;
     }
 
     /**

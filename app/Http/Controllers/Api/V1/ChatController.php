@@ -814,6 +814,8 @@ class ChatController extends Controller
             'schedule' => [
                 'id' => $schedule->id,
                 'trip_title' => $schedule->trip?->tr('title'),
+                // ปุ่ม "ดูฟีดทริป" ใต้ข้อความระบบเปิดฟีดของทริปนี้
+                'trip_slug' => $schedule->trip?->slug,
                 'departure_date' => $schedule->departure_date?->toDateString(),
                 'return_date' => $schedule->return_date?->toDateString(),
                 'status' => $schedule->status,

@@ -88,7 +88,8 @@ class TripDepartureService
         try {
             $this->chatService->postSystem(
                 $schedule,
-                'รถออกเดินทางแล้ว 🚐 ติดตามตำแหน่งรถแบบเรียลไทม์ได้จากหน้า “วันเดินทาง” เลยครับ',
+                // มีปุ่ม "ดูตำแหน่งรถ" ใต้ข้อความในแอป (ChatService::CTA_BY_SYSTEM_KEY)
+                'รถออกเดินทางแล้ว 🚐 ติดตามตำแหน่งรถแบบเรียลไทม์ได้เลยครับ',
                 self::CHAT_KEY,
             );
         } catch (QueryException $e) {

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * จัดห้องพักของรอบ — ใครนอนห้องไหนกับใคร
@@ -23,6 +24,9 @@ use Illuminate\Support\Facades\Log;
  */
 class ScheduleRoomService
 {
+    /** คำนำหน้า system_key ของประกาศห้องพักในแชท — แอปวาดปุ่ม "ดูห้องพัก" */
+    public const CHAT_KEY_PREFIX = 'rooms:';
+
     public function __construct(
         private TripRosterService $roster,
         private ChatService $chatService,
@@ -240,10 +244,13 @@ class ScheduleRoomService
         $lines = $rooms->map(fn ($r) => "• {$r->name}: ".$names($r)->join(', ')
             .($r->note ? " ({$r->note})" : ''));
 
+        // ประกาศซ้ำได้ (แก้ห้องแล้วประกาศใหม่) — คีย์จึงต่อท้ายแบบสุ่ม มีไว้ให้
+        // แอปวาดปุ่ม "ดูห้องพัก" (ChatService::CTA_BY_SYSTEM_KEY_PREFIX) ไม่ได้กันซ้ำ
         $this->chatService->postSystem(
             $schedule,
             '🛏️ ห้องพัก'.($stayLabel ? " — {$stayLabel}" : '')."\n".$lines->join("\n")
                 ."\nดูห้องของตัวเองได้ในแอป เมนู + › ห้องพัก",
+            self::CHAT_KEY_PREFIX.Str::lower(Str::random(12)),
         );
 
         $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
