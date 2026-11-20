@@ -418,6 +418,11 @@ class VehicleTrackingController extends Controller
 
         $arrival = app(PickupArrivalService::class)->freshArrivalFor($booking);
 
+        // ช่วงที่รถของรอบนี้มีตำแหน่งให้ดู (กรอบเดียวกับที่เซิร์ฟเวอร์รับพิกัด) —
+        // แอปเปิดแผนที่เฉพาะในช่วงนี้ นอกช่วงขึ้นหน้า "รอวันเดินทาง" แทน
+        // ไม่ต้องโหลดแผนที่ที่ไม่มีรถให้ดูอยู่แล้ว
+        [$opensAt, $closesAt] = $schedule ? $this->locations->sharingWindow($schedule) : [null, null];
+
         $data = [
             'id' => $booking->id,
             'booking_ref' => $booking->booking_ref,
@@ -432,6 +437,9 @@ class VehicleTrackingController extends Controller
             'destination_lng' => $trip?->longitude,
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
             'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
+            // เวลาไทยแบบตัวเลขนาฬิกา เหมือน departs_at
+            'tracking_opens_at' => $opensAt?->format('Y-m-d H:i:s'),
+            'tracking_closes_at' => $closesAt?->format('Y-m-d H:i:s'),
             'status' => $booking->status,
             // Vehicle info for driver call button
             'driver_name' => $vehicle?->driver_name,

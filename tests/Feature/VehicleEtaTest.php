@@ -223,6 +223,21 @@ class VehicleEtaTest extends TestCase
             ->assertJsonPath('data.pickup_point_id', $first->id);
     }
 
+    public function test_the_booking_tracking_payload_carries_the_sharing_window(): void
+    {
+        [$schedule, , , $customer, $booking] = $this->scenario();
+
+        // แอปเปิดแผนที่เฉพาะในกรอบนี้ — ต้องเป็นกรอบเดียวกับที่เซิร์ฟเวอร์รับพิกัด
+        $schedule->update(['departs_at' => now('Asia/Bangkok')->toDateString().' 06:00:00']);
+        $today = now('Asia/Bangkok')->startOfDay();
+
+        $this->actingAs($customer, 'sanctum')
+            ->getJson("/api/v1/bookings/{$booking->booking_ref}/tracking")
+            ->assertOk()
+            ->assertJsonPath('data.tracking_opens_at', $today->copy()->subHours(12)->format('Y-m-d H:i:s'))
+            ->assertJsonPath('data.tracking_closes_at', $today->copy()->addDay()->endOfDay()->addHours(6)->format('Y-m-d H:i:s'));
+    }
+
     private function fakeRoutes(): void
     {
         Http::fake([
