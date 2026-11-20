@@ -22,14 +22,12 @@ class TrackingRouteTest extends TestCase
         config(['services.google_maps.api_key' => 'test-key']);
 
         Http::fake([
-            'maps.googleapis.com/maps/api/directions/*' => Http::response([
-                'status' => 'OK',
+            'routes.googleapis.com/*' => Http::response([
                 'routes' => [[
-                    'overview_polyline' => ['points' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@'],
-                    'legs' => [[
-                        'distance' => ['value' => 12345],
-                        'duration' => ['value' => 900],
-                    ]],
+                    'distanceMeters' => 12345,
+                    'duration' => '900s',
+                    'polyline' => ['encodedPolyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@'],
+                    'legs' => [['distanceMeters' => 12345, 'duration' => '900s']],
                 ]],
             ], 200),
         ]);

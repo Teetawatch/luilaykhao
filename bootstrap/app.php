@@ -120,6 +120,12 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         // Contact form — ป้องกัน spam
+        // ทางที่ถาม Google Maps (คิดเงินต่อครั้ง) — แอปรุ่นเก่าถามเส้นทางทุก ~25 วิ
+        // (≈3 ครั้ง/นาที) จึงเผื่อไว้ 12 ต่อคน ส่วนเพดานรวมของทั้งระบบอยู่ที่ MapsUsageMeter
+        RateLimiter::for('maps', function (Request $request) {
+            return Limit::perMinute(12)->by($request->user()?->id ?? $request->ip());
+        });
+
         RateLimiter::for('contact', function (Request $request) {
             return Limit::perMinute(3)->by($request->ip());
         });

@@ -273,6 +273,70 @@
         </div>
       </div>
     </div>
+
+    <!-- ค่าใช้จ่าย Google Maps — ETA ร่วมของรถเป็นตัวเดียวที่เรียก Routes API เป็นประจำ -->
+    <section v-if="mapsUsage" class="maps-usage">
+      <div class="maps-usage-head">
+        <div>
+          <h2 class="maps-usage-title">
+            <span class="material-symbols-rounded">payments</span>
+            Google Maps เดือนนี้ ({{ mapsUsage.month }})
+          </h2>
+          <p class="maps-usage-sub">
+            <template v-if="mapsUsage.configured">
+              ETA ร่วมคิดทุก {{ Math.round(mapsUsage.settings.refresh_seconds / 60) }} นาทีต่อรถ
+              ({{ mapsUsage.settings.traffic_aware ? 'คิดสภาพจราจร' : 'ไม่คิดจราจร' }}) ·
+              แผนที่ในแอป (Maps SDK) ไม่มีค่าใช้จ่าย · ราคาตรวจเมื่อ {{ mapsUsage.pricing_checked_at }}
+            </template>
+            <template v-else>ยังไม่ได้ตั้ง GOOGLE_MAPS_API_KEY — ETA ใช้ค่าประมาณจากเส้นตรง ไม่มีค่าใช้จ่าย</template>
+          </p>
+        </div>
+        <div class="maps-usage-cost" :class="{ paid: mapsUsage.estimated_usd > 0 }">
+          <span class="cost-label">ประมาณค่าใช้จ่าย</span>
+          <span class="cost-value">${{ mapsUsage.estimated_usd.toFixed(2) }}</span>
+        </div>
+      </div>
+
+      <div class="maps-usage-grid">
+        <div v-for="sku in mapsUsage.skus" :key="sku.sku" class="sku-card">
+          <div class="sku-label">{{ sku.label }}</div>
+          <div class="sku-numbers">
+            <strong>{{ sku.units.toLocaleString() }}</strong>
+            <span>/ ฟรี {{ sku.free_cap.toLocaleString() }}</span>
+          </div>
+          <div class="sku-bar">
+            <div
+              class="sku-bar-fill"
+              :class="usageTone(sku)"
+              :style="{ width: Math.min(100, sku.percent_of_free || 0) + '%' }"
+            ></div>
+          </div>
+          <div class="sku-meta">
+            วันนี้ {{ sku.today.toLocaleString() }}/{{ sku.daily_cap.toLocaleString() }} ·
+            ตอบจากแคช {{ sku.cache_hits.toLocaleString() }}
+            <span v-if="sku.blocked" class="sku-blocked">· ถูกกันเพราะชนเพดาน {{ sku.blocked.toLocaleString() }}</span>
+            <span v-if="sku.failures" class="sku-blocked">· ล้มเหลว {{ sku.failures.toLocaleString() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="mapsUsage.eta_sessions.length" class="eta-sessions">
+        <div class="eta-sessions-title">ETA ร่วมของรอบวันนี้</div>
+        <div v-for="s in mapsUsage.eta_sessions" :key="s.schedule_id" class="eta-session-row">
+          <span class="material-symbols-rounded" :class="s.active ? 'on' : 'off'">
+            {{ s.active ? 'sync' : 'pause_circle' }}
+          </span>
+          <span class="eta-session-name">{{ s.trip_title || 'ทริป' }} · {{ s.vehicle }}</span>
+          <span class="eta-session-state">
+            <template v-if="s.active">
+              {{ s.source === 'google' ? 'Google' : 'ประมาณจากเส้นตรง' }} · {{ s.stops }} จุดรับ ·
+              คิดล่าสุด {{ timeLabel(s.computed_at) }}
+            </template>
+            <template v-else>{{ etaReasonLabel(s.reason) }}</template>
+          </span>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -340,6 +404,44 @@ function stoppedText(stop) {
   });
   const by = stop.by?.name ? ` โดย ${stop.by.name}` : '';
   return `ปิดแชร์ตำแหน่งแล้ว — ${stop.reason_label}${by} · ${at} น.`;
+}
+
+// ─── ค่าใช้จ่าย Google Maps ──────────────────────────────
+const mapsUsage = ref(null);
+let mapsUsageInterval = null;
+
+async function loadMapsUsage() {
+  try {
+    const res = await api.get('/admin/tracking/maps-usage');
+    mapsUsage.value = res.data.data || null;
+  } catch {
+    // สถิติอย่างเดียว — ไม่มีก็ยังใช้หน้านี้ได้
+  }
+}
+
+function usageTone(sku) {
+  const p = sku.percent_of_free || 0;
+  if (p >= 100) return 'over';
+  if (p >= 80) return 'warn';
+  return 'ok';
+}
+
+const ETA_REASONS = {
+  not_started: 'ยังไม่เริ่ม (รอพิกัดรถ)',
+  all_picked_up: 'รับครบทุกจุดแล้ว — หยุดคิด',
+  trip_ended: 'ทริปจบแล้ว — หยุดคิด',
+  sharing_stopped: 'สตาฟปิดแชร์ตำแหน่ง — หยุดคิด',
+  outside_window: 'นอกช่วงเวลาเดินทาง',
+  no_signal: 'พิกัดรถเงียบ — พักไว้',
+  not_applicable: 'รอบบิน ไม่มีรถรับ',
+};
+function etaReasonLabel(reason) {
+  return ETA_REASONS[reason] || reason || '—';
+}
+
+function timeLabel(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }) + ' น.';
 }
 
 async function loadSharing() {
@@ -793,6 +895,8 @@ onMounted(async () => {
   await refreshLocations();
   loadSharing();
   sharingInterval = setInterval(loadSharing, 60000);
+  loadMapsUsage();
+  mapsUsageInterval = setInterval(loadMapsUsage, 120000);
   initEcho();
   
   pollInterval = setInterval(() => {
@@ -805,6 +909,7 @@ onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval);
   if (clockInterval) clearInterval(clockInterval);
   if (sharingInterval) clearInterval(sharingInterval);
+  if (mapsUsageInterval) clearInterval(mapsUsageInterval);
   if (window.Echo) window.Echo.leave('vehicle-tracking');
   if (map) { map.remove(); map = null; }
 });
@@ -812,6 +917,46 @@ onUnmounted(() => {
 
 <style scoped>
 @import url('./admin-shared.css');
+
+/* ─── ค่าใช้จ่าย Google Maps ───────────────── */
+.maps-usage {
+  margin-top: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--color-sand-dark);
+  border-radius: 16px;
+  background: var(--color-white);
+}
+.maps-usage-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.maps-usage-title { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 700; color: var(--color-text-dark); margin: 0; }
+.maps-usage-sub { margin: 4px 0 0; font-size: 12px; color: var(--color-text-muted); }
+.maps-usage-cost { text-align: right; }
+.maps-usage-cost .cost-label { display: block; font-size: 11px; color: var(--color-text-muted); }
+.maps-usage-cost .cost-value { font-size: 22px; font-weight: 800; color: var(--color-accent); }
+.maps-usage-cost.paid .cost-value { color: #dc2626; }
+.maps-usage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+.sku-card { padding: 12px 14px; border: 1px solid var(--color-sand-dark); border-radius: 12px; }
+.sku-label { font-size: 12px; font-weight: 600; color: var(--color-text-mid); }
+.sku-numbers { margin-top: 4px; font-size: 13px; color: var(--color-text-muted); }
+.sku-numbers strong { font-size: 18px; color: var(--color-text-dark); margin-right: 4px; }
+.sku-bar { height: 6px; margin-top: 8px; border-radius: 99px; background: var(--color-sand); overflow: hidden; }
+.sku-bar-fill { height: 100%; border-radius: 99px; }
+.sku-bar-fill.ok { background: var(--color-accent); }
+.sku-bar-fill.warn { background: #f59e0b; }
+.sku-bar-fill.over { background: #dc2626; }
+.sku-meta { margin-top: 6px; font-size: 11px; color: var(--color-text-muted); }
+.sku-blocked { color: #b45309; }
+.eta-sessions { margin-top: 14px; border-top: 1px solid var(--color-sand-dark); padding-top: 10px; }
+.eta-sessions-title { font-size: 12px; font-weight: 700; color: var(--color-text-mid); margin-bottom: 6px; }
+.eta-session-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; flex-wrap: wrap; }
+.eta-session-row .material-symbols-rounded { font-size: 16px; }
+.eta-session-row .on { color: var(--color-accent); }
+.eta-session-row .off { color: var(--color-text-muted); }
+.eta-session-name { font-weight: 600; color: var(--color-text-dark); }
+.eta-session-state { color: var(--color-text-muted); }
+@media (max-width: 640px) {
+  .maps-usage { padding: 14px; }
+  .maps-usage-cost { text-align: left; }
+}
 
 /* ─── Header ─────────────────────────────── */
 .ws-status {

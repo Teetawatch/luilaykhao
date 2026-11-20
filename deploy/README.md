@@ -151,6 +151,37 @@ cd /var/www/luilaykhao && sudo -u www-data php artisan reverb:check
 ถ้า `reverb:check` ขึ้น `Payload too large` แปลว่า Reverb ที่รันอยู่ยังใช้ค่าเก่า → `sudo supervisorctl restart 'reverb:*'`
 event สดที่ล้มไปแล้วหมดความหมายแล้ว ไม่ต้อง retry (`queue:flush` ล้างได้ แต่ล้าง*ทุก*งานที่ล้ม — ดูก่อนว่าไม่มีงานอื่นปน)
 
+## Google Maps (แผนที่ในแอป + ETA)
+
+ใช้ **สองคีย์ คนละหน้าที่ ห้ามสลับ** (ราคา/โควตาตรวจจากเอกสาร Google 2026-11-20 — ตรวจซ้ำที่
+<https://developers.google.com/maps/billing-and-pricing/pricing> ก่อนเปลี่ยนค่า):
+
+| คีย์ | อยู่ที่ | เปิด API | Restriction | ค่าใช้จ่าย |
+|---|---|---|---|---|
+| Server key | `.env` บนเซิร์ฟเวอร์ `GOOGLE_MAPS_API_KEY` เท่านั้น | **Routes API** อย่างเดียว | Application: IP ของเซิร์ฟเวอร์ | Compute Routes Pro (คิดจราจร) ฟรี 5,000/เดือน, Essentials ฟรี 10,000/เดือน, Route Matrix Essentials ฟรี 10,000 element/เดือน |
+| App key | `luilaykhao-app/dart_defines/secrets.json` `GOOGLE_MAPS_SDK_KEY` (ไม่ขึ้น git) | **Maps SDK for Android** + **Maps SDK for iOS** | Android: package `com.luilaykhao.app` + SHA-1 ของ upload key **และ** App Signing key จาก Play Console; iOS: bundle `com.luilaykhao.app` | โหลดแผนที่บนมือถือฟรีไม่จำกัด |
+
+- ห้ามใส่ server key ใน `VITE_*`, แอป, หรือ git — คีย์ในแอปถูกแกะออกได้เสมอ จึงต้องเป็นคีย์ที่เปิดแค่ Maps SDK
+- Directions API / Distance Matrix API เป็น Legacy แล้ว โปรเจกต์ Cloud ใหม่เปิดไม่ได้ — โค้ดใช้ Routes API ทั้งหมด
+
+**ระบบคุมค่าใช้จ่ายในโค้ด** (`config/maps.php`):
+- ETA ของรถคิดที่ `tracking:refresh-eta` (ทุกนาที) **หนึ่งคำขอต่อรถ** ทุก 3–5 นาที และเฉพาะเมื่อรถขยับ ≥150 ม. —
+  รถจอดนิ่งแค่เลื่อนเวลาตามนาฬิกา หยุดเองเมื่อรับครบ/ทริปจบ/ปิดแชร์/ไม่มีสัญญาณ แชร์ให้ลูกค้าผ่าน Reverb
+  (`eta.updated` บน `vehicle-tracking.{id}`) + `GET tracking/schedules/{id}/eta` ลูกค้ากี่คนก็ไม่เพิ่มคำขอ
+- ทุกคำขอผ่าน `MapsUsageMeter` — นับลงตาราง `maps_api_usage` และมีเพดานรายวัน/รายเดือนต่อ SKU
+  (ค่าเริ่มต้นรายเดือน = โควตาฟรีพอดี) ชนเพดาน = ไม่ยิง ใช้ค่าประมาณเส้นตรงแทน
+- endpoint สาธารณะที่ถาม Google มี `throttle:maps` (12/นาที/คน) + แคช
+- ดูยอดได้ที่หน้าแอดมิน **ติดตามรถ GPS** → การ์ด "Google Maps เดือนนี้"; `ops:alert` อีเมลเมื่อถึง `MAPS_ALERT_PERCENT` (80%)
+
+**ตั้งใน Google Cloud Console (ครั้งเดียว — เป็นด่านสุดท้ายถ้าโค้ดพลาด):**
+1. **Budget alert** — Billing → Budgets & alerts → Create budget: เลือกเฉพาะโปรเจกต์นี้, จำนวน เช่น 5 USD,
+   แจ้งเตือนที่ 50% / 90% / 100% ไปอีเมลแอดมิน (budget แค่เตือน ไม่ตัดบริการ)
+2. **Quota** — Google Maps Platform → Quotas → Routes API: ลด "Compute Routes requests per minute" และ
+   "Compute Route Matrix elements per minute" เหลือราว 60 (ค่าเริ่มต้น 3,000/นาที) — ถ้ามีโควตาต่อวันให้เลือก
+   ให้ตั้งไม่เกิน 300/วัน (โค้ดเรามีเพดานรายวันของตัวเองอยู่แล้วที่ `MAPS_CAP_*_DAILY`)
+3. ตั้ง restriction ของทั้งสองคีย์ตามตารางด้านบน แล้วทดสอบ: `php artisan tinker` →
+   `app(\App\Services\Maps\GoogleRoutesClient::class)->route(['lat'=>13.75,'lng'=>100.5],['lat'=>13.8,'lng'=>100.55])`
+
 ## Log
 
 `storage/logs/laravel.log` หมุนทุกวันด้วย logrotate เก็บ 14 ไฟล์ (บีบอัด)

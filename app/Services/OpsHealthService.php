@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\Maps\MapsUsageMeter;
 use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -138,6 +139,7 @@ class OpsHealthService
         $checks[] = $this->diskCheck();
         $checks[] = $this->logSizeCheck();
         $checks[] = $this->smsCheck();
+        $checks[] = $this->mapsBudgetCheck();
         $checks[] = $this->realtimeCheck();
         $checks[] = $this->heartbeatCheck();
         $checks[] = $this->alertingCheck();
@@ -360,6 +362,37 @@ class OpsHealthService
         return $this->sms->isConfigured()
             ? $this->result('sms', 'ผู้ให้บริการ SMS', self::OK, 'ThaiBulkSMS พร้อมส่ง')
             : $this->result('sms', 'ผู้ให้บริการ SMS', self::WARN, 'ยังไม่ได้ตั้งค่า ThaiBulkSMS — SMS จะค้างสถานะรอส่ง');
+    }
+
+    /**
+     * Google Maps (Routes API) ใกล้ชนเพดานรายเดือน — ชนแล้ว ETA ถอยไปใช้เส้นตรง
+     * เพดานเริ่มต้น = โควตาฟรี จึงเตือนก่อนถึงตามเปอร์เซ็นต์ใน config/maps.php
+     */
+    private function mapsBudgetCheck(): array
+    {
+        $label = 'Google Maps (Routes API)';
+
+        if ((string) config('services.google_maps.api_key', '') === '') {
+            return $this->result('maps_budget', $label, self::OK, 'ไม่ได้ตั้งคีย์ — ใช้ค่าประมาณจากเส้นตรง ไม่มีค่าใช้จ่าย');
+        }
+
+        $worst = app(MapsUsageMeter::class)->highestMonthlyPercent();
+        $detail = $worst['sku']
+            ? sprintf('%s ใช้ไป %s/%s (%s%%) ของเพดานเดือนนี้', $worst['sku'], number_format($worst['used']), number_format($worst['cap']), $worst['percent'])
+            : 'ยังไม่มีการใช้เดือนนี้';
+
+        // ops:alert ส่งอีเมลเฉพาะ fail — ถึงเกณฑ์เตือนจึงต้องเป็น fail ไม่งั้นไม่มีใครรู้
+        if ($worst['percent'] >= 100) {
+            return $this->result('maps_budget', $label, self::FAIL, $detail.' — ชนเพดานแล้ว ETA กำลังใช้ค่าประมาณแทน');
+        }
+        if ($worst['percent'] >= (int) config('maps.alert_percent', 80)) {
+            return $this->result('maps_budget', $label, self::FAIL, $detail.' — ใกล้ชนเพดาน ตรวจหน้าแอดมิน "ติดตามรถ GPS"');
+        }
+        if ($worst['percent'] >= 50) {
+            return $this->result('maps_budget', $label, self::WARN, $detail);
+        }
+
+        return $this->result('maps_budget', $label, self::OK, $detail);
     }
 
     private function realtimeCheck(): array

@@ -134,6 +134,9 @@ Schedule::job(new AwardTripMedalsJob)->hourlyAt(5)->withoutOverlapping();
 // สรุปทั้งปี — บอกทุกคนที่มีเหรียญในปีนี้ ปลายเดือนธันวาคม ทริปส่วนใหญ่ของปีจบแล้ว
 Schedule::job(new SendYearReviewReadyJob)->yearlyOn(12, 28, '10:00')->timezone('Asia/Bangkok')->withoutOverlapping();
 Schedule::command('sms:send-pending')->everyFiveMinutes();
+// ETA ร่วมของรถ → จุดรับ: ถาม Google ไม่เกินครั้งละรถทุก 3–5 นาที แล้วแชร์ให้ลูกค้าทุกคน
+// (รันก่อน eta:notify-pickups ซึ่งอ่านผลนี้ไปใช้กับ push "รถใกล้ถึง")
+Schedule::command('tracking:refresh-eta')->everyMinute()->withoutOverlapping();
 Schedule::command('eta:notify-pickups')->everyMinute()->withoutOverlapping();
 // การ์ด "วันเดินทาง" บนหน้าจอล็อก / Dynamic Island — เปิดเอง อัปเดต ETA แล้วปิดเอง
 // ทุกนาที เพราะตัวเลข "อีก 8 นาที" ที่ช้าไป 5 นาทีคือตัวเลขที่ผิด

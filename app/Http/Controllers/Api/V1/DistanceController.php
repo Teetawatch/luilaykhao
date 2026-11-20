@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Services\GoogleDistanceService;
+use App\Services\Maps\VehicleEtaService;
 use App\Services\VehicleLocationService;
 use App\Support\Polyline;
 use App\Traits\ApiResponse;
@@ -327,6 +328,31 @@ class DistanceController extends Controller
             'legs' => $route['legs'] ?? [],
             'source' => $route ? 'google' : 'none',
         ], 'ดึงเส้นทางเดินรถสำเร็จ');
+    }
+
+    /**
+     * ETA ร่วมของรถของรอบนี้ไปยังจุดรับที่ยังมีคนรอ + เส้นทางตามถนนรายช่วง
+     * GET /api/v1/tracking/schedules/{scheduleId}/eta
+     *
+     * อ่านจากแคชอย่างเดียว ไม่เรียก Google — ตัวคิดคือ tracking:refresh-eta
+     * (ครั้งเดียวต่อรถทุก 3–5 นาที) ลูกค้ากี่คนเปิดจอก็ไม่เพิ่มค่าใช้จ่าย
+     */
+    public function scheduleEta(int $scheduleId, VehicleEtaService $eta): JsonResponse
+    {
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        $snapshot = $eta->snapshot($schedule->id);
+
+        if (! $snapshot) {
+            return $this->success([
+                'schedule_id' => $schedule->id,
+                'vehicle_id' => $schedule->vehicle_id,
+                'active' => false,
+                'reason' => 'not_started',
+                'stops' => [],
+            ]);
+        }
+
+        return $this->success($eta->present($snapshot));
     }
 
     /**

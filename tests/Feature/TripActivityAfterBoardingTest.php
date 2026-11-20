@@ -365,20 +365,16 @@ class TripActivityAfterBoardingTest extends TestCase
 
     public function test_google_is_asked_for_long_return_legs_but_not_every_minute(): void
     {
-        config([
-            'services.google_maps.api_key' => 'test-key',
-            'services.google_maps.distance_matrix_url' => 'https://maps.googleapis.com/maps/api/distancematrix/json',
-        ]);
-        Http::fake(['maps.googleapis.com/*' => Http::response([
-            'status' => 'OK',
-            'origin_addresses' => ['a'],
-            'destination_addresses' => ['b'],
-            'rows' => [['elements' => [[
-                'status' => 'OK',
-                'distance' => ['text' => '80 กม.', 'value' => 80000],
-                'duration' => ['text' => '1 ชม. 30 นาที', 'value' => 5400],
-                'duration_in_traffic' => ['text' => '2 ชม.', 'value' => 7200],
-            ]]]],
+        config(['services.google_maps.api_key' => 'test-key']);
+        // Routes API (TRAFFIC_AWARE): duration รวมรถติดแล้ว, staticDuration ไม่รวม
+        Http::fake(['routes.googleapis.com/*' => Http::response([
+            'routes' => [[
+                'distanceMeters' => 80000,
+                'duration' => '7200s',
+                'staticDuration' => '5400s',
+                'polyline' => ['encodedPolyline' => ''],
+                'legs' => [['distanceMeters' => 80000, 'duration' => '7200s', 'staticDuration' => '5400s']],
+            ]],
         ])]);
 
         $this->at('2026-10-11 17:00');

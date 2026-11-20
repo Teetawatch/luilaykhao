@@ -10,6 +10,7 @@ use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
+use App\Services\Maps\VehicleEtaService;
 use App\Support\MediaDisk;
 use App\Support\SiteSettings;
 use App\Support\ThaiDate;
@@ -215,10 +216,12 @@ class TripActivityService
                 $pickupCoords['lat'],
                 $pickupCoords['lng'],
             );
-            $etaMinutes = $this->etaMinutes(
-                $distanceKm,
-                isset($location['speed']) ? (float) $location['speed'] : null,
-            );
+            // ETA ร่วมจาก Google ก่อน — การ์ดหน้าจอล็อกกับจอติดตามรถต้องพูดเลขเดียวกัน
+            $etaMinutes = $this->sharedEtaMinutes($booking)
+                ?? $this->etaMinutes(
+                    $distanceKm,
+                    isset($location['speed']) ? (float) $location['speed'] : null,
+                );
         }
 
         $departTime = $this->departTimeLabel($schedule);
@@ -1742,6 +1745,20 @@ class TripActivityService
             + cos(deg2rad($fromLat)) * cos(deg2rad($toLat)) * sin($dLng / 2) ** 2;
 
         return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
+    /** ETA ของจุดรับประจำใบจองจาก VehicleEtaService — null = ไม่มี/ไม่สด/ปักหมุดเอง */
+    private function sharedEtaMinutes(Booking $booking): ?int
+    {
+        if (! $booking->pickup_point_id || $booking->custom_pickup_lat !== null) {
+            return null;
+        }
+
+        try {
+            return app(VehicleEtaService::class)->minutesFor((int) $booking->schedule_id, (int) $booking->pickup_point_id);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function etaMinutes(float $distanceKm, ?float $speedKmh): int

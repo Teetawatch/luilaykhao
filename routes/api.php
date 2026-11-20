@@ -72,6 +72,7 @@ use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\LiveActivityController;
 use App\Http\Controllers\Api\V1\LostItemController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
+use App\Http\Controllers\Api\V1\MapsUsageController;
 use App\Http\Controllers\Api\V1\MedalController;
 use App\Http\Controllers\Api\V1\ModerationController;
 use App\Http\Controllers\Api\V1\MyTripAssistantController;
@@ -875,9 +876,9 @@ Route::prefix('v1')->group(function () {
 
     // Customer Tracking is authenticated above; booking refs are not public lookup keys.
 
-    // Distance Matrix (public)
-    Route::post('distance', [DistanceController::class, 'calculate']);
-    Route::get('schedules/{id}/pickup-distances', [DistanceController::class, 'pickupDistances']);
+    // ระยะ/เวลาเดินทาง (public) — ถาม Google จึงต้องจำกัดอัตรา (throttle:maps) + แคช + เพดานโควตา
+    Route::post('distance', [DistanceController::class, 'calculate'])->middleware('throttle:maps');
+    Route::get('schedules/{id}/pickup-distances', [DistanceController::class, 'pickupDistances'])->middleware('throttle:maps');
 
     // Vehicle GPS Tracking (Public - for testing without auth)
     Route::prefix('tracking')->group(function () {
@@ -886,9 +887,12 @@ Route::prefix('v1')->group(function () {
         Route::get('current', [VehicleTrackingController::class, 'currentLocations']);
         Route::get('current/{vehicleId}', [VehicleTrackingController::class, 'currentLocation']);
         Route::get('history/{vehicleId}', [VehicleTrackingController::class, 'locationHistory']);
-        Route::get('route', [DistanceController::class, 'route'])->middleware('throttle:60,1');
-        Route::get('{vehicleId}/eta', [DistanceController::class, 'vehicleETA']);
-        Route::get('{vehicleId}/eta/schedule/{scheduleId}', [DistanceController::class, 'vehicleETAToPickups']);
+        // แอปรุ่นเก่ายังถามเส้นนี้ทุก ~25 วิต่อคน — รุ่นใหม่ใช้ schedules/{id}/eta แทน
+        Route::get('route', [DistanceController::class, 'route'])->middleware('throttle:maps');
+        // ETA ร่วมที่คิดไว้แล้ว (อ่านแคช ไม่เรียก Google)
+        Route::get('schedules/{scheduleId}/eta', [DistanceController::class, 'scheduleEta'])->middleware('throttle:120,1');
+        Route::get('{vehicleId}/eta', [DistanceController::class, 'vehicleETA'])->middleware('throttle:maps');
+        Route::get('{vehicleId}/eta/schedule/{scheduleId}', [DistanceController::class, 'vehicleETAToPickups'])->middleware('throttle:maps');
     });
 
     // Contacts
@@ -1396,6 +1400,8 @@ Route::prefix('v1')->group(function () {
             Route::get('history/{vehicleId}', [VehicleTrackingController::class, 'locationHistory']);
             // รอบไหนยังไม่แชร์ตำแหน่งรถ + เบอร์สตาฟ — มีเฉพาะใต้ /admin (มีเบอร์โทรทีมงาน)
             Route::get('sharing', [VehicleTrackingController::class, 'sharingStatus']);
+            // ยอดใช้ Google Maps (Routes API) เทียบโควตาฟรี + ETA ร่วมที่กำลังคิด
+            Route::get('maps-usage', [MapsUsageController::class, 'show']);
         });
 
         // Contacts Management

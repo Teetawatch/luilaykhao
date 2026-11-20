@@ -37,8 +37,10 @@ return [
 
     'google_maps' => [
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
-        'distance_matrix_url' => 'https://maps.googleapis.com/maps/api/distancematrix/json',
-        'directions_url' => 'https://maps.googleapis.com/maps/api/directions/json',
+        // Routes API (ตัวใหม่แทน Directions/Distance Matrix ที่ Google ปิดรับโปรเจกต์ใหม่แล้ว)
+        // คีย์นี้เป็นคีย์ฝั่งเซิร์ฟเวอร์เท่านั้น — ห้ามส่งเข้า Vite/แอปมือถือ
+        'routes_url' => 'https://routes.googleapis.com/directions/v2:computeRoutes',
+        'route_matrix_url' => 'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',
     ],
 
     'weather' => [

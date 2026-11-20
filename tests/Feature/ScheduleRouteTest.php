@@ -70,13 +70,14 @@ class ScheduleRouteTest extends TestCase
         config(['services.google_maps.api_key' => 'test-key']);
 
         Http::fake([
-            'maps.googleapis.com/maps/api/directions/*' => Http::response([
-                'status' => 'OK',
+            'routes.googleapis.com/*' => Http::response([
                 'routes' => [[
-                    'overview_polyline' => ['points' => '_p~iF~ps|U_ulLnnqC'],
+                    'distanceMeters' => 530000,
+                    'duration' => '23400s',
+                    'polyline' => ['encodedPolyline' => '_p~iF~ps|U_ulLnnqC'],
                     'legs' => [
-                        ['distance' => ['value' => 30000], 'duration' => ['value' => 1800]],
-                        ['distance' => ['value' => 500000], 'duration' => ['value' => 21600]],
+                        ['distanceMeters' => 30000, 'duration' => '1800s'],
+                        ['distanceMeters' => 500000, 'duration' => '21600s'],
                     ],
                 ]],
             ], 200),
@@ -110,9 +111,12 @@ class ScheduleRouteTest extends TestCase
 
         // origin = จุดรับแรก, destination = ปลายทางทริป, waypoint = จุดรับกลางทาง
         Http::assertSent(function ($request) {
-            return str_contains($request->url(), 'origin=13.8023%2C100.5536')
-                && str_contains($request->url(), 'destination=19.839%2C100.443')
-                && str_contains($request->url(), 'waypoints=13.9889%2C100.6183');
+            return $request['origin']['location']['latLng'] == ['latitude' => 13.8023, 'longitude' => 100.5536]
+                && $request['destination']['location']['latLng'] == ['latitude' => 19.839, 'longitude' => 100.443]
+                && $request['intermediates'][0]['location']['latLng'] == ['latitude' => 13.9889, 'longitude' => 100.6183]
+                // คีย์ฝั่งเซิร์ฟเวอร์ไปทาง header เท่านั้น ไม่โผล่ใน URL/log
+                && $request->hasHeader('X-Goog-Api-Key', 'test-key')
+                && ! str_contains($request->url(), 'key=');
         });
     }
 
@@ -135,12 +139,13 @@ class ScheduleRouteTest extends TestCase
         config(['services.google_maps.api_key' => 'test-key']);
 
         Http::fake([
-            'maps.googleapis.com/maps/api/directions/*' => Http::response([
-                'status' => 'OK',
+            'routes.googleapis.com/*' => Http::response([
                 'routes' => [[
-                    'overview_polyline' => ['points' => 'abc'],
+                    'distanceMeters' => 700000,
+                    'duration' => '28800s',
+                    'polyline' => ['encodedPolyline' => 'abc'],
                     'legs' => [
-                        ['distance' => ['value' => 700000], 'duration' => ['value' => 28800]],
+                        ['distanceMeters' => 700000, 'duration' => '28800s'],
                     ],
                 ]],
             ], 200),
@@ -163,7 +168,7 @@ class ScheduleRouteTest extends TestCase
             ->assertJsonPath('data.polyline', 'abc');
 
         Http::assertSent(function ($request) {
-            return ! str_contains($request->url(), 'waypoints=');
+            return ! isset($request['intermediates']);
         });
     }
 

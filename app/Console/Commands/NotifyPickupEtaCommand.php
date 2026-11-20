@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Booking;
 use App\Models\SmartNotification;
 use App\Models\TripSchedule;
+use App\Services\Maps\VehicleEtaService;
 use App\Services\VehicleLocationService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -27,7 +28,7 @@ class NotifyPickupEtaCommand extends Command
     /** ถือว่าตำแหน่งรถใช้ไม่ได้ถ้าเก่ากว่านี้ (นาที) */
     private const STALE_AFTER_MINUTES = 20;
 
-    public function handle(): int
+    public function handle(VehicleEtaService $etaService): int
     {
         $schedules = TripSchedule::with('trip')
             // เทียบกับวันออกรถจริง — รอบที่รถออกคืนก่อนวันทริปจะรับลูกค้าในวันก่อนหน้า
@@ -76,10 +77,13 @@ class NotifyPickupEtaCommand extends Command
                     (float) $point->longitude,
                 );
 
-                $minutes = $this->etaMinutes(
-                    $distanceKm,
-                    isset($location['speed']) ? (float) $location['speed'] : null,
-                );
+                // ETA ร่วมจาก Google (tracking:refresh-eta) ก่อน — ตัวเลขเดียวกับที่ลูกค้า
+                // เห็นบนจอติดตามรถ ไม่มี/ไม่สดค่อยคิดเองจากเส้นตรง
+                $minutes = $etaService->minutesFor($schedule->id, (int) $point->id)
+                    ?? $this->etaMinutes(
+                        $distanceKm,
+                        isset($location['speed']) ? (float) $location['speed'] : null,
+                    );
 
                 $stage = $this->stageFor($distanceKm, $minutes);
                 if ($stage === null) {

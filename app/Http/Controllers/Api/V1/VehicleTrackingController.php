@@ -301,6 +301,7 @@ class VehicleTrackingController extends Controller
         return $this->success(GuestBookingPresenter::present($booking, true) + [
             'pickup_lat' => $pickupLat,
             'pickup_lng' => $pickupLng,
+            'pickup_point_id' => $this->etaPickupPointId($booking),
             'destination_lat' => $trip?->latitude,
             'destination_lng' => $trip?->longitude,
         ], 'พบข้อมูลการจอง');
@@ -378,6 +379,7 @@ class VehicleTrackingController extends Controller
             return GuestBookingPresenter::present($booking, false) + [
                 'pickup_lat' => $pickupLat,
                 'pickup_lng' => $pickupLng,
+                'pickup_point_id' => $this->etaPickupPointId($booking),
                 'destination_lat' => $booking->schedule?->trip?->latitude,
                 'destination_lng' => $booking->schedule?->trip?->longitude,
             ];
@@ -425,6 +427,7 @@ class VehicleTrackingController extends Controller
             'departure_point' => $trip?->departure_point ?? '',
             'pickup_lat' => $pickupLat,
             'pickup_lng' => $pickupLng,
+            'pickup_point_id' => $this->etaPickupPointId($booking),
             'destination_lat' => $trip?->latitude,
             'destination_lng' => $trip?->longitude,
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
@@ -587,6 +590,19 @@ class VehicleTrackingController extends Controller
      *
      * @return array{0: ?float, 1: ?float}
      */
+    /**
+     * จุดรับประจำที่ใช้จับคู่กับ ETA ร่วมของรถ (tracking/schedules/{id}/eta)
+     * — ปักหมุดเองไม่มีจุดประจำ แอปคิด ETA จากเส้นตรงเอง
+     */
+    private function etaPickupPointId(Booking $booking): ?int
+    {
+        if (! $booking->pickup_point_id || app(PickupArrivalService::class)->hasCustomPickup($booking)) {
+            return null;
+        }
+
+        return (int) $booking->pickup_point_id;
+    }
+
     private function resolvePickupCoords(Booking $booking): array
     {
         $point = $booking->pickupPoint;
