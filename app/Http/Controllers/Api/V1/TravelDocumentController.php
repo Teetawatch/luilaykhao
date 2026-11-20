@@ -93,7 +93,7 @@ class TravelDocumentController extends Controller
 
         return [
             'booking_ref' => $booking->booking_ref,
-            'trip_title' => $trip?->title,
+            'trip_title' => $trip?->tr('title'),
             'country' => $trip?->countryLabel(),
             'departure_date' => $booking->schedule?->departure_date?->toDateString(),
             'passport' => $this->documents->summary($booking),

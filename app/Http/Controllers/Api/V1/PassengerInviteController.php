@@ -97,7 +97,7 @@ class PassengerInviteController extends Controller
 
         $passenger->ensurePassToken();
         $url = $passenger->passUrl();
-        $trip = $booking->schedule?->trip?->title;
+        $trip = $booking->schedule?->trip?->tr('title');
 
         return $this->success([
             'passenger_id' => $passenger->id,

@@ -39,9 +39,9 @@ class SaleCampaignController extends Controller
         return response()->json([
             'data' => $campaign ? [
                 'id' => $campaign->id,
-                'name' => $campaign->name,
-                'badge_label' => $campaign->badge_label,
-                'tagline' => $campaign->tagline,
+                'name' => $campaign->tr('name'),
+                'badge_label' => $campaign->tr('badge_label'),
+                'tagline' => $campaign->tr('tagline'),
                 'discount_label' => $campaign->discountLabel(),
                 'discount_type' => $campaign->discount_type,
                 'discount_value' => (float) $campaign->discount_value,
@@ -123,7 +123,7 @@ class SaleCampaignController extends Controller
                 return [
                     'schedule_id' => $s->id,
                     'trip_id' => $s->trip_id,
-                    'trip_title' => $s->trip->title,
+                    'trip_title' => $s->trip->tr('title'),
                     'departure_date' => $s->departure_date?->toDateString(),
                     'seats_left' => $s->available_seats,
                     'price_before' => round($before, 2),

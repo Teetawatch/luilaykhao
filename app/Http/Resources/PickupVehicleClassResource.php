@@ -15,13 +15,13 @@ class PickupVehicleClassResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'label' => $this->label,
+            'label' => $this->resource->tr('label'),
             'min_pax' => $this->min_pax,
             'max_pax' => $this->max_pax,
             // ให้ฝั่งแอป/เว็บวาดได้เลยโดยไม่ต้องประกอบข้อความช่วงคนเอง
             'pax_label' => $this->paxLabel(),
             'image_url' => $this->image_url,
-            'note' => $this->note,
+            'note' => $this->resource->tr('note'),
             'is_active' => $this->is_active,
             'sort_order' => $this->sort_order,
         ];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasContentTranslations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,6 +14,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class ScheduleVehicleOption extends Model
 {
+    use HasContentTranslations;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['label', 'note'];
+
     protected $table = 'schedule_vehicle_options';
 
     protected $fillable = [

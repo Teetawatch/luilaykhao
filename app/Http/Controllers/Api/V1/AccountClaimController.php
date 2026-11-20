@@ -39,7 +39,7 @@ class AccountClaimController extends Controller
             'count' => $bookings->count(),
             'trips' => $bookings
                 ->map(fn (Booking $booking) => [
-                    'trip_title' => $booking->schedule?->trip?->title,
+                    'trip_title' => $booking->schedule?->trip?->tr('title'),
                     'departure_date' => $booking->schedule?->departure_date?->toDateString(),
                 ])
                 ->values(),
@@ -91,7 +91,7 @@ class AccountClaimController extends Controller
             'bookings' => $bookings
                 ->map(fn (Booking $booking) => [
                     'booking_ref' => $booking->booking_ref,
-                    'trip_title' => $booking->schedule?->trip?->title,
+                    'trip_title' => $booking->schedule?->trip?->tr('title'),
                     'departure_date' => $booking->schedule?->departure_date?->toDateString(),
                 ])
                 ->values(),
@@ -184,7 +184,7 @@ class AccountClaimController extends Controller
             'bookings' => $this->claims->bookingsOf($shadow)
                 ->map(fn (Booking $booking) => [
                     'booking_ref' => $booking->booking_ref,
-                    'trip_title' => $booking->schedule?->trip?->title,
+                    'trip_title' => $booking->schedule?->trip?->tr('title'),
                     'departure_date' => $booking->schedule?->departure_date?->toDateString(),
                     'status' => $booking->status,
                 ])

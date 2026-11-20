@@ -4842,7 +4842,11 @@ class AdminController extends Controller
             ->orderBy('sort_order')
             ->get(['id', 'image_url', 'alt_text']);
 
-        return $this->success($slides);
+        return $this->success($slides->map(fn (HeroSlide $slide) => [
+            'id' => $slide->id,
+            'image_url' => $slide->image_url,
+            'alt_text' => $slide->tr('alt_text'),
+        ])->values());
     }
 
     public function heroSlides(): JsonResponse

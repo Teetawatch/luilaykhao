@@ -58,6 +58,21 @@ class AppLocale
     }
 
     /**
+     * ข้อความที่มีรูปเอกพจน์/พหูพจน์ในภาษาอังกฤษ ("{1} :count meal|[2,*] :count meals")
+     *
+     * ห้ามเรียก trans_choice() ตรง ๆ กับคีย์ไทย — ภาษาไทยไม่มีคีย์นั้นใน lang/ จึง
+     * ถูกโยนไปใช้ fallback_locale (en) หน้าไทยได้ข้อความอังกฤษ
+     *
+     * @param  array<string, string|int|float>  $replace
+     */
+    public static function choice(string $thai, int|float $count, array $replace = []): string
+    {
+        $replace = ['count' => $count] + $replace;
+
+        return self::isEnglish() ? trans_choice($thai, $count, $replace) : __($thai, $replace);
+    }
+
+    /**
      * วันที่สั้นตามภาษาของ request: "25 ก.ค. 2569" หรือ "25 Jul 2026"
      */
     public static function shortDate(\DateTimeInterface $date): string

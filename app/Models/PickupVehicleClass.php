@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasContentTranslations;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,10 @@ use Illuminate\Support\Collection;
  */
 class PickupVehicleClass extends Model
 {
-    use HasFactory;
+    use HasContentTranslations, HasFactory;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['label', 'note'];
 
     protected $fillable = [
         'label', 'min_pax', 'max_pax', 'image_url', 'note', 'is_active', 'sort_order',

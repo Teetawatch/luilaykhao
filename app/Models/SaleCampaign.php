@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasContentTranslations;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,6 +18,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class SaleCampaign extends Model
 {
+    use HasContentTranslations;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['name', 'badge_label', 'tagline'];
+
     protected $fillable = [
         'name',
         'badge_label',

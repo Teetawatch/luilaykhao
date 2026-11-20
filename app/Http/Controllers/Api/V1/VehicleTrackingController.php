@@ -421,7 +421,7 @@ class VehicleTrackingController extends Controller
             'booking_ref' => $booking->booking_ref,
             'schedule_id' => $booking->schedule_id,
             'vehicle_id' => $schedule?->vehicle_id,
-            'trip_title' => $trip?->title ?? '',
+            'trip_title' => $trip?->tr('title') ?? '',
             'departure_point' => $trip?->departure_point ?? '',
             'pickup_lat' => $pickupLat,
             'pickup_lng' => $pickupLng,
@@ -499,7 +499,7 @@ class VehicleTrackingController extends Controller
 
         $status = $booking->status;
         $payload = [
-            'trip_title' => $trip?->title ?? 'ทริปของคุณ',
+            'trip_title' => $trip?->tr('title') ?? 'ทริปของคุณ',
             'status' => $status,
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
             'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
@@ -675,7 +675,7 @@ class VehicleTrackingController extends Controller
         $data = $schedules->map(function ($s) {
             return [
                 'id' => $s->id,
-                'trip_title' => $s->trip->title ?? '',
+                'trip_title' => $s->trip?->tr('title') ?? '',
                 'trip_location' => $s->trip->location ?? '',
                 'departure_point' => $s->trip->departure_point ?? '',
                 'destination_lat' => $s->trip->latitude,

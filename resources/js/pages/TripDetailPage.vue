@@ -1345,9 +1345,19 @@
                   </span>
                 </div>
 
-                <p class="text-[var(--color-text-mid)] leading-relaxed text-base font-medium mb-5 whitespace-pre-line flex-grow">
-                  {{ review.comment }}
+                <p class="text-[var(--color-text-mid)] leading-relaxed text-base font-medium whitespace-pre-line flex-grow" :class="reviewTranslation.canTranslate(review) ? 'mb-2' : 'mb-5'">
+                  {{ reviewTranslation.commentOf(review) }}
                 </p>
+                <button
+                  v-if="reviewTranslation.canTranslate(review)"
+                  type="button"
+                  class="mb-5 self-start inline-flex items-center gap-1 text-sm font-bold text-[var(--color-accent)] hover:underline disabled:opacity-60"
+                  :disabled="reviewTranslation.isLoading(review)"
+                  @click="reviewTranslation.toggle(review)"
+                >
+                  <span class="material-symbols-rounded icon-16">translate</span>
+                  {{ reviewTranslation.isLoading(review) ? $t('กำลังแปล…') : reviewTranslation.isShowingTranslation(review) ? $t('ดูต้นฉบับภาษาไทย') : reviewTranslation.hasFailed(review) ? $t('แปลไม่สำเร็จ ลองอีกครั้ง') : $t('แปลเป็นภาษาอังกฤษ') }}
+                </button>
 
                 <!-- Review Images -->
                 <div v-if="review.images && review.images.length > 0" class="flex flex-wrap gap-3 mb-5">
@@ -2044,6 +2054,7 @@ import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
 import WaitlistJoinCard from '../components/WaitlistJoinCard.vue';
 import TripReadinessCard from '../components/TripReadinessCard.vue';
 import GroupPlanCreateCard from '../components/GroupPlanCreateCard.vue';
+import { useReviewTranslation } from '../composables/useReviewTranslation';
 import { useWishlistStore } from '../stores/wishlist';
 import {
   hasAvailableSeats,
@@ -2061,6 +2072,8 @@ import {
 import { thaiShort } from '../lib/thaiDate';
 
 const route = useRoute();
+// ปุ่ม Translate ใต้รีวิว (หน้าอังกฤษเท่านั้น)
+const reviewTranslation = useReviewTranslation();
 const trip = ref(null);
 const relatedTrips = ref([]);
 const nearbyStays = ref([]);

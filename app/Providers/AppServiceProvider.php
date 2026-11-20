@@ -18,6 +18,7 @@ use App\Observers\ScheduleItineraryItemObserver;
 use App\Observers\TripObserver;
 use App\Observers\TripScheduleObserver;
 use App\Services\SaleCampaignService;
+use App\Support\TranslationStore;
 use App\Support\TripListCache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -34,6 +35,9 @@ class AppServiceProvider extends ServiceProvider
         // แคมเปญวันพิเศษถูกถามซ้ำทุกครั้งที่คิดราคา — singleton ทำให้ยิง DB
         // ครั้งเดียวต่อ request แล้วจำคำตอบไว้
         $this->app->singleton(SaleCampaignService::class);
+
+        // คำแปลเนื้อหาที่โหลดไว้ — ล้างทุก request และทุกงานในคิว
+        $this->app->scoped(TranslationStore::class);
     }
 
     /**

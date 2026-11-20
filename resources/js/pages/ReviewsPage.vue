@@ -201,7 +201,17 @@
                 <p
                   class="text-[15px] text-[var(--color-text-mid)] leading-relaxed whitespace-pre-line break-words"
                   :class="{ 'line-clamp-6': isLong(review) && !expanded[review.id] }"
-                >{{ review.comment }}</p>
+                >{{ reviewTranslation.commentOf(review) }}</p>
+                <button
+                  v-if="reviewTranslation.canTranslate(review)"
+                  type="button"
+                  class="mt-1 mr-3 inline-flex items-center gap-1 text-sm font-bold text-[var(--color-accent)] hover:underline disabled:opacity-60"
+                  :disabled="reviewTranslation.isLoading(review)"
+                  @click="reviewTranslation.toggle(review)"
+                >
+                  <span class="material-symbols-rounded icon-16">translate</span>
+                  {{ reviewTranslation.isLoading(review) ? $t('กำลังแปล…') : reviewTranslation.isShowingTranslation(review) ? $t('ดูต้นฉบับภาษาไทย') : reviewTranslation.hasFailed(review) ? $t('แปลไม่สำเร็จ ลองอีกครั้ง') : $t('แปลเป็นภาษาอังกฤษ') }}
+                </button>
                 <button
                   v-if="isLong(review)"
                   type="button"
@@ -353,8 +363,11 @@ import api from '../lib/axios';
 import { thaiShort } from '../lib/thaiDate';
 import PageHero from '../components/PageHero.vue';
 import TierBadge from '../components/TierBadge.vue';
+import { useReviewTranslation } from '../composables/useReviewTranslation';
 
 const route = useRoute();
+// ปุ่ม Translate ใต้รีวิว (หน้าอังกฤษเท่านั้น)
+const reviewTranslation = useReviewTranslation();
 const router = useRouter();
 
 const FILLED = "font-variation-settings:'FILL' 1";

@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\BookingPassenger;
 use App\Models\TripSchedule;
 use App\Support\PaymentQuote;
+use App\Support\TranslationStore;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\MissingValue;
@@ -55,6 +56,9 @@ class TripScheduleResource extends JsonResource
         // แคมเปญวันพิเศษที่ลดราคารอบนี้อยู่ — null เมื่อไม่มีแคมเปญ ทริปถูกยกเว้น
         // หรือรอบนี้ขายไม่ได้แล้ว (ปิด/เต็ม/ออกเดินทางไปแล้ว)
         $campaign = $this->saleCampaign();
+
+        // หน้าอังกฤษ: คำแปลของรอบ + จุดรับ + ตัวเลือกรถ ทีเดียว (หน้าไทยไม่ทำอะไร)
+        app(TranslationStore::class)->primeTree($this->resource);
 
         return [
             'id' => $this->id,
@@ -116,13 +120,13 @@ class TripScheduleResource extends JsonResource
             'flight_plan' => $this->when(
                 $this->isFlight(),
                 fn () => [
-                    'meeting_point' => $this->meeting_point,
+                    'meeting_point' => $this->resource->tr('meeting_point'),
                     'meeting_map_url' => $this->meeting_map_url,
                     'meeting_time' => $this->meeting_time,
                     // เวลานัดพบเต็มรูปแบบ (เวลาไทย) — client ไม่ต้องเดาว่า meeting_time
                     // อยู่วันไหนเมื่อไฟลต์ออกหลังเที่ยงคืน
                     'meeting_at' => $this->meetingAt()?->format('Y-m-d H:i:s'),
-                    'baggage_allowance' => $this->baggage_allowance,
+                    'baggage_allowance' => $this->resource->tr('baggage_allowance'),
                     'legs' => $this->flightLegs(),
                 ],
             ),
@@ -137,7 +141,7 @@ class TripScheduleResource extends JsonResource
                 : null,
             // ยกเลิกเพราะเหตุสุดวิสัย — ลูกค้าในรอบได้สิทธิ์เลือกรอบใหม่ (ForceMajeureService)
             'force_majeure_at' => $this->force_majeure_at?->toISOString(),
-            'force_majeure_reason' => $this->force_majeure_reason,
+            'force_majeure_reason' => $this->resource->tr('force_majeure_reason'),
             // force_majeure | underfilled (ยกเลิกเพราะผู้ร่วมทริปไม่ครบ)
             'postpone_kind' => $this->force_majeure_at ? ($this->postpone_kind ?: 'force_majeure') : null,
             'price' => $this->effective_price,
@@ -165,9 +169,9 @@ class TripScheduleResource extends JsonResource
                 $campaign !== null,
                 fn () => [
                     'id' => $campaign->id,
-                    'name' => $campaign->name,
-                    'badge_label' => $campaign->badge_label,
-                    'tagline' => $campaign->tagline,
+                    'name' => $campaign->tr('name'),
+                    'badge_label' => $campaign->tr('badge_label'),
+                    'tagline' => $campaign->tr('tagline'),
                     'discount_label' => $campaign->discountLabel(),
                     'theme_color' => $campaign->theme_color,
                     'ends_at' => $campaign->ends_at?->toISOString(),

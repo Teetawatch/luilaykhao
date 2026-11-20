@@ -81,13 +81,13 @@ class BookingResource extends JsonResource
                 return [
                     'id' => $this->pickupPoint->id,
                     'region' => $this->pickupPoint->region,
-                    'pickup_location' => $this->pickupPoint->pickup_location,
-                    'region_label' => $this->pickupPoint->region_label,
+                    'pickup_location' => $this->pickupPoint->tr('pickup_location'),
+                    'region_label' => $this->pickupPoint->tr('region_label'),
                     // เวลาขึ้นรถ — ก่อนหน้านี้ client ต้องไปไล่หาเองใน schedule.pickup_points
                     'pickup_time' => $this->pickupPoint->pickup_time,
                     'map_url' => $this->pickupPoint->map_url,
                     'image_url' => $this->pickupPoint->image_url,
-                    'notes' => $this->pickupPoint->notes,
+                    'notes' => $this->pickupPoint->tr('notes'),
                     // "รถจอดตรงไหน" ของจุดนี้ — สิ่งที่ลูกค้าเปิดหาในนาทีที่ยืน
                     // อยู่ในลานจอดที่มีรถสิบคัน ใบจองที่เคยถูกย้ายรอบมี FK ค้างชี้
                     // จุดของรอบเดิมได้ จุดที่ไม่ใช่ของรอบนี้จึงไม่มีสิทธิ์พูดแทน
@@ -268,9 +268,10 @@ class BookingResource extends JsonResource
             'payment_gateway' => PaymentGateway::publicConfig(),
             // ส่วนต่าง Flexi-Price ที่ตกลงจ่ายเพิ่ม (เก็บวันเดินทาง) — null เมื่อไม่เข้าร่วม
             'flexi_surcharge' => $this->flexi_surcharge,
-            'selected_addons' => $this->selected_addons ?? [],
+            // ชื่อรายการที่แช่ไว้ตอนจองเป็นไทย — หน้าอังกฤษหาคำแปลจากทริป (ข้อความไทยตรงกัน)
+            'selected_addons' => $this->tripText('must_know', $this->selected_addons ?? []),
             'addons_total' => $this->addons_total,
-            'selected_rentals' => $this->selected_rentals ?? [],
+            'selected_rentals' => $this->tripText('rental_items', $this->selected_rentals ?? []),
             'rentals_total' => $this->rentals_total,
             // เช่าอุปกรณ์เพิ่มเองหลังจอง — แอปโชว์ปุ่มเมื่อ open (null = ทริปไม่มีของให้เช่า)
             'rental_ordering' => $this->when(
@@ -379,5 +380,15 @@ class BookingResource extends JsonResource
             'refund' => RefundService::customerPayload($this->resource),
             'created_at' => $this->created_at?->toISOString(),
         ];
+    }
+
+    /** ข้อความที่แช่ไว้ในใบจอง (ชื่อรายการเสริม/ของเช่า) ในภาษาของ request ผ่านคำแปลของทริป */
+    private function tripText(string $field, mixed $value): mixed
+    {
+        $trip = $this->relationLoaded('schedule') && $this->schedule?->relationLoaded('trip')
+            ? $this->schedule->trip
+            : null;
+
+        return $trip ? $trip->tr($field, $value) : $value;
     }
 }

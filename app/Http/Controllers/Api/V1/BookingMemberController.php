@@ -135,7 +135,7 @@ class BookingMemberController extends Controller
             'invite_label' => $invite->invite_label,
             'invited_by' => $invite->invitedBy?->nickname ?: $invite->invitedBy?->name,
             'booking_ref' => $booking->booking_ref,
-            'trip_title' => $trip?->title,
+            'trip_title' => $trip?->tr('title'),
             'departure_date' => $schedule?->departure_date?->toDateString(),
             'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
             'already_member' => $booking->isAccessibleByUser($request->user()->id),
@@ -158,7 +158,7 @@ class BookingMemberController extends Controller
         return $this->success([
             'booking_ref' => $booking?->booking_ref,
             'schedule_id' => $booking?->schedule_id,
-            'trip_title' => $booking?->schedule?->trip?->title,
+            'trip_title' => $booking?->schedule?->trip?->tr('title'),
         ], 'เข้าร่วมการจองสำเร็จ');
     }
 

@@ -46,7 +46,7 @@ class PublicAlbumController extends Controller
             ->min();
 
         return $this->success([
-            'trip_title' => $schedule->trip?->title,
+            'trip_title' => $schedule->trip?->tr('title'),
             'departure_date' => optional($schedule->departure_date)->toDateString(),
             'return_date' => optional($schedule->return_date)->toDateString(),
             'count' => $schedule->photos->count(),

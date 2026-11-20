@@ -64,6 +64,7 @@
               <button class="btn-icon" :disabled="index === categoriesStore.categories.length - 1" @click="moveCategory(index, 1)" title="เลื่อนลง">
                 <span class="material-symbols-rounded" style="font-size:16px;">arrow_downward</span>
               </button>
+              <button class="btn-icon" @click="translating = c" title="คำแปลภาษาอังกฤษ"><span class="material-symbols-rounded" style="font-size:16px;">translate</span></button>
               <button class="btn-icon btn-edit" @click="openForm(c)" title="แก้ไข"><span class="material-symbols-rounded" style="font-size:16px;">edit</span></button>
               <button class="btn-icon btn-delete" @click="confirmDelete(c)" title="ลบ"><span class="material-symbols-rounded" style="font-size:16px;">delete</span></button>
             </div>
@@ -195,6 +196,19 @@
     </div>
 
     <!-- Crop Modal -->
+    <!-- คำแปลภาษาอังกฤษของหมวด (หน้าเว็บ /en) -->
+    <div class="modal-overlay" v-if="translating" @click.self="translating = null">
+      <div class="modal-card" style="max-width:860px">
+        <div class="modal-header">
+          <h2>English · {{ translating.name }}</h2>
+          <button class="modal-close" @click="translating = null"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <AdminContentTranslationPanel type="category" :id="translating.id" />
+        </div>
+      </div>
+    </div>
+
     <div class="modal-overlay" v-if="showCropper" @click.self="closeCropper">
       <div class="modal-card" style="max-width:620px">
         <div class="modal-header">
@@ -255,10 +269,13 @@ import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
 import { useCategoriesStore } from '../../stores/categories';
+import AdminContentTranslationPanel from '../../components/AdminContentTranslationPanel.vue';
 import api from '../../../js/lib/axios';
 
 const categoriesStore = useCategoriesStore();
 const showForm = ref(false);
+// หมวดที่กำลังดูคำแปลภาษาอังกฤษ (null = ปิด)
+const translating = ref(null);
 const showDeleteConfirm = ref(false);
 const editing = ref(null);
 const deleting = ref(null);

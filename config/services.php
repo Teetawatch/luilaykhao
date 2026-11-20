@@ -121,6 +121,12 @@ return [
         'assistant_model' => env('ANTHROPIC_ASSISTANT_MODEL', 'claude-opus-5'),
         // รุ่นที่ใช้แปลข้อความแชท (กดแปลทีละข้อความ) — haiku พอและเร็ว ผู้ใช้รอดูผลอยู่
         'translate_model' => env('ANTHROPIC_TRANSLATE_MODEL', 'claude-haiku-4-5'),
+        // รุ่นที่แปลเนื้อหาทริป/จุดรับ/หมวดหมู่ตอนแอดมินบันทึก (งานในคิว ไม่มีใครรอ)
+        // — haiku แปลข้อความท่องเที่ยวได้ดีและถูก ทริปหนึ่งไม่ถึงบาทต่อการแปล
+        'content_translate_model' => env('ANTHROPIC_CONTENT_TRANSLATE_MODEL', 'claude-haiku-4-5'),
+        // ปิดการแปลอัตโนมัติตอนบันทึก (phpunit ปิดไว้ — เทสต์อื่นที่ fake Claude ไม่ควร
+        // โดนงานแปลแย่ง response) ปุ่มแปลรีวิวและหน้าแอดมินยังใช้ได้
+        'content_translate_on_save' => (bool) env('CONTENT_TRANSLATION_ON_SAVE', true),
     ],
 
     'thaibulksms' => [

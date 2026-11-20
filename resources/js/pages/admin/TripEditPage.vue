@@ -28,7 +28,21 @@
       <span>{{ submitError }}</span>
     </div>
 
-    <div class="edit-grid" v-if="!loading">
+    <!-- ต้นฉบับไทย / คำแปลภาษาอังกฤษ (หน้าเว็บ /en) — แท็บคำแปลมีเฉพาะทริปที่บันทึกแล้ว -->
+    <div v-if="isEdit && !loading" class="content-tabs" role="tablist">
+      <button type="button" role="tab" :aria-selected="contentTab === 'thai'" :class="['content-tab', { on: contentTab === 'thai' }]" @click="contentTab = 'thai'">
+        <span class="material-symbols-rounded">edit_note</span> เนื้อหา (ไทย)
+      </button>
+      <button type="button" role="tab" :aria-selected="contentTab === 'english'" :class="['content-tab', { on: contentTab === 'english' }]" @click="contentTab = 'english'">
+        <span class="material-symbols-rounded">translate</span> English
+      </button>
+    </div>
+
+    <div v-if="isEdit && !loading && contentTab === 'english'" class="card section-card">
+      <AdminContentTranslationPanel type="trip" :id="Number(route.params.id)" />
+    </div>
+
+    <div class="edit-grid" v-if="!loading" v-show="contentTab === 'thai'">
       <!-- Main Content -->
       <div class="edit-main">
         <!-- Title Section -->
@@ -1254,6 +1268,7 @@ import api from '../../lib/axios';
 import { uploadMedia } from '../../lib/mediaUpload';
 import MedalArt from '../../components/MedalArt.vue';
 import MediaLibrary from '../../components/MediaLibrary.vue';
+import AdminContentTranslationPanel from '../../components/AdminContentTranslationPanel.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -1261,6 +1276,8 @@ const admin = useAdminStore();
 const categoriesStore = useCategoriesStore();
 
 const isEdit = computed(() => !!route.params.id);
+// แท็บ English โหลดคำแปลล่าสุดทุกครั้งที่เปิด (บันทึกไทยแล้วงานแปลวิ่งในคิว)
+const contentTab = ref(route.query.tab === 'english' ? 'english' : 'thai');
 const isVanMode = computed(() => route.name?.startsWith('admin-van-trip'));
 const backRouteName = computed(() => isVanMode.value ? 'admin-van-trips' : 'admin-trips');
 const loading = ref(false);
@@ -2551,6 +2568,15 @@ onMounted(() => {
 .edit-trip-page {
   padding-bottom: 80px;
 }
+
+.content-tabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+.content-tab {
+  display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; margin-bottom: -1px;
+  border: 0; border-bottom: 2px solid transparent; background: none; color: #6b7280;
+  font-size: 16px; font-weight: 600; cursor: pointer;
+}
+.content-tab .material-symbols-rounded { font-size: 20px; }
+.content-tab.on { color: var(--color-accent); border-bottom-color: var(--color-accent); }
 
 .field-hint {
   margin-top: 6px;

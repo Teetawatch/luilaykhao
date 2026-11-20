@@ -143,6 +143,17 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // แปลข้อความแชท — ทุกครั้งที่ยังไม่มีในแคชคือค่า API จริง กดอ่านทีละข้อความ
         // ไล่ห้องได้สบาย ๆ แต่กันสคริปต์/กดรัวไม่ให้ไล่แปลทั้งห้องทุกภาษา
+        // ปุ่มแปลรีวิวบนหน้าอังกฤษ (ไม่ต้องล็อกอิน) — รีวิวที่เคยแปลแล้วไม่เสียค่า
+        // แต่กันสคริปต์ไล่กดทุกรีวิว
+        RateLimiter::for('content-translate', function (Request $request) {
+            $key = 'content-translate:'.($request->user('sanctum')?->id ?? $request->ip());
+
+            return [
+                Limit::perMinute(30)->by($key.':m'),
+                Limit::perDay(300)->by($key.':d'),
+            ];
+        });
+
         RateLimiter::for('chat-translate', function (Request $request) {
             $key = 'chat-translate:'.($request->user()?->id ?? $request->ip());
 

@@ -158,7 +158,7 @@ class PartyGameController extends Controller
     {
         return array_merge($this->games->present($card), [
             'is_active' => (bool) $card->is_active,
-            'trip_title' => $card->trip?->title,
+            'trip_title' => $card->trip?->tr('title'),
             'updated_at' => $card->updated_at?->toIso8601String(),
         ]);
     }

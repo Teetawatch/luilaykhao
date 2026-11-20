@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Jobs\NotifyTripCrewAssignedJob;
 use App\Jobs\SendDriverAssignmentPushJob;
+use App\Models\Concerns\HasContentTranslations;
 use App\Services\SaleCampaignService;
 use App\Support\LoyaltyTier;
 use App\Support\SeatLayoutFactory;
@@ -23,7 +24,10 @@ use Illuminate\Support\Str;
 
 class TripSchedule extends Model
 {
-    use HasFactory;
+    use HasContentTranslations, HasFactory;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['meeting_point', 'baggage_allowance', 'force_majeure_reason'];
 
     public const ACTIVE_BOOKING_STATUSES = ['pending', 'confirmed'];
 

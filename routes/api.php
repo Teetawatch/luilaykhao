@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\AdminArticleController;
 use App\Http\Controllers\Api\V1\AdminAtRiskScheduleController;
 use App\Http\Controllers\Api\V1\AdminBroadcastController;
 use App\Http\Controllers\Api\V1\AdminCharterRequestController;
+use App\Http\Controllers\Api\V1\AdminContentTranslationController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminFinanceController;
@@ -200,6 +201,8 @@ Route::prefix('v1')->group(function () {
     Route::get('reviews', [ReviewController::class, 'index']);
     Route::get('reviews/stats', [ReviewController::class, 'stats']);
     Route::get('reviews/photos', [ReviewController::class, 'photos']);
+    // ปุ่ม "Translate" ใต้รีวิว (หน้าอังกฤษ) — แปลเมื่อกดเท่านั้น เก็บไว้ใช้ซ้ำ
+    Route::post('reviews/{id}/translate', [ReviewController::class, 'translate'])->whereNumber('id')->middleware('throttle:content-translate');
 
     // Trip posts / ฟีดรูปหลังทริป (public read — ฟีดรวม + ฟีดต่อทริป + คอมเมนต์)
     Route::middleware('throttle:api')->group(function () {
@@ -1419,6 +1422,12 @@ Route::prefix('v1')->group(function () {
 
         // Waitlist management
         Route::get('schedules/{id}/waitlist', [WaitlistController::class, 'adminScheduleWaitlist']);
+
+        // คำแปลเนื้อหา (แท็บ English ในหน้าแก้ไขทริป) — ดู ContentTranslationService
+        Route::get('translations/{type}/{id}', [AdminContentTranslationController::class, 'show'])->whereNumber('id');
+        Route::put('translations/{type}/{id}', [AdminContentTranslationController::class, 'update'])->whereNumber('id');
+        Route::delete('translations/{type}/{id}', [AdminContentTranslationController::class, 'unlock'])->whereNumber('id');
+        Route::post('translations/{type}/{id}/refresh', [AdminContentTranslationController::class, 'refresh'])->whereNumber('id');
 
         // Hero Slides CRUD
         Route::get('hero-slides', [AdminController::class, 'heroSlides']);

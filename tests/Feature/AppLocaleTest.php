@@ -142,9 +142,12 @@ class AppLocaleTest extends TestCase
         foreach ($translations as $thai => $english) {
             preg_match_all('/:([a-z_]+)/', $thai, $expected);
             preg_match_all('/:([a-z_]+)/', $english, $actual);
-            sort($expected[1]);
-            sort($actual[1]);
-            $this->assertSame($expected[1], $actual[1], $thai);
+            // รูปเอกพจน์|พหูพจน์ ("{1} :count meal|[2,*] :count meals") ใช้ตัวแปรเดิมซ้ำได้
+            $expected = array_values(array_unique($expected[1]));
+            $actual = array_values(array_unique($actual[1]));
+            sort($expected);
+            sort($actual);
+            $this->assertSame($expected, $actual, $thai);
             $this->assertDoesNotMatchRegularExpression('/[\x{0E01}-\x{0E3A}\x{0E40}-\x{0E5B}]/u', $english, $thai);
         }
     }

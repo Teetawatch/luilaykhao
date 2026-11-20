@@ -116,7 +116,7 @@ class SeatHandoverController extends Controller
         return $this->success([
             'booking_ref' => $booking->booking_ref,
             'schedule_id' => $booking->schedule_id,
-            'trip_title' => $booking->schedule?->trip?->title,
+            'trip_title' => $booking->schedule?->trip?->tr('title'),
             'transfers_ownership' => (bool) $handover->transfers_ownership,
         ], 'รับที่นั่งเรียบร้อย ดูรายละเอียดทริปได้ที่การจองของฉัน');
     }

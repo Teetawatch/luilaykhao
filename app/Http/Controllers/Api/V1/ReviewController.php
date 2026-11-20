@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Review;
 use App\Services\CoinService;
 use App\Services\ContentFilterService;
+use App\Services\ContentTranslationService;
 use App\Services\ModerationService;
 use App\Support\MediaDisk;
 use App\Support\ThaiDate;
@@ -161,6 +162,23 @@ class ReviewController extends Controller
     }
 
     /**
+     * แปลรีวิวหนึ่งรีวิวเป็นภาษาอังกฤษเมื่อผู้อ่านกดปุ่ม — รีวิวคือเสียงของลูกค้า
+     * จึงไม่แปลล่วงหน้า และหน้าเว็บโชว์ต้นฉบับไว้ให้กดกลับได้เสมอ
+     */
+    public function translate(int $id, ContentTranslationService $translations): JsonResponse
+    {
+        $review = Review::where('is_approved', true)->findOrFail($id);
+
+        try {
+            $result = $translations->translateNow($review, 'comment');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success(['id' => $review->id] + $result);
+    }
+
+    /**
      * อัลบั้มภาพจากผู้ร่วมทริป — รวมรูปจากทุกรีวิวที่อนุมัติแล้วของทริปนั้น
      * มาเรียงเป็นรายรูป (รีวิวใหม่สุดก่อน)
      */
@@ -207,7 +225,7 @@ class ReviewController extends Controller
                     'user_avatar' => $r->authorAvatar(),
                     'created_at' => $r->created_at?->toISOString(),
                     'trip_id' => $r->trip_id,
-                    'trip_title' => $r->trip?->title,
+                    'trip_title' => $r->trip?->tr('title'),
                     'trip_slug' => $r->trip?->slug,
                     'location' => $r->trip?->location,
                     'travel_date' => $travelDate?->toDateString(),
@@ -424,7 +442,7 @@ class ReviewController extends Controller
             ],
             'user_id' => $r->user_id,
             'trip_id' => $r->trip_id,
-            'trip_title' => $r->trip?->title ?? '-',
+            'trip_title' => $r->trip?->tr('title') ?? '-',
             // ลิงก์หน้าทริปในคำบรรยายตอนลูกค้าแชร์การ์ดคำรีวิวลงสตอรี่
             'trip_slug' => $r->trip?->slug,
             'booking_id' => $r->booking_id,

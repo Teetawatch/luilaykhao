@@ -813,7 +813,7 @@ class ChatController extends Controller
         return $this->success([
             'schedule' => [
                 'id' => $schedule->id,
-                'trip_title' => $schedule->trip?->title,
+                'trip_title' => $schedule->trip?->tr('title'),
                 'departure_date' => $schedule->departure_date?->toDateString(),
                 'return_date' => $schedule->return_date?->toDateString(),
                 'status' => $schedule->status,
@@ -983,7 +983,7 @@ class ChatController extends Controller
 
             return [
                 'schedule_id' => $schedule->id,
-                'trip_title' => $schedule->trip?->title,
+                'trip_title' => $schedule->trip?->tr('title'),
                 'trip_image' => $schedule->trip?->thumbnail_image ?: $schedule->trip?->cover_image,
                 'vehicle_name' => $schedule->vehicle?->name,
                 'departure_date' => $schedule->departure_date?->toDateString(),
@@ -1114,7 +1114,7 @@ class ChatController extends Controller
             return [
                 'schedule_id' => $schedule->id,
                 'trip_id' => $schedule->trip_id,
-                'trip_title' => $schedule->trip?->title,
+                'trip_title' => $schedule->trip?->tr('title'),
                 'trip_image' => $schedule->trip?->thumbnail_image ?: $schedule->trip?->cover_image,
                 'vehicle_name' => $schedule->vehicle?->name,
                 'departure_date' => $schedule->departure_date?->toDateString(),

@@ -119,7 +119,7 @@ class ChatSocialController extends Controller
         }
 
         return $this->success([
-            'trip_title' => $schedule->trip?->title,
+            'trip_title' => $schedule->trip?->tr('title'),
             ...$this->contacts->board($request->user(), $schedule),
         ]);
     }

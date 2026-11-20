@@ -47,7 +47,8 @@ class TripMapTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Cache::forget('trips-map');
+        Cache::forget('trips-map:th');
+        Cache::forget('trips-map:en');
     }
 
     public function test_returns_only_trips_that_can_be_pinned(): void

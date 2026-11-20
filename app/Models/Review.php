@@ -2,12 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasContentTranslations;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Review extends Model
 {
+    use HasContentTranslations;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['comment'];
+
+    /** รีวิวคือเสียงของลูกค้า — แปลเมื่อผู้อ่านกด "แปล" เท่านั้น ไม่แปลล่วงหน้า */
+    protected bool $translateOnSave = false;
+
     protected $fillable = [
         'user_id', 'reviewer_name', 'booking_id', 'trip_id', 'rating',
         'rating_guide', 'rating_vehicle', 'rating_food', 'rating_value', 'comment', 'tags',

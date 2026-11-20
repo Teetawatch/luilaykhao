@@ -113,18 +113,18 @@ class TripMealPlan
                 $status = $day[$key]['status'];
                 $meals[] = [
                     'key' => $key,
-                    'label' => $label,
+                    'label' => __($label),
                     'status' => $status,
-                    'status_label' => self::STATUS_LABELS[$status],
+                    'status_label' => __(self::STATUS_LABELS[$status]),
                     'note' => $day[$key]['note'] !== '' ? $day[$key]['note'] : null,
                 ];
             }
 
             $days[] = [
                 'day' => $index + 1,
-                'label' => 'วันที่ '.($index + 1),
+                'label' => __('วันที่ :day', ['day' => $index + 1]),
                 'date' => $date?->toDateString(),
-                'date_label' => $date ? ThaiDate::short($date) : null,
+                'date_label' => $date ? AppLocale::shortDate($date) : null,
                 'meals' => $meals,
                 'line' => self::dayLine($meals),
             ];
@@ -188,15 +188,15 @@ class TripMealPlan
     /** ป้ายสั้นข้างจำนวนวัน — "อาหาร 5 มื้อ" */
     public static function label(int $included): string
     {
-        return $included > 0 ? "อาหาร {$included} มื้อ" : 'ไม่รวมอาหาร';
+        return $included > 0 ? AppLocale::choice('อาหาร :count มื้อ', $included) : __('ไม่รวมอาหาร');
     }
 
     /** ประโยคเต็มที่ตอบทั้ง "กี่มื้อ" และ "ต้องจ่ายเองไหม" ในบรรทัดเดียว */
     public static function summary(int $included, int $selfPay): string
     {
-        $head = $included > 0 ? "รวมอาหาร {$included} มื้อ" : 'ไม่รวมอาหาร';
+        $head = $included > 0 ? AppLocale::choice('รวมอาหาร :count มื้อ', $included) : __('ไม่รวมอาหาร');
 
-        return $selfPay > 0 ? "{$head} · จ่ายเอง {$selfPay} มื้อ" : $head;
+        return $selfPay > 0 ? $head.' · '.AppLocale::choice('จ่ายเอง :count มื้อ', $selfPay) : $head;
     }
 
     /**
@@ -358,12 +358,12 @@ class TripMealPlan
                 $part .= ' – '.$meal['note'];
             }
             if ($meal['status'] === self::SELF_PAY) {
-                $part .= ' (จ่ายเอง)';
+                $part .= ' '.__('(จ่ายเอง)');
             }
             $parts[] = $part;
         }
 
-        return $parts === [] ? 'ไม่มีมื้ออาหาร' : implode(' · ', $parts);
+        return $parts === [] ? __('ไม่มีมื้ออาหาร') : implode(' · ', $parts);
     }
 
     private static function clip(mixed $value, int $max): string

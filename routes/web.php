@@ -27,6 +27,7 @@ use App\Http\Controllers\SlipController;
 use App\Http\Controllers\TripStoryController;
 use App\Models\Article;
 use App\Models\ArticleCategory;
+use App\Models\ContentTranslation;
 use App\Models\Place;
 use App\Models\Stay;
 use App\Models\Tag;
@@ -53,8 +54,18 @@ Route::get('/sitemap.xml', function () {
         ->withMax('schedules', 'updated_at')
         ->get();
 
+    // ชื่อทริปภาษาอังกฤษ (ถ้าแปลแล้ว) สำหรับคำบรรยายรูปของหน้า /en — คิวรีเดียว
+    $englishTitles = ContentTranslation::query()
+        ->where('translatable_type', 'trip')
+        ->where('locale', 'en')
+        ->where('path', 'title')
+        ->whereIn('translatable_id', $trips->modelKeys())
+        ->pluck('text', 'translatable_id')
+        ->all();
+
     return response()->view('sitemap', [
         'trips' => $trips,
+        'englishTitles' => $englishTitles,
         'places' => Place::published()->orderBy('name')->get(),
         'stays' => Stay::active()->orderBy('name')->get(),
         'articles' => Article::published()->orderByDesc('published_at')->get(),

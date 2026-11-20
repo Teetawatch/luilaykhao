@@ -6,6 +6,7 @@ use App\Models\SaleCampaign;
 use App\Models\TripSchedule;
 use App\Support\Countries;
 use App\Support\MedalDesign;
+use App\Support\TranslationStore;
 use App\Support\TripDocumentRequirements;
 use App\Support\TripMealPlan;
 use Illuminate\Http\Request;
@@ -76,12 +77,17 @@ class TripResource extends JsonResource
         // คิวรีเดียว — หรือไม่มีเลยถ้ารายการนับไว้ทั้งหน้าแล้ว (Trip::loadListStats)
         $reviewStats = $this->resource->reviewStats();
 
+        // หน้าอังกฤษ: โหลดคำแปลของทริป + รอบ + จุดรับที่ติดมาทีเดียว (หน้าไทยไม่ทำอะไร)
+        app(TranslationStore::class)->primeTree($this->resource);
+        $trip = $this->resource;
+        $mealPlan = TripMealPlan::normalize($this->meal_plan, $this->duration_days);
+
         return [
             'id' => $this->id,
-            'title' => $this->title,
+            'title' => $trip->tr('title'),
             'slug' => $this->slug,
             'type' => $this->type,
-            'location' => $this->location,
+            'location' => $trip->tr('location'),
             'region' => $this->region,
             // ปลายทาง — ทริปเก่าทุกทริปเป็น 'domestic' โดยค่าเริ่มต้น
             'destination_type' => $this->destination_type,
@@ -103,7 +109,7 @@ class TripResource extends JsonResource
             'emergency_numbers' => $this->isInternational()
                 ? Countries::emergency($this->country_code)
                 : [],
-            'description' => $this->description,
+            'description' => $trip->tr('description'),
             'difficulty' => $this->difficulty,
             'duration_days' => $this->duration_days,
             'distance_km' => $this->distance_km !== null ? (float) $this->distance_km : null,
@@ -121,7 +127,7 @@ class TripResource extends JsonResource
             'price_per_person' => $this->price_per_person,
             'min_price' => $prices->min(),
             'max_price' => $prices->max(),
-            'departure_point' => $this->departure_point,
+            'departure_point' => $trip->tr('departure_point'),
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'status' => $this->status,
@@ -134,13 +140,13 @@ class TripResource extends JsonResource
             'gallery' => $this->gallery ?? [],
             'videos' => $this->videos ?? [],
             'photos' => TripPhotoResource::collection($this->whenLoaded('photos')),
-            'inclusions' => $this->inclusions ?? [],
-            'exclusions' => $this->exclusions ?? [],
-            'highlights' => $this->highlights ?? [],
+            'inclusions' => $trip->tr('inclusions', $this->inclusions ?? []),
+            'exclusions' => $trip->tr('exclusions', $this->exclusions ?? []),
+            'highlights' => $trip->tr('highlights', $this->highlights ?? []),
             'is_featured' => (bool) $this->is_featured,
             'views_count' => (int) $this->views_count,
             'is_women_only' => (bool) $this->is_women_only,
-            'must_know' => $this->must_know ?? null,
+            'must_know' => $trip->tr('must_know', $this->must_know ?? null),
             // ทริปต่างประเทศใช้นโยบายยกเลิกคนละชุด — ตั๋วเครื่องบินคืนเงินไม่ได้
             // และเปลี่ยนชื่อบนตั๋วไม่ได้ ต่างจากทริปในประเทศที่เลื่อนรอบได้จริง
             // ส่งมาที่คีย์เดิม เพื่อให้ทุกหน้าจอที่วาดนโยบายอยู่แล้วถูกต้องทันที
@@ -148,13 +154,13 @@ class TripResource extends JsonResource
             'cancellation_policy' => self::translatedPolicy($this->isInternational()
                 ? config('payment.cancellation_policy_international')
                 : config('payment.cancellation_policy')),
-            'itinerary' => $this->itinerary ?? [],
-            'preparations' => $this->preparations ?? [],
-            'faqs' => $this->faqs ?? [],
-            'rental_items' => $this->rentalItems(),
+            'itinerary' => $trip->tr('itinerary', $this->itinerary ?? []),
+            'preparations' => $trip->tr('preparations', $this->preparations ?? []),
+            'faqs' => $trip->tr('faqs', $this->faqs ?? []),
+            'rental_items' => $trip->tr('rental_items', $this->rentalItems()),
             // เอกสารที่ทริปนี้ขอให้แนบตอนจอง — ส่งชุดที่จัดระเบียบแล้วเสมอ
             // หน้าจอจะได้ไม่ต้องเดาว่าแถวไหนใช้ได้
-            'document_requirements' => $this->documentRequirements(),
+            'document_requirements' => $trip->tr('document_requirements', $this->documentRequirements()),
             // บัตรประชาชนหน้า/หลัง — ขอเฉพาะคนที่เลือก Border Pass จึงแยกจากรายการ
             // ของทุกคน (แอปรุ่นเก่าที่ไม่รู้จักคีย์นี้จะได้ไม่บังคับทุกคนแนบบัตร)
             'border_pass_documents' => $this->offersBorderPass()
@@ -163,11 +169,11 @@ class TripResource extends JsonResource
             // แจ้งในหน้าจองว่าหลังจองต้องเซ็นแบบฟอร์มอุทยาน (+ ที่อยู่ที่อุทยานขอ) — null = ไม่มี
             // ทริปส่วนใหญ่ไม่มีแบบฟอร์ม จึงโหลดฟอร์มเฉพาะทริปที่ผูกไว้
             'permit_notice' => $this->permit_form_id ? $this->permitForm?->customerNotice() : null,
-            'checkin_bring' => $this->checkinBringNote(),
+            'checkin_bring' => $trip->tr('checkin_bring', $this->checkinBringNote()),
             // มื้ออาหาร: `meal_plan` คือค่าที่แอดมินแก้ (ฟอร์มแก้ทริปอ่านกลับ) ส่วน `meals`
             // คือฉบับที่นับและเรียงคำให้แล้ว ทุกหน้าจอลูกค้าวาดตัวนี้ — null ทั้งคู่ = ยังไม่ระบุ
-            'meal_plan' => TripMealPlan::normalize($this->meal_plan, $this->duration_days),
-            'meals' => $this->resource->meals(),
+            'meal_plan' => $trip->tr('meal_plan', $mealPlan),
+            'meals' => TripMealPlan::present($trip->tr('meal_plan', $mealPlan), $this->duration_days),
             'rating' => $reviewStats['rating'],
             'review_count' => $reviewStats['count'],
             'rating_breakdown' => $reviewStats['breakdown'],
@@ -184,8 +190,8 @@ class TripResource extends JsonResource
             'min_original_price' => $originalPrices->min(),
             'campaign' => $campaign ? [
                 'id' => $campaign->id,
-                'name' => $campaign->name,
-                'badge_label' => $campaign->badge_label,
+                'name' => $campaign->tr('name'),
+                'badge_label' => $campaign->tr('badge_label'),
                 'discount_label' => $campaign->discountLabel(),
                 'theme_color' => $campaign->theme_color,
                 'ends_at' => $campaign->ends_at?->toISOString(),

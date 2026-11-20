@@ -181,5 +181,18 @@
     "บอกเราหน่อยว่าคุณเคยเดินไกลสุดเท่าไหร่ แล้วเราจะเทียบให้": "Tell us the longest hike you've done and we'll compare",
     "ทริปนี้อยู่ในระดับที่คุณเคยเดินมาแล้ว น่าจะไปได้สบาย": "This trip is within what you've hiked before, so it should be comfortable",
     "ทริปนี้หนักกว่าที่คุณเคยเดินอยู่บ้าง เตรียมร่างกายสักหน่อยจะสนุกกว่าเดิม": "This trip is a bit harder than what you've done; a little training will make it more fun",
-    "ทริปนี้หนักกว่าที่คุณเคยเดินมาราว :ratio เท่า แนะนำให้ซ้อมก่อน หรือลองทริปที่เบากว่านี้ดูก่อน": "This trip is about :ratio times harder than what you've done. Train first, or try an easier trip."
+    "ทริปนี้หนักกว่าที่คุณเคยเดินมาราว :ratio เท่า แนะนำให้ซ้อมก่อน หรือลองทริปที่เบากว่านี้ดูก่อน": "This trip is about :ratio times harder than what you've done. Train first, or try an easier trip.",
+    "เช้า": "Breakfast",
+    "กลางวัน": "Lunch",
+    "เย็น": "Dinner",
+    "รวมในราคา": "Included",
+    "จ่ายเอง": "Pay yourself",
+    "ไม่มี": "None",
+    "วันที่ :day": "Day :day",
+    "อาหาร :count มื้อ": "{1} :count meal|[2,*] :count meals",
+    "ไม่รวมอาหาร": "Meals not included",
+    "รวมอาหาร :count มื้อ": "{1} :count meal included|[2,*] :count meals included",
+    "จ่ายเอง :count มื้อ": "{1} :count meal at your own cost|[2,*] :count meals at your own cost",
+    "(จ่ายเอง)": "(at your own cost)",
+    "ไม่มีมื้ออาหาร": "No meals"
 }

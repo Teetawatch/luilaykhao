@@ -94,8 +94,8 @@ class SeoMeta
 
         $typeLabel = self::TRIP_TYPE_LABELS[$trip->type] ?? 'ท่องเที่ยว';
         $title = SiteLocale::isEnglish()
-            ? $trip->title.' - '.(self::TRIP_TYPE_LABELS_EN[$trip->type] ?? 'Trip')
-            : $trip->title.' - ทริป'.$typeLabel;
+            ? $trip->tr('title').' - '.(self::TRIP_TYPE_LABELS_EN[$trip->type] ?? 'Trip')
+            : $trip->tr('title').' - ทริป'.$typeLabel;
         $image = MediaDisk::url($trip->cover_image) ?: self::fallbackImage();
         $canonical = url($path);
 
@@ -117,15 +117,15 @@ class SeoMeta
 
         // faqJsonLd yields [] when every entry is half-filled, which would emit a
         // bare "[]" script tag — worse than no FAQ markup at all.
-        $faqJsonLd = self::faqJsonLd($trip->faqs ?? []);
+        $faqJsonLd = self::faqJsonLd($trip->tr('faqs') ?? []);
         if ($faqJsonLd !== []) {
             $jsonLd[] = $faqJsonLd;
         }
 
         $jsonLd[] = self::breadcrumbJsonLd([
-            'หน้าแรก' => url('/'),
-            'ค้นหาทริปทั้งหมด' => url('/trips'),
-            $trip->title => $canonical,
+            SiteLocale::text('หน้าแรก') => SiteLocale::url('/'),
+            SiteLocale::text('ค้นหาทริปทั้งหมด') => SiteLocale::url('/trips'),
+            $trip->tr('title') => $canonical,
         ]);
 
         return self::assemble([
@@ -133,7 +133,7 @@ class SeoMeta
             'description' => self::tripDescription($trip),
             'canonical' => $canonical,
             'image' => $image,
-            'image_alt' => $trip->title.' - ลุยเลเขา',
+            'image_alt' => $trip->tr('title').(SiteLocale::isEnglish() ? ' - Luilaykhao' : ' - ลุยเลเขา'),
             'type' => 'product',
             'extra' => [
                 'product:price:amount' => (string) (float) $trip->price_per_person,
@@ -400,23 +400,23 @@ class SeoMeta
     private static function tripDescription(Trip $trip): string
     {
         if (SiteLocale::isEnglish()) {
-            $location = $trip->location ? ' Location: '.$trip->location.'.' : '';
+            $location = $trip->tr('location') ? ' Location: '.$trip->tr('location').'.' : '';
             $price = $trip->price_per_person
                 ? ' From ฿'.number_format((float) $trip->price_per_person).'.'
                 : '';
 
-            return trim($trip->title.' - Luilaykhao.'.$location.$price.' '
-                .Str::limit(strip_tags((string) $trip->description), 120));
+            return trim($trip->tr('title').' - Luilaykhao.'.$location.$price.' '
+                .Str::limit(strip_tags((string) $trip->tr('description')), 120));
         }
 
-        $location = $trip->location ? ' สถานที่: '.$trip->location : '';
+        $location = $trip->tr('location') ? ' สถานที่: '.$trip->tr('location') : '';
         $price = $trip->price_per_person
             ? ' ราคาเริ่มต้น ฿'.number_format((float) $trip->price_per_person)
             : '';
 
-        $body = Str::limit(strip_tags((string) $trip->description), 120);
+        $body = Str::limit(strip_tags((string) $trip->tr('description')), 120);
 
-        return trim($trip->title.' - ลุยเลเขา'.$location.$price.' '.$body);
+        return trim($trip->tr('title').' - ลุยเลเขา'.$location.$price.' '.$body);
     }
 
     private static function tripJsonLd(
@@ -430,8 +430,8 @@ class SeoMeta
         $data = [
             '@context' => 'https://schema.org',
             '@type' => 'TouristTrip',
-            'name' => $trip->title,
-            'description' => (string) $trip->description,
+            'name' => $trip->tr('title'),
+            'description' => (string) $trip->tr('description'),
             'url' => $canonical,
             'image' => $image,
             'touristType' => $typeLabel,
@@ -447,8 +447,8 @@ class SeoMeta
             'offers' => self::tripOffers($trip, $canonical),
         ];
 
-        if ($trip->location) {
-            $data['itinerary'] = ['@type' => 'Place', 'name' => $trip->location];
+        if ($trip->tr('location')) {
+            $data['itinerary'] = ['@type' => 'Place', 'name' => $trip->tr('location')];
         }
 
         if ($trip->duration_days) {

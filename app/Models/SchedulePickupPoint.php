@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Jobs\ResolvePickupPointCoordinates;
+use App\Models\Concerns\HasContentTranslations;
 use App\Support\GoogleMapsUrl;
 use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SchedulePickupPoint extends Model
 {
+    use HasContentTranslations;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['region_label', 'pickup_location', 'notes'];
+
     protected $table = 'schedule_pickup_points';
 
     protected $fillable = [

@@ -75,7 +75,7 @@ class TripAlertController extends Controller
             'id' => $alert->id,
             'trip_id' => $alert->trip_id,
             'trip_slug' => $alert->trip?->slug,
-            'trip_title' => $alert->trip?->title,
+            'trip_title' => $alert->trip?->tr('title'),
             'alert_price_drop' => $alert->alert_price_drop,
             'alert_new_schedule' => $alert->alert_new_schedule,
             'alert_low_seats' => $alert->alert_low_seats,

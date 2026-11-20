@@ -295,7 +295,7 @@ class DistanceController extends Controller
         if (count($customPoints) >= 2) {
             return $this->success([
                 'schedule_id' => $schedule->id,
-                'trip_title' => $trip?->title,
+                'trip_title' => $trip?->tr('title'),
                 'stops' => $stops,
                 'polyline' => Polyline::encode($customPoints),
                 'distance' => Polyline::pathDistanceMeters($customPoints),
@@ -319,7 +319,7 @@ class DistanceController extends Controller
         // ไม่มีคีย์/หาเส้นทางไม่ได้ → polyline ว่าง ให้แอปลากเส้นตรงระหว่างจุดเอง
         return $this->success([
             'schedule_id' => $schedule->id,
-            'trip_title' => $trip?->title,
+            'trip_title' => $trip?->tr('title'),
             'stops' => $stops,
             'polyline' => $route['polyline'] ?? '',
             'distance' => $route['distance'] ?? 0,

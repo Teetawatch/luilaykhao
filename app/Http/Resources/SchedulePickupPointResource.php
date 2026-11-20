@@ -13,8 +13,8 @@ class SchedulePickupPointResource extends JsonResource
             'id' => $this->id,
             'schedule_id' => $this->schedule_id,
             'region' => $this->region,
-            'region_label' => $this->region_label,
-            'pickup_location' => $this->pickup_location,
+            'region_label' => $this->resource->tr('region_label'),
+            'pickup_location' => $this->resource->tr('pickup_location'),
             // ราคาที่ต้องจ่ายจริง (หักแคมเปญวันพิเศษแล้ว) กับราคาก่อนลดไว้ขีดฆ่า
             'price' => $this->effective_price,
             'original_price' => (float) $this->price,
@@ -22,7 +22,7 @@ class SchedulePickupPointResource extends JsonResource
             'image_url' => $this->image_url,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
-            'notes' => $this->notes,
+            'notes' => $this->resource->tr('notes'),
             'pickup_time' => $this->pickup_time,
             'sort_order' => $this->sort_order,
             // รถถึงจุดนี้แล้วหรือยัง + รูปตรงที่จอดที่สตาฟถ่ายไว้ — null ทั้งชุด

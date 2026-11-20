@@ -26,7 +26,7 @@ class ScheduleVehicleOptionResource extends JsonResource
         return [
             'id' => $this->id,
             'schedule_id' => $this->schedule_id,
-            'label' => $this->label,
+            'label' => $this->resource->tr('label'),
             'transport_type' => $this->transport_type,
             'vehicle_id' => $this->vehicle_id,
             // ส่วนต่างต่อคน บวกจากราคาที่ลูกค้าเห็น (ติดลบได้ = ถูกกว่าราคาปกติ)
@@ -37,7 +37,7 @@ class ScheduleVehicleOptionResource extends JsonResource
             'booked_seats' => (int) $this->booked_seats,
             'available_seats' => $this->available_seats,
             'is_sold_out' => $this->isSoldOut(),
-            'note' => $this->note,
+            'note' => $this->resource->tr('note'),
             'image_url' => $this->image_url,
             // เลือกที่นั่งบนผังของคันนี้ได้ไหม — ทุกคันมีผังของตัวเองได้ เหลือแค่
             // รอบต้องเลือกที่นั่งได้ และแอดมินไม่ได้ปิดสวิตช์ของคันนี้

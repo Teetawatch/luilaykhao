@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\TripResource;
 use App\Http\Resources\TripScheduleResource;
 use App\Models\BookingPassenger;
+use App\Models\ContentTranslation;
 use App\Models\Place;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Services\WeatherService;
+use App\Support\AppLocale;
+use App\Support\ContentLocale;
 use App\Support\Countries;
 use App\Support\MediaDisk;
-use App\Support\ThaiDate;
+use App\Support\TranslationStore;
 use App\Support\TripListCache;
 use App\Support\UrgentPopupSettings;
 use App\Traits\ApiResponse;
@@ -72,10 +75,21 @@ class TripController extends Controller
         }
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $locale = ContentLocale::current();
+            $query->where(function ($q) use ($search, $locale) {
                 $q->whereLike('title', "%{$search}%")
                     ->orWhereLike('location', "%{$search}%")
                     ->orWhereLike('description', "%{$search}%");
+
+                // หน้าอังกฤษ: คนพิมพ์ "Doi Inthanon" ต้องเจอทริปดอยอินทนนท์ด้วย
+                if ($locale !== null) {
+                    $q->orWhereIn('id', ContentTranslation::query()
+                        ->select('translatable_id')
+                        ->where('translatable_type', 'trip')
+                        ->where('locale', $locale)
+                        ->whereIn('path', ['title', 'location', 'description'])
+                        ->whereLike('text', "%{$search}%"));
+                }
             });
         }
 
@@ -179,7 +193,8 @@ class TripController extends Controller
      */
     public function map(): JsonResponse
     {
-        $trips = Cache::remember('trips-map', now()->addMinutes(10), function () {
+        // แยกแคชตามภาษา — หน้าอังกฤษได้ชื่อทริป/สถานที่ที่แปลแล้ว
+        $trips = Cache::remember('trips-map:'.app()->getLocale(), now()->addMinutes(10), function () {
             return Trip::where('status', 'active')
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
@@ -189,15 +204,16 @@ class TripController extends Controller
                         ->orderBy('departure_date');
                 }])
                 ->get()
+                ->tap(fn ($trips) => app(TranslationStore::class)->primeTree($trips))
                 ->map(function (Trip $trip) {
                     $upcoming = $trip->schedules;
                     $next = $upcoming->first();
 
                     return [
                         'id' => $trip->id,
-                        'title' => $trip->title,
+                        'title' => $trip->tr('title'),
                         'slug' => $trip->slug,
-                        'location' => $trip->location,
+                        'location' => $trip->tr('location'),
                         'region' => $trip->region,
                         'destination_type' => $trip->destination_type,
                         'country_code' => $trip->country_code,
@@ -215,7 +231,7 @@ class TripController extends Controller
                         'upcoming_count' => $upcoming->count(),
                         'next_departure' => $next?->departure_date?->toDateString(),
                         'next_departure_label' => $next?->departure_date
-                            ? ThaiDate::short($next->departure_date)
+                            ? AppLocale::shortDate($next->departure_date)
                             : null,
                         // เดือนที่มีรอบเปิด (1–12) ใช้กรอง "ไปเดือนไหนดี" ฝั่งหน้าเว็บ
                         'months' => $upcoming

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Support\ContentLocale;
+use App\Support\TranslationStore;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,6 +27,16 @@ class CategoryController extends Controller
             ->orderBy('order')
             ->orderBy('name')
             ->get();
+
+        // หน้าอังกฤษ: ชื่อ/หัวข้อของหมวดตามคำแปล — slug ที่ใช้กรองยังเป็นค่าเดิม
+        if (ContentLocale::active()) {
+            app(TranslationStore::class)->primeTree($categories);
+            $categories->each(function (Category $category) {
+                foreach ($category->translatableFields() as $field) {
+                    $category->setAttribute($field, $category->tr($field));
+                }
+            });
+        }
 
         return $this->success($categories);
     }

@@ -42,7 +42,7 @@ class TripProgressController extends Controller
         }
 
         return $this->success([
-            'trip_title' => $schedule->trip?->title,
+            'trip_title' => $schedule->trip?->tr('title'),
             'departure_date' => $schedule->departure_date?->toDateString(),
             'progress' => $this->progress->forSchedule($schedule),
         ]);
@@ -73,7 +73,7 @@ class TripProgressController extends Controller
 
         if (in_array($booking->status, ['cancelled', 'refunded'], true)) {
             return $this->success([
-                'trip_title' => $schedule->trip?->title,
+                'trip_title' => $schedule->trip?->tr('title'),
                 'departure_date' => $schedule->departure_date?->toDateString(),
                 'cancelled' => true,
                 'progress' => null,
@@ -81,7 +81,7 @@ class TripProgressController extends Controller
         }
 
         return $this->success([
-            'trip_title' => $schedule->trip?->title,
+            'trip_title' => $schedule->trip?->tr('title'),
             'departure_date' => $schedule->departure_date?->toDateString(),
             'cancelled' => false,
             'traveller_name' => $booking->user?->nickname ?: $booking->user?->name,

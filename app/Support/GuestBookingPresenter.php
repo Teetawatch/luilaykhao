@@ -36,7 +36,7 @@ class GuestBookingPresenter
             'booking_ref' => $full ? $booking->booking_ref : null,
             'status' => $booking->status,
             'qr_code' => $full ? $booking->qr_code : null,
-            'trip_title' => $trip?->title ?? '',
+            'trip_title' => $trip?->tr('title') ?? '',
             'departure_point' => $trip?->departure_point ?? '',
             'departure_date' => $schedule?->departure_date?->toDateString() ?? '',
             'departs_at' => $schedule?->departs_at?->format('Y-m-d H:i:s'),
@@ -71,7 +71,7 @@ class GuestBookingPresenter
         $trip = $booking->schedule?->trip;
 
         return [
-            'title' => $trip?->title,
+            'title' => $trip?->tr('title'),
             'slug' => $trip?->slug,
             'location' => $trip?->location,
             'type' => $trip?->type,

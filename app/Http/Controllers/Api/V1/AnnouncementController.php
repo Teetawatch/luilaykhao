@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ScheduleAnnouncement;
 use App\Models\TripSchedule;
 use App\Services\AnnouncementService;
+use App\Support\ContentLocale;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,9 +35,14 @@ class AnnouncementController extends Controller
             return $this->error('คุณไม่มีสิทธิ์ดูประกาศของรอบนี้', 403);
         }
 
+        $canModerate = $this->service->canModerate($user, $schedule);
+
+        // คนที่แก้ประกาศได้ต้องเห็นต้นฉบับไทย — ฟอร์มแก้ไขเติมจากรายการนี้
+        $list = fn () => $this->service->list($schedule)->all();
+
         return $this->success([
-            'announcements' => $this->service->list($schedule)->all(),
-            'can_moderate' => $this->service->canModerate($user, $schedule),
+            'announcements' => $canModerate ? ContentLocale::original($list) : $list(),
+            'can_moderate' => $canModerate,
             'unread_count' => $this->service->unreadCount($user, $schedule),
         ]);
     }

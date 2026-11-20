@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasContentTranslations;
 use App\Support\Countries;
 use App\Support\MedalDesign;
 use App\Support\TripDocumentRequirements;
@@ -17,7 +18,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Trip extends Model
 {
-    use HasFactory;
+    use HasContentTranslations, HasFactory;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['title', 'location', 'description', 'departure_point', 'checkin_bring', 'highlights', 'inclusions', 'exclusions', 'must_know', 'itinerary', 'preparations', 'faqs', 'rental_items', 'document_requirements', 'meal_plan'];
 
     /**
      * Match the DB column default in-memory too, so freshly-created models
@@ -70,6 +74,20 @@ class Trip extends Model
             'document_requirements' => 'array',
             'meal_plan' => 'array',
         ];
+    }
+
+    /**
+     * ค่าที่ส่งไปแปล = รูปเดียวกับที่ API ส่งให้ลูกค้า — อุปกรณ์เช่าและเอกสารผ่าน
+     * การจัดระเบียบ (ตัดแถวเสีย เติมคำอธิบายมาตรฐาน) มื้ออาหารตัดตามจำนวนวัน
+     */
+    public function translationSource(string $field): mixed
+    {
+        return match ($field) {
+            'rental_items' => $this->rentalItems(),
+            'document_requirements' => $this->documentRequirements(),
+            'meal_plan' => TripMealPlan::normalize($this->meal_plan, $this->duration_days),
+            default => $this->getAttribute($field),
+        };
     }
 
     /**

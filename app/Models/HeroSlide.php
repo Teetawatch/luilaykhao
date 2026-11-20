@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasContentTranslations;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
 class HeroSlide extends Model
 {
+    use HasContentTranslations;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['alt_text'];
+
     /**
      * รูปสไลด์หน้าแรกที่ส่งมากับ HTML shell (app.blade.php) — ถ้าให้หน้าแรกรอ
      * API /hero-slides ก่อน ทุกครั้งที่รีเฟรชจะเห็นรูปสำรองชุดเก่าวาบหนึ่งก่อน
