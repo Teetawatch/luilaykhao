@@ -8,11 +8,9 @@
       :loading="loading"
     >
       <template #actions>
-        <a href="#problems" class="hero-btn hero-btn--solid" @click.prevent="scrollToProblems">
-          ดูปัญหาทั้งหมด
-          <span class="material-symbols-rounded text-[20px]">arrow_downward</span>
+        <a href="#problems" class="hero-btn hero-btn--solid" @click.prevent="scrollToProblems"> {{ $t('ดูปัญหาทั้งหมด') }} <span class="material-symbols-rounded text-[20px]">arrow_downward</span>
         </a>
-        <router-link to="/goal" class="hero-btn hero-btn--outline">เป้าหมายของเรา</router-link>
+        <router-link to="/goal" class="hero-btn hero-btn--outline">{{ $t('เป้าหมายของเรา') }}</router-link>
       </template>
     </PageHero>
 
@@ -35,9 +33,7 @@
               </h2>
               <div v-if="problems.length" class="mt-8 flex items-end gap-3">
                 <span class="text-6xl font-extrabold leading-none text-[var(--color-text-dark)] tabular-nums">{{ problems.length }}</span>
-                <span class="pb-1.5 text-sm font-bold text-[var(--color-text-muted)] leading-snug">
-                  อุปสรรคที่ทำให้<br />ทริปไม่ได้เกิดขึ้น
-                </span>
+                <span class="pb-1.5 text-sm font-bold text-[var(--color-text-muted)] leading-snug"> {{ $t('อุปสรรคที่ทำให้') }}<br />{{ $t('ทริปไม่ได้เกิดขึ้น') }} </span>
               </div>
             </div>
           </header>
@@ -100,9 +96,7 @@
               <router-link
                 to="/trips"
                 class="inline-flex items-center gap-2 rounded-2xl px-5 py-3.5 text-[15px] font-bold text-white/80 transition-colors hover:text-white"
-              >
-                ดูทริปที่เปิดรับ
-              </router-link>
+              > {{ $t('ดูทริปที่เปิดรับ') }} </router-link>
             </div>
           </div>
         </div>

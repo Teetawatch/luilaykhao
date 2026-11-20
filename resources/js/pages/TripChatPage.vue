@@ -8,16 +8,15 @@
       </button>
       <div class="flex-1 min-w-0">
         <h1 class="text-base font-bold text-[#1a1c1c] truncate" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-          {{ tripTitle || 'แชทกลุ่มทริป' }}
+          {{ tripTitle || $t('แชทกลุ่มทริป') }}
         </h1>
-        <p v-if="departureDate" class="text-xs text-[#889696]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-          เดินทาง {{ formatDate(departureDate) }}
+        <p v-if="departureDate" class="text-xs text-[#889696]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('เดินทาง {formatDate}', { formatDate: formatDate(departureDate) }) }}
         </p>
       </div>
       <div class="flex items-center gap-1.5">
         <span class="w-2 h-2 rounded-full transition-colors" :class="wsConnected ? 'bg-green-500' : 'bg-gray-300'"></span>
         <span class="text-[11px] font-medium" :class="wsConnected ? 'text-green-600' : 'text-gray-400'" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-          {{ wsConnected ? 'เรียลไทม์' : 'ออฟไลน์' }}
+          {{ wsConnected ? $t('เรียลไทม์') : $t('ออฟไลน์') }}
         </span>
       </div>
     </div>
@@ -27,18 +26,16 @@
       <div class="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
         <span class="material-symbols-rounded text-3xl text-red-400">lock</span>
       </div>
-      <p class="text-[#1a1c1c] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ไม่สามารถเข้าถึงได้</p>
+      <p class="text-[#1a1c1c] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ไม่สามารถเข้าถึงได้') }}</p>
       <p class="text-sm text-[#505E5E]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ errorMsg }}</p>
-      <button @click="$router.push('/my-bookings')" class="mt-5 px-5 py-2.5 bg-[var(--color-accent)] text-white rounded-full text-sm font-bold" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-        กลับหน้าการจอง
-      </button>
+      <button @click="$router.push('/my-bookings')" class="mt-5 px-5 py-2.5 bg-[var(--color-accent)] text-white rounded-full text-sm font-bold" style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('กลับหน้าการจอง') }} </button>
     </div>
 
     <template v-else>
       <!-- Load older messages -->
       <div class="shrink-0 text-center py-2" v-if="hasMore">
         <button @click="loadOlder" :disabled="loadingOlder" class="text-xs font-bold text-[var(--color-accent)] hover:underline disabled:opacity-50" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-          {{ loadingOlder ? 'กำลังโหลด...' : 'โหลดข้อความก่อนหน้า' }}
+          {{ loadingOlder ? $t('กำลังโหลด...') : $t('โหลดข้อความก่อนหน้า') }}
         </button>
       </div>
 
@@ -53,14 +50,14 @@
             <div class="w-16 h-16 rounded-full bg-[#E8EEEF] flex items-center justify-center mb-4">
               <span class="material-symbols-rounded text-3xl text-[#A0B0B0]">chat_bubble</span>
             </div>
-            <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีข้อความ เริ่มสนทนากับสตาฟได้เลย!</p>
+            <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ยังไม่มีข้อความ เริ่มสนทนากับสตาฟได้เลย!') }}</p>
           </div>
 
           <!-- ข้อความอัตโนมัติจากระบบ (ไทม์ไลน์ทริป) — การ์ดเต็มความกว้าง อ่านเป็นย่อหน้า -->
           <template v-for="m in messages" :key="m.id">
           <div v-if="m.sender_role === 'system'" class="rounded-2xl border border-[var(--color-accent)]/20 bg-[var(--color-accent)]/[0.06] px-4 py-3">
             <div class="flex items-center justify-between mb-1.5">
-              <span class="text-[10px] font-black tracking-wide text-[var(--color-accent)]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ข้อความจากทีมงาน</span>
+              <span class="text-[10px] font-black tracking-wide text-[var(--color-accent)]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ข้อความจากทีมงาน') }}</span>
               <span class="text-[10px] text-[#A0B0B0]">{{ formatTime(m.created_at) }}</span>
             </div>
             <!-- v-html ปลอดภัย: escape ทั้งก้อนก่อน แล้วค่อยแปลงเฉพาะเบอร์โทรเป็นลิงก์ tel: -->
@@ -73,7 +70,7 @@
                   :key="ii"
                   type="button"
                   class="sys-photo"
-                  :aria-label="`ดูรูป ${chunk.photo.caption} ภาพที่ ${ii + 1}`"
+                  :aria-label="$t('ดูรูป {caption} ภาพที่ {p}', { caption: chunk.photo.caption, p: ii + 1 })"
                   @click="openImage(url, chunk.photo.caption)"
                 >
                   <img :src="url" :alt="chunk.photo.caption" loading="lazy" />
@@ -84,12 +81,10 @@
             <div v-if="m.ack" class="mt-2 flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <button v-if="m.ack.acked_by_me === false" @click="ackMessage(m)" :disabled="ackingId === m.id"
                 class="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[var(--color-accent)] text-white text-[12.5px] font-bold disabled:opacity-60">
-                <span class="material-symbols-rounded ack-icon">thumb_up</span> รับทราบ
-              </button>
+                <span class="material-symbols-rounded ack-icon">thumb_up</span> {{ $t('รับทราบ') }} </button>
               <span v-else-if="m.ack.acked_by_me" class="flex items-center gap-1 text-[12px] font-bold text-[var(--color-accent)]">
-                <span class="material-symbols-rounded ack-icon">check_circle</span> คุณรับทราบแล้ว
-              </span>
-              <span class="text-[11.5px] font-bold text-[#889696]">{{ m.ack.count }}/{{ m.ack.total }} คน</span>
+                <span class="material-symbols-rounded ack-icon">check_circle</span> {{ $t('คุณรับทราบแล้ว') }} </span>
+              <span class="text-[11.5px] font-bold text-[#889696]">{{ $t('{count}/{total} คน', { count: m.ack.count, total: m.ack.total }) }}</span>
             </div>
           </div>
 
@@ -111,7 +106,7 @@
               <!-- Name + role -->
               <div v-if="!m.is_mine" class="flex items-center gap-1.5 px-1">
                 <span class="text-[11px] font-bold text-[#374151]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                  {{ m.user?.nickname || m.user?.name || 'ผู้ใช้' }}
+                  {{ m.user?.nickname || m.user?.name || $t('ผู้ใช้') }}
                 </span>
                 <TierBadge :tier="m.user?.tier" :label="m.user?.tier_label" size="sm" />
                 <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full" :class="roleTagClass(m.sender_role)" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
@@ -149,8 +144,7 @@
 
                 <button v-if="canClosePoll(m.poll) && !m.poll.is_closed" @click="closePoll(m)"
                   class="mt-1 flex items-center gap-1 text-[11px] font-bold text-[#889696] hover:text-[var(--color-accent)]">
-                  <span class="material-symbols-rounded text-[14px]">lock</span> ปิดโหวต
-                </button>
+                  <span class="material-symbols-rounded text-[14px]">lock</span> {{ $t('ปิดโหวต') }} </button>
               </div>
 
               <!-- สติกเกอร์ — รูปลอยไม่มีกรอบบับเบิล (body เป็นแค่ข้อความสำรองของไคลเอนต์เก่า) -->
@@ -164,7 +158,7 @@
                   : 'bg-white text-[#1a1c1c] border border-[#E8EEEF] rounded-tl-sm'"
                 style="font-family:'DB Heavent', 'Anuphan',sans-serif; word-break: break-word;">
                 <!-- Image -->
-                <img v-if="m.image_url" :src="m.image_url" alt="รูปภาพ"
+                <img v-if="m.image_url" :src="m.image_url" :alt="$t('รูปภาพ')"
                   class="max-w-[220px] rounded-xl mb-1 cursor-pointer"
                   @click="openImage(m.image_url)" />
                 <!-- ข้อความเสียง (อัดจากแอป) — บนเว็บฟังได้ด้วยตัวเล่นของเบราว์เซอร์ -->
@@ -178,12 +172,10 @@
             <div v-if="m.ack" class="flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <button v-if="m.ack.acked_by_me === false" @click="ackMessage(m)" :disabled="ackingId === m.id"
                 class="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[var(--color-accent)] text-white text-[12.5px] font-bold disabled:opacity-60">
-                <span class="material-symbols-rounded ack-icon">thumb_up</span> รับทราบ
-              </button>
+                <span class="material-symbols-rounded ack-icon">thumb_up</span> {{ $t('รับทราบ') }} </button>
               <span v-else-if="m.ack.acked_by_me" class="flex items-center gap-1 text-[12px] font-bold text-[var(--color-accent)]">
-                <span class="material-symbols-rounded ack-icon">check_circle</span> คุณรับทราบแล้ว
-              </span>
-              <span class="text-[11.5px] font-bold text-[#889696]">{{ m.ack.count }}/{{ m.ack.total }} คน</span>
+                <span class="material-symbols-rounded ack-icon">check_circle</span> {{ $t('คุณรับทราบแล้ว') }} </span>
+              <span class="text-[11.5px] font-bold text-[#889696]">{{ $t('{count}/{total} คน', { count: m.ack.count, total: m.ack.total }) }}</span>
             </div>
               </div>
 
@@ -216,7 +208,7 @@
           <img :src="imagePreview" class="w-16 h-16 rounded-xl object-cover" />
           <div class="flex-1 min-w-0">
             <p class="text-sm font-bold text-[#1a1c1c] truncate" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ imageFile?.name }}</p>
-            <p class="text-xs text-[#889696]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แนบรูปภาพ</p>
+            <p class="text-xs text-[#889696]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('แนบรูปภาพ') }}</p>
           </div>
           <button @click="clearImage" class="w-7 h-7 rounded-full bg-[#F4F7F6] flex items-center justify-center">
             <span class="material-symbols-rounded text-[16px] text-[#505E5E]">close</span>
@@ -232,7 +224,7 @@
           <textarea
             v-model="draft"
             rows="1"
-            placeholder="พิมพ์ข้อความ..."
+            :placeholder="$t('พิมพ์ข้อความ...')"
             maxlength="2000"
             :disabled="sending"
             @keydown.enter.exact.prevent="send"
@@ -268,6 +260,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
@@ -300,10 +293,10 @@ const lightboxUrl = ref(null);
 const lightboxCaption = ref('');
 
 const infoShortcuts = [
-  { key: 'itinerary', label: 'กำหนดการ', icon: 'route' },
-  { key: 'pickup', label: 'จุดรับ', icon: 'pin_drop' },
-  { key: 'meals', label: 'อาหาร', icon: 'restaurant' },
-  { key: 'crew', label: 'รถและทีมงาน', icon: 'directions_bus' },
+  { key: 'itinerary', label: $t('กำหนดการ'), icon: 'route' },
+  { key: 'pickup', label: $t('จุดรับ'), icon: 'pin_drop' },
+  { key: 'meals', label: $t('อาหาร'), icon: 'restaurant' },
+  { key: 'crew', label: $t('รถและทีมงาน'), icon: 'directions_bus' },
 ];
 const infoTab = ref(null);
 
@@ -381,7 +374,7 @@ async function send() {
     resetTextarea();
     scrollToBottom();
   } catch (e) {
-    alert(e?.response?.data?.message || 'ส่งข้อความไม่สำเร็จ');
+    alert(e?.response?.data?.message || $t('ส่งข้อความไม่สำเร็จ'));
   } finally {
     sending.value = false;
   }
@@ -396,9 +389,9 @@ function markRead() {
 
 function pollMeta(poll) {
   const parts = [];
-  if (poll.allow_multiple) parts.push('เลือกได้หลายข้อ');
-  parts.push(poll.voter_count > 0 ? `โหวตแล้ว ${poll.voter_count} คน` : 'ยังไม่มีใครโหวต');
-  if (poll.is_closed) parts.push('ปิดโหวตแล้ว');
+  if (poll.allow_multiple) parts.push($t('เลือกได้หลายข้อ'));
+  parts.push(poll.voter_count > 0 ? $t('โหวตแล้ว {voter_count} คน', { voter_count: poll.voter_count }) : $t('ยังไม่มีใครโหวต'));
+  if (poll.is_closed) parts.push($t('ปิดโหวตแล้ว'));
   return parts.join(' · ');
 }
 
@@ -428,7 +421,7 @@ async function votePoll(message, option) {
     });
     message.poll = res.data.data.poll;
   } catch (e) {
-    alert(e?.response?.data?.message || 'บันทึกคะแนนไม่สำเร็จ');
+    alert(e?.response?.data?.message || $t('บันทึกคะแนนไม่สำเร็จ'));
   } finally {
     votingPollId.value = null;
   }
@@ -450,7 +443,7 @@ async function ackMessage(message) {
     const res = await api.post(`/schedules/${scheduleId}/chat/messages/${message.id}/ack`);
     applyAck(message.id, res.data.data.ack);
   } catch (e) {
-    alert(e?.response?.data?.message || 'กดรับทราบไม่สำเร็จ');
+    alert(e?.response?.data?.message || $t('กดรับทราบไม่สำเร็จ'));
   } finally {
     ackingId.value = null;
   }
@@ -463,7 +456,7 @@ async function closePoll(message) {
     const res = await api.post(`/schedules/${scheduleId}/chat/polls/${poll.id}/close`);
     message.poll = res.data.data.poll;
   } catch (e) {
-    alert(e?.response?.data?.message || 'ปิดโพลไม่สำเร็จ');
+    alert(e?.response?.data?.message || $t('ปิดโพลไม่สำเร็จ'));
   }
 }
 
@@ -582,7 +575,7 @@ function onScroll() {
 }
 
 function roleLabel(role) {
-  return { customer: 'ลูกค้า', staff: 'สตาฟ', admin: 'แอดมิน', system: 'ระบบ' }[role] || role;
+  return { customer: $t('ลูกค้า'), staff: $t('สตาฟ'), admin: $t('แอดมิน'), system: $t('ระบบ') }[role] || role;
 }
 
 function roleInitial(m) {

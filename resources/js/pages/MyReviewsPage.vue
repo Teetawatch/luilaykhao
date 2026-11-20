@@ -1,9 +1,9 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)] pb-32">
     <PageHeader
-      title="รีวิวของฉัน"
-      subtitle="แบ่งปันประสบการณ์การเดินทางของคุณ"
-      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      :title="$t('รีวิวของฉัน')"
+      :subtitle="$t('แบ่งปันประสบการณ์การเดินทางของคุณ')"
+      :crumbs="[{ to: '/profile', label: $t('บัญชีของฉัน') }]"
       container="max-w-3xl px-4 sm:px-6"
     />
     <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
@@ -12,7 +12,7 @@
       <div v-if="showModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all pr-4 sm:pr-6 md:pr-0">
         <div class="bg-white rounded-[24px] w-full max-w-lg p-6 sm:p-8 relative">
           <h2 class="text-xl font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-            {{ editingReview ? 'แก้ไขรีวิว' : 'เขียนรีวิว' }}
+            {{ editingReview ? $t('แก้ไขรีวิว') : $t('เขียนรีวิว') }}
           </h2>
           <p class="text-[15px] text-[#505E5E] mb-6 line-clamp-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
             {{ editingReview ? editingReview.trip_title : pendingBooking?.schedule?.trip?.title }}
@@ -20,7 +20,7 @@
 
           <!-- Star Rating -->
           <div class="mb-6 bg-[#F9FAFA] p-4 rounded-[16px] border border-[#E8EEEF] flex flex-col items-center">
-            <p class="text-sm font-bold text-[#1a1c1c] mb-3" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ให้คะแนนประสบการณ์ของคุณ</p>
+            <p class="text-sm font-bold text-[#1a1c1c] mb-3" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ให้คะแนนประสบการณ์ของคุณ') }}</p>
             <div class="flex gap-2">
               <button
                 v-for="s in 5"
@@ -38,13 +38,11 @@
 
           <!-- Comment -->
           <div class="mb-5">
-            <label class="text-sm font-bold text-[#1a1c1c] mb-2 block" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-              ความคิดเห็น
-            </label>
+            <label class="text-sm font-bold text-[#1a1c1c] mb-2 block" style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('ความคิดเห็น') }} </label>
             <textarea
               v-model="form.comment"
               rows="4"
-              placeholder="เล่าประสบการณ์การเดินทางของคุณ..."
+              :placeholder="$t('เล่าประสบการณ์การเดินทางของคุณ...')"
               class="w-full border border-[#E8EEEF] bg-[#F9FAFA] rounded-[16px] px-4 py-3 text-[15px] text-[#1a1c1c] resize-none focus:outline-none focus:bg-white focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[var(--color-accent)]/10 transition-all font-anuphan"
               style="font-family:'DB Heavent', 'Anuphan',sans-serif;"></textarea>
           </div>
@@ -52,8 +50,8 @@
           <!-- Image Upload -->
           <div class="mb-8">
             <label class="text-sm font-bold text-[#1a1c1c] mb-3 flex items-center justify-between" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-              <span>สมุดภาพ (สูงสุด 5 รูป)</span>
-              <span class="text-xs font-normal text-[#889696]">{{ form.images.length }}/5 รูป</span>
+              <span>{{ $t('สมุดภาพ (สูงสุด 5 รูป)') }}</span>
+              <span class="text-xs font-normal text-[#889696]">{{ $t('{imagesCount}/5 รูป', { imagesCount: form.images.length }) }}</span>
             </label>
             <div class="flex flex-wrap gap-3 mb-2">
               <div
@@ -75,24 +73,21 @@
               </label>
             </div>
             <p v-if="uploading" class="text-[13px] font-bold text-[var(--color-accent)] animate-pulse flex items-center gap-1.5 mt-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-               <span class="material-symbols-rounded text-[16px] animate-spin">progress_activity</span>กำลังอัปโหลด...
-            </p>
+               <span class="material-symbols-rounded text-[16px] animate-spin">progress_activity</span>{{ $t('กำลังอัปโหลด...') }} </p>
           </div>
 
           <div class="flex gap-3">
             <button
               @click="closeModal"
               class="flex-1 bg-white text-[#505E5E] border border-[#E8EEEF] py-3.5 rounded-[16px] font-bold text-[15px] hover:bg-[#F9FAFA] transition-all"
-              style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-              ยกเลิก
-            </button>
+              style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('ยกเลิก') }} </button>
             <button
               @click="submitReview"
               :disabled="!form.rating || submitting"
               class="flex-1 bg-[var(--color-accent)] text-white py-3.5 rounded-[16px] font-bold text-[15px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-accent-mid)] transition-all shadow-sm/20 flex justify-center items-center gap-2"
               style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
               <span v-if="submitting" class="material-symbols-rounded text-[20px] animate-spin border-0">progress_activity</span>
-              {{ submitting ? 'กำลังบันทึก...' : (editingReview ? 'บันทึก' : 'ส่งรีวิว') }}
+              {{ submitting ? $t('กำลังบันทึก...') : (editingReview ? $t('บันทึก') : $t('ส่งรีวิว')) }}
             </button>
           </div>
         </div>
@@ -101,16 +96,14 @@
       <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">กำลังโหลดข้อมูลรีวิว...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">{{ $t('กำลังโหลดข้อมูลรีวิว...') }}</p>
       </div>
 
       <template v-else>
         <!-- Pending Reviews -->
         <div v-if="pendingBookings.length > 0" class="mb-10">
           <h2 class="text-xl font-bold text-[#1a1c1c] mb-4 flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-            <span class="material-symbols-rounded text-[#D97706]">pending_actions</span>
-            รอการรีวิว ({{ pendingBookings.length }})
-          </h2>
+            <span class="material-symbols-rounded text-[#D97706]">pending_actions</span> {{ $t('รอการรีวิว ({pendingBookingsCount})', { pendingBookingsCount: pendingBookings.length }) }} </h2>
           <div class="space-y-4">
             <div
               v-for="b in pendingBookings"
@@ -138,9 +131,7 @@
                 @click="openWriteReview(b)"
                 class="w-full sm:w-auto shrink-0 bg-white border-2 border-[var(--color-accent)] text-[var(--color-accent)] px-5 py-2.5 rounded-[12px] text-sm font-bold hover:bg-[#E3F2F2] transition-colors flex items-center justify-center gap-1.5"
                 style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                <span class="material-symbols-rounded text-[18px]">edit_square</span>
-                เขียนรีวิว
-              </button>
+                <span class="material-symbols-rounded text-[18px]">edit_square</span> {{ $t('เขียนรีวิว') }} </button>
             </div>
           </div>
         </div>
@@ -148,23 +139,17 @@
         <!-- My Reviews -->
         <div>
           <h2 class="text-xl font-bold text-[#1a1c1c] mb-4 flex items-center gap-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-            <span class="material-symbols-rounded text-[var(--color-accent)]">reviews</span>
-            รีวิวที่เขียนแล้ว ({{ myReviews.length }})
-          </h2>
+            <span class="material-symbols-rounded text-[var(--color-accent)]">reviews</span> {{ $t('รีวิวที่เขียนแล้ว ({myReviewsCount})', { myReviewsCount: myReviews.length }) }} </h2>
 
            <div v-if="myReviews.length === 0 && pendingBookings.length === 0" class="text-center py-20 bg-white rounded-[24px] border border-[#E8EEEF] flex flex-col items-center justify-center">
              <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
                <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">rate_review</span>
              </div>
-             <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">คุณยังไม่ได้เขียนรีวิว</h3>
-             <p class="text-[#505E5E] text-sm mb-6 max-w-sm mx-auto" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-               เมื่อคุณเดินทางร่วมกับเราเสร็จสิ้น คุณจะสามารถเขียนรีวิวบอกเล่าเรื่องราวความประทับใจได้ที่นี่
-             </p>
+             <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('คุณยังไม่ได้เขียนรีวิว') }}</h3>
+             <p class="text-[#505E5E] text-sm mb-6 max-w-sm mx-auto" style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('เมื่อคุณเดินทางร่วมกับเราเสร็จสิ้น คุณจะสามารถเขียนรีวิวบอกเล่าเรื่องราวความประทับใจได้ที่นี่') }} </p>
              <router-link to="/my-bookings"
                 class="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[var(--color-accent-mid)] transition-all"
-                style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-               ไปดูการจองของฉัน
-               <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
+                style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('ไปดูการจองของฉัน') }} <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
              </router-link>
            </div>
 
@@ -182,10 +167,10 @@
                   </div>
                 </div>
                 <div class="flex gap-2 shrink-0 bg-[#F4F7F6] p-1 rounded-[12px] border border-[#E8EEEF]">
-                  <button @click="openEditReview(r)" class="flex items-center justify-center p-1.5 text-[var(--color-accent)] hover:bg-white rounded-[8px] transition-colors" title="แก้ไข">
+                  <button @click="openEditReview(r)" class="flex items-center justify-center p-1.5 text-[var(--color-accent)] hover:bg-white rounded-[8px] transition-colors" :title="$t('แก้ไข')">
                     <span class="material-symbols-rounded text-[20px]">edit</span>
                   </button>
-                  <button @click="deleteReview(r.id)" class="flex items-center justify-center p-1.5 text-[#DC2626] hover:bg-[#FEF2F2] rounded-[8px] transition-colors" title="ลบ">
+                  <button @click="deleteReview(r.id)" class="flex items-center justify-center p-1.5 text-[#DC2626] hover:bg-[#FEF2F2] rounded-[8px] transition-colors" :title="$t('ลบ')">
                     <span class="material-symbols-rounded text-[20px]">delete</span>
                   </button>
                 </div>
@@ -204,9 +189,7 @@
                 <div class="absolute left-0 top-0 bottom-0 w-1 bg-[var(--color-accent)]"></div>
                 <div class="flex items-center gap-1.5 mb-1.5">
                   <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">forum</span>
-                  <p class="text-[13px] font-bold text-[var(--color-accent)]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                    ตอบกลับโดยทีมงาน
-                  </p>
+                  <p class="text-[13px] font-bold text-[var(--color-accent)]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('ตอบกลับโดยทีมงาน') }} </p>
                 </div>
                 <p class="text-[14px] text-[#1a1c1c] leading-relaxed whitespace-pre-wrap" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ r.admin_reply }}</p>
               </div>
@@ -228,6 +211,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { ref, onMounted } from 'vue';
@@ -248,12 +232,12 @@ const pendingBooking = ref(null);
 const form = ref({ rating: 0, comment: '', images: [] });
 
 const ratingLabels = {
-  0: 'เลือกคะแนน',
-  1: 'แย่มาก',
-  2: 'แย่',
-  3: 'พอใช้',
-  4: 'ดี',
-  5: 'ยอดเยี่ยม',
+  0: $t('เลือกคะแนน'),
+  1: $t('แย่มาก'),
+  2: $t('แย่'),
+  3: $t('พอใช้'),
+  4: $t('ดี'),
+  5: $t('ยอดเยี่ยม'),
 };
 
 async function loadData() {
@@ -290,7 +274,7 @@ function getReviewAvailableAt(schedule) {
 
 function openWriteReview(booking) {
   if (!isBookingReviewAvailable(booking)) {
-    alert('สามารถรีวิวได้หลังจบทริปวันสุดท้าย เวลา 20:00 น. เป็นต้นไป');
+    alert($t('สามารถรีวิวได้หลังจบทริปวันสุดท้าย เวลา 20:00 น. เป็นต้นไป'));
     return;
   }
 
@@ -323,7 +307,7 @@ async function handleImageUpload(e) {
     const res = await api.post('/reviews/upload-image', fd);
     form.value.images.push(res.data.data.url);
   } catch {
-    alert('อัปโหลดรูปไม่สำเร็จ');
+    alert($t('อัปโหลดรูปไม่สำเร็จ'));
   } finally {
     uploading.value = false;
   }
@@ -350,19 +334,19 @@ async function submitReview() {
     closeModal();
     await loadData();
   } catch (e) {
-    alert(e?.response?.data?.message || 'บันทึกไม่สำเร็จ');
+    alert(e?.response?.data?.message || $t('บันทึกไม่สำเร็จ'));
   } finally {
     submitting.value = false;
   }
 }
 
 async function deleteReview(id) {
-  if (!confirm('ต้องการลบรีวิวนี้หรือไม่?')) return;
+  if (!confirm($t('ต้องการลบรีวิวนี้หรือไม่?'))) return;
   try {
     await api.delete(`/reviews/${id}`);
     await loadData();
   } catch {
-    alert('ลบไม่สำเร็จ');
+    alert($t('ลบไม่สำเร็จ'));
   }
 }
 

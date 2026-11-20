@@ -20,7 +20,7 @@
                   <img
                     v-if="avatarPreview || auth.user?.avatar_url"
                     :src="avatarPreview || auth.user.avatar_url"
-                    alt="รูปโปรไฟล์"
+                    :alt="$t('รูปโปรไฟล์')"
                     class="w-full h-full object-cover"
                     :class="{ 'opacity-60': uploadingAvatar }"
                   />
@@ -32,10 +32,10 @@
                 <label
                   for="avatar-upload"
                   class="absolute bottom-0.5 right-0.5 w-10 h-10 rounded-full ring-4 ring-white bg-[var(--color-accent)] hover:bg-[var(--color-accent-mid)] text-white flex items-center justify-center cursor-pointer transition-colors"
-                  :title="avatarFile ? 'เลือกรูปอื่น' : 'เปลี่ยนรูปโปรไฟล์'"
+                  :title="avatarFile ? $t('เลือกรูปอื่น') : $t('เปลี่ยนรูปโปรไฟล์')"
                 >
                   <span class="material-symbols-rounded text-[20px]">photo_camera</span>
-                  <span class="sr-only">เปลี่ยนรูปโปรไฟล์</span>
+                  <span class="sr-only">{{ $t('เปลี่ยนรูปโปรไฟล์') }}</span>
                 </label>
                 <input id="avatar-upload" type="file" class="hidden" accept="image/*" @change="handleAvatarChange" />
               </div>
@@ -48,11 +48,9 @@
                   :disabled="uploadingAvatar"
                   @click="uploadAvatar"
                 >
-                  {{ uploadingAvatar ? 'กำลังบันทึก…' : 'บันทึกรูป' }}
+                  {{ uploadingAvatar ? $t('กำลังบันทึก…') : $t('บันทึกรูป') }}
                 </button>
-                <button type="button" class="btn-ghost !px-3 !py-2 !text-[13px]" :disabled="uploadingAvatar" @click="cancelAvatarUpload">
-                  ยกเลิก
-                </button>
+                <button type="button" class="btn-ghost !px-3 !py-2 !text-[13px]" :disabled="uploadingAvatar" @click="cancelAvatarUpload"> {{ $t('ยกเลิก') }} </button>
               </div>
             </div>
 
@@ -70,7 +68,7 @@
                   {{ loyaltyTierLabel }}
                 </span>
               </div>
-              <p v-if="auth.user?.nickname" class="mt-1 text-sm font-semibold text-[var(--color-text-muted)]">ชื่อเล่น {{ auth.user.nickname }}</p>
+              <p v-if="auth.user?.nickname" class="mt-1 text-sm font-semibold text-[var(--color-text-muted)]">{{ $t('ชื่อเล่น {nickname}', { nickname: auth.user.nickname }) }}</p>
 
               <ul class="mt-4 flex flex-wrap justify-center md:justify-start gap-x-5 gap-y-2 text-[13px] font-medium text-[var(--color-text-mid)]">
                 <li v-if="realEmail" class="flex items-center gap-1.5 min-w-0">
@@ -82,8 +80,7 @@
                   {{ auth.user.phone }}
                 </li>
                 <li v-if="auth.user?.created_at" class="flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)]">calendar_today</span>
-                  สมาชิกตั้งแต่ {{ formatJoinDate(auth.user.created_at) }}
+                  <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)]">calendar_today</span> {{ $t('สมาชิกตั้งแต่ {formatJoinDate}', { formatJoinDate: formatJoinDate(auth.user.created_at) }) }}
                 </li>
               </ul>
             </div>
@@ -91,15 +88,15 @@
             <!-- Stats -->
             <div class="grid grid-cols-3 md:w-[22rem] shrink-0 rounded-2xl border border-[var(--color-sand-dark)] divide-x divide-[var(--color-sand-dark)]">
               <router-link to="/loyalty" class="stat-cell">
-                <span class="stat-label">แต้มสะสม</span>
+                <span class="stat-label">{{ $t('แต้มสะสม') }}</span>
                 <span class="stat-value">{{ loyaltyPoints === null ? '–' : loyaltyPoints.toLocaleString() }}</span>
               </router-link>
               <router-link to="/my-bookings" class="stat-cell">
-                <span class="stat-label">ไปแล้ว</span>
-                <span class="stat-value">{{ loyaltyPoints === null ? '–' : loyaltyTrips.toLocaleString() }}<span class="stat-unit">ทริป</span></span>
+                <span class="stat-label">{{ $t('ไปแล้ว') }}</span>
+                <span class="stat-value">{{ loyaltyPoints === null ? '–' : loyaltyTrips.toLocaleString() }}<span class="stat-unit">{{ $t('ทริป') }}</span></span>
               </router-link>
               <button type="button" class="stat-cell" @click="openTab('info')">
-                <span class="stat-label">โปรไฟล์</span>
+                <span class="stat-label">{{ $t('โปรไฟล์') }}</span>
                 <span class="stat-value" :class="profileCompletion === 100 ? 'text-[var(--color-accent)]' : ''">{{ profileCompletion }}<span class="stat-unit">%</span></span>
               </button>
             </div>
@@ -117,14 +114,11 @@
       <div v-if="showVerifyBanner" class="notice notice--warn mb-4">
         <span class="material-symbols-rounded text-[22px] text-amber-600 shrink-0">mark_email_unread</span>
         <div class="flex-1 min-w-0">
-          <p class="font-bold text-sm text-[var(--color-text-dark)]">ยังไม่ได้ยืนยันอีเมล</p>
-          <p class="text-[13px] text-[var(--color-text-mid)] leading-relaxed mt-0.5">
-            ยืนยัน <strong class="font-bold">{{ auth.user?.email }}</strong> ไว้สักครั้ง
-            เผื่อวันไหนลืมรหัสผ่าน เราจะช่วยกู้บัญชีคืนให้ได้ทันทีครับ
-          </p>
+          <p class="font-bold text-sm text-[var(--color-text-dark)]">{{ $t('ยังไม่ได้ยืนยันอีเมล') }}</p>
+          <p class="text-[13px] text-[var(--color-text-mid)] leading-relaxed mt-0.5"> {{ $t('ยืนยัน') }} <strong class="font-bold">{{ auth.user?.email }}</strong> {{ $t('ไว้สักครั้ง เผื่อวันไหนลืมรหัสผ่าน เราจะช่วยกู้บัญชีคืนให้ได้ทันทีครับ') }} </p>
         </div>
         <button type="button" class="btn-primary shrink-0" :disabled="resendingVerification" @click="resendVerification">
-          {{ resendingVerification ? 'กำลังส่ง…' : 'ส่งลิงก์ยืนยัน' }}
+          {{ resendingVerification ? $t('กำลังส่ง…') : $t('ส่งลิงก์ยืนยัน') }}
         </button>
       </div>
 
@@ -134,7 +128,7 @@
           :class="verifyNotice.tone === 'good' ? 'text-[var(--color-accent)]' : 'text-amber-600'"
         >{{ verifyNotice.tone === 'good' ? 'verified' : 'link_off' }}</span>
         <p class="text-sm font-bold text-[var(--color-text-dark)] flex-1">{{ verifyNotice.message }}</p>
-        <button type="button" class="text-[var(--color-text-muted)] hover:text-[var(--color-text-dark)] shrink-0" aria-label="ปิด" @click="verifyNotice = null">
+        <button type="button" class="text-[var(--color-text-muted)] hover:text-[var(--color-text-dark)] shrink-0" :aria-label="$t('ปิด')" @click="verifyNotice = null">
           <span class="material-symbols-rounded text-[20px]">close</span>
         </button>
       </div>
@@ -163,7 +157,7 @@
         <!-- Sidebar (desktop) -->
         <aside class="hidden lg:block lg:col-span-3">
           <div class="sticky top-24 space-y-4">
-            <nav class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-2" role="tablist" aria-label="หมวดการตั้งค่า">
+            <nav class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-2" role="tablist" :aria-label="$t('หมวดการตั้งค่า')">
               <button
                 v-for="tab in tabs"
                 :key="tab.key"
@@ -191,7 +185,7 @@
               <div class="h-px bg-[var(--color-sand-dark)] my-1.5 mx-3"></div>
               <button type="button" class="side-link !text-red-600 hover:!bg-red-50 w-full" @click="handleLogout">
                 <span class="material-symbols-rounded text-[20px]">logout</span>
-                <span class="flex-1 text-left">ออกจากระบบ</span>
+                <span class="flex-1 text-left">{{ $t('ออกจากระบบ') }}</span>
               </button>
             </div>
           </div>
@@ -207,10 +201,10 @@
             <div v-if="missingFields.length" class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-5 md:p-6">
               <div class="flex items-center justify-between gap-4">
                 <div>
-                  <p class="font-bold text-[var(--color-text-dark)]">กรอกโปรไฟล์ให้ครบ {{ profileCompletion }}%</p>
-                  <p class="text-[13px] text-[var(--color-text-muted)] mt-0.5">ข้อมูลเหล่านี้ถูกเติมให้อัตโนมัติตอนจอง และช่วยให้ทีมงานดูแลคุณระหว่างทริปได้</p>
+                  <p class="font-bold text-[var(--color-text-dark)]">{{ $t('กรอกโปรไฟล์ให้ครบ {profileCompletion}%', { profileCompletion }) }}</p>
+                  <p class="text-[13px] text-[var(--color-text-muted)] mt-0.5">{{ $t('ข้อมูลเหล่านี้ถูกเติมให้อัตโนมัติตอนจอง และช่วยให้ทีมงานดูแลคุณระหว่างทริปได้') }}</p>
                 </div>
-                <button v-if="!editMode" type="button" class="btn-primary shrink-0 hidden sm:inline-flex" @click="startEdit">กรอกเลย</button>
+                <button v-if="!editMode" type="button" class="btn-primary shrink-0 hidden sm:inline-flex" @click="startEdit">{{ $t('กรอกเลย') }}</button>
               </div>
               <div class="mt-4 h-2 rounded-full bg-[var(--color-sand)] overflow-hidden">
                 <div class="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-700" :style="{ width: profileCompletion + '%' }"></div>
@@ -251,9 +245,7 @@
                   class="btn-ghost shrink-0"
                   @click="startEdit()"
                 >
-                  <span class="material-symbols-rounded text-[18px]">edit</span>
-                  แก้ไข
-                </button>
+                  <span class="material-symbols-rounded text-[18px]">edit</span> {{ $t('แก้ไข') }} </button>
               </header>
 
               <!-- View mode -->
@@ -262,10 +254,9 @@
                   <dt class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ field.label }}</dt>
                   <dd class="sm:col-span-2 text-sm min-w-0 break-words" :class="field.multiline ? 'whitespace-pre-line leading-relaxed' : ''">
                     <span v-if="displayValue(field)" class="font-semibold text-[var(--color-text-dark)]">{{ displayValue(field) }}</span>
-                    <span v-else class="text-[var(--color-text-muted)]/70">{{ field.emptyText || 'ยังไม่ได้ระบุ' }}</span>
+                    <span v-else class="text-[var(--color-text-muted)]/70">{{ field.emptyText || $t('ยังไม่ได้ระบุ') }}</span>
                     <span v-if="field.locked && displayValue(field)" class="ml-2 inline-flex items-center gap-1 align-middle text-[11px] font-bold text-[var(--color-text-muted)]">
-                      <span class="material-symbols-rounded text-[14px]">lock</span>เข้ารหัส
-                    </span>
+                      <span class="material-symbols-rounded text-[14px]">lock</span>{{ $t('เข้ารหัส') }} </span>
                   </dd>
                 </div>
               </dl>
@@ -281,7 +272,7 @@
                     <label :for="`f-${field.key}`" class="field-label">
                       {{ field.label }}
                       <span v-if="field.required" class="text-red-500">*</span>
-                      <span v-if="field.recommend" class="ml-1 font-semibold text-amber-600">แนะนำให้กรอก</span>
+                      <span v-if="field.recommend" class="ml-1 font-semibold text-amber-600">{{ $t('แนะนำให้กรอก') }}</span>
                     </label>
 
                     <div v-if="field.key === 'email'" class="field-input field-input--readonly">
@@ -289,8 +280,8 @@
                       <span class="material-symbols-rounded text-[16px] ml-auto shrink-0">lock</span>
                     </div>
                     <select v-else-if="field.options" :id="`f-${field.key}`" v-model="form[field.key]" class="field-input">
-                      <option value="">ไม่ระบุ</option>
-                      <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
+                      <option value="">{{ $t('ไม่ระบุ') }}</option>
+                      <option v-for="opt in field.options" :key="opt" :value="opt">{{ $t(opt) }}</option>
                     </select>
                     <textarea
                       v-else-if="field.multiline"
@@ -328,11 +319,9 @@
             <!-- Sticky save bar -->
             <div v-if="editMode" class="sticky bottom-4 z-20">
               <div class="flex items-center justify-between gap-3 rounded-2xl bg-[var(--color-primary)] px-4 py-3 sm:px-5">
-                <p class="text-sm font-bold text-white/85 hidden sm:block">{{ formDirty ? 'มีการแก้ไขที่ยังไม่บันทึก' : 'ยังไม่มีการเปลี่ยนแปลง' }}</p>
+                <p class="text-sm font-bold text-white/85 hidden sm:block">{{ formDirty ? $t('มีการแก้ไขที่ยังไม่บันทึก') : $t('ยังไม่มีการเปลี่ยนแปลง') }}</p>
                 <div class="flex items-center gap-2 ml-auto">
-                  <button type="button" class="px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:bg-white/10 transition-colors" :disabled="saving" @click="cancelEdit">
-                    ยกเลิก
-                  </button>
+                  <button type="button" class="px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:bg-white/10 transition-colors" :disabled="saving" @click="cancelEdit"> {{ $t('ยกเลิก') }} </button>
                   <button
                     type="button"
                     class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-white text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-colors disabled:opacity-60"
@@ -340,7 +329,7 @@
                     @click="saveProfile"
                   >
                     <span v-if="saving" class="material-symbols-rounded animate-spin text-[18px]">progress_activity</span>
-                    {{ saving ? 'กำลังบันทึก…' : 'บันทึกข้อมูล' }}
+                    {{ saving ? $t('กำลังบันทึก…') : $t('บันทึกข้อมูล') }}
                   </button>
                 </div>
               </div>
@@ -358,30 +347,24 @@
                     <span class="material-symbols-rounded text-[30px] text-[var(--color-gold)]" style="font-variation-settings:'FILL' 1">stars</span>
                   </span>
                   <div>
-                    <p class="text-[13px] font-bold text-white/60">แต้มสะสม</p>
+                    <p class="text-[13px] font-bold text-white/60">{{ $t('แต้มสะสม') }}</p>
                     <p class="text-3xl font-extrabold tabular-nums leading-tight">{{ (loyaltyPoints ?? 0).toLocaleString() }}</p>
                   </div>
                 </div>
 
                 <div class="flex-1 min-w-0">
                   <template v-if="loyaltyNextTier">
-                    <p class="text-sm font-semibold text-white/85">
-                      อีก <strong class="text-white">{{ loyaltyNextTier.trips_needed.toLocaleString() }} ทริป</strong>
-                      เลื่อนเป็น <strong class="text-[var(--color-accent-light)]">{{ loyaltyNextTier.label }}</strong>
+                    <p class="text-sm font-semibold text-white/85"> {{ $t('อีก') }} <strong class="text-white">{{ $t('{trips_needed} ทริป', { trips_needed: loyaltyNextTier.trips_needed.toLocaleString() }) }}</strong> {{ $t('เลื่อนเป็น') }} <strong class="text-[var(--color-accent-light)]">{{ loyaltyNextTier.label }}</strong>
                     </p>
                     <div class="mt-2.5 h-2 rounded-full bg-white/15 overflow-hidden">
                       <div class="h-full rounded-full bg-[var(--color-accent-light)] transition-[width] duration-700" :style="{ width: tierProgress + '%' }"></div>
                     </div>
-                    <p class="mt-1.5 text-[12px] font-semibold text-white/55">ไปด้วยกันมาแล้ว {{ loyaltyTrips.toLocaleString() }} จาก {{ loyaltyNextTier.at.toLocaleString() }} ทริป</p>
+                    <p class="mt-1.5 text-[12px] font-semibold text-white/55">{{ $t('ไปด้วยกันมาแล้ว {loyaltyTrips} จาก {at} ทริป', { loyaltyTrips: loyaltyTrips.toLocaleString(), at: loyaltyNextTier.at.toLocaleString() }) }}</p>
                   </template>
-                  <p v-else class="text-sm font-semibold text-white/80 leading-relaxed">
-                    ได้แต้มจากทุกทริปที่เดินทางจริง ใช้เป็นส่วนลดทริปถัดไปได้
-                  </p>
+                  <p v-else class="text-sm font-semibold text-white/80 leading-relaxed"> {{ $t('ได้แต้มจากทุกทริปที่เดินทางจริง ใช้เป็นส่วนลดทริปถัดไปได้') }} </p>
                 </div>
 
-                <span class="inline-flex items-center gap-1 text-sm font-bold text-white/85 group-hover:text-white shrink-0">
-                  ดูรายละเอียด
-                  <span class="material-symbols-rounded text-[18px] transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+                <span class="inline-flex items-center gap-1 text-sm font-bold text-white/85 group-hover:text-white shrink-0"> {{ $t('ดูรายละเอียด') }} <span class="material-symbols-rounded text-[18px] transition-transform group-hover:translate-x-0.5">arrow_forward</span>
                 </span>
               </div>
             </router-link>
@@ -394,10 +377,8 @@
                 <span class="material-symbols-rounded text-[22px]">public</span>
               </span>
               <div>
-                <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">โปรไฟล์สาธารณะ</h2>
-                <p class="text-[13px] text-[var(--color-text-muted)] leading-relaxed mt-0.5">
-                  หน้าเว็บที่แชร์ให้เพื่อนดูได้ — ทริปที่เดินจบ ระยะทางสะสม ตราที่ปลดล็อก และรูปจากรีวิวของคุณ
-                </p>
+                <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">{{ $t('โปรไฟล์สาธารณะ') }}</h2>
+                <p class="text-[13px] text-[var(--color-text-muted)] leading-relaxed mt-0.5"> {{ $t('หน้าเว็บที่แชร์ให้เพื่อนดูได้ — ทริปที่เดินจบ ระยะทางสะสม ตราที่ปลดล็อก และรูปจากรีวิวของคุณ') }} </p>
               </div>
             </div>
 
@@ -405,10 +386,8 @@
               <div class="flex items-start justify-between gap-4 rounded-2xl border p-4 md:p-5 transition-colors"
                    :class="publicProfile.enabled ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5' : 'border-[var(--color-sand-dark)]'">
                 <div>
-                  <p id="public-toggle-label" class="font-bold text-[var(--color-text-dark)]">เปิดให้คนอื่นดูโปรไฟล์ได้</p>
-                  <p class="text-[13px] text-[var(--color-text-muted)] mt-1 leading-relaxed">
-                    ปิดอยู่ = ไม่มีใครเปิดลิงก์ได้เลย อีเมล เบอร์โทร และการจองจะไม่ถูกแสดงไม่ว่ากรณีใด
-                  </p>
+                  <p id="public-toggle-label" class="font-bold text-[var(--color-text-dark)]">{{ $t('เปิดให้คนอื่นดูโปรไฟล์ได้') }}</p>
+                  <p class="text-[13px] text-[var(--color-text-muted)] mt-1 leading-relaxed"> {{ $t('ปิดอยู่ = ไม่มีใครเปิดลิงก์ได้เลย อีเมล เบอร์โทร และการจองจะไม่ถูกแสดงไม่ว่ากรณีใด') }} </p>
                 </div>
                 <button
                   type="button"
@@ -424,20 +403,20 @@
               </div>
 
               <div>
-                <label for="public-bio" class="field-label">แนะนำตัวสั้น ๆ</label>
+                <label for="public-bio" class="field-label">{{ $t('แนะนำตัวสั้น ๆ') }}</label>
                 <input
                   id="public-bio"
                   v-model="publicProfile.bio"
                   type="text"
                   maxlength="160"
-                  placeholder="เช่น เดินป่ามา 3 ปี ยังไม่เข็ด"
+                  :placeholder="$t('เช่น เดินป่ามา 3 ปี ยังไม่เข็ด')"
                   class="field-input"
                 />
                 <p class="field-help text-right tabular-nums">{{ (publicProfile.bio || '').length }}/160</p>
               </div>
 
               <div v-if="publicProfile.url && publicProfile.enabled" class="rounded-2xl bg-[var(--color-sand)] p-4">
-                <p class="text-[12px] font-bold text-[var(--color-text-muted)] mb-2">ลิงก์โปรไฟล์ของคุณ</p>
+                <p class="text-[12px] font-bold text-[var(--color-text-muted)] mb-2">{{ $t('ลิงก์โปรไฟล์ของคุณ') }}</p>
                 <div class="flex flex-col sm:flex-row sm:items-center gap-2">
                   <a :href="publicProfile.url" target="_blank" rel="noopener" class="flex-1 min-w-0 truncate font-bold text-[var(--color-accent)] hover:underline">
                     {{ publicProfile.url }}
@@ -445,18 +424,16 @@
                   <div class="flex gap-2 shrink-0">
                     <button type="button" class="btn-ghost !bg-white" @click="copyPublicUrl">
                       <span class="material-symbols-rounded text-[18px]">{{ copiedPublicUrl ? 'check' : 'content_copy' }}</span>
-                      {{ copiedPublicUrl ? 'คัดลอกแล้ว' : 'คัดลอก' }}
+                      {{ copiedPublicUrl ? $t('คัดลอกแล้ว') : $t('คัดลอก') }}
                     </button>
                     <a :href="publicProfile.url" target="_blank" rel="noopener" class="btn-ghost !bg-white">
-                      <span class="material-symbols-rounded text-[18px]">open_in_new</span>
-                      เปิดดู
-                    </a>
+                      <span class="material-symbols-rounded text-[18px]">open_in_new</span> {{ $t('เปิดดู') }} </a>
                   </div>
                 </div>
               </div>
 
               <button type="button" class="btn-primary" :disabled="savingPublicProfile || !publicDirty" @click="savePublicProfile">
-                {{ savingPublicProfile ? 'กำลังบันทึก…' : 'บันทึกการตั้งค่า' }}
+                {{ savingPublicProfile ? $t('กำลังบันทึก…') : $t('บันทึกการตั้งค่า') }}
               </button>
             </div>
           </section>
@@ -464,41 +441,41 @@
           <!-- ─── TAB: ความปลอดภัย ─── -->
           <template v-if="activeTab === 'security'">
             <section class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-5 md:p-7">
-              <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">การเข้าสู่ระบบ</h2>
+              <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">{{ $t('การเข้าสู่ระบบ') }}</h2>
               <dl class="mt-3 divide-y divide-[var(--color-sand-dark)]">
                 <div class="py-3.5 flex items-center justify-between gap-4">
-                  <dt class="text-[13px] font-semibold text-[var(--color-text-muted)]">วิธีที่ใช้สมัคร</dt>
+                  <dt class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ $t('วิธีที่ใช้สมัคร') }}</dt>
                   <dd class="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-text-dark)]">
                     <span class="w-4 h-4 inline-flex items-center justify-center" v-html="providerBadge.icon"></span>
                     {{ providerBadge.label }}
                   </dd>
                 </div>
                 <div v-if="realEmail" class="py-3.5 flex items-center justify-between gap-4">
-                  <dt class="text-[13px] font-semibold text-[var(--color-text-muted)] shrink-0">อีเมล</dt>
+                  <dt class="text-[13px] font-semibold text-[var(--color-text-muted)] shrink-0">{{ $t('อีเมล') }}</dt>
                   <dd class="flex items-center gap-2 text-sm font-semibold text-[var(--color-text-dark)] min-w-0">
                     <span class="truncate">{{ realEmail }}</span>
                     <span
                       class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold"
                       :class="auth.user?.email_verified === false ? 'bg-amber-50 text-amber-700' : 'bg-[var(--color-accent)]/10 text-[var(--color-accent)]'"
-                    >{{ auth.user?.email_verified === false ? 'ยังไม่ยืนยัน' : 'ยืนยันแล้ว' }}</span>
+                    >{{ auth.user?.email_verified === false ? $t('ยังไม่ยืนยัน') : $t('ยืนยันแล้ว') }}</span>
                   </dd>
                 </div>
               </dl>
             </section>
 
             <section class="bg-white rounded-3xl border border-[var(--color-sand-dark)] p-5 md:p-7">
-              <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">{{ hasPassword ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่าน' }}</h2>
+              <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">{{ hasPassword ? $t('เปลี่ยนรหัสผ่าน') : $t('ตั้งรหัสผ่าน') }}</h2>
               <p class="text-[13px] text-[var(--color-text-muted)] mt-1 leading-relaxed">
                 {{ hasPassword
-                  ? 'ใช้อย่างน้อย 8 ตัว ผสมตัวพิมพ์ใหญ่ ตัวเลข หรือสัญลักษณ์ และไม่ใช้ข้อมูลที่เดาง่ายอย่างวันเกิด'
-                  : `ตอนนี้คุณเข้าระบบด้วย ${providerName} อย่างเดียว ตั้งรหัสผ่านไว้เพื่อเข้าด้วยอีเมลได้อีกทาง` }}
+                  ? $t('ใช้อย่างน้อย 8 ตัว ผสมตัวพิมพ์ใหญ่ ตัวเลข หรือสัญลักษณ์ และไม่ใช้ข้อมูลที่เดาง่ายอย่างวันเกิด')
+                  : $t('ตอนนี้คุณเข้าระบบด้วย {providerName} อย่างเดียว ตั้งรหัสผ่านไว้เพื่อเข้าด้วยอีเมลได้อีกทาง', { providerName }) }}
               </p>
 
               <form class="max-w-md mt-6 space-y-5" @submit.prevent="savePassword">
                 <!-- ช่องชื่อผู้ใช้ซ่อนไว้ให้ตัวจัดการรหัสผ่านของเบราว์เซอร์รู้ว่ารหัสนี้ของบัญชีไหน -->
                 <input type="email" :value="auth.user?.email" autocomplete="username" class="hidden" readonly tabindex="-1" aria-hidden="true" />
                 <div>
-                  <label for="new-password" class="field-label">รหัสผ่านใหม่</label>
+                  <label for="new-password" class="field-label">{{ $t('รหัสผ่านใหม่') }}</label>
                   <div class="relative">
                     <input
                       id="new-password"
@@ -506,12 +483,12 @@
                       :type="showPassword ? 'text' : 'password'"
                       autocomplete="new-password"
                       class="field-input !pr-12"
-                      placeholder="อย่างน้อย 6 ตัวอักษร"
+                      :placeholder="$t('อย่างน้อย 6 ตัวอักษร')"
                     />
                     <button
                       type="button"
                       class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-dark)]"
-                      :aria-label="showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'"
+                      :aria-label="showPassword ? $t('ซ่อนรหัสผ่าน') : $t('แสดงรหัสผ่าน')"
                       @click="showPassword = !showPassword"
                     >
                       <span class="material-symbols-rounded text-[22px]">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
@@ -527,13 +504,13 @@
                       ></div>
                     </div>
                     <p class="field-help font-bold" :class="passwordStrength.textColor">
-                      {{ passwordTooShort ? `สั้นไป ต้องมีอย่างน้อย ${PASSWORD_MIN} ตัว` : `ความแข็งแรง: ${passwordStrength.label}` }}
+                      {{ passwordTooShort ? $t('สั้นไป ต้องมีอย่างน้อย {PASSWORD_MIN} ตัว', { PASSWORD_MIN }) : $t('ความแข็งแรง: {label}', { label: passwordStrength.label }) }}
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <label for="confirm-password" class="field-label">ยืนยันรหัสผ่านใหม่</label>
+                  <label for="confirm-password" class="field-label">{{ $t('ยืนยันรหัสผ่านใหม่') }}</label>
                   <div class="relative">
                     <input
                       id="confirm-password"
@@ -542,7 +519,7 @@
                       autocomplete="new-password"
                       class="field-input !pr-12"
                       :class="{ 'field-input--error': passwordMismatch }"
-                      placeholder="พิมพ์ซ้ำอีกครั้ง"
+                      :placeholder="$t('พิมพ์ซ้ำอีกครั้ง')"
                     />
                     <span
                       v-if="passwordForm.password_confirmation"
@@ -551,12 +528,12 @@
                       style="font-variation-settings:'FILL' 1"
                     >{{ passwordMismatch ? 'cancel' : 'check_circle' }}</span>
                   </div>
-                  <p v-if="passwordMismatch" class="field-help !text-red-600">รหัสผ่านไม่ตรงกัน</p>
+                  <p v-if="passwordMismatch" class="field-help !text-red-600">{{ $t('รหัสผ่านไม่ตรงกัน') }}</p>
                 </div>
 
                 <button type="submit" class="btn-primary" :disabled="!canSavePassword || savingPassword">
                   <span v-if="savingPassword" class="material-symbols-rounded animate-spin text-[18px]">progress_activity</span>
-                  {{ savingPassword ? 'กำลังบันทึก…' : hasPassword ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่าน' }}
+                  {{ savingPassword ? $t('กำลังบันทึก…') : hasPassword ? $t('เปลี่ยนรหัสผ่าน') : $t('ตั้งรหัสผ่าน') }}
                 </button>
               </form>
             </section>
@@ -568,9 +545,7 @@
             class="lg:hidden w-full flex items-center justify-center gap-2 rounded-2xl border border-red-100 bg-white py-3.5 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
             @click="handleLogout"
           >
-            <span class="material-symbols-rounded text-[20px]">logout</span>
-            ออกจากระบบ
-          </button>
+            <span class="material-symbols-rounded text-[20px]">logout</span> {{ $t('ออกจากระบบ') }} </button>
         </div>
       </div>
     </div>
@@ -578,6 +553,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -596,15 +572,15 @@ const PASSWORD_MIN = 6; // ตรงกับ validation ฝั่ง AuthContro
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024; // ตรงกับ max:5120 ฝั่งหลังบ้าน
 
 const tabs = [
-  { key: 'info',     label: 'ข้อมูลส่วนตัว',  icon: 'person',   hint: 'ชื่อ ติดต่อ สุขภาพ' },
-  { key: 'public',   label: 'โปรไฟล์สาธารณะ', icon: 'public',   hint: 'หน้าที่แชร์ให้เพื่อนดู' },
-  { key: 'security', label: 'ความปลอดภัย',    icon: 'lock',     hint: 'รหัสผ่านและการเข้าระบบ' },
+  { key: 'info',     label: $t('ข้อมูลส่วนตัว'),  icon: 'person',   hint: $t('ชื่อ ติดต่อ สุขภาพ') },
+  { key: 'public',   label: $t('โปรไฟล์สาธารณะ'), icon: 'public',   hint: $t('หน้าที่แชร์ให้เพื่อนดู') },
+  { key: 'security', label: $t('ความปลอดภัย'),    icon: 'lock',     hint: $t('รหัสผ่านและการเข้าระบบ') },
 ];
 
 const quickLinks = [
-  { to: '/my-bookings', icon: 'confirmation_number', label: 'การจองของฉัน' },
-  { to: '/loyalty',     icon: 'stars',               label: 'แต้มสะสม' },
-  { to: '/passport',    icon: 'hiking',              label: 'สมุดสะสมการเดินทาง' },
+  { to: '/my-bookings', icon: 'confirmation_number', label: $t('การจองของฉัน') },
+  { to: '/loyalty',     icon: 'stars',               label: $t('แต้มสะสม') },
+  { to: '/passport',    icon: 'hiking',              label: $t('สมุดสะสมการเดินทาง') },
 ];
 
 // แท็บอยู่ใน ?tab= เพื่อให้ลิงก์ตรงเข้าแท็บได้ และกดย้อนกลับไม่หลุดออกจากหน้า
@@ -621,40 +597,40 @@ const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 const infoSections = [
   {
     key: 'basic',
-    title: 'ข้อมูลพื้นฐาน',
-    desc: 'ใช้กรอกชื่อผู้เดินทางและทำประกันให้อัตโนมัติ',
+    title: $t('ข้อมูลพื้นฐาน'),
+    desc: $t('ใช้กรอกชื่อผู้เดินทางและทำประกันให้อัตโนมัติ'),
     icon: 'badge',
-    note: 'เลขบัตรประชาชนถูกเข้ารหัสก่อนบันทึก และใช้สำหรับการจองทริปเท่านั้น',
+    note: $t('เลขบัตรประชาชนถูกเข้ารหัสก่อนบันทึก และใช้สำหรับการจองทริปเท่านั้น'),
     fields: [
-      { key: 'title', label: 'คำนำหน้า', options: ['นาย', 'นาง', 'นางสาว'] },
-      { key: 'name', label: 'ชื่อ-นามสกุล', required: true, placeholder: 'ชื่อ-นามสกุลจริง', autocomplete: 'name' },
-      { key: 'nickname', label: 'ชื่อเล่น', placeholder: 'ระบุชื่อเล่น', autocomplete: 'nickname' },
-      { key: 'blood_group', label: 'กรุ๊ปเลือด', options: BLOOD_GROUPS },
-      { key: 'id_card', label: 'เลขบัตรประชาชน', placeholder: 'ตัวเลข 13 หลัก ไม่ต้องใส่ขีด', maxlength: 13, locked: true, wide: true },
+      { key: 'title', label: $t('คำนำหน้า'), options: ['นาย', 'นาง', 'นางสาว'] },
+      { key: 'name', label: $t('ชื่อ-นามสกุล'), required: true, placeholder: $t('ชื่อ-นามสกุลจริง'), autocomplete: 'name' },
+      { key: 'nickname', label: $t('ชื่อเล่น'), placeholder: $t('ระบุชื่อเล่น'), autocomplete: 'nickname' },
+      { key: 'blood_group', label: $t('กรุ๊ปเลือด'), options: BLOOD_GROUPS },
+      { key: 'id_card', label: $t('เลขบัตรประชาชน'), placeholder: $t('ตัวเลข 13 หลัก ไม่ต้องใส่ขีด'), maxlength: 13, locked: true, wide: true },
     ],
   },
   {
     key: 'contact',
-    title: 'ข้อมูลติดต่อ',
-    desc: 'ทีมงานใช้ติดต่อคุณและคนใกล้ชิดเมื่อมีเหตุจำเป็น',
+    title: $t('ข้อมูลติดต่อ'),
+    desc: $t('ทีมงานใช้ติดต่อคุณและคนใกล้ชิดเมื่อมีเหตุจำเป็น'),
     icon: 'contact_phone',
     fields: [
-      { key: 'phone', label: 'เบอร์โทรศัพท์', type: 'tel', placeholder: '08X-XXX-XXXX', autocomplete: 'tel' },
-      { key: 'email', label: 'อีเมล', readonly: true },
-      { key: 'emergency_contact', label: 'ผู้ติดต่อฉุกเฉิน', recommend: true, placeholder: 'ชื่อ-นามสกุลผู้ติดต่อ' },
-      { key: 'emergency_relation', label: 'เป็นอะไรกับคุณ', placeholder: 'เช่น แม่, สามี, เพื่อน', suggestions: EMERGENCY_RELATIONS, maxlength: EMERGENCY_RELATION_MAX },
-      { key: 'emergency_phone', label: 'เบอร์ผู้ติดต่อฉุกเฉิน', type: 'tel', placeholder: '08X-XXX-XXXX' },
+      { key: 'phone', label: $t('เบอร์โทรศัพท์'), type: 'tel', placeholder: '08X-XXX-XXXX', autocomplete: 'tel' },
+      { key: 'email', label: $t('อีเมล'), readonly: true },
+      { key: 'emergency_contact', label: $t('ผู้ติดต่อฉุกเฉิน'), recommend: true, placeholder: $t('ชื่อ-นามสกุลผู้ติดต่อ') },
+      { key: 'emergency_relation', label: $t('เป็นอะไรกับคุณ'), placeholder: $t('เช่น แม่, สามี, เพื่อน'), suggestions: EMERGENCY_RELATIONS, maxlength: EMERGENCY_RELATION_MAX },
+      { key: 'emergency_phone', label: $t('เบอร์ผู้ติดต่อฉุกเฉิน'), type: 'tel', placeholder: '08X-XXX-XXXX' },
     ],
   },
   {
     key: 'health',
-    title: 'ข้อมูลสุขภาพ',
-    desc: 'ให้ทีมงานเตรียมอาหารและดูแลได้ถูกต้องระหว่างทริป',
+    title: $t('ข้อมูลสุขภาพ'),
+    desc: $t('ให้ทีมงานเตรียมอาหารและดูแลได้ถูกต้องระหว่างทริป'),
     icon: 'health_and_safety',
-    note: 'ข้อมูลสุขภาพถูกเข้ารหัสก่อนบันทึก และใช้เพื่อความปลอดภัยของคุณระหว่างทริปเท่านั้น',
+    note: $t('ข้อมูลสุขภาพถูกเข้ารหัสก่อนบันทึก และใช้เพื่อความปลอดภัยของคุณระหว่างทริปเท่านั้น'),
     fields: [
-      { key: 'allergies', label: 'การแพ้อาหาร / สิ่งที่ควรระวัง', placeholder: 'เช่น แพ้อาหารทะเล, ไม่ทานเนื้อหมู, แพ้ถั่ว', wide: true, emptyText: 'ไม่มี / ยังไม่ได้ระบุ' },
-      { key: 'health_notes', label: 'โรคประจำตัว / หมายเหตุสุขภาพ', placeholder: 'โรคประจำตัว หรือประวัติการแพ้ยาที่ทีมงานควรทราบ (ถ้ามี)', multiline: true, wide: true, emptyText: 'ไม่มี / ยังไม่ได้ระบุ' },
+      { key: 'allergies', label: $t('การแพ้อาหาร / สิ่งที่ควรระวัง'), placeholder: $t('เช่น แพ้อาหารทะเล, ไม่ทานเนื้อหมู, แพ้ถั่ว'), wide: true, emptyText: $t('ไม่มี / ยังไม่ได้ระบุ') },
+      { key: 'health_notes', label: $t('โรคประจำตัว / หมายเหตุสุขภาพ'), placeholder: $t('โรคประจำตัว หรือประวัติการแพ้ยาที่ทีมงานควรทราบ (ถ้ามี)'), multiline: true, wide: true, emptyText: $t('ไม่มี / ยังไม่ได้ระบุ') },
     ],
   },
 ];
@@ -663,14 +639,14 @@ const EDITABLE_KEYS = ['title', 'name', 'phone', 'nickname', 'id_card', 'blood_g
 
 // ช่องที่นับเป็นความครบของโปรไฟล์
 const COMPLETION_FIELDS = [
-  { key: 'name', label: 'ชื่อ-นามสกุล' },
-  { key: 'phone', label: 'เบอร์โทรศัพท์' },
-  { key: 'nickname', label: 'ชื่อเล่น' },
-  { key: 'id_card', label: 'เลขบัตรประชาชน' },
-  { key: 'blood_group', label: 'กรุ๊ปเลือด' },
-  { key: 'emergency_contact', label: 'ผู้ติดต่อฉุกเฉิน' },
-  { key: 'emergency_phone', label: 'เบอร์ผู้ติดต่อฉุกเฉิน' },
-  { key: 'allergies', label: 'การแพ้อาหาร' },
+  { key: 'name', label: $t('ชื่อ-นามสกุล') },
+  { key: 'phone', label: $t('เบอร์โทรศัพท์') },
+  { key: 'nickname', label: $t('ชื่อเล่น') },
+  { key: 'id_card', label: $t('เลขบัตรประชาชน') },
+  { key: 'blood_group', label: $t('กรุ๊ปเลือด') },
+  { key: 'emergency_contact', label: $t('ผู้ติดต่อฉุกเฉิน') },
+  { key: 'emergency_phone', label: $t('เบอร์ผู้ติดต่อฉุกเฉิน') },
+  { key: 'allergies', label: $t('การแพ้อาหาร') },
 ];
 
 const editMode = ref(false);
@@ -695,7 +671,7 @@ const profileCompletion = computed(() => {
   return Math.round(((COMPLETION_FIELDS.length - missingFields.value.length) / COMPLETION_FIELDS.length) * 100);
 });
 
-const displayName = computed(() => [auth.user?.title, auth.user?.name].filter(Boolean).join(' ') || 'สมาชิก');
+const displayName = computed(() => [auth.user?.title, auth.user?.name].filter(Boolean).join(' ') || $t('สมาชิก'));
 const initial = computed(() => (auth.user?.name || '?').trim().charAt(0).toUpperCase());
 
 // บัญชีที่สมัครผ่านโซเชียลโดยไม่มีอีเมลจริงได้อีเมลสังเคราะห์ …@social.local — ไม่ควรโชว์ให้ลูกค้าเห็น
@@ -713,7 +689,9 @@ const maskedIdCard = computed(() => {
 function displayValue(field) {
   if (field.key === 'email') return realEmail.value;
   if (field.key === 'id_card') return maskedIdCard.value;
-  return String(auth.user?.[field.key] ?? '').trim();
+  const value = String(auth.user?.[field.key] ?? '').trim();
+  // คำนำหน้าเก็บเป็นไทย (นาย/นาง/นางสาว) — แปลตอนแสดงเท่านั้น
+  return field.options && value ? $t(value) : value;
 }
 
 // ดึงค่าจาก auth.user ทุกครั้งที่เริ่มแก้ — ค่าตอนเปิดหน้ามาจาก localStorage ซึ่งอาจเก่ากว่าที่ /auth/me เพิ่งส่งมา
@@ -739,7 +717,7 @@ function cancelEdit() {
 function validateProfile() {
   const errors = {};
   if (!String(form.value.name || '').trim()) errors.name = 'กรุณากรอกชื่อ-นามสกุล';
-  if (form.value.id_card && form.value.id_card.length !== 13) errors.id_card = 'เลขบัตรประชาชนต้องมี 13 หลัก';
+  if (form.value.id_card && form.value.id_card.length !== 13) errors.id_card = $t('เลขบัตรประชาชนต้องมี 13 หลัก');
   fieldErrors.value = errors;
   const first = Object.keys(errors)[0];
   if (first) document.getElementById(`f-${first}`)?.focus();
@@ -756,9 +734,9 @@ async function saveProfile() {
     const res = await api.post('/auth/profile', payload);
     storeUser(res.data?.data);
     editMode.value = false;
-    toast.success('บันทึกข้อมูลเรียบร้อยแล้ว');
+    toast.success($t('บันทึกข้อมูลเรียบร้อยแล้ว'));
   } catch (e) {
-    applyServerErrors(e, 'บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่');
+    applyServerErrors(e, $t('บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่'));
   } finally {
     saving.value = false;
   }
@@ -791,11 +769,11 @@ function handleAvatarChange(e) {
   e.target.value = '';
   if (!file) return;
   if (!file.type.startsWith('image/')) {
-    toast.error('กรุณาเลือกไฟล์รูปภาพ');
+    toast.error($t('กรุณาเลือกไฟล์รูปภาพ'));
     return;
   }
   if (file.size > AVATAR_MAX_BYTES) {
-    toast.error('รูปต้องมีขนาดไม่เกิน 5MB');
+    toast.error($t('รูปต้องมีขนาดไม่เกิน 5MB'));
     return;
   }
   if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
@@ -818,9 +796,9 @@ async function uploadAvatar() {
     const res = await api.post('/auth/profile', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
     storeUser(res.data?.data);
     cancelAvatarUpload();
-    toast.success('เปลี่ยนรูปโปรไฟล์แล้ว');
+    toast.success($t('เปลี่ยนรูปโปรไฟล์แล้ว'));
   } catch (e) {
-    toast.error(e?.response?.data?.errors?.avatar?.[0] || 'อัปโหลดรูปไม่สำเร็จ กรุณาลองอีกครั้ง');
+    toast.error(e?.response?.data?.errors?.avatar?.[0] || $t('อัปโหลดรูปไม่สำเร็จ กรุณาลองอีกครั้ง'));
   } finally {
     uploadingAvatar.value = false;
   }
@@ -847,11 +825,11 @@ const passwordStrength = computed(() => {
   if (/[A-Z]/.test(p)) score++;
   if (/[0-9]/.test(p)) score++;
   if (/[^A-Za-z0-9]/.test(p)) score++;
-  if (score <= 1) return { level: Math.max(score, 1), label: 'อ่อนมาก', barColor: 'bg-red-500', textColor: 'text-red-600' };
-  if (score === 2) return { level: score, label: 'อ่อน', barColor: 'bg-orange-400', textColor: 'text-orange-600' };
-  if (score === 3) return { level: score, label: 'ปานกลาง', barColor: 'bg-amber-400', textColor: 'text-amber-700' };
-  if (score === 4) return { level: score, label: 'แข็งแรง', barColor: 'bg-[var(--color-accent-light)]', textColor: 'text-[var(--color-accent)]' };
-  return { level: score, label: 'แข็งแรงมาก', barColor: 'bg-[var(--color-accent)]', textColor: 'text-[var(--color-accent)]' };
+  if (score <= 1) return { level: Math.max(score, 1), label: $t('อ่อนมาก'), barColor: 'bg-red-500', textColor: 'text-red-600' };
+  if (score === 2) return { level: score, label: $t('อ่อน'), barColor: 'bg-orange-400', textColor: 'text-orange-600' };
+  if (score === 3) return { level: score, label: $t('ปานกลาง'), barColor: 'bg-amber-400', textColor: 'text-amber-700' };
+  if (score === 4) return { level: score, label: $t('แข็งแรง'), barColor: 'bg-[var(--color-accent-light)]', textColor: 'text-[var(--color-accent)]' };
+  return { level: score, label: $t('แข็งแรงมาก'), barColor: 'bg-[var(--color-accent)]', textColor: 'text-[var(--color-accent)]' };
 });
 
 // ส่งเฉพาะรหัสผ่าน — เดิมปุ่มนี้ส่งฟอร์มข้อมูลส่วนตัวไปด้วย ทำให้สิ่งที่พิมพ์ค้างไว้ในแท็บแรกถูกบันทึกโดยไม่ตั้งใจ
@@ -862,12 +840,12 @@ async function savePassword() {
   try {
     const res = await api.post('/auth/profile', { ...passwordForm.value });
     storeUser(res.data?.data);
-    toast.success(hasPassword.value ? 'เปลี่ยนรหัสผ่านแล้ว' : 'ตั้งรหัสผ่านแล้ว');
+    toast.success(hasPassword.value ? $t('เปลี่ยนรหัสผ่านแล้ว') : $t('ตั้งรหัสผ่านแล้ว'));
     passwordForm.value = { password: '', password_confirmation: '' };
     showPassword.value = false;
   } catch (e) {
     const data = e?.response?.data;
-    toast.error(data?.errors?.password?.[0] || data?.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาลองใหม่');
+    toast.error(data?.errors?.password?.[0] || data?.message || $t('เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาลองใหม่'));
   } finally {
     savingPassword.value = false;
   }
@@ -891,10 +869,10 @@ const showVerifyBanner = computed(() => {
 });
 
 const VERIFY_MESSAGES = {
-  success: { tone: 'good', message: 'ยืนยันอีเมลเรียบร้อยแล้วครับ ขอบคุณนะครับ' },
-  already: { tone: 'good', message: 'อีเมลนี้ยืนยันไปแล้วครับ' },
-  expired: { tone: 'warn', message: 'ลิงก์ยืนยันหมดอายุแล้วครับ กดปุ่มส่งลิงก์ยืนยันเพื่อขอใหม่ได้เลย' },
-  invalid: { tone: 'warn', message: 'ลิงก์ยืนยันนี้ใช้ไม่ได้แล้วครับ กดปุ่มส่งลิงก์ยืนยันเพื่อขอใหม่ได้เลย' },
+  success: { tone: 'good', message: $t('ยืนยันอีเมลเรียบร้อยแล้วครับ ขอบคุณนะครับ') },
+  already: { tone: 'good', message: $t('อีเมลนี้ยืนยันไปแล้วครับ') },
+  expired: { tone: 'warn', message: $t('ลิงก์ยืนยันหมดอายุแล้วครับ กดปุ่มส่งลิงก์ยืนยันเพื่อขอใหม่ได้เลย') },
+  invalid: { tone: 'warn', message: $t('ลิงก์ยืนยันนี้ใช้ไม่ได้แล้วครับ กดปุ่มส่งลิงก์ยืนยันเพื่อขอใหม่ได้เลย') },
 };
 
 // The backend bounces the customer back here with ?verified=… after they click
@@ -916,13 +894,13 @@ async function resendVerification() {
   resendingVerification.value = true;
   try {
     const res = await auth.resendVerification();
-    verifyNotice.value = { tone: 'good', message: res?.message || 'ส่งลิงก์ยืนยันไปที่อีเมลของคุณแล้วครับ' };
+    verifyNotice.value = { tone: 'good', message: res?.message || $t('ส่งลิงก์ยืนยันไปที่อีเมลของคุณแล้วครับ') };
   } catch (e) {
     verifyNotice.value = {
       tone: 'warn',
       message: e?.response?.status === 429
-        ? 'ขอลิงก์ถี่เกินไปครับ รอสักครู่แล้วลองใหม่อีกครั้ง'
-        : (e?.response?.data?.message || 'ส่งลิงก์ไม่สำเร็จ กรุณาลองใหม่อีกครั้งครับ'),
+        ? $t('ขอลิงก์ถี่เกินไปครับ รอสักครู่แล้วลองใหม่อีกครั้ง')
+        : (e?.response?.data?.message || $t('ส่งลิงก์ไม่สำเร็จ กรุณาลองใหม่อีกครั้งครับ')),
     };
   } finally {
     resendingVerification.value = false;
@@ -961,9 +939,9 @@ async function savePublicProfile() {
       bio: publicProfile.value.bio?.trim() || null,
     });
     applyPublicProfile(res.data?.data);
-    toast.success(res.data?.message || 'บันทึกแล้ว');
+    toast.success(res.data?.message || $t('บันทึกแล้ว'));
   } catch (e) {
-    toast.error(e?.response?.data?.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
+    toast.error(e?.response?.data?.message || $t('บันทึกไม่สำเร็จ กรุณาลองใหม่'));
   } finally {
     savingPublicProfile.value = false;
   }
@@ -975,7 +953,7 @@ async function copyPublicUrl() {
     copiedPublicUrl.value = true;
     setTimeout(() => { copiedPublicUrl.value = false; }, 2000);
   } catch {
-    toast.error('คัดลอกไม่สำเร็จ ลองกดค้างที่ลิงก์แล้วคัดลอกเองได้ครับ');
+    toast.error($t('คัดลอกไม่สำเร็จ ลองกดค้างที่ลิงก์แล้วคัดลอกเองได้ครับ'));
   }
 }
 
@@ -1013,9 +991,9 @@ const providerMap = {
 
 const providerBadge = computed(() =>
   providerMap[auth.user?.social_provider]
-  || { label: 'อีเมลและรหัสผ่าน', icon: '<span class="material-symbols-rounded text-[16px] text-[var(--color-text-muted)]">mail</span>' },
+  || { label: $t('อีเมลและรหัสผ่าน'), icon: '<span class="material-symbols-rounded text-[16px] text-[var(--color-text-muted)]">mail</span>' },
 );
-const providerName = computed(() => providerMap[auth.user?.social_provider]?.label || 'บัญชีโซเชียล');
+const providerName = computed(() => providerMap[auth.user?.social_provider]?.label || $t('บัญชีโซเชียล'));
 
 function formatJoinDate(iso) {
   if (!iso) return '';
@@ -1023,7 +1001,7 @@ function formatJoinDate(iso) {
 }
 
 async function handleLogout() {
-  if (!confirm('ต้องการออกจากระบบใช่ไหม?')) return;
+  if (!confirm($t('ต้องการออกจากระบบใช่ไหม?'))) return;
   await auth.logout();
   router.push('/login');
 }

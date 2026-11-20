@@ -9,20 +9,18 @@
       <!-- ลิงก์ไม่มีอยู่ -->
       <div v-else-if="notFound" class="bg-white rounded-[24px] border border-[#E8EEEF] p-8 text-center">
         <span class="material-symbols-rounded text-4xl text-[#E11D48]">link_off</span>
-        <h1 class="text-xl font-black text-[#1a1c1c] mt-3 mb-2">ใช้ลิงก์นี้ไม่ได้</h1>
+        <h1 class="text-xl font-black text-[#1a1c1c] mt-3 mb-2">{{ $t('ใช้ลิงก์นี้ไม่ได้') }}</h1>
         <p class="text-sm text-[#505E5E] leading-relaxed mb-6">{{ notFound }}</p>
         <router-link to="/"
           class="inline-flex items-center gap-1.5 bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
-          <span class="material-symbols-rounded text-[18px]">home</span> กลับหน้าแรก
-        </router-link>
+          <span class="material-symbols-rounded text-[18px]">home</span> {{ $t('กลับหน้าแรก') }} </router-link>
       </div>
 
       <template v-else-if="preview">
         <section class="mb-6">
-          <p class="text-xs font-bold text-[var(--color-accent)] tracking-wider mb-1">ส่งต่อที่นั่ง</p>
+          <p class="text-xs font-bold text-[var(--color-accent)] tracking-wider mb-1">{{ $t('ส่งต่อที่นั่ง') }}</p>
           <h1 class="text-3xl font-bold text-[#1a1c1c] tracking-tight" style="font-family:'DB Heavent','Anuphan',sans-serif;">
-            {{ preview.from_name }} ส่งที่นั่งให้คุณ
-          </h1>
+            {{ $t('{from_name} ส่งที่นั่งให้คุณ', { from_name: preview.from_name }) }} </h1>
         </section>
 
         <!-- ทริปที่ได้รับ -->
@@ -30,7 +28,7 @@
           <img v-if="preview.trip?.cover_image" :src="preview.trip.cover_image" alt=""
             class="w-full h-40 object-cover" />
           <div class="p-6">
-            <h2 class="text-lg font-black text-[#1a1c1c] leading-snug mb-3">{{ preview.trip?.title || 'ทริป' }}</h2>
+            <h2 class="text-lg font-black text-[#1a1c1c] leading-snug mb-3">{{ preview.trip?.title || $t('ทริป') }}</h2>
             <div class="space-y-2 text-sm font-bold text-[#505E5E]">
               <p class="flex items-start gap-2">
                 <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">event</span>
@@ -40,15 +38,13 @@
                 </span>
               </p>
               <p v-if="preview.seat_label" class="flex items-center gap-2">
-                <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">event_seat</span>
-                ที่นั่ง {{ preview.seat_label }}
+                <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">event_seat</span> {{ $t('ที่นั่ง {seat_label}', { seat_label: preview.seat_label }) }}
               </p>
               <p v-if="preview.pickup" class="flex items-start gap-2">
                 <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)]">location_on</span>
-                <span>
-                  ขึ้นรถที่ {{ preview.pickup.label }}<template v-if="preview.pickup.time"> · {{ preview.pickup.time }} น.</template>
+                <span> {{ $t('ขึ้นรถที่ {label}', { label: preview.pickup.label }) }}<template v-if="preview.pickup.time"> {{ $t('· {time} น.', { time: preview.pickup.time }) }}</template>
                   <a v-if="preview.pickup.map_url" :href="preview.pickup.map_url" target="_blank" rel="noopener"
-                    class="block text-[var(--color-accent)] underline font-semibold">ดูแผนที่</a>
+                    class="block text-[var(--color-accent)] underline font-semibold">{{ $t('ดูแผนที่') }}</a>
                 </span>
               </p>
             </div>
@@ -57,14 +53,9 @@
               class="mt-4 border-l-4 border-[#BCDFDF] pl-3 text-sm text-[#1a1c1c] italic">“{{ preview.note }}”</blockquote>
 
             <div class="mt-4 space-y-2 text-[12px] leading-relaxed">
-              <p v-if="preview.transfers_ownership" class="rounded-[12px] bg-[#F0FAFA] text-[#0F3D3E] px-3 py-2">
-                คุณจะได้ดูแลการจองนี้แทน{{ preview.from_name }}ด้วย (แชท วันเดินทาง และเรื่องการจองทั้งหมด)
-              </p>
-              <p v-if="preview.pending_share_amount" class="rounded-[12px] bg-[#FFFBEB] text-[#92400E] px-3 py-2">
-                ที่นั่งนี้ยังมีส่วนแบ่งค่าทริปค้างจ่าย ฿{{ Number(preview.pending_share_amount).toLocaleString($dateLocale) }}
-                รับแล้วจะเป็นส่วนของคุณ
-              </p>
-              <p class="text-[#889696]">ค่าที่นั่งตกลงกันเองกับคนที่ส่งให้คุณ ทางเราไม่เก็บเงินเพิ่มจากการรับที่นั่ง</p>
+              <p v-if="preview.transfers_ownership" class="rounded-[12px] bg-[#F0FAFA] text-[#0F3D3E] px-3 py-2"> {{ $t('คุณจะได้ดูแลการจองนี้แทน{from_name}ด้วย (แชท วันเดินทาง และเรื่องการจองทั้งหมด)', { from_name: preview.from_name }) }} </p>
+              <p v-if="preview.pending_share_amount" class="rounded-[12px] bg-[#FFFBEB] text-[#92400E] px-3 py-2"> {{ $t('ที่นั่งนี้ยังมีส่วนแบ่งค่าทริปค้างจ่าย ฿{Number} รับแล้วจะเป็นส่วนของคุณ', { Number: Number(preview.pending_share_amount).toLocaleString($dateLocale) }) }} </p>
+              <p class="text-[#889696]">{{ $t('ค่าที่นั่งตกลงกันเองกับคนที่ส่งให้คุณ ทางเราไม่เก็บเงินเพิ่มจากการรับที่นั่ง') }}</p>
             </div>
           </div>
         </div>
@@ -73,20 +64,18 @@
         <div v-if="!preview.claimable" class="bg-white rounded-[20px] border border-[#FDE68A] p-5 text-center">
           <p class="text-sm font-bold text-[#B45309]">{{ preview.blocked_reason }}</p>
           <router-link v-if="preview.claimed_by_viewer" to="/my-bookings"
-            class="inline-flex items-center gap-1.5 mt-4 bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-full text-sm font-extrabold">
-            ไปที่การจองของฉัน
-          </router-link>
+            class="inline-flex items-center gap-1.5 mt-4 bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-full text-sm font-extrabold"> {{ $t('ไปที่การจองของฉัน') }} </router-link>
         </div>
 
         <!-- ฟอร์มข้อมูลผู้เดินทาง -->
         <form v-else class="bg-white rounded-[24px] border border-[#E8EEEF] p-6 space-y-4" @submit.prevent="submit" novalidate>
           <div>
-            <h2 class="text-lg font-black text-[#1a1c1c]">ข้อมูลของคุณ</h2>
-            <p class="text-xs text-[#889696] mt-1">ใช้ทำประกันการเดินทางและให้ทีมงานติดต่อ — กรอกตามบัตรประชาชน</p>
+            <h2 class="text-lg font-black text-[#1a1c1c]">{{ $t('ข้อมูลของคุณ') }}</h2>
+            <p class="text-xs text-[#889696] mt-1">{{ $t('ใช้ทำประกันการเดินทางและให้ทีมงานติดต่อ — กรอกตามบัตรประชาชน') }}</p>
           </div>
 
           <div v-if="isInternational">
-            <label class="lbl">สัญชาติ</label>
+            <label class="lbl">{{ $t('สัญชาติ') }}</label>
             <select v-model="form.nationality" class="inp">
               <option v-for="c in countries" :key="c.code" :value="c.code">{{ c.flag }} {{ c.name }}</option>
             </select>
@@ -94,14 +83,14 @@
 
           <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="lbl">คำนำหน้า</label>
+              <label class="lbl">{{ $t('คำนำหน้า') }}</label>
               <select v-model="form.title" class="inp" :class="{ err: errors.title }">
-                <option value="" disabled>เลือก</option>
-                <option v-for="t in titles" :key="t" :value="t">{{ t }}</option>
+                <option value="" disabled>{{ $t('เลือก') }}</option>
+                <option v-for="t in titles" :key="t" :value="t">{{ $t(t) }}</option>
               </select>
             </div>
             <div class="col-span-2">
-              <label class="lbl">ชื่อเล่น</label>
+              <label class="lbl">{{ $t('ชื่อเล่น') }}</label>
               <input v-model.trim="form.nickname" class="inp" :class="{ err: errors.nickname }" maxlength="100" />
             </div>
           </div>
@@ -109,47 +98,43 @@
           <p v-if="errors.nickname" class="msg">{{ errors.nickname }}</p>
 
           <div>
-            <label class="lbl">ชื่อ-นามสกุล{{ isThai ? ' (ภาษาไทยตามบัตร)' : '' }}</label>
+            <label class="lbl">{{ $t('ชื่อ-นามสกุล{p}', { p: isThai ? $t(' (ภาษาไทยตามบัตร)') : '' }) }}</label>
             <input v-model.trim="form.name" class="inp" :class="{ err: errors.name }" autocomplete="name" />
             <p v-if="errors.name" class="msg">{{ errors.name }}</p>
           </div>
 
           <div v-if="isThai">
-            <label class="lbl">เลขบัตรประชาชน</label>
+            <label class="lbl">{{ $t('เลขบัตรประชาชน') }}</label>
             <input v-model.trim="form.id_card" class="inp" :class="{ err: errors.id_card }" inputmode="numeric" maxlength="17" autocomplete="off" />
             <p v-if="errors.id_card" class="msg">{{ errors.id_card }}</p>
           </div>
 
-          <p v-if="docMode === 'on_site'" class="text-xs text-[#5f6b6b] bg-[#fff8e6] rounded-xl px-3 py-2.5">
-            เอกสารเดินทางไม่ต้องกรอกล่วงหน้า วันเดินทางนำฉบับจริงมาแสดงกับทีมงาน
-          </p>
+          <p v-if="docMode === 'on_site'" class="text-xs text-[#5f6b6b] bg-[#fff8e6] rounded-xl px-3 py-2.5"> {{ $t('เอกสารเดินทางไม่ต้องกรอกล่วงหน้า วันเดินทางนำฉบับจริงมาแสดงกับทีมงาน') }} </p>
 
           <div v-if="canChooseBorderPass">
-            <label class="lbl">ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้ — มีพาสปอร์ตไหม</label>
+            <label class="lbl">{{ $t('ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้ — มีพาสปอร์ตไหม') }}</label>
             <div class="grid grid-cols-2 gap-2">
               <button v-for="opt in docOptions" :key="opt.value" type="button"
                 class="inp text-left font-bold" :class="{ 'doc-picked': form.travel_document === opt.value, err: errors.travel_document }"
                 @click="form.travel_document = opt.value">{{ opt.label }}</button>
             </div>
             <p v-if="errors.travel_document" class="msg">{{ errors.travel_document }}</p>
-            <p v-else-if="form.travel_document === 'border_pass'" class="text-xs text-[#889696] mt-1.5">
-              ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนด้านบน วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย
-            </p>
+            <p v-else-if="form.travel_document === 'border_pass'" class="text-xs text-[#889696] mt-1.5"> {{ $t('ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนด้านบน วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย') }} </p>
           </div>
 
           <template v-if="showPassportFields">
             <div>
-              <label class="lbl">ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)</label>
+              <label class="lbl">{{ $t('ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)') }}</label>
               <input v-model.trim="form.name_en" class="inp uppercase" :class="{ err: errors.name_en }" />
               <p v-if="errors.name_en" class="msg">{{ errors.name_en }}</p>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="lbl">เลขที่พาสปอร์ต</label>
+                <label class="lbl">{{ $t('เลขที่พาสปอร์ต') }}</label>
                 <input v-model.trim="form.passport_no" class="inp uppercase" :class="{ err: errors.passport_no }" />
               </div>
               <div>
-                <label class="lbl">วันหมดอายุ</label>
+                <label class="lbl">{{ $t('วันหมดอายุ') }}</label>
                 <input v-model="form.passport_expires_at" type="date" class="inp" :class="{ err: errors.passport_expires_at }" />
               </div>
             </div>
@@ -159,13 +144,13 @@
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="lbl">วันเกิด</label>
+              <label class="lbl">{{ $t('วันเกิด') }}</label>
               <input v-model="form.birth_date" type="date" class="inp" :class="{ err: errors.birth_date }" />
             </div>
             <div>
-              <label class="lbl">กรุ๊ปเลือด</label>
+              <label class="lbl">{{ $t('กรุ๊ปเลือด') }}</label>
               <select v-model="form.blood_group" class="inp" :class="{ err: errors.blood_group }">
-                <option value="" disabled>เลือก</option>
+                <option value="" disabled>{{ $t('เลือก') }}</option>
                 <option v-for="g in ['A', 'B', 'O', 'AB']" :key="g" :value="g">{{ g }}</option>
               </select>
             </div>
@@ -175,11 +160,11 @@
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="lbl">เบอร์โทร</label>
+              <label class="lbl">{{ $t('เบอร์โทร') }}</label>
               <input v-model.trim="form.phone" class="inp" :class="{ err: errors.phone }" inputmode="tel" autocomplete="tel" />
             </div>
             <div>
-              <label class="lbl">อีเมล (ไม่บังคับ)</label>
+              <label class="lbl">{{ $t('อีเมล (ไม่บังคับ)') }}</label>
               <input v-model.trim="form.email" type="email" class="inp" :class="{ err: errors.email }" autocomplete="email" />
             </div>
           </div>
@@ -188,11 +173,11 @@
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="lbl">ผู้ติดต่อฉุกเฉิน</label>
-              <input v-model.trim="form.emergency_contact" class="inp" :class="{ err: errors.emergency_contact }" placeholder="ชื่อ-นามสกุล" />
+              <label class="lbl">{{ $t('ผู้ติดต่อฉุกเฉิน') }}</label>
+              <input v-model.trim="form.emergency_contact" class="inp" :class="{ err: errors.emergency_contact }" :placeholder="$t('ชื่อ-นามสกุล')" />
             </div>
             <div>
-              <label class="lbl">เบอร์ฉุกเฉิน</label>
+              <label class="lbl">{{ $t('เบอร์ฉุกเฉิน') }}</label>
               <input v-model.trim="form.emergency_phone" class="inp" :class="{ err: errors.emergency_phone }" inputmode="tel" />
             </div>
           </div>
@@ -200,15 +185,15 @@
           <p v-if="errors.emergency_phone" class="msg">{{ errors.emergency_phone }}</p>
 
           <div>
-            <label class="lbl">ผู้ติดต่อเป็นอะไรกับคุณ</label>
+            <label class="lbl">{{ $t('ผู้ติดต่อเป็นอะไรกับคุณ') }}</label>
             <EmergencyRelationPicker v-model="form.emergency_relation" :error="!!errors.emergency_relation" />
           </div>
           <p v-if="errors.emergency_relation" class="msg">{{ errors.emergency_relation }}</p>
 
           <div>
-            <label class="lbl">อาหารฮาลาล</label>
+            <label class="lbl">{{ $t('อาหารฮาลาล') }}</label>
             <div class="flex gap-2">
-              <button v-for="opt in [{ v: false, t: 'ไม่ต้องการ' }, { v: true, t: 'ต้องการ' }]" :key="opt.t" type="button"
+              <button v-for="opt in [{ v: false, t: $t('ไม่ต้องการ') }, { v: true, t: $t('ต้องการ') }]" :key="opt.t" type="button"
                 @click="form.halal_food = opt.v"
                 class="flex-1 py-2.5 rounded-[12px] border text-sm font-bold"
                 :class="form.halal_food === opt.v ? 'border-[var(--color-accent)] bg-[#F0FAFA] text-[var(--color-accent)]' : 'border-[#D5DEDE] text-[#505E5E]'">
@@ -219,21 +204,17 @@
           </div>
 
           <div>
-            <label class="lbl">แพ้อาหาร/ยา (ไม่บังคับ)</label>
+            <label class="lbl">{{ $t('แพ้อาหาร/ยา (ไม่บังคับ)') }}</label>
             <input v-model.trim="form.allergies" class="inp" maxlength="1000" />
           </div>
           <div>
-            <label class="lbl">โรคประจำตัว / ข้อมูลสุขภาพ (ไม่บังคับ)</label>
+            <label class="lbl">{{ $t('โรคประจำตัว / ข้อมูลสุขภาพ (ไม่บังคับ)') }}</label>
             <textarea v-model.trim="form.health_notes" class="inp" rows="2" maxlength="1000"></textarea>
           </div>
 
           <label class="flex items-start gap-3 text-[13px] text-[#1a1c1c]">
             <input type="checkbox" v-model="form.accept_terms" class="mt-0.5 w-4 h-4 accent-[var(--color-accent)]" />
-            <span>
-              ฉันอ่านและยอมรับ
-              <a :href="preview.terms?.url" target="_blank" rel="noopener" class="text-[var(--color-accent)] underline font-bold">เงื่อนไขการเดินทาง</a>
-              ของลุยเลเขา
-            </span>
+            <span> {{ $t('ฉันอ่านและยอมรับ') }} <a :href="preview.terms?.url" target="_blank" rel="noopener" class="text-[var(--color-accent)] underline font-bold">{{ $t('เงื่อนไขการเดินทาง') }}</a> {{ $t('ของลุยเลเขา') }} </span>
           </label>
           <p v-if="errors.accept_terms" class="msg">{{ errors.accept_terms }}</p>
           <p v-if="errors.terms_version" class="msg">{{ errors.terms_version }}</p>
@@ -244,7 +225,7 @@
             class="w-full bg-[var(--color-accent)] hover:bg-[#005252] disabled:opacity-60 text-white py-3.5 rounded-full font-extrabold text-sm flex items-center justify-center gap-2 transition">
             <span v-if="submitting" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
             <span v-else class="material-symbols-rounded text-[20px]">how_to_reg</span>
-            {{ submitting ? 'กำลังรับที่นั่ง...' : 'รับที่นั่งนี้' }}
+            {{ submitting ? $t('กำลังรับที่นั่ง...') : $t('รับที่นั่งนี้') }}
           </button>
         </form>
       </template>
@@ -253,6 +234,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
@@ -265,7 +247,7 @@ import EmergencyRelationPicker from '../components/EmergencyRelationPicker.vue';
  * ตัวเองแล้วรับที่นั่ง กติกาทั้งหมดตรวจที่เซิร์ฟเวอร์ (ClaimSeatHandoverRequest)
  * หน้านี้แสดงข้อความผิดพลาดรายช่องตามที่เซิร์ฟเวอร์ตอบ จะได้ไม่ต้องลอกกติกามาไว้สองที่
  */
-useHead({ title: 'รับที่นั่งต่อ — ลุยเลเขา' });
+useHead({ title: $t('รับที่นั่งต่อ — ลุยเลเขา') });
 
 const route = useRoute();
 const router = useRouter();
@@ -295,8 +277,8 @@ const canChooseBorderPass = computed(() => docMode.value === 'passport_or_border
 const showPassportFields = computed(() => ['passport', 'passport_or_border_pass'].includes(docMode.value)
   && (!canChooseBorderPass.value || form.travel_document === 'passport'));
 const docOptions = [
-  { value: 'passport', label: 'มีพาสปอร์ต' },
-  { value: 'border_pass', label: 'ไม่มี ให้ทำ Border Pass' },
+  { value: 'passport', label: $t('มีพาสปอร์ต') },
+  { value: 'border_pass', label: $t('ไม่มี ให้ทำ Border Pass') },
 ];
 const titles = computed(() => (preview.value?.trip?.is_women_only
   ? ['นาง', 'นางสาว']
@@ -320,11 +302,11 @@ function clearErrors() {
 async function submit() {
   clearErrors();
   if (form.halal_food === null) {
-    errors.halal_food = 'กรุณาระบุว่าทานอาหารฮาลาลหรือไม่';
+    errors.halal_food = $t('กรุณาระบุว่าทานอาหารฮาลาลหรือไม่');
     return;
   }
   if (canChooseBorderPass.value && !form.travel_document) {
-    errors.travel_document = 'กรุณาเลือกว่ามีพาสปอร์ต หรือให้ทีมงานทำ Border Pass';
+    errors.travel_document = $t('กรุณาเลือกว่ามีพาสปอร์ต หรือให้ทีมงานทำ Border Pass');
     return;
   }
 
@@ -342,7 +324,7 @@ async function submit() {
     }
     if (!canChooseBorderPass.value) delete payload.travel_document;
     await api.post(`/seat-handovers/${route.params.token}/claim`, payload);
-    toast.success('รับที่นั่งเรียบร้อย ยินดีต้อนรับสู่ทริปครับ');
+    toast.success($t('รับที่นั่งเรียบร้อย ยินดีต้อนรับสู่ทริปครับ'));
     router.push('/my-bookings');
   } catch (e) {
     const data = e?.response?.data;
@@ -352,7 +334,7 @@ async function submit() {
       }
       formError.value = 'กรุณาตรวจสอบข้อมูลที่ไฮไลต์ไว้';
     } else {
-      formError.value = data?.message || 'รับที่นั่งไม่สำเร็จ กรุณาลองใหม่อีกครั้ง';
+      formError.value = data?.message || $t('รับที่นั่งไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
       // สถานะของลิงก์อาจเปลี่ยนไปแล้ว (มีคนรับก่อน/ถูกยกเลิก) — โหลดใหม่ให้เห็นความจริง
       if (e?.response?.status === 422) await load(false);
     }
@@ -367,7 +349,7 @@ async function load(prefill = true) {
     preview.value = res.data.data;
     if (prefill) fillFrom(preview.value.prefill);
   } catch (e) {
-    notFound.value = e?.response?.data?.message || 'ลิงก์นี้ใช้ไม่ได้แล้ว — ขอลิงก์ใหม่จากคนที่ส่งให้คุณได้เลย';
+    notFound.value = e?.response?.data?.message || $t('ลิงก์นี้ใช้ไม่ได้แล้ว — ขอลิงก์ใหม่จากคนที่ส่งให้คุณได้เลย');
   } finally {
     loading.value = false;
   }

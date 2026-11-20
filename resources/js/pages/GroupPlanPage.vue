@@ -5,17 +5,15 @@
       <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดกลุ่ม...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm">{{ $t('กำลังโหลดกลุ่ม...') }}</p>
       </div>
 
       <!-- ไม่พบกลุ่ม -->
       <div v-else-if="notFound" class="bg-white rounded-[20px] border border-[#E8EEEF] p-8 text-center">
         <span class="material-symbols-rounded text-[44px] text-[#B4C4C4]">link_off</span>
-        <p class="text-[#1a1c1c] font-bold mt-3 mb-1">ไม่พบกลุ่มนี้</p>
-        <p class="text-[#505E5E] text-sm mb-5">ลิงก์อาจหมดอายุ หรือหัวหน้ากลุ่มยกเลิกไปแล้ว</p>
-        <router-link to="/trips" class="inline-flex items-center gap-1.5 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3">
-          ดูทริปที่เปิดอยู่
-        </router-link>
+        <p class="text-[#1a1c1c] font-bold mt-3 mb-1">{{ $t('ไม่พบกลุ่มนี้') }}</p>
+        <p class="text-[#505E5E] text-sm mb-5">{{ $t('ลิงก์อาจหมดอายุ หรือหัวหน้ากลุ่มยกเลิกไปแล้ว') }}</p>
+        <router-link to="/trips" class="inline-flex items-center gap-1.5 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3"> {{ $t('ดูทริปที่เปิดอยู่') }} </router-link>
       </div>
 
       <template v-else-if="plan">
@@ -28,9 +26,9 @@
             class="w-full h-40 object-cover"
           />
           <div class="p-5 sm:p-6">
-            <p class="text-[12px] font-bold text-[#8A9A9A] mb-1">ไปด้วยกัน</p>
+            <p class="text-[12px] font-bold text-[#8A9A9A] mb-1">{{ $t('ไปด้วยกัน') }}</p>
             <h1 class="text-xl font-extrabold text-[#1a1c1c] leading-snug">
-              {{ plan.name || plan.trip?.title || 'กลุ่มเดินทาง' }}
+              {{ plan.name || plan.trip?.title || $t('กลุ่มเดินทาง') }}
             </h1>
 
             <router-link
@@ -47,9 +45,7 @@
                 {{ dateRange }}
               </span>
               <span v-if="plan.schedule?.effective_price" class="inline-flex items-center gap-1">
-                <span class="material-symbols-rounded text-[16px]">sell</span>
-                {{ money(plan.schedule.effective_price) }} / คน
-              </span>
+                <span class="material-symbols-rounded text-[16px]">sell</span> {{ $t('{money} / คน', { money: money(plan.schedule.effective_price) }) }} </span>
             </div>
 
             <!-- สถานะกลุ่ม -->
@@ -59,8 +55,7 @@
                 :class="statusChipClass"
               >{{ statusLabel }}</span>
               <span class="rounded-full bg-[#F4F7F6] border border-[#E8EEEF] px-3 py-1 text-[12px] font-bold text-[#505E5E]">
-                {{ claimedCount }} / {{ plan.seat_count }} ที่นั่งเลือกแล้ว
-              </span>
+                {{ $t('{claimedCount} / {seat_count} ที่นั่งเลือกแล้ว', { claimedCount, seat_count: plan.seat_count }) }} </span>
               <span v-if="expiryLabel" class="rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[12px] font-bold text-amber-700">
                 {{ expiryLabel }}
               </span>
@@ -70,10 +65,8 @@
 
         <!-- แชร์ลิงก์ -->
         <section v-if="plan.is_open" class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6 mb-5">
-          <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">ชวนเพื่อนเข้ากลุ่ม</h2>
-          <p class="text-[12px] text-[#8A9A9A] mb-3">
-            ส่งลิงก์นี้ให้เพื่อน แต่ละคนเลือกที่นั่งและกรอกข้อมูลของตัวเองได้เลย
-          </p>
+          <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">{{ $t('ชวนเพื่อนเข้ากลุ่ม') }}</h2>
+          <p class="text-[12px] text-[#8A9A9A] mb-3"> {{ $t('ส่งลิงก์นี้ให้เพื่อน แต่ละคนเลือกที่นั่งและกรอกข้อมูลของตัวเองได้เลย') }} </p>
           <div class="flex gap-2">
             <input
               :value="shareUrl"
@@ -84,45 +77,36 @@
               type="button"
               @click="copyShareUrl"
               class="rounded-[12px] bg-[var(--color-accent)] text-white px-4 py-2.5 text-[13px] font-bold shrink-0"
-            >
-              คัดลอก
-            </button>
+            > {{ $t('คัดลอก') }} </button>
           </div>
-          <p class="text-[12px] text-[#8A9A9A] mt-2.5">
-            รหัสกลุ่ม <span class="font-extrabold text-[#1a1c1c] tracking-widest">{{ plan.invite_code }}</span>
+          <p class="text-[12px] text-[#8A9A9A] mt-2.5"> {{ $t('รหัสกลุ่ม') }} <span class="font-extrabold text-[#1a1c1c] tracking-widest">{{ plan.invite_code }}</span>
           </p>
         </section>
 
         <!-- ยังไม่ได้เข้าร่วม -->
         <section v-if="!isMember" class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6 mb-5 text-center">
-          <p class="text-[#1a1c1c] font-bold mb-1">เพื่อนชวนคุณมาทริปนี้</p>
-          <p class="text-[#505E5E] text-sm mb-5">
-            เข้าร่วมกลุ่มเพื่อเลือกที่นั่งของตัวเอง — ยังไม่ต้องจ่ายตอนนี้
-          </p>
+          <p class="text-[#1a1c1c] font-bold mb-1">{{ $t('เพื่อนชวนคุณมาทริปนี้') }}</p>
+          <p class="text-[#505E5E] text-sm mb-5"> {{ $t('เข้าร่วมกลุ่มเพื่อเลือกที่นั่งของตัวเอง — ยังไม่ต้องจ่ายตอนนี้') }} </p>
           <button
             type="button"
             :disabled="!plan.is_open || busy"
             @click="joinPlan"
             class="w-full rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3.5 disabled:opacity-40"
           >
-            {{ plan.is_open ? 'เข้าร่วมกลุ่ม' : 'กลุ่มนี้ปิดรับแล้ว' }}
+            {{ plan.is_open ? $t('เข้าร่วมกลุ่ม') : $t('กลุ่มนี้ปิดรับแล้ว') }}
           </button>
         </section>
 
         <!-- ผังที่นั่ง -->
         <section v-if="isMember" class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6 mb-5">
-          <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">เลือกที่นั่งของคุณ</h2>
-          <p class="text-[12px] text-[#8A9A9A] mb-4">
-            เลือกได้คนละ 1 ที่ ที่นั่งที่เพื่อนเลือกแล้วจะขึ้นชื่อไว้
-          </p>
+          <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">{{ $t('เลือกที่นั่งของคุณ') }}</h2>
+          <p class="text-[12px] text-[#8A9A9A] mb-4"> {{ $t('เลือกได้คนละ 1 ที่ ที่นั่งที่เพื่อนเลือกแล้วจะขึ้นชื่อไว้') }} </p>
 
           <div v-if="seatsLoading" class="py-10 flex justify-center">
             <div class="w-8 h-8 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
           </div>
 
-          <div v-else-if="!seats.length" class="text-center py-8 text-sm text-[#8A9A9A]">
-            รอบนี้ไม่มีผังที่นั่ง — หัวหน้ากลุ่มกดจองรวมได้เลย
-          </div>
+          <div v-else-if="!seats.length" class="text-center py-8 text-sm text-[#8A9A9A]"> {{ $t('รอบนี้ไม่มีผังที่นั่ง — หัวหน้ากลุ่มกดจองรวมได้เลย') }} </div>
 
           <div v-else class="grid grid-cols-3 sm:grid-cols-4 gap-2">
             <button
@@ -145,14 +129,13 @@
             :disabled="busy || !plan.is_open"
             @click="releaseSeat"
             class="mt-4 text-[13px] font-bold text-[#B42318] disabled:opacity-40"
-          >
-            ปล่อยที่นั่ง {{ mySeatId }}
+          > {{ $t('ปล่อยที่นั่ง {mySeatId}', { mySeatId }) }}
           </button>
         </section>
 
         <!-- สมาชิก -->
         <section v-if="isMember" class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6 mb-5">
-          <h2 class="text-[13px] font-bold text-[#505E5E] mb-4">สมาชิกในกลุ่ม ({{ plan.members.length }})</h2>
+          <h2 class="text-[13px] font-bold text-[#505E5E] mb-4">{{ $t('สมาชิกในกลุ่ม ({membersCount})', { membersCount: plan.members.length }) }}</h2>
           <ul class="space-y-3">
             <li v-for="member in plan.members" :key="member.id" class="flex items-center gap-3">
               <img
@@ -169,12 +152,12 @@
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-bold text-[#1a1c1c] truncate">
                   {{ member.display_name }}
-                  <span v-if="member.is_me" class="text-[#8A9A9A] font-medium">(คุณ)</span>
+                  <span v-if="member.is_me" class="text-[#8A9A9A] font-medium">{{ $t('(คุณ)') }}</span>
                 </p>
                 <p class="text-[12px] text-[#8A9A9A]">
-                  <span v-if="member.is_host">หัวหน้ากลุ่ม · </span>
-                  <span v-if="member.seat_id">ที่นั่ง {{ member.seat_id }}</span>
-                  <span v-else>ยังไม่ได้เลือกที่นั่ง</span>
+                  <span v-if="member.is_host">{{ $t('หัวหน้ากลุ่ม ·') }} </span>
+                  <span v-if="member.seat_id">{{ $t('ที่นั่ง {seat_id}', { seat_id: member.seat_id }) }}</span>
+                  <span v-else>{{ $t('ยังไม่ได้เลือกที่นั่ง') }}</span>
                 </p>
               </div>
             </li>
@@ -183,18 +166,16 @@
 
         <!-- หัวหน้ากลุ่ม: จุดรับ + จองรวม -->
         <section v-if="plan.is_host && plan.is_open" class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6 mb-5">
-          <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">ปิดกลุ่มแล้วจองรวมทีเดียว</h2>
-          <p class="text-[12px] text-[#8A9A9A] mb-4">
-            ระบบจะสร้างการจองเดียวจากทุกคนที่เลือกที่นั่งแล้ว แล้วพาคุณไปหน้าชำระเงิน
-          </p>
+          <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">{{ $t('ปิดกลุ่มแล้วจองรวมทีเดียว') }}</h2>
+          <p class="text-[12px] text-[#8A9A9A] mb-4"> {{ $t('ระบบจะสร้างการจองเดียวจากทุกคนที่เลือกที่นั่งแล้ว แล้วพาคุณไปหน้าชำระเงิน') }} </p>
 
           <label v-if="pickupPoints.length" class="block mb-4">
-            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">จุดรับ</span>
+            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">{{ $t('จุดรับ') }}</span>
             <select
               v-model="pickupPointId"
               class="w-full rounded-[12px] border border-[#E8EEEF] bg-white px-3.5 py-2.5 text-sm text-[#1a1c1c]"
             >
-              <option :value="null">ไม่ระบุจุดรับ</option>
+              <option :value="null">{{ $t('ไม่ระบุจุดรับ') }}</option>
               <option v-for="point in pickupPoints" :key="point.id" :value="point.id">
                 {{ point.name }}<template v-if="point.price"> · {{ money(point.price) }}</template>
               </option>
@@ -207,20 +188,18 @@
             @click="checkout"
             class="w-full rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3.5 disabled:opacity-40"
           >
-            {{ claimedCount === 0 ? 'ยังไม่มีใครเลือกที่นั่ง' : `จองรวม ${claimedCount} ที่นั่ง` }}
+            {{ claimedCount === 0 ? $t('ยังไม่มีใครเลือกที่นั่ง') : $t('จองรวม {claimedCount} ที่นั่ง', { claimedCount }) }}
           </button>
         </section>
 
         <!-- จองแล้ว -->
         <section v-if="plan.booking_ref" class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6 mb-5">
-          <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">กลุ่มนี้จองแล้ว</h2>
-          <p class="text-sm text-[#1a1c1c] font-bold mb-4">หมายเลขการจอง {{ plan.booking_ref }}</p>
+          <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">{{ $t('กลุ่มนี้จองแล้ว') }}</h2>
+          <p class="text-sm text-[#1a1c1c] font-bold mb-4">{{ $t('หมายเลขการจอง {booking_ref}', { booking_ref: plan.booking_ref }) }}</p>
           <router-link
             :to="`/payment/${plan.booking_ref}`"
             class="inline-flex items-center gap-1.5 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3"
-          >
-            ไปหน้าชำระเงิน
-          </router-link>
+          > {{ $t('ไปหน้าชำระเงิน') }} </router-link>
         </section>
 
         <!-- ออก / ยกเลิก -->
@@ -231,18 +210,14 @@
             :disabled="busy"
             @click="leavePlan"
             class="text-[13px] font-bold text-[#B42318] disabled:opacity-40"
-          >
-            ออกจากกลุ่ม
-          </button>
+          > {{ $t('ออกจากกลุ่ม') }} </button>
           <button
             v-if="plan.is_host && plan.is_open"
             type="button"
             :disabled="busy"
             @click="cancelPlan"
             class="text-[13px] font-bold text-[#B42318] disabled:opacity-40"
-          >
-            ยกเลิกกลุ่มนี้
-          </button>
+          > {{ $t('ยกเลิกกลุ่มนี้') }} </button>
         </div>
       </template>
     </div>
@@ -254,30 +229,29 @@
       @click.self="claimSeat = null"
     >
       <div class="bg-white w-full sm:max-w-md rounded-t-[24px] sm:rounded-[20px] p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-lg font-extrabold text-[#1a1c1c] mb-1">
-          ที่นั่ง {{ claimSeat.label || claimSeat.id }}
+        <h2 class="text-lg font-extrabold text-[#1a1c1c] mb-1"> {{ $t('ที่นั่ง {id}', { id: claimSeat.label || claimSeat.id }) }}
         </h2>
-        <p class="text-[13px] text-[#505E5E] mb-5">กรอกข้อมูลผู้เดินทางสำหรับที่นั่งนี้</p>
+        <p class="text-[13px] text-[#505E5E] mb-5">{{ $t('กรอกข้อมูลผู้เดินทางสำหรับที่นั่งนี้') }}</p>
 
         <form class="space-y-3.5" @submit.prevent="submitClaim">
           <label class="block">
-            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">ชื่อ-นามสกุล *</span>
+            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">{{ $t('ชื่อ-นามสกุล *') }}</span>
             <input v-model.trim="claimForm.name" required maxlength="120" class="field" />
           </label>
           <label class="block">
-            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">เบอร์โทร</span>
+            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">{{ $t('เบอร์โทร') }}</span>
             <input v-model.trim="claimForm.phone" maxlength="32" inputmode="tel" class="field" />
           </label>
           <label class="block">
-            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">อีเมล</span>
+            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">{{ $t('อีเมล') }}</span>
             <input v-model.trim="claimForm.email" type="email" maxlength="120" class="field" />
           </label>
           <label class="block">
-            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">อาหารที่แพ้ / ข้อจำกัดอาหาร</span>
+            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">{{ $t('อาหารที่แพ้ / ข้อจำกัดอาหาร') }}</span>
             <input v-model.trim="claimForm.allergies" maxlength="500" class="field" />
           </label>
           <label class="block">
-            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">โรคประจำตัว / เรื่องสุขภาพที่ทีมควรรู้</span>
+            <span class="text-[12px] font-bold text-[#505E5E] block mb-1.5">{{ $t('โรคประจำตัว / เรื่องสุขภาพที่ทีมควรรู้') }}</span>
             <input v-model.trim="claimForm.health_notes" maxlength="500" class="field" />
           </label>
 
@@ -286,16 +260,12 @@
               type="button"
               class="flex-1 rounded-[14px] border border-[#E8EEEF] text-[#505E5E] text-sm font-bold py-3"
               @click="claimSeat = null"
-            >
-              ยกเลิก
-            </button>
+            > {{ $t('ยกเลิก') }} </button>
             <button
               type="submit"
               :disabled="busy || !claimForm.name"
               class="flex-1 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold py-3 disabled:opacity-40"
-            >
-              ยืนยันที่นั่งนี้
-            </button>
+            > {{ $t('ยืนยันที่นั่งนี้') }} </button>
           </div>
         </form>
       </div>
@@ -304,6 +274,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -366,8 +337,8 @@ const dateRange = computed(() => {
 
 const statusLabel = computed(() => {
   if (!plan.value) return '';
-  if (plan.value.booking_ref) return 'จองแล้ว';
-  return plan.value.is_open ? 'กำลังรวมกลุ่ม' : 'ปิดรับแล้ว';
+  if (plan.value.booking_ref) return $t('จองแล้ว');
+  return plan.value.is_open ? $t('กำลังรวมกลุ่ม') : $t('ปิดรับแล้ว');
 });
 
 const statusChipClass = computed(() => {
@@ -383,11 +354,11 @@ const expiryLabel = computed(() => {
   if (!expiresAt || !plan.value?.is_open) return '';
 
   const minutes = Math.round((new Date(expiresAt) - Date.now()) / 60000);
-  if (minutes <= 0) return 'หมดเวลาแล้ว';
-  if (minutes < 60) return `เหลือ ${minutes} นาที`;
+  if (minutes <= 0) return $t('หมดเวลาแล้ว');
+  if (minutes < 60) return $t('เหลือ {minutes} นาที', { minutes });
 
   const hours = Math.round(minutes / 60);
-  return hours < 48 ? `เหลือ ${hours} ชม.` : `ปิดรับ ${thaiShort(expiresAt)}`;
+  return hours < 48 ? $t('เหลือ {hours} ชม.', { hours }) : $t('ปิดรับ {thaiShort}', { thaiShort: thaiShort(expiresAt) });
 });
 
 function money(value) {
@@ -420,10 +391,10 @@ function seatClass(seat) {
 
 function seatCaption(seat) {
   const claimer = memberBySeat.value[seat.id];
-  if (claimer) return claimer.is_me ? 'ที่นั่งของคุณ' : claimer.display_name;
-  if (seat.status === 'booked') return 'จองแล้ว';
-  if (seat.status === 'locked') return 'ถูกล็อกอยู่';
-  return 'ว่าง';
+  if (claimer) return claimer.is_me ? $t('ที่นั่งของคุณ') : claimer.display_name;
+  if (seat.status === 'booked') return $t('จองแล้ว');
+  if (seat.status === 'locked') return $t('ถูกล็อกอยู่');
+  return $t('ว่าง');
 }
 
 function applyPlan(data) {
@@ -438,7 +409,7 @@ async function loadPlan() {
     if (err.response?.status === 404) {
       notFound.value = true;
     } else {
-      toast.error(err.response?.data?.message || 'โหลดกลุ่มไม่สำเร็จ');
+      toast.error(err.response?.data?.message || $t('โหลดกลุ่มไม่สำเร็จ'));
     }
   } finally {
     loading.value = false;
@@ -465,10 +436,10 @@ async function joinPlan() {
   try {
     const res = await api.post(`/group-plans/${code.value}/join`);
     applyPlan(res.data?.data);
-    toast.success(res.data?.message || 'เข้าร่วมกลุ่มแล้ว');
+    toast.success(res.data?.message || $t('เข้าร่วมกลุ่มแล้ว'));
     await loadSeats();
   } catch (err) {
-    toast.error(err.response?.data?.message || 'เข้าร่วมกลุ่มไม่สำเร็จ');
+    toast.error(err.response?.data?.message || $t('เข้าร่วมกลุ่มไม่สำเร็จ'));
   } finally {
     busy.value = false;
   }
@@ -496,10 +467,10 @@ async function submitClaim() {
     });
     applyPlan(res.data?.data);
     claimSeat.value = null;
-    toast.success(res.data?.message || 'เลือกที่นั่งแล้ว');
+    toast.success(res.data?.message || $t('เลือกที่นั่งแล้ว'));
     await loadSeats();
   } catch (err) {
-    toast.error(err.response?.data?.message || 'เลือกที่นั่งไม่สำเร็จ');
+    toast.error(err.response?.data?.message || $t('เลือกที่นั่งไม่สำเร็จ'));
   } finally {
     busy.value = false;
   }
@@ -510,10 +481,10 @@ async function releaseSeat() {
   try {
     const res = await api.post(`/group-plans/${code.value}/release-seat`);
     applyPlan(res.data?.data);
-    toast.success('ปล่อยที่นั่งแล้ว');
+    toast.success($t('ปล่อยที่นั่งแล้ว'));
     await loadSeats();
   } catch (err) {
-    toast.error(err.response?.data?.message || 'ปล่อยที่นั่งไม่สำเร็จ');
+    toast.error(err.response?.data?.message || $t('ปล่อยที่นั่งไม่สำเร็จ'));
   } finally {
     busy.value = false;
   }
@@ -521,19 +492,19 @@ async function releaseSeat() {
 
 async function leavePlan() {
   const result = await swal.confirm({
-    title: 'ออกจากกลุ่ม?',
-    text: 'ที่นั่งที่คุณเลือกไว้จะถูกปล่อยคืนให้เพื่อนคนอื่น',
-    confirmText: 'ออกจากกลุ่ม',
+    title: $t('ออกจากกลุ่ม?'),
+    text: $t('ที่นั่งที่คุณเลือกไว้จะถูกปล่อยคืนให้เพื่อนคนอื่น'),
+    confirmText: $t('ออกจากกลุ่ม'),
   });
   if (!result.isConfirmed) return;
 
   busy.value = true;
   try {
     await api.post(`/group-plans/${code.value}/leave`);
-    toast.success('ออกจากกลุ่มแล้ว');
+    toast.success($t('ออกจากกลุ่มแล้ว'));
     router.push('/group-plans');
   } catch (err) {
-    toast.error(err.response?.data?.message || 'ออกจากกลุ่มไม่สำเร็จ');
+    toast.error(err.response?.data?.message || $t('ออกจากกลุ่มไม่สำเร็จ'));
   } finally {
     busy.value = false;
   }
@@ -541,20 +512,20 @@ async function leavePlan() {
 
 async function cancelPlan() {
   const result = await swal.confirm({
-    title: 'ยกเลิกกลุ่มนี้?',
-    text: 'เพื่อนทุกคนจะหลุดจากกลุ่ม และที่นั่งที่จองไว้จะถูกปล่อยคืนทั้งหมด',
-    confirmText: 'ยกเลิกกลุ่ม',
-    cancelText: 'เก็บไว้ก่อน',
+    title: $t('ยกเลิกกลุ่มนี้?'),
+    text: $t('เพื่อนทุกคนจะหลุดจากกลุ่ม และที่นั่งที่จองไว้จะถูกปล่อยคืนทั้งหมด'),
+    confirmText: $t('ยกเลิกกลุ่ม'),
+    cancelText: $t('เก็บไว้ก่อน'),
   });
   if (!result.isConfirmed) return;
 
   busy.value = true;
   try {
     await api.delete(`/group-plans/${code.value}`);
-    toast.success('ยกเลิกกลุ่มแล้ว');
+    toast.success($t('ยกเลิกกลุ่มแล้ว'));
     router.push('/group-plans');
   } catch (err) {
-    toast.error(err.response?.data?.message || 'ยกเลิกกลุ่มไม่สำเร็จ');
+    toast.error(err.response?.data?.message || $t('ยกเลิกกลุ่มไม่สำเร็จ'));
   } finally {
     busy.value = false;
   }
@@ -562,9 +533,9 @@ async function cancelPlan() {
 
 async function checkout() {
   const result = await swal.confirm({
-    title: `จองรวม ${claimedCount.value} ที่นั่ง?`,
-    text: 'หลังจากนี้กลุ่มจะปิดรับ และคนที่ยังไม่เลือกที่นั่งจะไม่ถูกรวมในการจอง',
-    confirmText: 'จองเลย',
+    title: $t('จองรวม {claimedCount} ที่นั่ง?', { claimedCount: claimedCount.value }),
+    text: $t('หลังจากนี้กลุ่มจะปิดรับ และคนที่ยังไม่เลือกที่นั่งจะไม่ถูกรวมในการจอง'),
+    confirmText: $t('จองเลย'),
   });
   if (!result.isConfirmed) return;
 
@@ -574,7 +545,7 @@ async function checkout() {
       pickup_point_id: pickupPointId.value,
     });
     const ref = res.data?.data?.booking_ref;
-    toast.success(res.data?.message || 'สร้างการจองกลุ่มสำเร็จ');
+    toast.success(res.data?.message || $t('สร้างการจองกลุ่มสำเร็จ'));
 
     if (ref) {
       router.push(`/payment/${ref}`);
@@ -582,7 +553,7 @@ async function checkout() {
       await loadPlan();
     }
   } catch (err) {
-    toast.error(err.response?.data?.message || 'จองรวมไม่สำเร็จ');
+    toast.error(err.response?.data?.message || $t('จองรวมไม่สำเร็จ'));
   } finally {
     busy.value = false;
   }
@@ -591,9 +562,9 @@ async function checkout() {
 async function copyShareUrl() {
   try {
     await navigator.clipboard.writeText(shareUrl.value);
-    toast.success('คัดลอกลิงก์แล้ว');
+    toast.success($t('คัดลอกลิงก์แล้ว'));
   } catch {
-    toast.error('คัดลอกไม่สำเร็จ กรุณากดค้างที่ลิงก์เพื่อคัดลอก');
+    toast.error($t('คัดลอกไม่สำเร็จ กรุณากดค้างที่ลิงก์เพื่อคัดลอก'));
   }
 }
 

@@ -3,14 +3,14 @@
   <div v-if="loading" class="flex items-center justify-center min-h-[60vh]">
     <div class="flex flex-col items-center gap-4">
       <div class="w-12 h-12 rounded-full border-4 border-amber-200 border-t-amber-600 animate-spin"></div>
-      <p class="text-gray-500 font-anuphan font-bold">กำลังโหลดข้อมูล...</p>
+      <p class="text-gray-500 font-anuphan font-bold">{{ $t('กำลังโหลดข้อมูล...') }}</p>
     </div>
   </div>
 
   <!-- No booking -->
   <div v-else-if="!booking" class="flex flex-col items-center justify-center min-h-[60vh] text-gray-500 font-anuphan">
     <span class="material-symbols-rounded text-6xl mb-4 text-gray-300">sentiment_dissatisfied</span>
-    <p class="text-lg">ไม่พบข้อมูลการจอง</p>
+    <p class="text-lg">{{ $t('ไม่พบข้อมูลการจอง') }}</p>
   </div>
 
   <!-- Main Content -->
@@ -19,9 +19,7 @@
     <!-- Back Button -->
     <div class="max-w-4xl mx-auto mb-6">
       <router-link to="/my-bookings" class="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-amber-700 transition-colors">
-        <span class="material-symbols-rounded text-[18px]">arrow_back</span>
-        กลับไปหน้าการจองของฉัน
-      </router-link>
+        <span class="material-symbols-rounded text-[18px]">arrow_back</span> {{ $t('กลับไปหน้าการจองของฉัน') }} </router-link>
     </div>
 
     <div class="max-w-4xl mx-auto space-y-8">
@@ -31,7 +29,7 @@
         <div class="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
           <span class="material-symbols-rounded text-amber-600 text-[36px]">calendar_month</span>
         </div>
-        <h1 class="text-3xl font-black text-gray-900 mb-2">ชำระค่างวดผ่อน</h1>
+        <h1 class="text-3xl font-black text-gray-900 mb-2">{{ $t('ชำระค่างวดผ่อน') }}</h1>
         <p class="text-gray-500 font-bold">{{ booking.schedule?.trip?.title }} · #{{ booking.booking_ref }}</p>
       </div>
 
@@ -39,12 +37,9 @@
       <section class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-black text-gray-900 flex items-center gap-2">
-            <span class="material-symbols-rounded text-amber-500">credit_score</span>
-            สถานะการผ่อนชำระ
-          </h2>
+            <span class="material-symbols-rounded text-amber-500">credit_score</span> {{ $t('สถานะการผ่อนชำระ') }} </h2>
           <span class="text-xs font-black text-amber-600 bg-amber-100 px-3 py-1 rounded-full">
-            {{ paidCount }} / {{ booking.installment_count }} งวด
-          </span>
+            {{ $t('{paidCount} / {installment_count} งวด', { paidCount, installment_count: booking.installment_count }) }} </span>
         </div>
 
         <!-- Progress Bar -->
@@ -58,10 +53,10 @@
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-gray-50">
-                <th class="text-left px-4 py-3 font-bold text-gray-500 text-[10px] uppercase tracking-widest">งวดที่</th>
-                <th class="text-left px-4 py-3 font-bold text-gray-500 text-[10px] uppercase tracking-widest">ครบกำหนด</th>
-                <th class="text-right px-4 py-3 font-bold text-gray-500 text-[10px] uppercase tracking-widest">จำนวนเงิน</th>
-                <th class="text-center px-4 py-3 font-bold text-gray-500 text-[10px] uppercase tracking-widest">สถานะ</th>
+                <th class="text-left px-4 py-3 font-bold text-gray-500 text-[10px] uppercase tracking-widest">{{ $t('งวดที่') }}</th>
+                <th class="text-left px-4 py-3 font-bold text-gray-500 text-[10px] uppercase tracking-widest">{{ $t('ครบกำหนด') }}</th>
+                <th class="text-right px-4 py-3 font-bold text-gray-500 text-[10px] uppercase tracking-widest">{{ $t('จำนวนเงิน') }}</th>
+                <th class="text-center px-4 py-3 font-bold text-gray-500 text-[10px] uppercase tracking-widest">{{ $t('สถานะ') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
@@ -70,19 +65,13 @@
                   'bg-green-50/30': inst.status === 'paid',
                   'bg-amber-50/30': inst.status !== 'paid' && isNextDue(inst),
                 }">
-                <td class="px-4 py-3 font-bold text-gray-700">งวดที่ {{ inst.installment_no }}</td>
+                <td class="px-4 py-3 font-bold text-gray-700">{{ $t('งวดที่ {installment_no}', { installment_no: inst.installment_no }) }}</td>
                 <td class="px-4 py-3 text-gray-600">{{ formatDate(inst.due_date) }}</td>
                 <td class="px-4 py-3 text-right font-black text-gray-900">฿{{ Number(inst.amount).toLocaleString() }}</td>
                 <td class="px-4 py-3 text-center">
-                  <span v-if="inst.status === 'paid'" class="text-[10px] font-black px-3 py-1.5 rounded-full bg-green-100 text-green-700">
-                    ✓ ชำระแล้ว
-                  </span>
-                  <span v-else-if="isNextDue(inst)" class="text-[10px] font-black px-3 py-1.5 rounded-full bg-amber-500 text-white animate-pulse">
-                    → ชำระงวดนี้
-                  </span>
-                  <span v-else class="text-[10px] font-black px-3 py-1.5 rounded-full bg-gray-100 text-gray-400">
-                    รอชำระ
-                  </span>
+                  <span v-if="inst.status === 'paid'" class="text-[10px] font-black px-3 py-1.5 rounded-full bg-green-100 text-green-700"> {{ $t('✓ ชำระแล้ว') }} </span>
+                  <span v-else-if="isNextDue(inst)" class="text-[10px] font-black px-3 py-1.5 rounded-full bg-amber-500 text-white animate-pulse"> {{ $t('→ ชำระงวดนี้') }} </span>
+                  <span v-else class="text-[10px] font-black px-3 py-1.5 rounded-full bg-gray-100 text-gray-400"> {{ $t('รอชำระ') }} </span>
                 </td>
               </tr>
             </tbody>
@@ -93,9 +82,9 @@
       <!-- Payment Section (only if there's a next installment to pay) -->
       <section v-if="nextInstallment" class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-black text-gray-900">ชำระงวดที่ {{ nextInstallment.installment_no }}</h2>
+          <h2 class="text-lg font-black text-gray-900">{{ $t('ชำระงวดที่ {installment_no}', { installment_no: nextInstallment.installment_no }) }}</h2>
           <div class="text-right">
-            <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">ยอดชำระ</p>
+            <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider">{{ $t('ยอดชำระ') }}</p>
             <p class="text-2xl font-black text-amber-600">฿{{ Number(nextInstallment.amount).toLocaleString() }}</p>
           </div>
         </div>
@@ -109,7 +98,7 @@
           </span>
           <div>
             <p class="text-sm font-black" :class="isOverdue(nextInstallment) ? 'text-red-800' : 'text-amber-800'">
-              {{ isOverdue(nextInstallment) ? 'เลยกำหนดชำระแล้ว!' : 'กำหนดชำระ: ' + formatDate(nextInstallment.due_date) }}
+              {{ isOverdue(nextInstallment) ? $t('เลยกำหนดชำระแล้ว!') : $t('กำหนดชำระ: ') + formatDate(nextInstallment.due_date) }}
             </p>
             <p v-if="!isOverdue(nextInstallment)" class="text-xs font-bold text-amber-600 mt-0.5">
               {{ getDaysUntil(nextInstallment.due_date) }}
@@ -119,19 +108,17 @@
 
         <!-- ช่องทางชำระ — รายการแถวเดียวกับหน้าจ่ายเงินหลักและแอป แถวที่เลือกกางรายละเอียดข้างใต้ -->
         <div class="mb-6">
-          <p class="text-sm font-black text-gray-700">ช่องทางชำระ</p>
-          <div class="divide-y divide-gray-100 border-b border-gray-100" role="radiogroup" aria-label="ช่องทางชำระ">
+          <p class="text-sm font-black text-gray-700">{{ $t('ช่องทางชำระ') }}</p>
+          <div class="divide-y divide-gray-100 border-b border-gray-100" role="radiogroup" :aria-label="$t('ช่องทางชำระ')">
             <PayMethodRow badge="thaiqr.png" title="QR PromptPay"
-              :subtitle="useBeam ? 'จ่ายแล้วระบบตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป' : 'สแกนจ่ายผ่านแอปธนาคารหรือ e-Wallet'"
+              :subtitle="useBeam ? $t('จ่ายแล้วระบบตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป') : $t('สแกนจ่ายผ่านแอปธนาคารหรือ e-Wallet')"
               :selected="useBeam || paymentMethod === 'promptpay'" @select="paymentMethod = 'promptpay'">
               <!-- จ่ายแล้วแต่ผลยังไม่กลับมา — เก็บ QR ไปก่อน หน้าจอต้องบอกว่ากำลังรออะไรอยู่ -->
               <div v-if="useBeam && beamSettling">
-                <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow" final-step="ตัดงวดที่ชำระให้อัตโนมัติ">
+                <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow" :final-step="$t('ตัดงวดที่ชำระให้อัตโนมัติ')">
                   <template #actions>
                     <button @click="resumeBeamWaiting"
-                      class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4">
-                      ยังไม่ได้จ่าย · กลับไปสแกน QR
-                    </button>
+                      class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4"> {{ $t('ยังไม่ได้จ่าย · กลับไปสแกน QR') }} </button>
                   </template>
                 </PaymentSettlingPanel>
               </div>
@@ -139,7 +126,7 @@
               <!-- QR จากเกตเวย์ — จ่ายแล้วระบบตัดงวดให้เอง ไม่ต้องแนบสลิป -->
               <div v-else-if="useBeam" class="flex flex-col items-center gap-4 py-6 px-4 bg-gray-50 rounded-2xl">
                 <div class="relative p-2 bg-white rounded-2xl border border-gray-100 w-full max-w-[260px] aspect-square flex items-center justify-center">
-                  <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" alt="QR พร้อมเพย์"
+                  <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" :alt="$t('QR พร้อมเพย์')"
                     class="block rounded-xl w-full h-auto mx-auto" />
 
                   <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-2xl">
@@ -147,25 +134,22 @@
                   </div>
 
                   <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-2xl px-6 text-center">
-                    <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
+                    <p class="text-sm font-bold text-gray-900">{{ $t('QR หมดอายุแล้ว') }}</p>
                     <button @click="createBeamCharge()"
-                      class="px-5 py-2.5 bg-accent text-white text-xs font-black rounded-xl hover:bg-accent-mid active:scale-95 transition-all">
-                      สร้าง QR ใหม่
-                    </button>
+                      class="px-5 py-2.5 bg-accent text-white text-xs font-black rounded-xl hover:bg-accent-mid active:scale-95 transition-all"> {{ $t('สร้าง QR ใหม่') }} </button>
                   </div>
                 </div>
 
-                <p class="text-sm font-bold text-gray-700">ยอดงวดนี้ <span class="text-accent tabular-nums">฿{{ Number(nextInstallment.amount).toLocaleString() }}</span></p>
+                <p class="text-sm font-bold text-gray-700">{{ $t('ยอดงวดนี้') }} <span class="text-accent tabular-nums">฿{{ Number(nextInstallment.amount).toLocaleString() }}</span></p>
                 <div v-if="beamPayment && !beamExpired" class="flex items-center gap-2">
                   <div class="w-2 h-2 rounded-full bg-accent-light animate-pulse"></div>
-                  <p class="text-xs font-bold text-gray-600">
-                    รอชำระ · QR หมดอายุใน <span class="text-accent tabular-nums">{{ beamCountdownText }}</span>
+                  <p class="text-xs font-bold text-gray-600"> {{ $t('รอชำระ · QR หมดอายุใน') }} <span class="text-accent tabular-nums">{{ beamCountdownText }}</span>
                   </p>
                 </div>
 
                 <!-- ขั้นตอนอยู่ตรงนี้ตั้งแต่ยังไม่จ่าย แล้วเลื่อนไปขั้นถัดไปเองเมื่อลูกค้ากลับเข้ามา -->
                 <div v-if="beamPayment && !beamExpired" class="w-full">
-                  <PaymentSettlingPanel stage="waiting" final-step="ตัดงวดที่ชำระให้อัตโนมัติ" />
+                  <PaymentSettlingPanel stage="waiting" :final-step="$t('ตัดงวดที่ชำระให้อัตโนมัติ')" />
                 </div>
 
                 <p v-if="beamError" class="text-xs font-bold text-red-600 text-center">{{ beamError }}</p>
@@ -175,28 +159,28 @@
                 <div class="relative p-2 bg-white rounded-2xl border border-gray-100 w-full max-w-[280px]">
                   <canvas ref="qrCanvas" class="block rounded-xl w-full h-auto mx-auto"></canvas>
                 </div>
-                <p class="text-sm font-bold text-gray-700">ยอดงวดนี้ <span class="text-accent tabular-nums">฿{{ Number(nextInstallment.amount).toLocaleString() }}</span></p>
-                <p class="text-xs font-medium text-gray-500">พร้อมเพย์ / e-Wallet <span class="font-bold text-gray-900 tabular-nums">004-99923936-2071</span></p>
+                <p class="text-sm font-bold text-gray-700">{{ $t('ยอดงวดนี้') }} <span class="text-accent tabular-nums">฿{{ Number(nextInstallment.amount).toLocaleString() }}</span></p>
+                <p class="text-xs font-medium text-gray-500">{{ $t('พร้อมเพย์ / e-Wallet') }} <span class="font-bold text-gray-900 tabular-nums">004-99923936-2071</span></p>
               </div>
             </PayMethodRow>
 
-            <PayMethodRow v-if="!useBeam" badge="kbank" title="โอนผ่านบัญชีธนาคาร"
-              subtitle="กสิกรไทย · โอนแล้วแนบสลิปด้านล่าง"
+            <PayMethodRow v-if="!useBeam" badge="kbank" :title="$t('โอนผ่านบัญชีธนาคาร')"
+              :subtitle="$t('กสิกรไทย · โอนแล้วแนบสลิปด้านล่าง')"
               :selected="paymentMethod === 'mobile_banking'" @select="paymentMethod = 'mobile_banking'">
               <div class="bg-gray-50 rounded-2xl p-4 space-y-2.5">
                 <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-xl border border-gray-100 text-sm">
-                  <span class="text-xs font-bold text-gray-500">ธนาคาร</span>
-                  <span class="font-bold text-gray-900">กสิกรไทย (KBANK)</span>
+                  <span class="text-xs font-bold text-gray-500">{{ $t('ธนาคาร') }}</span>
+                  <span class="font-bold text-gray-900">{{ $t('กสิกรไทย (KBANK)') }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-xl border border-gray-100 text-sm">
-                  <span class="text-xs font-bold text-gray-500">ชื่อบัญชี</span>
-                  <span class="font-bold text-gray-900">ลุยเลเขา</span>
+                  <span class="text-xs font-bold text-gray-500">{{ $t('ชื่อบัญชี') }}</span>
+                  <span class="font-bold text-gray-900">{{ $t('ลุยเลเขา') }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-xl border border-gray-100 text-sm">
-                  <span class="text-xs font-bold text-gray-500">เลขที่บัญชี</span>
+                  <span class="text-xs font-bold text-gray-500">{{ $t('เลขที่บัญชี') }}</span>
                   <span class="flex items-center gap-2">
                     <span class="font-black text-gray-900 text-base tracking-wider tabular-nums">230-1-39095-8</span>
-                    <button @click="copyAccount" aria-label="คัดลอกเลขบัญชี"
+                    <button @click="copyAccount" :aria-label="$t('คัดลอกเลขบัญชี')"
                       class="p-1.5 rounded-lg bg-accent-tint text-accent hover:bg-accent/10 active:scale-90 transition-all">
                       <span class="material-symbols-rounded icon-18">{{ accountCopied ? 'check' : 'content_copy' }}</span>
                     </button>
@@ -216,20 +200,18 @@
 
         <!-- Slip Upload — โหมดเกตเวย์ไม่ต้องใช้ -->
         <div v-if="!useBeam" class="space-y-4 mb-6">
-          <label class="block text-sm font-black text-gray-700">อัปโหลดสลิป <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-black text-gray-700">{{ $t('อัปโหลดสลิป') }} <span class="text-red-500">*</span></label>
           <div @click="slipInputRef?.click()"
             class="flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-2xl py-10 px-6 cursor-pointer transition-all"
             :class="slipPreview ? 'border-green-300 bg-green-50/30' : 'border-gray-200 hover:border-amber-300 bg-gray-50/50'">
             <template v-if="!slipPreview">
               <span class="material-symbols-rounded text-3xl text-gray-400">cloud_upload</span>
-              <p class="text-sm font-bold text-gray-600">คลิกเพื่ออัปโหลดสลิป</p>
+              <p class="text-sm font-bold text-gray-600">{{ $t('คลิกเพื่ออัปโหลดสลิป') }}</p>
             </template>
             <template v-else>
               <img :src="slipPreview" alt="slip" class="max-h-[200px] object-contain rounded-xl" />
               <p class="text-xs font-bold text-green-600 flex items-center gap-1">
-                <span class="material-symbols-rounded text-sm">check_circle</span>
-                อัปโหลดแล้ว (คลิกเพื่อเปลี่ยน)
-              </p>
+                <span class="material-symbols-rounded text-sm">check_circle</span> {{ $t('อัปโหลดแล้ว (คลิกเพื่อเปลี่ยน)') }} </p>
             </template>
           </div>
           <input ref="slipInputRef" type="file" accept="image/*" class="hidden" @change="onSlipChange" />
@@ -238,11 +220,11 @@
         <!-- Transfer Date/Time -->
         <div v-if="!useBeam" class="grid grid-cols-2 gap-4 mb-8">
           <div>
-            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 block">วันที่โอน</label>
+            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 block">{{ $t('วันที่โอน') }}</label>
             <input v-model="transferDate" type="date" class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-white text-sm font-bold focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 outline-none" />
           </div>
           <div>
-            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 block">เวลาที่โอน</label>
+            <label class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1 block">{{ $t('เวลาที่โอน') }}</label>
             <input v-model="transferTime" type="time" class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-white text-sm font-bold focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 outline-none" />
           </div>
         </div>
@@ -251,8 +233,7 @@
         <button v-if="!useBeam" @click="processPayment" :disabled="paying || !slipFile || !transferDate || !transferTime"
           class="w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all disabled:bg-gray-100 disabled:text-gray-400 disabled: disabled:cursor-not-allowed bg-amber-500 text-white hover:bg-amber-600 active:scale-[0.98]">
           <template v-if="!paying">
-            <span class="material-symbols-rounded text-xl">verified_user</span>
-            ยืนยันชำระงวดที่ {{ nextInstallment.installment_no }}
+            <span class="material-symbols-rounded text-xl">verified_user</span> {{ $t('ยืนยันชำระงวดที่ {installment_no}', { installment_no: nextInstallment.installment_no }) }}
           </template>
           <div v-else class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
         </button>
@@ -266,18 +247,17 @@
       <!-- All Paid -->
       <section v-else class="bg-green-50 rounded-3xl p-8 border border-green-200 text-center">
         <span class="material-symbols-rounded text-green-500 text-5xl mb-4 block" style="font-variation-settings:'FILL' 1">task_alt</span>
-        <h2 class="text-xl font-black text-green-800 mb-2">ชำระครบทุกงวดแล้ว!</h2>
-        <p class="text-sm font-bold text-green-600">ขอบคุณที่ชำระเงินครบถ้วน เตรียมตัวออกทริปได้เลย</p>
+        <h2 class="text-xl font-black text-green-800 mb-2">{{ $t('ชำระครบทุกงวดแล้ว!') }}</h2>
+        <p class="text-sm font-bold text-green-600">{{ $t('ขอบคุณที่ชำระเงินครบถ้วน เตรียมตัวออกทริปได้เลย') }}</p>
         <router-link to="/my-bookings" class="inline-flex items-center gap-2 mt-6 px-6 py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all">
-          <span class="material-symbols-rounded text-lg">arrow_back</span>
-          กลับหน้าการจอง
-        </router-link>
+          <span class="material-symbols-rounded text-lg">arrow_back</span> {{ $t('กลับหน้าการจอง') }} </router-link>
       </section>
     </div>
   </div>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -364,10 +344,10 @@ function isDueSoon(inst) {
 function getDaysUntil(dateStr) {
   if (!dateStr) return '';
   const diffDays = Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'เลยกำหนด';
-  if (diffDays === 0) return 'วันนี้!';
-  if (diffDays === 1) return 'พรุ่งนี้';
-  return `อีก ${diffDays} วัน`;
+  if (diffDays < 0) return $t('เลยกำหนด');
+  if (diffDays === 0) return $t('วันนี้!');
+  if (diffDays === 1) return $t('พรุ่งนี้');
+  return $t('อีก {diffDays} วัน', { diffDays });
 }
 
 function formatDate(d) {
@@ -487,7 +467,7 @@ async function processPayment() {
       if (paymentMethod.value === 'promptpay') generateQR();
     }
   } catch (e) {
-    paymentError.value = e?.response?.data?.message || 'การชำระเงินล้มเหลว กรุณาลองใหม่';
+    paymentError.value = e?.response?.data?.message || $t('การชำระเงินล้มเหลว กรุณาลองใหม่');
   } finally {
     paying.value = false;
   }

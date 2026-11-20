@@ -28,7 +28,7 @@
           <button
             @click="$emit('close')"
             class="w-9 h-9 shrink-0 rounded-[10px] border border-[#E8EEEF] flex items-center justify-center hover:bg-[#F4F7F6]"
-            aria-label="ปิด"
+            :aria-label="$t('ปิด')"
           >
             <span class="material-symbols-rounded ti-icon ti-icon-close text-[#505E5E]">close</span>
           </button>
@@ -44,18 +44,13 @@
 
         <!-- ── กำหนดการ ───────────────────────────────────────────────── -->
         <template v-else-if="active === 'itinerary'">
-          <p v-if="itineraryItems.length === 0" class="text-sm text-[#505E5E] text-center py-10">
-            ทีมงานจะลงกำหนดการให้ก่อนเดินทางครับ
-          </p>
+          <p v-if="itineraryItems.length === 0" class="text-sm text-[#505E5E] text-center py-10"> {{ $t('ทีมงานจะลงกำหนดการให้ก่อนเดินทางครับ') }} </p>
 
           <template v-else>
             <!-- หมายเหตุเดียวกับหน้ากำหนดการในแอป: แผนนี้เป็นของทริป ไม่ใช่ของรอบ -->
             <div v-if="itinerarySource === 'trip'" class="flex gap-2.5 p-3.5 rounded-[14px] bg-[#F4F7F6] mb-4">
               <span class="material-symbols-rounded ti-icon ti-icon-note text-[#889696] shrink-0">map</span>
-              <p class="text-[13px] leading-relaxed text-[#505E5E]">
-                นี่คือแผนการเดินทางของทริปนี้ ทีมงานยังไม่ได้ลงกำหนดการเฉพาะรอบ
-                เวลาจริงหน้างานอาจขยับได้ตามสภาพอากาศและการจราจร
-              </p>
+              <p class="text-[13px] leading-relaxed text-[#505E5E]"> {{ $t('นี่คือแผนการเดินทางของทริปนี้ ทีมงานยังไม่ได้ลงกำหนดการเฉพาะรอบ เวลาจริงหน้างานอาจขยับได้ตามสภาพอากาศและการจราจร') }} </p>
             </div>
 
             <div v-for="(group, gi) in itineraryGroups" :key="gi" :class="gi > 0 ? 'mt-5' : ''">
@@ -83,11 +78,9 @@
         <!-- ── จุดรับ ─────────────────────────────────────────────────── -->
         <template v-else-if="active === 'pickup'">
           <div v-if="info.pickup" class="p-4 rounded-[16px] border border-[var(--color-accent)]/25 bg-[var(--color-accent)]/[0.04] mb-4">
-            <p class="text-[11px] font-bold text-[var(--color-accent)] mb-1">จุดรับของคุณ</p>
+            <p class="text-[11px] font-bold text-[var(--color-accent)] mb-1">{{ $t('จุดรับของคุณ') }}</p>
             <p class="text-[15px] font-bold text-[#1a1c1c] leading-snug">{{ info.pickup.location }}</p>
-            <p v-if="info.pickup.time" class="text-[13px] text-[#505E5E] mt-1">
-              พร้อมกันเวลา {{ info.pickup.time }} น.
-            </p>
+            <p v-if="info.pickup.time" class="text-[13px] text-[#505E5E] mt-1"> {{ $t('พร้อมกันเวลา {time} น.', { time: info.pickup.time }) }} </p>
             <p v-if="info.pickup.notes" class="text-[12.5px] text-[#889696] mt-1.5 leading-relaxed whitespace-pre-line">{{ info.pickup.notes }}</p>
             <a
               v-if="info.pickup.map_url"
@@ -96,18 +89,17 @@
               rel="noopener"
               class="inline-flex items-center gap-1.5 mt-3 px-3.5 py-2 rounded-full bg-[var(--color-accent)] text-white text-[12.5px] font-bold"
             >
-              <span class="material-symbols-rounded ti-icon ti-icon-map">location_on</span> เปิดแผนที่
-            </a>
+              <span class="material-symbols-rounded ti-icon ti-icon-map">location_on</span> {{ $t('เปิดแผนที่') }} </a>
           </div>
 
           <p v-else class="text-sm text-[#505E5E] mb-4">{{ pendingCopy('pickup') }}</p>
 
           <template v-if="otherPickupPoints.length > 0">
-            <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-2">จุดรับอื่นของรอบนี้</h3>
+            <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-2">{{ $t('จุดรับอื่นของรอบนี้') }}</h3>
             <div class="space-y-2">
               <div v-for="(p, i) in otherPickupPoints" :key="i" class="p-3 rounded-[12px] bg-[#F4F7F6]">
                 <p class="text-[13.5px] font-medium text-[#1a1c1c]">{{ p.location }}</p>
-                <p v-if="p.time" class="text-[12px] text-[#889696] mt-0.5">{{ p.time }} น.</p>
+                <p v-if="p.time" class="text-[12px] text-[#889696] mt-0.5">{{ $t('{time} น.', { time: p.time }) }}</p>
               </div>
             </div>
           </template>
@@ -120,9 +112,7 @@
           <template v-else>
             <div class="p-4 rounded-[16px] border border-[var(--color-accent)]/25 bg-[var(--color-accent)]/[0.04] mb-4">
               <p class="text-[15px] font-bold text-[#1a1c1c] leading-snug">{{ info.meals.summary }}</p>
-              <p v-if="info.meals.self_count > 0" class="text-[12.5px] text-[#505E5E] mt-1">
-                มื้อที่จ่ายเองมีแวะให้ แต่ค่าอาหารไม่รวมในราคาทริป
-              </p>
+              <p v-if="info.meals.self_count > 0" class="text-[12.5px] text-[#505E5E] mt-1"> {{ $t('มื้อที่จ่ายเองมีแวะให้ แต่ค่าอาหารไม่รวมในราคาทริป') }} </p>
             </div>
 
             <div v-for="day in info.meals.days" :key="day.day" class="mb-4">
@@ -149,24 +139,24 @@
 
         <!-- ── รถและทีมงาน ─────────────────────────────────────────────── -->
         <template v-else>
-          <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-2">รถ</h3>
+          <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-2">{{ $t('รถ') }}</h3>
           <div v-if="info.vehicle" class="p-3.5 rounded-[14px] bg-[#F4F7F6] mb-5">
             <p class="text-[14px] font-bold text-[#1a1c1c]">{{ info.vehicle.name }}</p>
             <p class="text-[12.5px] text-[#505E5E] mt-0.5">
-              <template v-if="info.vehicle.license_plate">ทะเบียน {{ info.vehicle.license_plate }}</template>
+              <template v-if="info.vehicle.license_plate">{{ $t('ทะเบียน {license_plate}', { license_plate: info.vehicle.license_plate }) }}</template>
               <template v-if="info.vehicle.license_plate && info.vehicle.color"> · </template>
-              <template v-if="info.vehicle.color">สี{{ info.vehicle.color }}</template>
+              <template v-if="info.vehicle.color">{{ $t('สี{color}', { color: info.vehicle.color }) }}</template>
             </p>
           </div>
           <p v-else class="text-[13px] text-[#889696] mb-5">{{ pendingCopy('vehicle') }}</p>
 
-          <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-2">คนขับ</h3>
+          <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-2">{{ $t('คนขับ') }}</h3>
           <div v-if="info.driver" class="mb-5">
             <PersonRow :name="info.driver.name" :phone="info.driver.phone" :photo="info.driver.photo" />
           </div>
           <p v-else class="text-[13px] text-[#889696] mb-5">{{ pendingCopy('driver') }}</p>
 
-          <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-2">ทีมงานประจำรอบ</h3>
+          <h3 class="text-[13px] font-bold text-[#1a1c1c] mb-2">{{ $t('ทีมงานประจำรอบ') }}</h3>
           <div v-if="info.staff && info.staff.length > 0" class="space-y-2">
             <PersonRow
               v-for="s in info.staff"
@@ -184,6 +174,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import api from '../lib/axios';
 import PersonRow from './TripInfoPersonRow.vue';
@@ -196,10 +187,10 @@ const props = defineProps({
 defineEmits(['close']);
 
 const tabs = [
-  { key: 'itinerary', label: 'กำหนดการ', icon: 'route' },
-  { key: 'pickup', label: 'จุดรับ', icon: 'pin_drop' },
-  { key: 'meals', label: 'อาหาร', icon: 'restaurant' },
-  { key: 'crew', label: 'รถและทีมงาน', icon: 'directions_bus' },
+  { key: 'itinerary', label: $t('กำหนดการ'), icon: 'route' },
+  { key: 'pickup', label: $t('จุดรับ'), icon: 'pin_drop' },
+  { key: 'meals', label: $t('อาหาร'), icon: 'restaurant' },
+  { key: 'crew', label: $t('รถและทีมงาน'), icon: 'directions_bus' },
 ];
 
 const active = ref(props.initialTab);
@@ -213,7 +204,7 @@ watch(() => props.initialTab, (v) => { active.value = v; });
 
 /** ข้อความ "ยังไม่รู้" มาจาก backend เพื่อให้เว็บกับแอปพูดเหมือนกันเสมอ */
 function pendingCopy(key) {
-  return info.value?.pending?.[key] || 'ทีมงานจะยืนยันให้อีกครั้งก่อนเดินทางครับ';
+  return info.value?.pending?.[key] || $t('ทีมงานจะยืนยันให้อีกครั้งก่อนเดินทางครับ');
 }
 
 /** สีของสถานะมื้อ — เขียว = รวมให้แล้ว, เหลือง = ต้องจ่ายเอง, เทา = ไม่มี */
@@ -233,7 +224,7 @@ const otherPickupPoints = computed(() => {
 const itineraryGroups = computed(() => {
   const out = [];
   for (const item of itineraryItems.value) {
-    const label = (item.group || '').trim() || 'แผนการเดินทาง';
+    const label = (item.group || '').trim() || $t('แผนการเดินทาง');
     let group = out[out.length - 1];
     if (!group || group.label !== label) {
       group = { label, date: thaiDate(item.item_date), items: [] };
@@ -244,7 +235,7 @@ const itineraryGroups = computed(() => {
   return out;
 });
 
-const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const THAI_MONTHS = [$t('ม.ค.'), $t('ก.พ.'), $t('มี.ค.'), $t('เม.ย.'), $t('พ.ค.'), $t('มิ.ย.'), $t('ก.ค.'), $t('ส.ค.'), $t('ก.ย.'), $t('ต.ค.'), $t('พ.ย.'), $t('ธ.ค.')];
 
 /** "2026-09-12" → "12 ก.ย. 2569" — แยกสตริงเอง ไม่ผ่าน Date เพื่อกันเพี้ยนข้ามโซนเวลา */
 function thaiDate(iso) {
@@ -274,7 +265,7 @@ async function load() {
       itinerarySource.value = info.value.itinerary?.source || 'schedule';
     }
   } catch (e) {
-    errorMsg.value = e?.response?.data?.message || 'โหลดข้อมูลทริปไม่สำเร็จ กรุณาลองใหม่';
+    errorMsg.value = e?.response?.data?.message || $t('โหลดข้อมูลทริปไม่สำเร็จ กรุณาลองใหม่');
   } finally {
     loading.value = false;
   }

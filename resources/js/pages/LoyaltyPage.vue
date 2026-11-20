@@ -1,9 +1,9 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)] pb-32">
     <PageHeader
-      title="แต้มสะสม"
-      subtitle="สะสมแต้มจากการจองและแลกรับของรางวัลสุดคุ้ม"
-      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      :title="$t('แต้มสะสม')"
+      :subtitle="$t('สะสมแต้มจากการจองและแลกรับของรางวัลสุดคุ้ม')"
+      :crumbs="[{ to: '/profile', label: $t('บัญชีของฉัน') }]"
       container="max-w-3xl px-4 sm:px-6"
     />
     <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
@@ -11,7 +11,7 @@
       <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">กำลังโหลดข้อมูล...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family: 'DB Heavent', 'Anuphan', sans-serif;">{{ $t('กำลังโหลดข้อมูล...') }}</p>
       </div>
 
       <template v-else>
@@ -22,7 +22,7 @@
           <div class="relative p-6 sm:p-8">
             <div class="flex justify-between items-start mb-6">
               <div>
-                <p class="text-white/80 text-[13px] font-bold uppercase tracking-wide mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ระดับสมาชิก</p>
+                <p class="text-white/80 text-[13px] font-bold uppercase tracking-wide mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ระดับสมาชิก') }}</p>
                 <p class="text-3xl font-bold" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.tier_label }}</p>
                 <p v-if="account?.tier_tagline" class="text-white/75 text-sm mt-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account.tier_tagline }}</p>
               </div>
@@ -31,20 +31,19 @@
             
             <div class="flex flex-wrap gap-8 mb-4">
               <div>
-                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แต้มคงเหลือ</p>
+                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('แต้มคงเหลือ') }}</p>
                 <p class="text-4xl font-extrabold tracking-tight" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.points?.toLocaleString() }}</p>
                 <p v-if="account?.expiring_points" class="text-[12px] font-bold text-white/90 mt-1.5 flex items-center gap-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                  <span class="material-symbols-rounded text-[14px]">schedule</span>
-                  {{ account.expiring_points.toLocaleString() }} แต้มหมดอายุ {{ thaiShort(account.expiring_at) }}
+                  <span class="material-symbols-rounded text-[14px]">schedule</span> {{ $t('{expiring_points} แต้มหมดอายุ {thaiShort}', { expiring_points: account.expiring_points.toLocaleString(), thaiShort: thaiShort(account.expiring_at) }) }}
                 </p>
               </div>
               <div>
-                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แต้มสะสมตลอดกาล</p>
+                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('แต้มสะสมตลอดกาล') }}</p>
                 <p class="text-2xl font-bold mt-2 tracking-tight" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.lifetime_points?.toLocaleString() }}</p>
               </div>
               <div>
-                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ไปด้วยกันมาแล้ว</p>
-                <p class="text-2xl font-bold mt-2 tracking-tight" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ (account?.lifetime_trips ?? 0).toLocaleString() }} ทริป</p>
+                <p class="text-white/80 text-[13px] font-bold mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ไปด้วยกันมาแล้ว') }}</p>
+                <p class="text-2xl font-bold mt-2 tracking-tight" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('{toLocaleString} ทริป', { toLocaleString: (account?.lifetime_trips ?? 0).toLocaleString() }) }}</p>
               </div>
             </div>
 
@@ -52,21 +51,19 @@
             <div v-if="account?.next_tier" class="mt-6 bg-black/10 rounded-[16px] p-4 backdrop-blur-sm">
               <div class="flex justify-between text-[13px] font-bold text-white mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                 <span>{{ account.tier_label }}</span>
-                <span>{{ account.next_tier.label }} ({{ account.next_tier.at.toLocaleString() }} ทริป)</span>
+                <span>{{ $t('{label} ({at} ทริป)', { label: account.next_tier.label, at: account.next_tier.at.toLocaleString() }) }}</span>
               </div>
               <div class="h-2.5 bg-black/20 rounded-full overflow-hidden">
                 <div
                   class="h-full bg-white rounded-full transition-all duration-1000 ease-out"
                   :style="{ width: tierProgress + '%' }"></div>
               </div>
-              <p class="text-[12px] text-white/90 mt-2 font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                ไปด้วยกันอีก {{ account.next_tier.trips_needed.toLocaleString() }} ทริป เพื่อเลื่อนระดับเป็น {{ account.next_tier.label }}
+              <p class="text-[12px] text-white/90 mt-2 font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('ไปด้วยกันอีก {trips_needed} ทริป เพื่อเลื่อนระดับเป็น {label}', { trips_needed: account.next_tier.trips_needed.toLocaleString(), label: account.next_tier.label }) }}
               </p>
             </div>
             <div v-else class="mt-6">
               <span class="text-[13px] font-bold bg-white/20 rounded-[12px] px-3.5 py-1.5 flex items-center w-fit gap-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                <span class="material-symbols-rounded text-[18px]">verified</span> ระดับสูงสุด
-              </span>
+                <span class="material-symbols-rounded text-[18px]">verified</span> {{ $t('ระดับสูงสุด') }} </span>
             </div>
           </div>
         </div>
@@ -74,7 +71,7 @@
         <!-- สิทธิ์ที่ได้ตอนนี้ + บันไดระดับ — ทั้งชื่อและเกณฑ์มาจาก API ทั้งหมด
              เพื่อให้เว็บกับแอปพูดตรงกันเสมอ -->
         <section v-if="account?.perks?.length" class="mb-8 bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6">
-          <h2 class="text-[13px] font-bold text-[#505E5E] mb-4">สิทธิ์ที่คุณได้ตอนนี้</h2>
+          <h2 class="text-[13px] font-bold text-[#505E5E] mb-4">{{ $t('สิทธิ์ที่คุณได้ตอนนี้') }}</h2>
           <ul class="grid sm:grid-cols-2 gap-2.5">
             <li v-for="perk in account.perks" :key="perk.key" class="flex items-start gap-2.5 text-sm font-medium text-[#1a1c1c]">
               <span class="material-symbols-rounded text-[18px] text-[#0F6B5C] mt-0.5 shrink-0" style="font-variation-settings:'FILL' 1">check_circle</span>
@@ -84,24 +81,24 @@
         </section>
 
         <section v-if="account?.tiers?.length" class="mb-8 bg-white rounded-[20px] border border-[#E8EEEF] overflow-hidden">
-          <h2 class="text-[13px] font-bold text-[#505E5E] px-5 sm:px-6 pt-5 pb-3">ระดับสมาชิกทั้งหมด</h2>
+          <h2 class="text-[13px] font-bold text-[#505E5E] px-5 sm:px-6 pt-5 pb-3">{{ $t('ระดับสมาชิกทั้งหมด') }}</h2>
           <div v-for="step in account.tiers" :key="step.code"
             class="px-5 sm:px-6 py-4 border-t border-[#F0F4F4]"
             :class="step.code === account.tier ? 'bg-[#F4F7F6]' : ''">
             <div class="flex items-center justify-between gap-3 mb-1">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="font-bold text-[#1a1c1c]">{{ step.label }}</span>
-                <TierBadge v-if="step.code === account.tier" :tier="step.code" label="ระดับของคุณ" size="sm" />
+                <TierBadge v-if="step.code === account.tier" :tier="step.code" :label="$t('ระดับของคุณ')" size="sm" />
               </div>
               <span class="text-xs font-bold text-[#889696] shrink-0">
-                {{ step.min_trips === 0 ? 'เริ่มต้น' : `${step.min_trips.toLocaleString()} ทริป` }}
+                {{ step.min_trips === 0 ? $t('เริ่มต้น') : $t('{min_trips} ทริป', { min_trips: step.min_trips.toLocaleString() }) }}
               </span>
             </div>
             <p class="text-xs text-[#505E5E] mb-2">{{ step.tagline }}</p>
             <p v-if="step.perks.length" class="text-xs text-[#505E5E]">
               {{ step.perks.map(p => p.label).join(' · ') }}
             </p>
-            <p v-else class="text-xs text-[#889696]">เริ่มสะสมแต้มจากทริปแรกได้เลย</p>
+            <p v-else class="text-xs text-[#889696]">{{ $t('เริ่มสะสมแต้มจากทริปแรกได้เลย') }}</p>
           </div>
         </section>
 
@@ -127,7 +124,7 @@
             <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
               <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">card_giftcard</span>
             </div>
-            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีของรางวัลในขณะนี้</p>
+            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ยังไม่มีของรางวัลในขณะนี้') }}</p>
           </div>
           <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div
@@ -139,9 +136,7 @@
                   <span class="material-symbols-rounded text-[28px] text-[var(--color-accent)]">{{ rewardIcon(r.type) }}</span>
                 </div>
                 <span class="text-[12px] font-bold bg-[#E3F2F2] text-[var(--color-accent)] rounded-[8px] px-3 py-1.5"
-                  style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                  ใช้ {{ r.points_required.toLocaleString() }} แต้ม
-                </span>
+                  style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('ใช้ {points_required} แต้ม', { points_required: r.points_required.toLocaleString() }) }} </span>
               </div>
               <h3 class="text-[16px] font-bold text-[#1a1c1c] mb-1.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ r.name }}</h3>
               <p class="text-[14px] text-[#505E5E] flex-1 mb-5 leading-relaxed" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ r.description }}</p>
@@ -155,7 +150,7 @@
                   class="bg-[var(--color-accent)] text-white px-5 py-2.5 rounded-[12px] text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-accent-mid)] transition-all flex items-center gap-1.5 shadow-sm/20"
                   style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   <span v-if="redeeming === r.id" class="material-symbols-rounded text-[18px] animate-spin">progress_activity</span>
-                  {{ redeeming === r.id ? 'กำลังแลก...' : 'แลกรับเลย' }}
+                  {{ redeeming === r.id ? $t('กำลังแลก...') : $t('แลกรับเลย') }}
                 </button>
               </div>
             </div>
@@ -168,7 +163,7 @@
             <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
               <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">local_activity</span>
             </div>
-            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีคูปอง</p>
+            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ยังไม่มีคูปอง') }}</p>
           </div>
           <div v-else class="space-y-4">
             <div
@@ -185,8 +180,7 @@
                   <p class="font-mono text-lg text-[var(--color-accent)] font-bold tracking-widest bg-[#E3F2F2] px-2 py-0.5 rounded-[6px]">{{ c.coupon_code }}</p>
                 </div>
                 <p class="text-[12px] text-[#889696] mt-2 flex items-center gap-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-                  <span class="material-symbols-rounded text-[14px]">event</span>
-                  หมดอายุ: {{ formatDate(c.expires_at) }}
+                  <span class="material-symbols-rounded text-[14px]">event</span> {{ $t('หมดอายุ: {formatDate}', { formatDate: formatDate(c.expires_at) }) }}
                 </p>
               </div>
               <span
@@ -196,7 +190,7 @@
                 <span v-if="c.is_used" class="material-symbols-rounded text-[14px]">check_circle</span>
                 <span v-else-if="isExpired(c.expires_at)" class="material-symbols-rounded text-[14px]">error</span>
                 <span v-else class="material-symbols-rounded text-[14px]">verified</span>
-                {{ c.is_used ? 'ใช้สิทธิ์แล้ว' : isExpired(c.expires_at) ? 'หมดอายุ' : 'พร้อมใช้งาน' }}
+                {{ c.is_used ? $t('ใช้สิทธิ์แล้ว') : isExpired(c.expires_at) ? $t('หมดอายุ') : $t('พร้อมใช้งาน') }}
               </span>
             </div>
           </div>
@@ -211,7 +205,7 @@
             <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
               <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">history</span>
             </div>
-            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ยังไม่มีประวัติแต้ม</p>
+            <p class="text-[#505E5E] font-bold text-lg" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ยังไม่มีประวัติแต้ม') }}</p>
           </div>
           <div v-else class="space-y-3">
             <div
@@ -237,7 +231,7 @@
                   style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
                   {{ t.type === 'earn' ? '+' : '-' }}{{ Math.abs(t.points) }}
                 </p>
-                <p class="text-[12px] text-[#889696] font-medium mt-0.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">คงเหลือ {{ t.balance_after }}</p>
+                <p class="text-[12px] text-[#889696] font-medium mt-0.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('คงเหลือ {balance_after}', { balance_after: t.balance_after }) }}</p>
               </div>
             </div>
           </div>
@@ -251,25 +245,21 @@
           <div class="w-20 h-20 bg-[#E3F2F2] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white">
             <span class="material-symbols-rounded text-[40px] text-[var(--color-accent)]">check_circle</span>
           </div>
-          <h2 class="text-2xl font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">แลกรับสำเร็จ!</h2>
+          <h2 class="text-2xl font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('แลกรับสำเร็จ!') }}</h2>
           <p class="text-[#505E5E] mb-5 text-[15px]" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ redeemResult.reward?.name }}</p>
           
           <div class="bg-[#F9FAFA] border border-[#E8EEEF] rounded-[16px] px-4 py-4 mb-5 relative overflow-hidden">
-             <p class="text-[12px] text-[#889696] font-bold uppercase tracking-wider mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">รหัสคูปองของคุณ</p>
+             <p class="text-[12px] text-[#889696] font-bold uppercase tracking-wider mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('รหัสคูปองของคุณ') }}</p>
              <p class="text-3xl font-mono font-bold text-[var(--color-accent)] tracking-widest">
                {{ redeemResult.coupon_code }}
              </p>
           </div>
           
-          <p class="text-[14px] text-[#505E5E] mb-6 font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-            แต้มคงเหลือ <span class="font-bold text-[#1a1c1c]">{{ redeemResult.points_remaining?.toLocaleString() }}</span> แต้ม
-          </p>
+          <p class="text-[14px] text-[#505E5E] mb-6 font-medium" style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('แต้มคงเหลือ') }} <span class="font-bold text-[#1a1c1c]">{{ redeemResult.points_remaining?.toLocaleString() }}</span> {{ $t('แต้ม') }} </p>
           <button
             @click="redeemResult = null"
             class="w-full bg-[var(--color-accent)] text-white py-3.5 rounded-[16px] font-bold hover:bg-[var(--color-accent-mid)] transition-all"
-            style="font-family:'DB Heavent', 'Anuphan',sans-serif;">
-            ตกลง
-          </button>
+            style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('ตกลง') }} </button>
         </div>
       </div>
 
@@ -278,6 +268,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { ref, computed, onMounted } from 'vue';
@@ -298,10 +289,10 @@ const redeeming = ref(null);
 const redeemResult = ref(null);
 
 const tabs = [
-  { key: 'rewards', label: 'ของรางวัล', icon: 'card_giftcard' },
-  { key: 'coupons', label: 'คูปองของฉัน', icon: 'local_play' },
-  { key: 'transfer', label: 'โอนแต้ม', icon: 'send' },
-  { key: 'history', label: 'ประวัติแต้ม', icon: 'history' },
+  { key: 'rewards', label: $t('ของรางวัล'), icon: 'card_giftcard' },
+  { key: 'coupons', label: $t('คูปองของฉัน'), icon: 'local_play' },
+  { key: 'transfer', label: $t('โอนแต้ม'), icon: 'send' },
+  { key: 'history', label: $t('ประวัติแต้ม'), icon: 'history' },
 ];
 
 const tierBg = computed(() => ({
@@ -346,14 +337,14 @@ async function loadData(silent = false) {
 }
 
 async function redeemReward(reward) {
-  if (!confirm(`แลกรับ "${reward.name}" ใช้ ${reward.points_required} แต้ม?`)) return;
+  if (!confirm($t('แลกรับ "{name}" ใช้ {points_required} แต้ม?', { name: reward.name, points_required: reward.points_required }))) return;
   redeeming.value = reward.id;
   try {
     const res = await api.post('/loyalty/redeem', { reward_id: reward.id });
     redeemResult.value = res.data.data;
     await loadData();
   } catch (e) {
-    alert(e?.response?.data?.message || 'แลกรับไม่สำเร็จ');
+    alert(e?.response?.data?.message || $t('แลกรับไม่สำเร็จ'));
   } finally {
     redeeming.value = null;
   }

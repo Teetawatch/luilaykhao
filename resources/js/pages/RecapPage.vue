@@ -4,35 +4,29 @@
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
-        <p class="text-white/70 font-medium animate-pulse text-sm">กำลังรวบรวมทริปของคุณ...</p>
+        <p class="text-white/70 font-medium animate-pulse text-sm">{{ $t('กำลังรวบรวมทริปของคุณ...') }}</p>
       </div>
 
       <div v-else-if="error" class="bg-white rounded-[20px] p-8 text-center">
         <span class="material-symbols-rounded text-[44px] text-[#B4C4C4]">sentiment_dissatisfied</span>
-        <p class="text-[#1a1c1c] font-bold mt-3 mb-1">ยังดูสรุปทริปนี้ไม่ได้</p>
+        <p class="text-[#1a1c1c] font-bold mt-3 mb-1">{{ $t('ยังดูสรุปทริปนี้ไม่ได้') }}</p>
         <p class="text-[#505E5E] text-sm mb-5">{{ error }}</p>
-        <router-link to="/my-bookings" class="inline-flex rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3">
-          กลับไปการจองของฉัน
-        </router-link>
+        <router-link to="/my-bookings" class="inline-flex rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3"> {{ $t('กลับไปการจองของฉัน') }} </router-link>
       </div>
 
       <template v-else-if="recap">
         <!-- ยังไม่จบทริป -->
         <div v-if="!recap.trip_completed" class="bg-white rounded-[20px] p-8 text-center">
           <span class="material-symbols-rounded text-[44px] text-[#B4C4C4]">hourglass_top</span>
-          <p class="text-[#1a1c1c] font-bold mt-3 mb-1">ทริปนี้ยังไม่จบ</p>
-          <p class="text-[#505E5E] text-sm mb-5">
-            สรุปการเดินทางจะขึ้นให้ดูหลังกลับจาก {{ recap.trip.title }} แล้ว
-          </p>
-          <router-link to="/my-bookings" class="inline-flex rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3">
-            กลับไปการจองของฉัน
-          </router-link>
+          <p class="text-[#1a1c1c] font-bold mt-3 mb-1">{{ $t('ทริปนี้ยังไม่จบ') }}</p>
+          <p class="text-[#505E5E] text-sm mb-5"> {{ $t('สรุปการเดินทางจะขึ้นให้ดูหลังกลับจาก {title} แล้ว', { title: recap.trip.title }) }} </p>
+          <router-link to="/my-bookings" class="inline-flex rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3"> {{ $t('กลับไปการจองของฉัน') }} </router-link>
         </div>
 
         <template v-else>
           <!-- ปก -->
           <section class="text-center mb-8 pt-4">
-            <p class="text-white/60 text-[13px] font-bold tracking-wide mb-2">สรุปการเดินทาง</p>
+            <p class="text-white/60 text-[13px] font-bold tracking-wide mb-2">{{ $t('สรุปการเดินทาง') }}</p>
             <h1 class="text-3xl font-extrabold text-white leading-tight mb-2">{{ recap.trip.title }}</h1>
             <p class="text-white/70 text-sm">{{ dateRange }}</p>
           </section>
@@ -54,7 +48,7 @@
 
           <!-- รูปจากรอบนี้ -->
           <section v-if="recap.photos?.length" class="mb-6">
-            <p class="text-white/60 text-[13px] font-bold mb-3">ภาพจากทริปนี้</p>
+            <p class="text-white/60 text-[13px] font-bold mb-3">{{ $t('ภาพจากทริปนี้') }}</p>
             <div class="grid grid-cols-3 gap-1.5">
               <img
                 v-for="(photo, i) in recap.photos"
@@ -69,10 +63,8 @@
 
           <!-- การ์ดแชร์ -->
           <section class="rounded-[20px] bg-white/[0.07] border border-white/10 p-6 mb-6">
-            <p class="text-white font-bold mb-1">เก็บไว้เป็นภาพ</p>
-            <p class="text-white/60 text-[13px] mb-4 leading-relaxed">
-              บันทึกการ์ดสรุปทริปเป็นรูป เอาไปลงสตอรี่หรือส่งให้เพื่อนร่วมทริปได้
-            </p>
+            <p class="text-white font-bold mb-1">{{ $t('เก็บไว้เป็นภาพ') }}</p>
+            <p class="text-white/60 text-[13px] mb-4 leading-relaxed"> {{ $t('บันทึกการ์ดสรุปทริปเป็นรูป เอาไปลงสตอรี่หรือส่งให้เพื่อนร่วมทริปได้') }} </p>
             <div class="flex gap-2.5">
               <button
                 type="button"
@@ -80,7 +72,7 @@
                 class="flex-1 rounded-[14px] bg-white text-[#0F3D3E] text-sm font-bold py-3 disabled:opacity-50"
                 @click="downloadCard"
               >
-                {{ rendering ? 'กำลังสร้าง...' : 'บันทึกรูป' }}
+                {{ rendering ? $t('กำลังสร้าง...') : $t('บันทึกรูป') }}
               </button>
               <button
                 v-if="canShare"
@@ -88,29 +80,23 @@
                 :disabled="rendering"
                 class="flex-1 rounded-[14px] border border-white/25 text-white text-sm font-bold py-3 disabled:opacity-50"
                 @click="shareCard"
-              >
-                แชร์
-              </button>
+              > {{ $t('แชร์') }} </button>
             </div>
           </section>
 
           <!-- ชวนรีวิว -->
           <section v-if="!recap.has_reviewed" class="rounded-[20px] bg-white/[0.07] border border-white/10 p-6 mb-6">
-            <p class="text-white font-bold mb-1">เล่าให้คนที่กำลังลังเลฟังหน่อย</p>
-            <p class="text-white/60 text-[13px] mb-4 leading-relaxed">
-              รีวิวของคุณคือสิ่งที่คนกำลังตัดสินใจอ่านก่อนเป็นอันดับแรก
-            </p>
+            <p class="text-white font-bold mb-1">{{ $t('เล่าให้คนที่กำลังลังเลฟังหน่อย') }}</p>
+            <p class="text-white/60 text-[13px] mb-4 leading-relaxed"> {{ $t('รีวิวของคุณคือสิ่งที่คนกำลังตัดสินใจอ่านก่อนเป็นอันดับแรก') }} </p>
             <router-link
               to="/my-reviews"
               class="inline-flex rounded-[14px] bg-white text-[#0F3D3E] text-sm font-bold px-5 py-3"
-            >
-              เขียนรีวิว
-            </router-link>
+            > {{ $t('เขียนรีวิว') }} </router-link>
           </section>
 
           <div class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px] font-bold">
-            <router-link to="/passport" class="text-white/70">ดูสมุดสะสมการเดินทาง</router-link>
-            <router-link :to="`/trips/${recap.trip.slug}`" class="text-white/70">หน้าทริปนี้</router-link>
+            <router-link to="/passport" class="text-white/70">{{ $t('ดูสมุดสะสมการเดินทาง') }}</router-link>
+            <router-link :to="`/trips/${recap.trip.slug}`" class="text-white/70">{{ $t('หน้าทริปนี้') }}</router-link>
           </div>
         </template>
       </template>
@@ -121,6 +107,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
@@ -156,43 +143,43 @@ const statSlides = computed(() => {
   if (data.duration_days) {
     slides.push({
       key: 'days',
-      caption: 'คุณอยู่กับธรรมชาติ',
+      caption: $t('คุณอยู่กับธรรมชาติ'),
       value: data.duration_days,
-      unit: 'วัน',
+      unit: $t('วัน'),
     });
   }
 
   if (data.distance_km) {
     slides.push({
       key: 'distance',
-      caption: 'ระยะทางบนเส้นทางนี้',
+      caption: $t('ระยะทางบนเส้นทางนี้'),
       value: Number(data.distance_km).toLocaleString(DATE_LOCALE),
-      unit: 'กม.',
+      unit: $t('กม.'),
     });
   }
 
   if (data.elevation_gain_m) {
     slides.push({
       key: 'elevation',
-      caption: 'ความสูงที่ไต่ขึ้นไป',
+      caption: $t('ความสูงที่ไต่ขึ้นไป'),
       value: Number(data.elevation_gain_m).toLocaleString(DATE_LOCALE),
-      unit: 'เมตร',
-      note: `สูงกว่าตึกใบหยก 2 ราว ${Math.max(1, Math.round(data.elevation_gain_m / 304))} เท่า`,
+      unit: $t('เมตร'),
+      note: $t('สูงกว่าตึกใบหยก 2 ราว {max} เท่า', { max: Math.max(1, Math.round(data.elevation_gain_m / 304)) }),
     });
   }
 
   slides.push({
     key: 'group',
-    caption: 'คุณเดินทางไปกับ',
+    caption: $t('คุณเดินทางไปกับ'),
     value: data.total_travelers || data.group_size,
-    unit: 'คน',
-    note: data.group_size > 1 ? `รวมคนที่คุณชวนไปเอง ${data.group_size} คน` : null,
+    unit: $t('คน'),
+    note: data.group_size > 1 ? $t('รวมคนที่คุณชวนไปเอง {group_size} คน', { group_size: data.group_size }) : null,
   });
 
   if (data.trip.difficulty_label) {
     slides.push({
       key: 'difficulty',
-      caption: 'ระดับที่คุณผ่านมาได้',
+      caption: $t('ระดับที่คุณผ่านมาได้'),
       value: data.trip.difficulty_label,
       unit: '',
     });
@@ -225,7 +212,7 @@ async function renderCard() {
 
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.font = `600 34px ${font}`;
-  ctx.fillText('สรุปการเดินทาง', W / 2, 170);
+  ctx.fillText($t('สรุปการเดินทาง'), W / 2, 170);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = `800 76px ${font}`;
@@ -237,9 +224,9 @@ async function renderCard() {
 
   // ตัวเลขหลักสามช่อง
   const cells = [
-    [data.duration_days, 'วัน'],
-    [data.distance_km ? Number(data.distance_km).toLocaleString(DATE_LOCALE) : null, 'กม.'],
-    [data.elevation_gain_m ? Number(data.elevation_gain_m).toLocaleString(DATE_LOCALE) : null, 'ม. ที่ไต่'],
+    [data.duration_days, $t('วัน')],
+    [data.distance_km ? Number(data.distance_km).toLocaleString(DATE_LOCALE) : null, $t('กม.')],
+    [data.elevation_gain_m ? Number(data.elevation_gain_m).toLocaleString(DATE_LOCALE) : null, $t('ม. ที่ไต่')],
   ].filter(([value]) => value);
 
   if (cells.length) {
@@ -260,7 +247,7 @@ async function renderCard() {
 
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.font = `600 38px ${font}`;
-  ctx.fillText(`เดินทางไปกับ ${data.total_travelers || data.group_size} คน`, W / 2, 890);
+  ctx.fillText($t('เดินทางไปกับ {group_size} คน', { group_size: data.total_travelers || data.group_size }), W / 2, 890);
 
   if (data.trip.location) {
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -308,7 +295,7 @@ async function downloadCard() {
     link.click();
     URL.revokeObjectURL(url);
   } catch {
-    toast.error('สร้างรูปไม่สำเร็จ');
+    toast.error($t('สร้างรูปไม่สำเร็จ'));
   } finally {
     rendering.value = false;
   }
@@ -329,7 +316,7 @@ async function shareCard() {
     }
   } catch (err) {
     // ผู้ใช้กดยกเลิกแผงแชร์เองก็เข้าทางนี้ ไม่ต้องขึ้น error ให้ตกใจ
-    if (err?.name !== 'AbortError') toast.error('แชร์ไม่สำเร็จ');
+    if (err?.name !== 'AbortError') toast.error($t('แชร์ไม่สำเร็จ'));
   } finally {
     rendering.value = false;
   }
@@ -340,7 +327,7 @@ onMounted(async () => {
     const res = await api.get(`/bookings/${route.params.ref}/recap`);
     recap.value = res.data?.data;
   } catch (err) {
-    error.value = err.response?.data?.message || 'โหลดสรุปทริปไม่สำเร็จ';
+    error.value = err.response?.data?.message || $t('โหลดสรุปทริปไม่สำเร็จ');
   } finally {
     loading.value = false;
   }

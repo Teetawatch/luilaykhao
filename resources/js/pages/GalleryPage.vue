@@ -1,8 +1,8 @@
 <template>
   <div class="gallery-page font-anuphan bg-[var(--color-sand)] min-h-screen">
     <PageHero
-      title="รูปจากคนที่ไปมาแล้ว"
-      subtitle="ทุกรูปในหน้านี้ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว ทีมงานไม่ได้คัดออก"
+      :title="$t('รูปจากคนที่ไปมาแล้ว')"
+      :subtitle="$t('ทุกรูปในหน้านี้ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว ทีมงานไม่ได้คัดออก')"
       image="/images/landscape.webp"
     />
 
@@ -12,32 +12,29 @@
         <!-- Loading -->
         <div v-if="loading" class="text-center py-24">
           <div class="w-14 h-14 border-4 border-white border-t-[var(--color-accent)] rounded-full animate-spin mx-auto"></div>
-          <p class="mt-6 text-[var(--color-text-dark)] font-extrabold">กำลังโหลดรูป...</p>
+          <p class="mt-6 text-[var(--color-text-dark)] font-extrabold">{{ $t('กำลังโหลดรูป...') }}</p>
         </div>
 
         <!-- Error -->
         <div v-else-if="error" class="text-center py-20 bg-red-50 rounded-[2rem] border border-red-100">
           <span class="material-symbols-rounded text-5xl text-red-300 mb-4">wifi_off</span>
-          <h3 class="text-xl font-extrabold text-[var(--color-text-dark)] mb-2">โหลดภาพไม่สำเร็จ</h3>
+          <h3 class="text-xl font-extrabold text-[var(--color-text-dark)] mb-2">{{ $t('โหลดภาพไม่สำเร็จ') }}</h3>
           <p class="text-[var(--color-text-muted)] font-medium mb-6">{{ error }}</p>
           <button @click="fetchImages" class="inline-flex items-center gap-2 px-6 py-3 bg-[var(--color-accent)] text-white rounded-full font-bold hover:bg-[var(--color-accent-mid)] transition-all">
-            <span class="material-symbols-rounded text-[20px]">refresh</span>
-            ลองใหม่
-          </button>
+            <span class="material-symbols-rounded text-[20px]">refresh</span> {{ $t('ลองใหม่') }} </button>
         </div>
 
         <!-- Empty -->
         <div v-else-if="images.length === 0" class="text-center py-20 bg-white rounded-[2rem] border border-dashed border-[var(--color-sand-dark)]">
           <span class="material-symbols-rounded text-5xl text-[var(--color-text-muted)] mb-4">photo_library</span>
-          <h3 class="text-xl font-extrabold text-[var(--color-text-dark)] mb-2">ยังไม่มีรูปจากผู้ร่วมทริป</h3>
-          <p class="text-[var(--color-text-muted)] font-medium">รูปจะขึ้นที่นี่เมื่อมีคนกลับจากทริปแล้วรีวิวพร้อมแนบรูป</p>
+          <h3 class="text-xl font-extrabold text-[var(--color-text-dark)] mb-2">{{ $t('ยังไม่มีรูปจากผู้ร่วมทริป') }}</h3>
+          <p class="text-[var(--color-text-muted)] font-medium">{{ $t('รูปจะขึ้นที่นี่เมื่อมีคนกลับจากทริปแล้วรีวิวพร้อมแนบรูป') }}</p>
         </div>
 
         <template v-else>
           <!-- ที่มาของรูป — บอกตรง ๆ ว่านี่ไม่ใช่รูปที่ทีมงานคัดมา -->
           <p class="text-center text-sm font-bold text-[var(--color-text-muted)] mb-8">
-            {{ total.toLocaleString() }} รูป จากรีวิวของผู้ร่วมทริป · เรียงตามวันที่ไปล่าสุด
-          </p>
+            {{ $t('{total} รูป จากรีวิวของผู้ร่วมทริป · เรียงตามวันที่ไปล่าสุด', { total: total.toLocaleString() }) }} </p>
 
           <!-- Justified rows -->
           <div class="gallery-masonry">
@@ -50,14 +47,14 @@
             >
               <img
                 :src="image.url"
-                :alt="`รูปจาก ${image.user_name} ทริป${image.trip_title}`"
+                :alt="$t('รูปจาก {user_name} ทริป{trip_title}', { user_name: image.user_name, trip_title: image.trip_title })"
                 loading="lazy"
                 class="gallery-img block transition-transform duration-500 group-hover:scale-[1.04]"
               />
               <div class="gallery-caption">
                 <p class="text-white font-extrabold text-sm leading-snug truncate">{{ image.trip_title }}</p>
                 <p class="text-white/85 text-xs font-bold mt-0.5 truncate">
-                  {{ image.user_name }} · ไปเมื่อ {{ image.travel_month_label }}
+                  {{ $t('{user_name} · ไปเมื่อ {travel_month_label}', { user_name: image.user_name, travel_month_label: image.travel_month_label }) }}
                 </p>
               </div>
             </button>
@@ -71,7 +68,7 @@
             >
               <span v-if="loadingMore" class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
               <span v-else class="material-symbols-rounded text-[18px]">expand_more</span>
-              {{ loadingMore ? 'กำลังโหลด...' : 'ดูรูปเพิ่ม' }}
+              {{ loadingMore ? $t('กำลังโหลด...') : $t('ดูรูปเพิ่ม') }}
             </button>
           </div>
         </template>
@@ -81,18 +78,18 @@
     <!-- Lightbox -->
     <Transition name="lightbox">
       <div v-if="lightboxIndex !== null" class="lightbox" @click.self="closeLightbox">
-        <button class="lightbox-btn lightbox-close" @click="closeLightbox" aria-label="ปิด">
+        <button class="lightbox-btn lightbox-close" @click="closeLightbox" :aria-label="$t('ปิด')">
           <span class="material-symbols-rounded">close</span>
         </button>
-        <button v-if="images.length > 1" class="lightbox-btn lightbox-prev" @click.stop="prev" aria-label="ก่อนหน้า">
+        <button v-if="images.length > 1" class="lightbox-btn lightbox-prev" @click.stop="prev" :aria-label="$t('ก่อนหน้า')">
           <span class="material-symbols-rounded">chevron_left</span>
         </button>
 
         <figure class="lightbox-figure">
-          <img :src="currentImage.url" :alt="`รูปจาก ${currentImage.user_name}`" class="lightbox-img" />
+          <img :src="currentImage.url" :alt="$t('รูปจาก {user_name}', { user_name: currentImage.user_name })" class="lightbox-img" />
           <figcaption class="lightbox-caption">
             <p class="text-white font-extrabold text-base">
-              {{ currentImage.user_name }} · ไปเมื่อ {{ currentImage.travel_month_label }}
+              {{ $t('{user_name} · ไปเมื่อ {travel_month_label}', { user_name: currentImage.user_name, travel_month_label: currentImage.travel_month_label }) }}
             </p>
             <router-link
               v-if="currentImage.trip_slug"
@@ -106,7 +103,7 @@
           </figcaption>
         </figure>
 
-        <button v-if="images.length > 1" class="lightbox-btn lightbox-next" @click.stop="next" aria-label="ถัดไป">
+        <button v-if="images.length > 1" class="lightbox-btn lightbox-next" @click.stop="next" :aria-label="$t('ถัดไป')">
           <span class="material-symbols-rounded">chevron_right</span>
         </button>
 
@@ -117,6 +114,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import api from '../lib/axios';
 import PageHero from '../components/PageHero.vue';
@@ -150,7 +148,7 @@ const fetchImages = async () => {
     total.value = payload.total ?? images.value.length;
     hasMore.value = Boolean(payload.has_more);
   } catch (e) {
-    error.value = e.response?.data?.message ?? 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+    error.value = e.response?.data?.message ?? $t('เกิดข้อผิดพลาดในการเชื่อมต่อ');
   } finally {
     loading.value = false;
   }

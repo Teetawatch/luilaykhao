@@ -2,15 +2,13 @@
   <div class="font-anuphan bg-[var(--color-sand)] min-h-screen pb-24">
     <PageHero
       image="/images/landscape.webp"
-      title="สถานที่ธรรมชาติในไทย"
-      subtitle="ความสูง ระยะเดิน ช่วงที่ควรไป และช่วงที่ปิดของแต่ละที่ อ่านได้ไม่ว่าตอนนี้จะมีรอบเปิดหรือไม่"
+      :title="$t('สถานที่ธรรมชาติในไทย')"
+      :subtitle="$t('ความสูง ระยะเดิน ช่วงที่ควรไป และช่วงที่ปิดของแต่ละที่ อ่านได้ไม่ว่าตอนนี้จะมีรอบเปิดหรือไม่')"
     >
       <template #actions>
-        <router-link to="/seasons" class="hero-btn hero-btn--solid">
-          เดือนนี้ไปไหนดี
-          <span class="material-symbols-rounded icon-20">arrow_forward</span>
+        <router-link to="/seasons" class="hero-btn hero-btn--solid"> {{ $t('เดือนนี้ไปไหนดี') }} <span class="material-symbols-rounded icon-20">arrow_forward</span>
         </router-link>
-        <router-link to="/difficulty" class="hero-btn hero-btn--outline">ระดับความยากคืออะไร</router-link>
+        <router-link to="/difficulty" class="hero-btn hero-btn--outline">{{ $t('ระดับความยากคืออะไร') }}</router-link>
       </template>
     </PageHero>
 
@@ -27,14 +25,12 @@
             <span class="material-symbols-rounded filter-pill__chevron">expand_more</span>
           </label>
           <button v-if="hasFilters" type="button" class="filter-clear press" @click="reset">
-            <span class="material-symbols-rounded icon-18">close</span>
-            ล้าง
-          </button>
+            <span class="material-symbols-rounded icon-18">close</span> {{ $t('ล้าง') }} </button>
         </div>
       </div>
 
       <p v-if="!loading" class="mt-8 mb-4 text-sm font-bold text-[var(--color-text-muted)]">
-        <template v-if="places.length">พบ <span class="text-[var(--color-text-dark)]">{{ places.length }}</span> ที่</template>
+        <template v-if="places.length">{{ $t('พบ') }} <span class="text-[var(--color-text-dark)]">{{ places.length }}</span> {{ $t('ที่') }}</template>
       </p>
       <div v-else class="mt-8 mb-4 h-5"></div>
 
@@ -52,11 +48,9 @@
         <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent-tint)] text-[var(--color-accent)]">
           <span class="material-symbols-rounded icon-32">travel_explore</span>
         </span>
-        <p class="mt-4 text-lg font-extrabold text-[var(--color-text-dark)]">ไม่พบสถานที่ตามที่กรอง</p>
-        <p class="mt-1 text-sm text-[var(--color-text-muted)]">ลองล้างตัวกรองแล้วดูใหม่</p>
-        <button v-if="hasFilters" type="button" class="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-bold text-white press" @click="reset">
-          ล้างตัวกรอง
-        </button>
+        <p class="mt-4 text-lg font-extrabold text-[var(--color-text-dark)]">{{ $t('ไม่พบสถานที่ตามที่กรอง') }}</p>
+        <p class="mt-1 text-sm text-[var(--color-text-muted)]">{{ $t('ลองล้างตัวกรองแล้วดูใหม่') }}</p>
+        <button v-if="hasFilters" type="button" class="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-bold text-white press" @click="reset"> {{ $t('ล้างตัวกรอง') }} </button>
       </div>
 
       <div v-else v-reveal.stagger class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -75,10 +69,8 @@
             <div class="absolute left-3 top-3 flex flex-wrap gap-1.5">
               <span v-if="place.type_label" class="place-chip">{{ place.type_label }}</span>
               <span v-if="isBestNow(place)" class="place-chip place-chip--now">
-                <span class="material-symbols-rounded icon-14">wb_sunny</span>
-                ช่วงพีคเดือนนี้
-              </span>
-              <span v-else-if="isClosedNow(place)" class="place-chip place-chip--closed">ปิดเดือนนี้</span>
+                <span class="material-symbols-rounded icon-14">wb_sunny</span> {{ $t('ช่วงพีคเดือนนี้') }} </span>
+              <span v-else-if="isClosedNow(place)" class="place-chip place-chip--closed">{{ $t('ปิดเดือนนี้') }}</span>
             </div>
             <p class="absolute bottom-3 left-4 right-4 flex items-center gap-1 text-[13px] font-bold text-white/90">
               <span class="material-symbols-rounded icon-16">location_on</span>
@@ -104,7 +96,7 @@
             <div class="mt-auto pt-5">
               <MonthStrip :best="place.best_months || []" :closed="place.closed_months || []" />
               <p class="mt-2 text-[12px] font-bold" :class="bestMonthsLabel(place) ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'">
-                {{ bestMonthsLabel(place) ? `ช่วงที่ควรไป ${bestMonthsLabel(place)}` : 'ไปได้ทั้งปี' }}
+                {{ bestMonthsLabel(place) ? $t('ช่วงที่ควรไป {bestMonthsLabel}', { bestMonthsLabel: bestMonthsLabel(place) }) : $t('ไปได้ทั้งปี') }}
               </p>
             </div>
           </div>
@@ -117,6 +109,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import { computed, onMounted, reactive, watch, ref } from 'vue';
 import api from '../lib/axios';
@@ -132,10 +125,10 @@ const filterOptions = ref({ regions: [], types: [], difficulties: [] });
 const filters = reactive({ region: '', type: '', difficulty: '', month: 0 });
 
 const FILTERS = [
-  { key: 'region', icon: 'map', label: 'ภูมิภาค', all: 'ทุกภูมิภาค' },
-  { key: 'type', icon: 'landscape', label: 'ประเภท', all: 'ทุกประเภท' },
-  { key: 'difficulty', icon: 'hiking', label: 'ระดับ', all: 'ทุกระดับ' },
-  { key: 'month', icon: 'calendar_month', label: 'เดือน', all: 'ไปเดือนไหนก็ได้' },
+  { key: 'region', icon: 'map', label: $t('ภูมิภาค'), all: $t('ทุกภูมิภาค') },
+  { key: 'type', icon: 'landscape', label: $t('ประเภท'), all: $t('ทุกประเภท') },
+  { key: 'difficulty', icon: 'hiking', label: $t('ระดับ'), all: $t('ทุกระดับ') },
+  { key: 'month', icon: 'calendar_month', label: $t('เดือน'), all: $t('ไปเดือนไหนก็ได้') },
 ];
 
 function optionsFor(key) {
@@ -143,7 +136,7 @@ function optionsFor(key) {
   if (key === 'region') return filterOptions.value.regions.map(toOption);
   if (key === 'type') return filterOptions.value.types.map(toOption);
   if (key === 'difficulty') return filterOptions.value.difficulties.map(toOption);
-  return THAI_MONTHS_LONG.map((name, i) => ({ value: i + 1, label: `ไปเดือน${name}` }));
+  return THAI_MONTHS_LONG.map((name, i) => ({ value: i + 1, label: $t('ไปเดือน{name}', { name }) }));
 }
 
 const isSet = (key) => (key === 'month' ? filters.month !== 0 : filters[key] !== '');
@@ -159,8 +152,8 @@ const isClosedNow = (place) => (place.closed_months || []).includes(nowMonth);
 
 function facts(place) {
   const out = [];
-  if (place.elevation_m) out.push({ icon: 'altitude', text: `${place.elevation_m.toLocaleString(DATE_LOCALE)} ม.` });
-  if (place.trail_distance_km) out.push({ icon: 'route', text: `${place.trail_distance_km} กม.` });
+  if (place.elevation_m) out.push({ icon: 'altitude', text: $t('{elevation_m} ม.', { elevation_m: place.elevation_m.toLocaleString(DATE_LOCALE) }) });
+  if (place.trail_distance_km) out.push({ icon: 'route', text: $t('{trail_distance_km} กม.', { trail_distance_km: place.trail_distance_km }) });
   if (place.difficulty_label) out.push({ icon: 'hiking', text: place.difficulty_label });
   return out;
 }

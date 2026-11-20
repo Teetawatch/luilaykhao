@@ -2,8 +2,8 @@
   <div class="contact-page font-anuphan bg-[var(--color-sand)] min-h-screen">
     
     <PageHero
-      title="ติดต่อเรา"
-      subtitle="มีคำถามเกี่ยวกับทริป ทีมงานลุยเลเขายินดีช่วยเลือกทริปที่ใช่และตอบทุกข้อสงสัย ให้คำปรึกษาฟรี"
+      :title="$t('ติดต่อเรา')"
+      :subtitle="$t('มีคำถามเกี่ยวกับทริป ทีมงานลุยเลเขายินดีช่วยเลือกทริปที่ใช่และตอบทุกข้อสงสัย ให้คำปรึกษาฟรี')"
       image="/images/landscape.webp"
       :strip="false"
     />
@@ -15,13 +15,10 @@
         <div class="flex flex-col sm:flex-row gap-3 mb-12 justify-center lg:justify-start">
           <a :href="supportLineUrl()" target="_blank" rel="noopener"
              class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-[#06C755] text-white rounded-2xl font-bold text-lg hover:bg-[#05b34c] active:scale-[0.98] transition-all">
-            <i class="fab fa-line text-2xl"></i>
-            แชทผ่าน LINE
-          </a>
+            <i class="fab fa-line text-2xl"></i> {{ $t('แชทผ่าน LINE') }} </a>
           <a :href="supportPhoneHref()"
              class="flex-1 max-w-xs flex items-center justify-center gap-3 px-8 py-4 bg-accent text-white rounded-2xl font-bold text-lg hover:bg-accent-mid active:scale-[0.98] transition-all">
-            <span class="material-symbols-rounded">call</span>
-            โทร {{ supportPhone() }}
+            <span class="material-symbols-rounded">call</span> {{ $t('โทร {supportPhone}', { supportPhone: supportPhone() }) }}
           </a>
         </div>
 
@@ -32,10 +29,8 @@
             <span class="material-symbols-rounded text-primary">support_agent</span>
           </div>
           <div class="min-w-0 flex-1">
-            <p class="font-bold text-text-dark">มีเรื่องเกี่ยวกับการจองของคุณ? คุยในศูนย์ช่วยเหลือ</p>
-            <p class="mt-1 text-sm text-text-muted leading-relaxed">
-              ทีมงานเห็นประวัติการจองของคุณอยู่แล้ว ไม่ต้องเล่าใหม่ และข้อความอยู่ในเธรดเดียวกันทั้งหมด
-            </p>
+            <p class="font-bold text-text-dark">{{ $t('มีเรื่องเกี่ยวกับการจองของคุณ? คุยในศูนย์ช่วยเหลือ') }}</p>
+            <p class="mt-1 text-sm text-text-muted leading-relaxed"> {{ $t('ทีมงานเห็นประวัติการจองของคุณอยู่แล้ว ไม่ต้องเล่าใหม่ และข้อความอยู่ในเธรดเดียวกันทั้งหมด') }} </p>
           </div>
           <span class="material-symbols-rounded text-text-muted shrink-0">chevron_right</span>
         </router-link>
@@ -45,9 +40,7 @@
           <!-- Contact Details -->
           <div class="lg:col-span-5 space-y-12">
             <div>
-              <h2 class="text-3xl font-bold text-[var(--color-text-dark)] mb-8 flex items-center gap-3">
-                ช่องทางการติดต่อ
-                <div class="h-1 flex-grow bg-sand-dark rounded-full overflow-hidden">
+              <h2 class="text-3xl font-bold text-[var(--color-text-dark)] mb-8 flex items-center gap-3"> {{ $t('ช่องทางการติดต่อ') }} <div class="h-1 flex-grow bg-sand-dark rounded-full overflow-hidden">
                   <div class="h-full bg-primary w-1/4 rounded-full"></div>
                 </div>
               </h2>
@@ -61,7 +54,7 @@
                   <div>
                     <p class="text-sm font-bold text-[#06C755] mb-1">LINE Official</p>
                     <a :href="supportLineUrl()" target="_blank" rel="noopener" class="text-xl font-bold text-text-dark hover:text-[#06C755] transition-colors">{{ supportLine() }}</a>
-                    <p class="text-sm text-text-muted mt-1">ทักไว้ได้ตลอด ทีมงานตอบในเวลาทำการ</p>
+                    <p class="text-sm text-text-muted mt-1">{{ $t('ทักไว้ได้ตลอด ทีมงานตอบในเวลาทำการ') }}</p>
                   </div>
                 </div>
 
@@ -71,7 +64,7 @@
                     <span class="material-symbols-rounded text-primary">call</span>
                   </div>
                   <div>
-                    <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">เบอร์โทรศัพท์</p>
+                    <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">{{ $t('เบอร์โทรศัพท์') }}</p>
                     <a :href="supportPhoneHref()" class="text-xl font-bold text-text-dark hover:text-primary transition-colors">{{ supportPhone() }}</a>
                     <p class="text-sm text-text-muted mt-1">{{ supportHours() }}</p>
                   </div>
@@ -83,7 +76,7 @@
                     <span class="material-symbols-rounded text-primary">mail</span>
                   </div>
                   <div>
-                    <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">อีเมล</p>
+                    <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">{{ $t('อีเมล') }}</p>
                     <a :href="supportEmailHref()" class="text-xl font-bold text-text-dark hover:text-primary transition-colors">{{ supportEmail() }}</a>
                   </div>
                 </div>
@@ -94,9 +87,9 @@
                     <span class="material-symbols-rounded text-primary">location_on</span>
                   </div>
                   <div>
-                    <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">ที่ตั้งสำนักงาน</p>
+                    <p class="text-sm font-bold text-text-muted uppercase tracking-widest mb-1">{{ $t('ที่ตั้งสำนักงาน') }}</p>
                     <p class="text-lg font-bold text-text-dark leading-snug">{{ operatorAddress() }}</p>
-                    <p class="text-sm text-text-muted mt-1">ใบอนุญาตนำเที่ยวเลขที่ {{ licence }}</p>
+                    <p class="text-sm text-text-muted mt-1">{{ $t('ใบอนุญาตนำเที่ยวเลขที่ {licence}', { licence }) }}</p>
                   </div>
                 </div>
               </div>
@@ -104,7 +97,7 @@
 
             <!-- Social Links -->
             <div class="pt-8 px-6">
-              <h3 class="text-sm font-bold text-text-muted uppercase tracking-widest mb-6">ติดตามเราได้ที่</h3>
+              <h3 class="text-sm font-bold text-text-muted uppercase tracking-widest mb-6">{{ $t('ติดตามเราได้ที่') }}</h3>
               <div class="flex gap-4">
                 <a v-for="social in socials" :key="social.label" :href="social.href" target="_blank" rel="noopener"
                   :aria-label="social.label"
@@ -119,8 +112,8 @@
           <div class="lg:col-span-7">
             <div class="bg-white rounded-[2.5rem] p-8 md:p-12 border border-sand-dark/20">
               <div>
-                <h3 class="text-2xl font-bold text-text-dark mb-2">ส่งข้อความหาเรา</h3>
-                <p class="text-text-muted mb-10">เขียนรายละเอียดที่ต้องการให้ช่วย ทีมงานจะติดต่อกลับทางอีเมลหรือเบอร์ที่ให้ไว้</p>
+                <h3 class="text-2xl font-bold text-text-dark mb-2">{{ $t('ส่งข้อความหาเรา') }}</h3>
+                <p class="text-text-muted mb-10">{{ $t('เขียนรายละเอียดที่ต้องการให้ช่วย ทีมงานจะติดต่อกลับทางอีเมลหรือเบอร์ที่ให้ไว้') }}</p>
 
                 <!-- Success Message -->
                 <div v-if="submitted"
@@ -130,46 +123,44 @@
                       <span class="material-symbols-rounded text-white">check</span>
                     </div>
                     <div>
-                      <p class="font-bold text-green-800">ส่งข้อความเรียบร้อยแล้ว</p>
-                      <p class="text-sm text-green-700">ทีมงานจะติดต่อกลับทาง {{ form.email }} ในเวลาทำการครับ</p>
+                      <p class="font-bold text-green-800">{{ $t('ส่งข้อความเรียบร้อยแล้ว') }}</p>
+                      <p class="text-sm text-green-700">{{ $t('ทีมงานจะติดต่อกลับทาง {email} ในเวลาทำการครับ', { email: form.email }) }}</p>
                     </div>
                   </div>
                   <button type="button" @click="resetForm"
-                    class="mt-4 text-sm font-bold text-primary underline underline-offset-4">
-                    ส่งอีกข้อความ
-                  </button>
+                    class="mt-4 text-sm font-bold text-primary underline underline-offset-4"> {{ $t('ส่งอีกข้อความ') }} </button>
                 </div>
 
                 <form v-else @submit.prevent="handleSubmit" class="space-y-6">
                   <!-- หัวข้อมาก่อน เพราะเป็นสิ่งที่ทีมงานใช้คัดแยกเรื่อง และเป็นตัวกำหนดช่องที่เหลือ -->
                   <div class="space-y-2">
-                    <label for="contact-subject" class="text-sm font-bold text-text-dark ml-1">เรื่องที่ต้องการติดต่อ</label>
+                    <label for="contact-subject" class="text-sm font-bold text-text-dark ml-1">{{ $t('เรื่องที่ต้องการติดต่อ') }}</label>
                     <select id="contact-subject" v-model="form.subject"
                       class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors appearance-none cursor-pointer">
-                      <option value="">เลือกหัวข้อ (ไม่ระบุก็ได้)</option>
-                      <option value="booking">สอบถามเรื่องการจองทริป</option>
-                      <option value="payment">ปัญหาการชำระเงิน</option>
-                      <option value="partnership">ร่วมเป็นพาร์ทเนอร์</option>
-                      <option value="general">สอบถามทั่วไป / แนะนำบริการ</option>
-                      <option value="other">อื่นๆ</option>
+                      <option value="">{{ $t('เลือกหัวข้อ (ไม่ระบุก็ได้)') }}</option>
+                      <option value="booking">{{ $t('สอบถามเรื่องการจองทริป') }}</option>
+                      <option value="payment">{{ $t('ปัญหาการชำระเงิน') }}</option>
+                      <option value="partnership">{{ $t('ร่วมเป็นพาร์ทเนอร์') }}</option>
+                      <option value="general">{{ $t('สอบถามทั่วไป / แนะนำบริการ') }}</option>
+                      <option value="other">{{ $t('อื่นๆ') }}</option>
                     </select>
                   </div>
 
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-2">
-                      <label for="contact-name" class="text-sm font-bold text-text-dark ml-1">ชื่อ-นามสกุล</label>
-                      <input id="contact-name" v-model="form.name" type="text" required placeholder="เช่น สมชาย ใจดี" autocomplete="name"
+                      <label for="contact-name" class="text-sm font-bold text-text-dark ml-1">{{ $t('ชื่อ-นามสกุล') }}</label>
+                      <input id="contact-name" v-model="form.name" type="text" required :placeholder="$t('เช่น สมชาย ใจดี')" autocomplete="name"
                         class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors" />
                     </div>
                     <div class="space-y-2">
-                      <label for="contact-phone" class="text-sm font-bold text-text-dark ml-1">เบอร์โทรศัพท์ (ถ้ามี)</label>
+                      <label for="contact-phone" class="text-sm font-bold text-text-dark ml-1">{{ $t('เบอร์โทรศัพท์ (ถ้ามี)') }}</label>
                       <input id="contact-phone" v-model="form.phone" type="tel" placeholder="08X-XXX-XXXX" autocomplete="tel-national"
                         class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors" />
                     </div>
                   </div>
 
                   <div class="space-y-2">
-                    <label for="contact-email" class="text-sm font-bold text-text-dark ml-1">อีเมลที่ใช้ติดต่อกลับ</label>
+                    <label for="contact-email" class="text-sm font-bold text-text-dark ml-1">{{ $t('อีเมลที่ใช้ติดต่อกลับ') }}</label>
                     <input id="contact-email" v-model.trim="form.email" type="email" required placeholder="example@mail.com" autocomplete="email"
                       class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors" />
                   </div>
@@ -178,22 +169,20 @@
                   <div v-if="form.subject === 'partnership'"
                        class="space-y-6 p-6 bg-primary/5 border border-primary/15 rounded-3xl animate-in fade-in duration-300">
                     <div class="flex items-center gap-2 text-primary font-bold">
-                      <span class="material-symbols-rounded">handshake</span>
-                      ข้อมูลสำหรับพาร์ทเนอร์สตาฟเดินป่า
-                    </div>
+                      <span class="material-symbols-rounded">handshake</span> {{ $t('ข้อมูลสำหรับพาร์ทเนอร์สตาฟเดินป่า') }} </div>
 
                     <div class="group space-y-2">
-                      <label class="text-sm font-bold text-text-dark ml-1 group-focus-within:text-primary transition-colors">ป่าที่เคยไปเดิน</label>
-                      <textarea v-model="form.forests_hiked" rows="4" placeholder="เช่น เขาหลวง (นครศรีธรรมราช), ภูสอยดาว, เขาช้างเผือก, ป่าฮาลา-บาลา ฯลฯ เล่าประสบการณ์ของคุณได้เลย"
+                      <label class="text-sm font-bold text-text-dark ml-1 group-focus-within:text-primary transition-colors">{{ $t('ป่าที่เคยไปเดิน') }}</label>
+                      <textarea v-model="form.forests_hiked" rows="4" :placeholder="$t('เช่น เขาหลวง (นครศรีธรรมราช), ภูสอยดาว, เขาช้างเผือก, ป่าฮาลา-บาลา ฯลฯ เล่าประสบการณ์ของคุณได้เลย')"
                         class="w-full px-6 py-4 bg-white border border-sand-dark/40 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 resize-none"></textarea>
                     </div>
 
                     <div class="space-y-2">
-                      <label class="text-sm font-bold text-text-dark ml-1">แนบรูปภาพ (รูปตอนไปเดินป่า / ใบเซอร์ / อื่นๆ)</label>
+                      <label class="text-sm font-bold text-text-dark ml-1">{{ $t('แนบรูปภาพ (รูปตอนไปเดินป่า / ใบเซอร์ / อื่นๆ)') }}</label>
                       <label class="flex flex-col items-center justify-center gap-2 px-6 py-8 bg-white border-2 border-dashed border-sand-dark/60 rounded-2xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-all duration-300 text-center">
                         <span class="material-symbols-rounded text-3xl text-primary">add_photo_alternate</span>
-                        <span class="text-sm font-bold text-text-dark">เลือกรูปภาพ</span>
-                        <span class="text-xs text-text-muted">รองรับ JPG, PNG (สูงสุด 8MB ต่อรูป)</span>
+                        <span class="text-sm font-bold text-text-dark">{{ $t('เลือกรูปภาพ') }}</span>
+                        <span class="text-xs text-text-muted">{{ $t('รองรับ JPG, PNG (สูงสุด 8MB ต่อรูป)') }}</span>
                         <input type="file" accept="image/*" multiple class="hidden" @change="onImagesSelected" />
                       </label>
 
@@ -210,25 +199,21 @@
                   </div>
 
                   <div class="space-y-2">
-                    <label for="contact-message" class="text-sm font-bold text-text-dark ml-1">รายละเอียด</label>
+                    <label for="contact-message" class="text-sm font-bold text-text-dark ml-1">{{ $t('รายละเอียด') }}</label>
                     <textarea id="contact-message" v-model="form.message" rows="5" required
                       :placeholder="messagePlaceholder"
                       class="w-full px-6 py-4 bg-sand/30 border border-sand-dark/40 rounded-2xl focus:outline-none focus:border-primary focus:bg-white transition-colors resize-none"></textarea>
-                    <p v-if="form.subject === 'booking' || form.subject === 'payment'" class="text-xs text-text-muted ml-1">
-                      ถ้ามีเลขที่จอง (LLK-...) ใส่มาด้วยจะช่วยให้ตรวจสอบได้เร็วขึ้นครับ
-                    </p>
+                    <p v-if="form.subject === 'booking' || form.subject === 'payment'" class="text-xs text-text-muted ml-1"> {{ $t('ถ้ามีเลขที่จอง (LLK-...) ใส่มาด้วยจะช่วยให้ตรวจสอบได้เร็วขึ้นครับ') }} </p>
                   </div>
 
                   <div class="pt-2">
                     <button type="submit" :disabled="submitting"
                       class="w-full py-4 bg-accent text-white rounded-2xl font-bold text-lg hover:bg-accent-mid active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                       <span v-if="submitting" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                      {{ submitting ? 'กำลังส่ง...' : 'ส่งข้อความ' }}
+                      {{ submitting ? $t('กำลังส่ง...') : $t('ส่งข้อความ') }}
                     </button>
 
-                    <p class="mt-4 text-xs text-text-muted text-center leading-relaxed">
-                      ข้อมูลที่ส่งมาใช้เพื่อติดต่อกลับเท่านั้น · เรื่องด่วนแนะนำให้โทรหรือทัก LINE
-                    </p>
+                    <p class="mt-4 text-xs text-text-muted text-center leading-relaxed"> {{ $t('ข้อมูลที่ส่งมาใช้เพื่อติดต่อกลับเท่านั้น · เรื่องด่วนแนะนำให้โทรหรือทัก LINE') }} </p>
                   </div>
                 </form>
               </div>
@@ -246,19 +231,13 @@
 
       <div v-else class="h-full flex flex-col items-center justify-center gap-4 px-6 text-center">
         <span class="material-symbols-rounded text-4xl text-primary">map</span>
-        <p class="font-bold text-text-dark leading-snug">
-          ถนนทางรถไฟเก่า แขวงบางนาใต้<br />เขตบางนา กรุงเทพมหานคร 10260
-        </p>
+        <p class="font-bold text-text-dark leading-snug"> {{ $t('ถนนทางรถไฟเก่า แขวงบางนาใต้') }}<br />{{ $t('เขตบางนา กรุงเทพมหานคร 10260') }} </p>
         <div class="flex flex-wrap justify-center gap-3">
           <button type="button" @click="mapLoaded = true"
-            class="bg-white text-text-dark px-6 py-3 rounded-full font-bold border border-sand-dark/40 hover:border-primary transition-colors">
-            แสดงแผนที่
-          </button>
+            class="bg-white text-text-dark px-6 py-3 rounded-full font-bold border border-sand-dark/40 hover:border-primary transition-colors"> {{ $t('แสดงแผนที่') }} </button>
           <a href="https://maps.google.com/?q=บางนา+กรุงเทพ" target="_blank" rel="noopener"
             class="bg-accent text-white px-6 py-3 rounded-full font-bold hover:bg-accent-mid transition-colors flex items-center gap-2">
-            <span class="material-symbols-rounded text-[20px]">open_in_new</span>
-            เปิดใน Google Maps
-          </a>
+            <span class="material-symbols-rounded text-[20px]">open_in_new</span> {{ $t('เปิดใน Google Maps') }} </a>
         </div>
       </div>
     </section>
@@ -267,6 +246,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import api from '../lib/axios'
 import { useAuthStore } from '../stores/auth'
@@ -297,10 +277,10 @@ const form = reactive({
 
 // คำใบ้เปลี่ยนตามเรื่องที่เลือก เพื่อให้คนเขียนสิ่งที่ทีมงานต้องใช้จริงมาตั้งแต่แรก
 const messagePlaceholder = computed(() => ({
-  booking: 'เช่น สนใจทริปไหน วันที่เท่าไหร่ ไปกี่คน หรือมีอะไรที่อยากถามก่อนจอง',
-  payment: 'เล่าสิ่งที่เกิดขึ้น เช่น โอนเมื่อไหร่ ยอดเท่าไหร่ และสถานะที่เห็นในระบบตอนนี้',
-  partnership: 'เล่าประสบการณ์และสิ่งที่อยากร่วมงานกับเรา',
-}[form.subject] || 'เขียนเรื่องที่อยากให้ช่วยได้เลยครับ'))
+  booking: $t('เช่น สนใจทริปไหน วันที่เท่าไหร่ ไปกี่คน หรือมีอะไรที่อยากถามก่อนจอง'),
+  payment: $t('เล่าสิ่งที่เกิดขึ้น เช่น โอนเมื่อไหร่ ยอดเท่าไหร่ และสถานะที่เห็นในระบบตอนนี้'),
+  partnership: $t('เล่าประสบการณ์และสิ่งที่อยากร่วมงานกับเรา'),
+}[form.subject] || $t('เขียนเรื่องที่อยากให้ช่วยได้เลยครับ')))
 
 const images = ref([])
 const imagePreviews = ref([])
@@ -333,7 +313,7 @@ async function handleSubmit() {
     formData.append('name', form.name)
     formData.append('phone', form.phone || '')
     formData.append('email', form.email)
-    formData.append('subject', form.subject || 'ทั่วไป')
+    formData.append('subject', form.subject || $t('ทั่วไป'))
     formData.append('message', form.message)
 
     if (form.subject === 'partnership') {
@@ -348,8 +328,8 @@ async function handleSubmit() {
   } catch (error) {
     // 429 = ส่งถี่เกินไป (rate limiter 'contact') — บอกให้ชัดว่าให้รอ ไม่ใช่ "เกิดข้อผิดพลาด"
     const message = error.response?.status === 429
-      ? 'ส่งข้อความถี่เกินไป รบกวนรอสักครู่แล้วลองใหม่อีกครั้งครับ'
-      : error.response?.data?.message || 'ส่งข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+      ? $t('ส่งข้อความถี่เกินไป รบกวนรอสักครู่แล้วลองใหม่อีกครั้งครับ')
+      : error.response?.data?.message || $t('ส่งข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง')
     toast.error(message)
   } finally {
     submitting.value = false

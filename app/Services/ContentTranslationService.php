@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Category;
 use App\Models\ContentTranslation;
 use App\Models\HeroSlide;
+use App\Models\PageContentDocument;
 use App\Models\PickupVehicleClass;
 use App\Models\Review;
 use App\Models\SaleCampaign;
@@ -57,6 +58,8 @@ class ContentTranslationService
         'announcement' => ScheduleAnnouncement::class,
         'sale-campaign' => SaleCampaign::class,
         'review' => Review::class,
+        // หน้าเนื้อหาที่แอดมินแก้ได้ (FAQ วิธีจอง เช็คลิสต์ …) — ไม่มีตาราง ดู PageContentDocument
+        'page' => PageContentDocument::class,
     ];
 
     /** ช่องต่อหนึ่งครั้งที่เรียกโมเดล — ทริปใหญ่ ๆ มีราว 150 ช่อง */
@@ -86,6 +89,9 @@ class ContentTranslationService
     public function find(string $type, int $id): ?Model
     {
         $class = self::TYPES[$type] ?? null;
+        if ($class && method_exists($class, 'findForTranslation')) {
+            return $class::findForTranslation($id);
+        }
 
         return $class ? $class::query()->find($id) : null;
     }

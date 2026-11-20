@@ -1,9 +1,9 @@
 <template>
   <div class="font-anuphan bg-[var(--color-sand)] min-h-screen pb-8 md:pb-12">
     <PageHeader
-      title="ศูนย์ช่วยเหลือ"
-      subtitle="คุยกับทีมงานได้ที่นี่ ข้อความอยู่ในเธรดเดียวกันทั้งหมด ทีมงานเห็นประวัติการจองของคุณอยู่แล้ว ไม่ต้องเล่าใหม่ทุกครั้ง"
-      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      :title="$t('ศูนย์ช่วยเหลือ')"
+      :subtitle="$t('คุยกับทีมงานได้ที่นี่ ข้อความอยู่ในเธรดเดียวกันทั้งหมด ทีมงานเห็นประวัติการจองของคุณอยู่แล้ว ไม่ต้องเล่าใหม่ทุกครั้ง')"
+      :crumbs="[{ to: '/profile', label: $t('บัญชีของฉัน') }]"
       container="max-w-3xl px-4 sm:px-6"
     />
     <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-6 md:pt-8">
@@ -19,14 +19,14 @@
           <template v-else>
             <button v-if="hasMore" type="button" @click="loadOlder" :disabled="loadingOlder"
               class="mx-auto block px-4 py-1.5 rounded-full text-xs font-bold text-text-muted bg-sand/60 hover:bg-sand disabled:opacity-50">
-              {{ loadingOlder ? 'กำลังโหลด...' : 'ดูข้อความก่อนหน้า' }}
+              {{ loadingOlder ? $t('กำลังโหลด...') : $t('ดูข้อความก่อนหน้า') }}
             </button>
 
             <!-- Empty state: ตัวอย่างเรื่องที่ทักเข้ามาบ่อย กดแล้วเติมให้เลย -->
             <div v-if="!messages.length" class="h-full flex flex-col items-center justify-center text-center px-4">
               <span class="material-symbols-rounded text-5xl text-sand-dark">forum</span>
-              <p class="mt-3 font-bold text-text-dark">ยังไม่มีข้อความ</p>
-              <p class="mt-1 text-sm text-text-muted">พิมพ์เรื่องที่อยากถามได้เลย หรือเริ่มจากหัวข้อเหล่านี้</p>
+              <p class="mt-3 font-bold text-text-dark">{{ $t('ยังไม่มีข้อความ') }}</p>
+              <p class="mt-1 text-sm text-text-muted">{{ $t('พิมพ์เรื่องที่อยากถามได้เลย หรือเริ่มจากหัวข้อเหล่านี้') }}</p>
               <div class="mt-4 flex flex-wrap justify-center gap-2">
                 <button v-for="s in starters" :key="s" type="button" @click="draft = s"
                   class="px-3 py-2 rounded-xl text-sm font-bold text-text-mid bg-sand/60 border border-sand-dark/40 hover:border-primary hover:text-primary transition-colors">
@@ -47,7 +47,7 @@
                 <div class="max-w-[78%] rounded-2xl px-4 py-2.5"
                   :class="m.is_mine ? 'bg-accent text-white' : 'bg-sand/70 text-text-dark'">
                   <button v-if="m.image_url" type="button" @click="lightbox = m.image_url" class="block mb-1.5">
-                    <img :src="m.image_url" alt="รูปที่แนบมา" class="rounded-xl max-h-64 w-auto" />
+                    <img :src="m.image_url" :alt="$t('รูปที่แนบมา')" class="rounded-xl max-h-64 w-auto" />
                   </button>
                   <p v-if="m.body" class="text-sm leading-relaxed whitespace-pre-line break-words">{{ m.body }}</p>
                   <p class="text-[10px] mt-1 font-medium" :class="m.is_mine ? 'text-white/60' : 'text-text-muted'">
@@ -71,12 +71,12 @@
 
           <form class="flex items-end gap-2" @submit.prevent="send">
             <label class="w-11 h-11 rounded-xl bg-sand/60 border border-sand-dark/40 flex items-center justify-center cursor-pointer hover:bg-sand transition-colors shrink-0"
-              :class="{ 'opacity-50 pointer-events-none': sending }" title="แนบรูปภาพ">
+              :class="{ 'opacity-50 pointer-events-none': sending }" :title="$t('แนบรูปภาพ')">
               <span class="material-symbols-rounded text-text-mid">image</span>
               <input type="file" accept="image/*" hidden :disabled="sending" @change="onPickImage" />
             </label>
             <textarea v-model="draft" rows="1" maxlength="2000" :disabled="sending"
-              placeholder="พิมพ์ข้อความถึงทีมงาน..."
+              :placeholder="$t('พิมพ์ข้อความถึงทีมงาน...')"
               @keydown.enter.exact.prevent="send"
               class="flex-1 resize-none px-4 py-3 bg-sand/30 border border-sand-dark/40 rounded-2xl text-sm focus:outline-none focus:border-primary focus:bg-white transition-colors max-h-32"></textarea>
             <button type="submit" :disabled="sending || (!draft.trim() && !pendingImage)"
@@ -88,15 +88,13 @@
         </div>
       </div>
 
-      <p class="mt-4 text-sm text-text-muted text-center">
-        เรื่องด่วนวันเดินทาง โทร <a :href="supportPhoneHref()" class="font-bold text-primary">{{ supportPhone() }}</a>
-        · เรื่องทั่วไปตอบในเวลาทำการ {{ supportHours() }}
+      <p class="mt-4 text-sm text-text-muted text-center"> {{ $t('เรื่องด่วนวันเดินทาง โทร') }} <a :href="supportPhoneHref()" class="font-bold text-primary">{{ supportPhone() }}</a> {{ $t('· เรื่องทั่วไปตอบในเวลาทำการ {supportHours}', { supportHours: supportHours() }) }}
       </p>
     </div>
 
     <!-- Lightbox -->
     <div v-if="lightbox" class="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4" @click="lightbox = null">
-      <img :src="lightbox" alt="รูปที่แนบมา" class="max-w-full max-h-full object-contain rounded-xl" />
+      <img :src="lightbox" :alt="$t('รูปที่แนบมา')" class="max-w-full max-h-full object-contain rounded-xl" />
       <button type="button" class="absolute top-5 right-5 w-11 h-11 rounded-full bg-white/10 text-white flex items-center justify-center">
         <span class="material-symbols-rounded">close</span>
       </button>
@@ -105,6 +103,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
@@ -130,10 +129,10 @@ let channel = null;
 let pollTimer = null;
 
 const starters = [
-  'สอบถามเรื่องการจองของฉัน',
-  'โอนเงินแล้วแต่สถานะยังไม่อัปเดต',
-  'ขอเลื่อนวันเดินทาง',
-  'สอบถามจุดขึ้นรถ',
+  $t('สอบถามเรื่องการจองของฉัน'),
+  $t('โอนเงินแล้วแต่สถานะยังไม่อัปเดต'),
+  $t('ขอเลื่อนวันเดินทาง'),
+  $t('สอบถามจุดขึ้นรถ'),
 ];
 
 // รูปคนตอบแสดงเฉพาะข้อความแรกของชุดที่ทีมงานส่งติดกัน
@@ -170,7 +169,7 @@ async function load() {
     scrollToBottom();
     markRead();
   } catch {
-    toast.error('โหลดข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+    toast.error($t('โหลดข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'));
   } finally {
     loading.value = false;
   }
@@ -190,7 +189,7 @@ async function loadOlder() {
       if (threadEl.value) threadEl.value.scrollTop = threadEl.value.scrollHeight - keepHeight;
     });
   } catch {
-    toast.error('โหลดข้อความก่อนหน้าไม่สำเร็จ');
+    toast.error($t('โหลดข้อความก่อนหน้าไม่สำเร็จ'));
   } finally {
     loadingOlder.value = false;
   }
@@ -207,7 +206,7 @@ function onPickImage(e) {
   e.target.value = '';
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) {
-    toast.error('ไฟล์รูปต้องไม่เกิน 5MB');
+    toast.error($t('ไฟล์รูปต้องไม่เกิน 5MB'));
     return;
   }
   clearPendingImage();
@@ -245,7 +244,7 @@ async function send() {
     clearPendingImage();
     scrollToBottom();
   } catch (e) {
-    toast.error(e.response?.data?.message || 'ส่งข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+    toast.error(e.response?.data?.message || $t('ส่งข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'));
   } finally {
     sending.value = false;
   }

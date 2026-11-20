@@ -1,9 +1,9 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)] pb-32">
     <PageHeader
-      title="ฟีดจากนักเดินทาง"
-      subtitle="รูปที่คนไปมาแล้วโพสต์เอง ไม่ได้ผ่านการคัดของทีมงาน"
-      :crumbs="[{ to: '/reviews', label: 'รีวิว & ชุมชน' }]"
+      :title="$t('ฟีดจากนักเดินทาง')"
+      :subtitle="$t('รูปที่คนไปมาแล้วโพสต์เอง ไม่ได้ผ่านการคัดของทีมงาน')"
+      :crumbs="[{ to: '/reviews', label: $t('รีวิว & ชุมชน') }]"
       container="max-w-5xl px-4 sm:px-6"
     />
     <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
@@ -24,8 +24,8 @@
 
       <div v-else-if="!posts.length" class="bg-white rounded-[20px] border border-[#E8EEEF] p-8 text-center">
         <span class="material-symbols-rounded text-[44px] text-[#B4C4C4]">photo_library</span>
-        <p class="text-[#1a1c1c] font-bold mt-3 mb-1">ยังไม่มีโพสต์ในฟีด</p>
-        <p class="text-[#505E5E] text-sm">พอมีคนกลับจากทริปและแชร์รูป จะขึ้นที่นี่</p>
+        <p class="text-[#1a1c1c] font-bold mt-3 mb-1">{{ $t('ยังไม่มีโพสต์ในฟีด') }}</p>
+        <p class="text-[#505E5E] text-sm">{{ $t('พอมีคนกลับจากทริปและแชร์รูป จะขึ้นที่นี่') }}</p>
       </div>
 
       <template v-else>
@@ -38,14 +38,14 @@
             <button type="button" class="relative block w-full aspect-[4/3] overflow-hidden" @click="open(post)">
               <img
                 :src="firstPhoto(post)"
-                :alt="post.caption || 'รูปจากนักเดินทาง'"
+                :alt="post.caption || $t('รูปจากนักเดินทาง')"
                 loading="lazy"
                 class="w-full h-full object-cover"
               />
               <span
                 v-if="post.photos.length > 1"
                 class="absolute top-3 right-3 bg-black/55 text-white text-[11px] font-bold px-2 py-0.5 rounded-full"
-              >{{ post.photos.length }} รูป</span>
+              >{{ $t('{photosCount} รูป', { photosCount: post.photos.length }) }}</span>
             </button>
 
             <div class="p-4 flex flex-col gap-3 flex-1">
@@ -59,11 +59,11 @@
                 <span
                   v-else
                   class="w-8 h-8 rounded-full bg-[#E8EEEF] text-[#505E5E] text-[12px] font-bold flex items-center justify-center"
-                >{{ (post.user?.name || 'น')[0] }}</span>
+                >{{ (post.user?.name || $t('น'))[0] }}</span>
 
                 <div class="min-w-0">
                   <p class="font-bold text-[13px] text-[#1a1c1c] truncate">
-                    {{ post.user?.name || 'นักเดินทาง' }}
+                    {{ post.user?.name || $t('นักเดินทาง') }}
                     <TierBadge :tier="post.user?.tier" :label="post.user?.tier_label" size="sm" class="ml-1" />
                   </p>
                   <p class="text-[11px] text-[#8A9A9A]">{{ timeAgo(post.created_at) }}</p>
@@ -112,7 +112,7 @@
             class="inline-flex items-center gap-2 rounded-[14px] border border-[#E8EEEF] bg-white px-6 py-3 text-sm font-bold text-[var(--color-accent)] disabled:opacity-50"
             @click="loadMore"
           >
-            {{ loadingMore ? 'กำลังโหลด...' : 'ดูเพิ่มเติม' }}
+            {{ loadingMore ? $t('กำลังโหลด...') : $t('ดูเพิ่มเติม') }}
           </button>
         </div>
       </template>
@@ -128,10 +128,10 @@
         <div class="bg-white w-full sm:max-w-2xl sm:rounded-[20px] overflow-hidden my-0 sm:my-6">
           <div class="flex items-center justify-between p-4 border-b border-[#E8EEEF]">
             <p class="font-bold text-[#1a1c1c] text-sm truncate">
-              {{ active.user?.name || 'นักเดินทาง' }}
+              {{ active.user?.name || $t('นักเดินทาง') }}
               <span v-if="active.trip?.title" class="text-[#8A9A9A] font-medium"> · {{ active.trip.title }}</span>
             </p>
-            <button type="button" class="text-[#8A9A9A] p-1" aria-label="ปิด" @click="close">
+            <button type="button" class="text-[#8A9A9A] p-1" :aria-label="$t('ปิด')" @click="close">
               <span class="material-symbols-rounded text-[22px]">close</span>
             </button>
           </div>
@@ -158,7 +158,7 @@
                   <span class="material-symbols-rounded text-[20px]" :style="active.liked_by_me ? { fontVariationSettings: `'FILL' 1` } : null">favorite</span>
                   {{ active.likes_count }}
                 </button>
-                <span class="text-[13px] font-bold text-[#8A9A9A]">{{ active.comments_count }} ความเห็น</span>
+                <span class="text-[13px] font-bold text-[#8A9A9A]">{{ $t('{comments_count} ความเห็น', { comments_count: active.comments_count }) }}</span>
               </div>
 
               <!-- คอมเมนต์ -->
@@ -177,10 +177,10 @@
                   <span
                     v-else
                     class="w-8 h-8 rounded-full bg-[#E8EEEF] text-[#505E5E] text-[12px] font-bold flex items-center justify-center shrink-0"
-                  >{{ (comment.user?.name || 'น')[0] }}</span>
+                  >{{ (comment.user?.name || $t('น'))[0] }}</span>
                   <div class="min-w-0">
                     <p class="text-[13px] text-[#1a1c1c]">
-                      <span class="font-bold">{{ comment.user?.name || 'นักเดินทาง' }}</span>
+                      <span class="font-bold">{{ comment.user?.name || $t('นักเดินทาง') }}</span>
                       {{ comment.body }}
                     </p>
                     <p class="text-[11px] text-[#8A9A9A] mt-0.5">{{ timeAgo(comment.created_at) }}</p>
@@ -188,7 +188,7 @@
                 </li>
               </ul>
 
-              <p v-else class="text-[13px] text-[#8A9A9A]">ยังไม่มีความเห็น</p>
+              <p v-else class="text-[13px] text-[#8A9A9A]">{{ $t('ยังไม่มีความเห็น') }}</p>
             </div>
           </div>
 
@@ -196,21 +196,17 @@
             <input
               v-model.trim="commentBody"
               maxlength="500"
-              placeholder="เขียนความเห็น..."
+              :placeholder="$t('เขียนความเห็น...')"
               class="flex-1 min-w-0 rounded-[12px] border border-[#E8EEEF] px-3.5 py-2.5 text-sm"
             />
             <button
               type="submit"
               :disabled="!commentBody || posting"
               class="rounded-[12px] bg-[var(--color-accent)] text-white px-4 py-2.5 text-[13px] font-bold shrink-0 disabled:opacity-40"
-            >
-              ส่ง
-            </button>
+            > {{ $t('ส่ง') }} </button>
           </form>
           <p v-else class="p-4 border-t border-[#E8EEEF] text-[13px] text-[#8A9A9A] text-center">
-            <router-link to="/login" class="font-bold text-[var(--color-accent)]">เข้าสู่ระบบ</router-link>
-            เพื่อกดถูกใจและแสดงความเห็น
-          </p>
+            <router-link to="/login" class="font-bold text-[var(--color-accent)]">{{ $t('เข้าสู่ระบบ') }}</router-link> {{ $t('เพื่อกดถูกใจและแสดงความเห็น') }} </p>
         </div>
       </div>
     </Teleport>
@@ -218,6 +214,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { computed, onMounted, ref } from 'vue';
@@ -254,14 +251,14 @@ function timeAgo(iso) {
   if (!iso) return '';
 
   const minutes = Math.round((Date.now() - new Date(iso)) / 60000);
-  if (minutes < 1) return 'เมื่อสักครู่';
-  if (minutes < 60) return `${minutes} นาทีที่แล้ว`;
+  if (minutes < 1) return $t('เมื่อสักครู่');
+  if (minutes < 60) return $t('{minutes} นาทีที่แล้ว', { minutes });
 
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} ชม.ที่แล้ว`;
+  if (hours < 24) return $t('{hours} ชม.ที่แล้ว', { hours });
 
   const days = Math.round(hours / 24);
-  if (days < 30) return `${days} วันที่แล้ว`;
+  if (days < 30) return $t('{days} วันที่แล้ว', { days });
 
   return new Date(iso).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
@@ -327,7 +324,7 @@ async function toggleLike(post) {
   } catch {
     post.liked_by_me = wasLiked;
     post.likes_count += wasLiked ? 1 : -1;
-    toast.error('กดถูกใจไม่สำเร็จ');
+    toast.error($t('กดถูกใจไม่สำเร็จ'));
   }
 }
 
@@ -344,7 +341,7 @@ async function submitComment() {
     }
     commentBody.value = '';
   } catch (err) {
-    toast.error(err.response?.data?.message || 'ส่งความเห็นไม่สำเร็จ');
+    toast.error(err.response?.data?.message || $t('ส่งความเห็นไม่สำเร็จ'));
   } finally {
     posting.value = false;
   }

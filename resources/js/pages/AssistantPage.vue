@@ -1,9 +1,9 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)]">
     <PageHeader
-      title="ถามหาทริปที่ใช่"
-      crumb-label="ถามผู้ช่วย"
-      subtitle="พิมพ์แบบที่คิดในหัวได้เลย เช่น งบเท่าไหร่ ไปกี่วัน ไหวแค่ไหน แล้วเราจะหาทริปที่เปิดจองอยู่จริงมาให้"
+      :title="$t('ถามหาทริปที่ใช่')"
+      :crumb-label="$t('ถามผู้ช่วย')"
+      :subtitle="$t('พิมพ์แบบที่คิดในหัวได้เลย เช่น งบเท่าไหร่ ไปกี่วัน ไหวแค่ไหน แล้วเราจะหาทริปที่เปิดจองอยู่จริงมาให้')"
       container="max-w-2xl px-4 sm:px-6"
     />
     <div class="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -45,8 +45,8 @@
                 <div class="min-w-0 flex-1">
                   <p class="font-bold text-[var(--color-text-dark)] truncate">{{ trip.title }}</p>
                   <p class="text-sm text-[var(--color-text-muted)] truncate">
-                    {{ trip.location }}<span v-if="trip.duration_days"> · {{ trip.duration_days }} วัน</span>
-                    <span v-if="trip.next_departure_label"> · รอบถัดไป {{ trip.next_departure_label }}</span>
+                    {{ trip.location }}<span v-if="trip.duration_days"> {{ $t('· {duration_days} วัน', { duration_days: trip.duration_days }) }}</span>
+                    <span v-if="trip.next_departure_label"> {{ $t('· รอบถัดไป {next_departure_label}', { next_departure_label: trip.next_departure_label }) }}</span>
                   </p>
                 </div>
                 <p class="font-black text-[var(--color-text-dark)] shrink-0">
@@ -57,7 +57,7 @@
           </div>
         </div>
 
-        <p v-if="loading" class="text-[var(--color-text-muted)] font-medium">กำลังหาทริปให้...</p>
+        <p v-if="loading" class="text-[var(--color-text-muted)] font-medium">{{ $t('กำลังหาทริปให้...') }}</p>
         <p v-if="error" class="text-red-600 font-medium">{{ error }}</p>
       </div>
 
@@ -67,34 +67,31 @@
           v-model="draft"
           type="text"
           maxlength="500"
-          placeholder="อยากไปแบบไหน..."
+          :placeholder="$t('อยากไปแบบไหน...')"
           class="flex-1 px-5 py-3.5 rounded-2xl border border-gray-200 bg-white outline-none focus:border-[var(--color-primary)] font-medium"
         >
         <button
           type="submit"
           :disabled="loading || !draft.trim()"
           class="px-6 py-3.5 rounded-2xl bg-[var(--color-accent)] text-white font-bold disabled:opacity-50 shrink-0"
-        >
-          ถาม
-        </button>
+        > {{ $t('ถาม') }} </button>
       </form>
 
-      <p class="text-xs text-[var(--color-text-muted)] text-center mt-4">
-        คำตอบมาจาก AI อาจคลาดเคลื่อนได้ กรุณาตรวจสอบรายละเอียดในหน้าทริปอีกครั้งก่อนจอง
-      </p>
+      <p class="text-xs text-[var(--color-text-muted)] text-center mt-4"> {{ $t('คำตอบมาจาก AI อาจคลาดเคลื่อนได้ กรุณาตรวจสอบรายละเอียดในหน้าทริปอีกครั้งก่อนจอง') }} </p>
     </div>
   </div>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { ref } from 'vue';
 import api from '../lib/axios';
 
 const examples = [
-  'งบ 3000 ไปเหนือ 2 วัน มือใหม่',
-  'อยากไปทะเลเสาร์อาทิตย์นี้',
-  'ทริปเดินป่าที่ไม่โหดมาก มีไหม',
+  $t('งบ 3000 ไปเหนือ 2 วัน มือใหม่'),
+  $t('อยากไปทะเลเสาร์อาทิตย์นี้'),
+  $t('ทริปเดินป่าที่ไม่โหดมาก มีไหม'),
 ];
 
 const turns = ref([]);
@@ -119,7 +116,7 @@ async function send(text) {
     const data = res.data?.data || {};
     turns.value.push({ role: 'assistant', content: data.reply || '', trips: data.trips || [] });
   } catch (e) {
-    error.value = e?.response?.data?.message || 'ตอนนี้ผู้ช่วยตอบไม่ได้ ลองใหม่อีกครั้งในสักครู่';
+    error.value = e?.response?.data?.message || $t('ตอนนี้ผู้ช่วยตอบไม่ได้ ลองใหม่อีกครั้งในสักครู่');
     // คำถามที่ล้มเหลวไม่ควรค้างอยู่ในบทสนทนา ไม่งั้นบริบทรอบหน้าจะเพี้ยน
     turns.value.pop();
     draft.value = message;

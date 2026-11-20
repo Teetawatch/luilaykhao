@@ -34,24 +34,20 @@
                   </span>
                 </div>
                 <div class="min-w-0">
-                  <p class="text-[13px] font-bold text-[var(--color-text-muted)]">จัดของแล้ว</p>
+                  <p class="text-[13px] font-bold text-[var(--color-text-muted)]">{{ $t('จัดของแล้ว') }}</p>
                   <p class="text-2xl font-black tabular-nums text-[var(--color-text-dark)]">
                     {{ checkedCount }}<span class="text-base font-bold text-[var(--color-text-muted)]"> / {{ totalCount }}</span>
                   </p>
-                  <p v-if="essentialLeft" class="mt-0.5 text-[13px] font-bold text-[#B42318]">ของสำคัญเหลือ {{ essentialLeft }} อย่าง</p>
-                  <p v-else-if="totalCount" class="mt-0.5 text-[13px] font-bold text-[var(--color-accent)]">ของสำคัญครบแล้ว</p>
+                  <p v-if="essentialLeft" class="mt-0.5 text-[13px] font-bold text-[#B42318]">{{ $t('ของสำคัญเหลือ {essentialLeft} อย่าง', { essentialLeft }) }}</p>
+                  <p v-else-if="totalCount" class="mt-0.5 text-[13px] font-bold text-[var(--color-accent)]">{{ $t('ของสำคัญครบแล้ว') }}</p>
                 </div>
               </div>
 
               <div class="mt-5 flex flex-wrap gap-2 border-t border-[var(--color-sand-dark)] pt-4">
                 <button type="button" class="action-btn press" @click="printList">
-                  <span class="material-symbols-rounded icon-18">print</span>
-                  พิมพ์รายการ
-                </button>
+                  <span class="material-symbols-rounded icon-18">print</span> {{ $t('พิมพ์รายการ') }} </button>
                 <button v-if="checkedCount" type="button" class="action-btn action-btn--danger press" @click="clearChecks">
-                  <span class="material-symbols-rounded icon-18">restart_alt</span>
-                  ล้างที่ติ๊กไว้
-                </button>
+                  <span class="material-symbols-rounded icon-18">restart_alt</span> {{ $t('ล้างที่ติ๊กไว้') }} </button>
               </div>
             </section>
 
@@ -80,8 +76,8 @@
             <div v-if="isDone" class="done-banner print:hidden">
               <span class="done-banner__icon material-symbols-rounded">celebration</span>
               <div>
-                <p class="text-lg font-black text-white">จัดของครบแล้ว พร้อมออกเดินทาง</p>
-                <p class="text-[14px] text-white/80">ขอให้สนุกกับทริป อย่าลืมเช็คพยากรณ์อากาศก่อนออกจากบ้าน</p>
+                <p class="text-lg font-black text-white">{{ $t('จัดของครบแล้ว พร้อมออกเดินทาง') }}</p>
+                <p class="text-[14px] text-white/80">{{ $t('ขอให้สนุกกับทริป อย่าลืมเช็คพยากรณ์อากาศก่อนออกจากบ้าน') }}</p>
               </div>
             </div>
           </Transition>
@@ -119,7 +115,7 @@
                   <span class="min-w-0 flex-1">
                     <span class="item__label">
                       {{ item.label }}
-                      <span v-if="item.essential" class="item__essential print:hidden">ขาดไม่ได้</span>
+                      <span v-if="item.essential" class="item__essential print:hidden">{{ $t('ขาดไม่ได้') }}</span>
                     </span>
                     <span v-if="item.note" class="mt-0.5 block text-[13px] leading-snug text-[var(--color-text-muted)]">{{ item.note }}</span>
                   </span>
@@ -140,6 +136,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, reactive, ref, watch } from 'vue';
 import { usePageContent } from '../lib/pageContent';
 import PageHero from '../components/PageHero.vue';
@@ -158,9 +155,9 @@ const { content, loading } = usePageContent('checklist', {
 });
 
 const OPTION_GROUPS = [
-  { key: 'tripType', source: 'trip_types', label: 'แบบทริป' },
-  { key: 'season', source: 'seasons', label: 'ช่วงเวลา' },
-  { key: 'nights', source: 'nights', label: 'ระยะเวลา' },
+  { key: 'tripType', source: 'trip_types', label: $t('แบบทริป') },
+  { key: 'season', source: 'seasons', label: $t('ช่วงเวลา') },
+  { key: 'nights', source: 'nights', label: $t('ระยะเวลา') },
 ];
 
 const options = reactive({ tripType: '', season: '', nights: '' });

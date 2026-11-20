@@ -1,31 +1,29 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)] pb-32">
     <PageHeader
-      title="การแจ้งเตือน"
-      :subtitle="unreadCount > 0 ? `คุณมี ${unreadCount} รายการใหม่ที่ยังไม่ได้อ่าน` : 'คุณอ่านการแจ้งเตือนครบทุกรายการแล้ว'"
-      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      :title="$t('การแจ้งเตือน')"
+      :subtitle="unreadCount > 0 ? $t('คุณมี {unreadCount} รายการใหม่ที่ยังไม่ได้อ่าน', { unreadCount }) : $t('คุณอ่านการแจ้งเตือนครบทุกรายการแล้ว')"
+      :crumbs="[{ to: '/profile', label: $t('บัญชีของฉัน') }]"
       container="max-w-3xl px-4 sm:px-6"
     >
       <template #actions>
         <button v-if="unreadCount > 0" type="button" class="ph-btn" @click="markAllRead">
-          <span class="material-symbols-rounded icon-20">done_all</span>
-          อ่านทั้งหมด
-        </button>
+          <span class="material-symbols-rounded icon-20">done_all</span> {{ $t('อ่านทั้งหมด') }} </button>
       </template>
     </PageHeader>
     <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">กำลังโหลดข้อมูล...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('กำลังโหลดข้อมูล...') }}</p>
       </div>
 
       <div v-else-if="notifications.length === 0" class="text-center py-20 bg-white rounded-[24px] border border-[#E8EEEF] flex flex-col items-center justify-center">
         <div class="w-20 h-20 bg-[#F4F7F6] rounded-full flex items-center justify-center mb-5">
           <span class="material-symbols-rounded text-4xl text-[#A0B0B0]">notifications_off</span>
         </div>
-        <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ไม่มีการแจ้งเตือนใหม่</h3>
-        <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">ขณะนี้คุณยังไม่มีข้อความแจ้งเตือนใดๆ</p>
+        <h3 class="text-lg font-bold text-[#1a1c1c] mb-2" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ไม่มีการแจ้งเตือนใหม่') }}</h3>
+        <p class="text-[#505E5E] text-sm" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ขณะนี้คุณยังไม่มีข้อความแจ้งเตือนใดๆ') }}</p>
       </div>
 
       <div v-else class="space-y-3">
@@ -64,7 +62,7 @@
           <button
             @click.stop="deleteNotification(n.id)"
             class="absolute top-1/2 -translate-y-1/2 right-4 w-10 h-10 flex items-center justify-center rounded-full text-[#A0B0B0] bg-white opacity-0 md:group-hover:opacity-100 max-md:opacity-100 hover:bg-[#FFF0F0] hover:text-[#DC2626] transition-all duration-200 border border-transparent hover:border-[#FCA5A5]"
-            title="ลบการแจ้งเตือน">
+            :title="$t('ลบการแจ้งเตือน')">
             <span class="material-symbols-rounded text-[20px]">delete</span>
           </button>
         </div>
@@ -75,6 +73,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { ref, computed, onMounted } from 'vue';
@@ -150,12 +149,12 @@ function timeAgo(dateStr) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'เมื่อกี้';
-  if (m < 60) return `${m} นาทีที่แล้ว`;
+  if (m < 1) return $t('เมื่อกี้');
+  if (m < 60) return $t('{m} นาทีที่แล้ว', { m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} ชั่วโมงที่แล้ว`;
+  if (h < 24) return $t('{h} ชั่วโมงที่แล้ว', { h });
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d} วันที่แล้ว`;
+  if (d < 7) return $t('{d} วันที่แล้ว', { d });
   return new Date(dateStr).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short' });
 }
 

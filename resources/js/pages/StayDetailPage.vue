@@ -8,8 +8,8 @@
       <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent-tint)] text-[var(--color-accent)]">
         <span class="material-symbols-rounded icon-32">cottage</span>
       </span>
-      <p class="mt-4 text-xl font-extrabold text-[var(--color-text-dark)]">ไม่พบที่พักนี้ หรือปิดรับจองชั่วคราว</p>
-      <router-link to="/stays" class="mt-6 inline-flex rounded-full bg-[var(--color-accent)] px-6 py-3 text-sm font-bold text-white press">ดูที่พักทั้งหมด</router-link>
+      <p class="mt-4 text-xl font-extrabold text-[var(--color-text-dark)]">{{ $t('ไม่พบที่พักนี้ หรือปิดรับจองชั่วคราว') }}</p>
+      <router-link to="/stays" class="mt-6 inline-flex rounded-full bg-[var(--color-accent)] px-6 py-3 text-sm font-bold text-white press">{{ $t('ดูที่พักทั้งหมด') }}</router-link>
     </div>
 
     <template v-else-if="stay">
@@ -17,8 +17,8 @@
       <section class="relative flex h-[46vh] min-h-[340px] flex-col overflow-hidden bg-[var(--color-primary)]">
         <img v-if="stay.cover_image" :src="stay.cover_image" :alt="stay.name" fetchpriority="high" class="absolute inset-0 h-full w-full object-cover" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/40"></div>
-        <nav aria-label="เส้นทางนำทาง" class="relative z-10 mx-auto flex w-full max-w-6xl items-center gap-1 px-4 pt-6 text-[13px] font-semibold text-white/75 sm:px-6 md:px-8">
-          <router-link to="/stays" class="hover:text-white">ที่พักชุมชน</router-link>
+        <nav :aria-label="$t('เส้นทางนำทาง')" class="relative z-10 mx-auto flex w-full max-w-6xl items-center gap-1 px-4 pt-6 text-[13px] font-semibold text-white/75 sm:px-6 md:px-8">
+          <router-link to="/stays" class="hover:text-white">{{ $t('ที่พักชุมชน') }}</router-link>
           <span class="material-symbols-rounded icon-16 opacity-60">chevron_right</span>
           <span class="truncate text-white">{{ stay.name }}</span>
         </nav>
@@ -31,7 +31,7 @@
           <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] font-semibold text-white/85">
             <span v-if="stay.community_name">{{ stay.community_name }}</span>
             <span class="inline-flex items-center gap-1"><span class="material-symbols-rounded icon-18">location_on</span>{{ [stay.district, stay.province].filter(Boolean).join(' · ') }}</span>
-            <span v-if="stay.rating_count" class="inline-flex items-center gap-1"><span class="material-symbols-rounded icon-18 text-amber-400">star</span>{{ stay.rating_avg.toFixed(1) }} ({{ stay.rating_count }} รีวิว)</span>
+            <span v-if="stay.rating_count" class="inline-flex items-center gap-1"><span class="material-symbols-rounded icon-18 text-amber-400">star</span>{{ $t('{rating_avg} ({rating_count} รีวิว)', { rating_avg: stay.rating_avg.toFixed(1), rating_count: stay.rating_count }) }}</span>
           </p>
         </div>
       </section>
@@ -40,7 +40,7 @@
         <!-- ── เนื้อหา ── -->
         <div class="min-w-0 space-y-10">
           <section v-if="stay.summary || stay.description">
-            <h2 class="section-kicker">ที่พักนี้</h2>
+            <h2 class="section-kicker">{{ $t('ที่พักนี้') }}</h2>
             <p v-if="stay.summary" class="mt-3 text-lg font-bold text-[var(--color-text-dark)]">{{ stay.summary }}</p>
             <p v-if="stay.description" class="mt-3 whitespace-pre-line leading-relaxed text-[var(--color-text-mid)]">{{ stay.description }}</p>
             <ul v-if="stay.highlights.length" class="mt-4 grid gap-2 sm:grid-cols-2">
@@ -52,18 +52,18 @@
 
           <div v-if="stay.gallery.length" class="gallery">
             <a v-for="(url, i) in stay.gallery.slice(0, 7)" :key="url + i" :href="url" target="_blank" class="gallery__item overflow-hidden">
-              <img :src="url" :alt="`${stay.name} รูปที่ ${i + 1}`" loading="lazy" />
+              <img :src="url" :alt="$t('{name} รูปที่ {p}', { name: stay.name, p: i + 1 })" loading="lazy" />
             </a>
           </div>
 
           <section v-if="stay.community_story" class="community">
             <span class="material-symbols-rounded community__icon">diversity_3</span>
-            <h2 class="text-xl font-black text-[var(--color-text-dark)]">เรื่องของชุมชน</h2>
+            <h2 class="text-xl font-black text-[var(--color-text-dark)]">{{ $t('เรื่องของชุมชน') }}</h2>
             <p class="mt-3 whitespace-pre-line leading-relaxed text-[var(--color-text-mid)]">{{ stay.community_story }}</p>
           </section>
 
           <section v-if="stay.amenities.length">
-            <h2 class="section-kicker">สิ่งอำนวยความสะดวก</h2>
+            <h2 class="section-kicker">{{ $t('สิ่งอำนวยความสะดวก') }}</h2>
             <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div v-for="a in stay.amenities" :key="a.key" class="flex items-center gap-2 text-[15px] font-semibold text-[var(--color-text-dark)]">
                 <span class="material-symbols-rounded icon-22 text-[var(--color-accent)]">{{ a.icon }}</span>{{ a.label }}
@@ -72,33 +72,32 @@
           </section>
 
           <section>
-            <h2 class="section-kicker">ห้องพัก</h2>
+            <h2 class="section-kicker">{{ $t('ห้องพัก') }}</h2>
             <div class="mt-4 grid gap-4">
               <article v-for="room in roomRows" :key="room.id" class="room" :class="{ 'room--picked': picked?.id === room.id }">
                 <img v-if="room.photos[0]" :src="room.photos[0]" :alt="room.name" class="room__img" loading="lazy" />
                 <div class="min-w-0 flex-1">
                   <h3 class="text-lg font-extrabold text-[var(--color-text-dark)]">{{ room.name }}</h3>
-                  <p class="mt-0.5 text-[13px] font-semibold text-[var(--color-text-muted)]">
-                    พักได้ {{ room.max_guests }} คน/ห้อง<span v-if="room.base_guests < room.max_guests"> (ราคารวม {{ room.base_guests }} คน)</span>
-                    <span v-if="room.breakfast_included"> · รวมอาหารเช้า</span>
+                  <p class="mt-0.5 text-[13px] font-semibold text-[var(--color-text-muted)]"> {{ $t('พักได้ {max_guests} คน/ห้อง', { max_guests: room.max_guests }) }}<span v-if="room.base_guests < room.max_guests"> {{ $t('(ราคารวม {base_guests} คน)', { base_guests: room.base_guests }) }}</span>
+                    <span v-if="room.breakfast_included"> {{ $t('· รวมอาหารเช้า') }}</span>
                   </p>
                   <p v-if="room.description" class="mt-2 text-[14px] text-[var(--color-text-mid)]">{{ room.description }}</p>
                   <div class="mt-3 flex flex-wrap items-end justify-between gap-3">
                     <div>
                       <template v-if="room.quote">
                         <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ money(room.quote.total_amount) }}</span>
-                        <span class="text-[13px] font-semibold text-[var(--color-text-muted)]"> · {{ room.quote.nights }} คืน{{ room.units_needed > 1 ? ` · ${room.units_needed} ห้อง` : '' }}</span>
+                        <span class="text-[13px] font-semibold text-[var(--color-text-muted)]"> {{ $t('· {nights} คืน{p}', { nights: room.quote.nights, p: room.units_needed > 1 ? $t(' · {units_needed} ห้อง', { units_needed: room.units_needed }) : '' }) }}</span>
                       </template>
                       <template v-else>
                         <span class="text-xl font-black text-[var(--color-text-dark)]">฿{{ money(room.price_per_night) }}</span>
-                        <span class="text-[13px] font-semibold text-[var(--color-text-muted)]"> /คืน</span>
+                        <span class="text-[13px] font-semibold text-[var(--color-text-muted)]"> {{ $t('/คืน') }}</span>
                       </template>
-                      <p v-if="room.weekend_price && !room.quote" class="text-[12px] text-[var(--color-text-muted)]">คืนศุกร์–เสาร์ ฿{{ money(room.weekend_price) }}</p>
+                      <p v-if="room.weekend_price && !room.quote" class="text-[12px] text-[var(--color-text-muted)]">{{ $t('คืนศุกร์–เสาร์ ฿{money}', { money: money(room.weekend_price) }) }}</p>
                     </div>
                     <template v-if="availability">
-                      <span v-if="room.available_units < room.units_needed" class="text-sm font-bold text-red-600">เต็มในวันที่เลือก</span>
+                      <span v-if="room.available_units < room.units_needed" class="text-sm font-bold text-red-600">{{ $t('เต็มในวันที่เลือก') }}</span>
                       <button v-else type="button" class="pick-btn press" @click="pick(room)">
-                        {{ picked?.id === room.id ? 'เลือกแล้ว' : 'เลือกห้องนี้' }}
+                        {{ picked?.id === room.id ? $t('เลือกแล้ว') : $t('เลือกห้องนี้') }}
                       </button>
                     </template>
                   </div>
@@ -108,15 +107,15 @@
           </section>
 
           <section v-if="stay.experiences.length">
-            <h2 class="section-kicker">กิจกรรมกับชุมชน</h2>
-            <p class="mt-2 text-sm text-[var(--color-text-muted)]">จองพ่วงไปกับที่พักได้ ทำกับคนในชุมชน</p>
+            <h2 class="section-kicker">{{ $t('กิจกรรมกับชุมชน') }}</h2>
+            <p class="mt-2 text-sm text-[var(--color-text-muted)]">{{ $t('จองพ่วงไปกับที่พักได้ ทำกับคนในชุมชน') }}</p>
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
               <label v-for="x in stay.experiences" :key="x.id" class="exp" :class="{ 'exp--on': chosenExperiences.includes(x.id) }">
                 <input type="checkbox" :value="x.id" v-model="chosenExperiences" class="sr-only" @change="refreshQuote" />
                 <img v-if="x.image" :src="x.image" :alt="x.title" class="exp__img" loading="lazy" />
                 <div class="min-w-0">
                   <p class="font-extrabold text-[var(--color-text-dark)]">{{ x.title }}</p>
-                  <p class="text-[13px] font-semibold text-[var(--color-text-muted)]">฿{{ money(x.price_per_person) }}/คน<span v-if="x.duration_label"> · {{ x.duration_label }}</span></p>
+                  <p class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ $t('฿{money}/คน', { money: money(x.price_per_person) }) }}<span v-if="x.duration_label"> · {{ x.duration_label }}</span></p>
                   <p v-if="x.description" class="mt-1 text-[13px] text-[var(--color-text-mid)] line-clamp-2">{{ x.description }}</p>
                 </div>
                 <span class="material-symbols-rounded exp__check">{{ chosenExperiences.includes(x.id) ? 'check_circle' : 'add_circle' }}</span>
@@ -125,18 +124,18 @@
           </section>
 
           <section v-if="stay.house_rules || stay.cancellation_policy">
-            <h2 class="section-kicker">ก่อนจอง</h2>
+            <h2 class="section-kicker">{{ $t('ก่อนจอง') }}</h2>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
               <div class="side-card">
-                <p class="font-extrabold text-[var(--color-text-dark)]">เช็คอิน {{ stay.check_in_time }} · เช็คเอาต์ {{ stay.check_out_time }}</p>
+                <p class="font-extrabold text-[var(--color-text-dark)]">{{ $t('เช็คอิน {check_in_time} · เช็คเอาต์ {check_out_time}', { check_in_time: stay.check_in_time, check_out_time: stay.check_out_time }) }}</p>
                 <p v-if="stay.house_rules" class="mt-2 whitespace-pre-line text-[14px] text-[var(--color-text-mid)]">{{ stay.house_rules }}</p>
                 <p v-if="stay.license_label" class="mt-3 text-[12px] font-bold text-[var(--color-text-muted)]">
                   <span class="material-symbols-rounded icon-16 align-[-3px]">verified</span>
-                  {{ stay.license_label }}<span v-if="stay.license_no"> เลขที่ {{ stay.license_no }}</span>
+                  {{ stay.license_label }}<span v-if="stay.license_no"> {{ $t('เลขที่ {license_no}', { license_no: stay.license_no }) }}</span>
                 </p>
               </div>
               <div class="side-card">
-                <p class="font-extrabold text-[var(--color-text-dark)]">ยกเลิกแบบ{{ stay.cancellation_policy.label }}</p>
+                <p class="font-extrabold text-[var(--color-text-dark)]">{{ $t('ยกเลิกแบบ{label}', { label: stay.cancellation_policy.label }) }}</p>
                 <ul class="mt-2 space-y-1 text-[14px] text-[var(--color-text-mid)]">
                   <li v-for="line in stay.cancellation_policy.lines" :key="line">• {{ line }}</li>
                 </ul>
@@ -145,7 +144,7 @@
           </section>
 
           <section v-if="stay.trips.length">
-            <h2 class="section-kicker">ทริปใกล้ที่พักนี้</h2>
+            <h2 class="section-kicker">{{ $t('ทริปใกล้ที่พักนี้') }}</h2>
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
               <router-link v-for="trip in stay.trips" :key="trip.id" :to="`/trips/${trip.slug}`" class="flex items-center gap-3 rounded-2xl bg-white border border-[var(--color-sand-dark)] p-3 group">
                 <img v-if="trip.cover_image" :src="trip.cover_image" :alt="trip.title" class="h-14 w-14 rounded-xl object-cover" loading="lazy" />
@@ -158,15 +157,15 @@
           </section>
 
           <section>
-            <h2 class="section-kicker">รีวิวจากผู้เข้าพัก</h2>
-            <p v-if="!stay.reviews.length" class="mt-3 text-sm text-[var(--color-text-muted)]">ยังไม่มีรีวิว — เป็นคนแรกที่ไปพักแล้วเล่าให้คนอื่นฟังได้เลย</p>
+            <h2 class="section-kicker">{{ $t('รีวิวจากผู้เข้าพัก') }}</h2>
+            <p v-if="!stay.reviews.length" class="mt-3 text-sm text-[var(--color-text-muted)]">{{ $t('ยังไม่มีรีวิว — เป็นคนแรกที่ไปพักแล้วเล่าให้คนอื่นฟังได้เลย') }}</p>
             <div v-else class="mt-4 grid gap-3">
               <article v-for="r in stay.reviews" :key="r.id" class="side-card">
                 <p class="text-amber-500 font-black">{{ '★'.repeat(r.rating) }}<span class="text-[var(--color-sand-dark)]">{{ '★'.repeat(5 - r.rating) }}</span></p>
                 <p v-if="r.comment" class="mt-1 text-[15px] text-[var(--color-text-dark)]">{{ r.comment }}</p>
                 <p class="mt-1 text-[12px] font-bold text-[var(--color-text-muted)]">{{ r.author }}</p>
                 <p v-if="r.host_reply" class="mt-2 rounded-xl bg-[var(--color-sand)] p-3 text-[13px] text-[var(--color-text-mid)]">
-                  <strong>เจ้าของที่พัก:</strong> {{ r.host_reply }}
+                  <strong>{{ $t('เจ้าของที่พัก:') }}</strong> {{ r.host_reply }}
                 </p>
               </article>
             </div>
@@ -176,25 +175,25 @@
         <!-- ── กล่องจอง ── -->
         <aside class="lg:sticky lg:top-24 self-start">
           <div class="book-card">
-            <p class="text-lg font-black text-[var(--color-text-dark)]">จองที่พัก</p>
+            <p class="text-lg font-black text-[var(--color-text-dark)]">{{ $t('จองที่พัก') }}</p>
             <p class="text-[13px] font-semibold text-[var(--color-text-muted)]">
-              {{ stay.booking_mode === 'instant' ? `ยืนยันห้องทันทีหลังชำระเงิน (ภายใน ${stay.payment_minutes} นาที)` : 'ส่งคำขอก่อน ที่พักยืนยันห้องว่างภายใน 24 ชม. แล้วค่อยจ่าย' }}
+              {{ stay.booking_mode === 'instant' ? $t('ยืนยันห้องทันทีหลังชำระเงิน (ภายใน {payment_minutes} นาที)', { payment_minutes: stay.payment_minutes }) : $t('ส่งคำขอก่อน ที่พักยืนยันห้องว่างภายใน 24 ชม. แล้วค่อยจ่าย') }}
             </p>
 
             <div class="mt-4 grid grid-cols-2 gap-2">
-              <label class="field"><span>เช็คอิน</span><input type="date" v-model="checkIn" :min="today" @change="onDates" /></label>
-              <label class="field"><span>เช็คเอาต์</span><input type="date" v-model="checkOut" :min="minCheckOut" @change="onDates" /></label>
+              <label class="field"><span>{{ $t('เช็คอิน') }}</span><input type="date" v-model="checkIn" :min="today" @change="onDates" /></label>
+              <label class="field"><span>{{ $t('เช็คเอาต์') }}</span><input type="date" v-model="checkOut" :min="minCheckOut" @change="onDates" /></label>
             </div>
-            <label class="field mt-2"><span>จำนวนผู้เข้าพัก</span>
+            <label class="field mt-2"><span>{{ $t('จำนวนผู้เข้าพัก') }}</span>
               <select v-model.number="guests" @change="onDates">
-                <option v-for="n in 20" :key="n" :value="n">{{ n }} คน</option>
+                <option v-for="n in 20" :key="n" :value="n">{{ $t('{n} คน', { n }) }}</option>
               </select>
             </label>
 
             <p v-if="availError" class="mt-3 text-sm font-bold text-red-600">{{ availError }}</p>
-            <p v-else-if="!availability" class="mt-3 text-[13px] text-[var(--color-text-muted)]">เลือกวันเพื่อดูห้องว่างและราคาจริง</p>
+            <p v-else-if="!availability" class="mt-3 text-[13px] text-[var(--color-text-muted)]">{{ $t('เลือกวันเพื่อดูห้องว่างและราคาจริง') }}</p>
             <p v-else-if="!picked" class="mt-3 text-[13px] font-bold text-[var(--color-accent)]">
-              {{ freeRooms ? `มีห้องว่าง ${freeRooms} แบบ — เลือกห้องด้านซ้าย` : 'ไม่มีห้องว่างในวันที่เลือก ลองเปลี่ยนวันนะครับ' }}
+              {{ freeRooms ? $t('มีห้องว่าง {freeRooms} แบบ — เลือกห้องด้านซ้าย', { freeRooms }) : $t('ไม่มีห้องว่างในวันที่เลือก ลองเปลี่ยนวันนะครับ') }}
             </p>
 
             <template v-if="picked">
@@ -203,33 +202,31 @@
                   <p class="font-extrabold text-[var(--color-text-dark)]">{{ picked.name }}</p>
                   <label class="flex items-center gap-1 text-[13px] font-bold">
                     <select v-model.number="units" @change="refreshQuote" class="rounded-lg border border-[var(--color-sand-dark)] bg-white px-2 py-1">
-                      <option v-for="n in unitOptions" :key="n" :value="n">{{ n }} ห้อง</option>
+                      <option v-for="n in unitOptions" :key="n" :value="n">{{ $t('{n} ห้อง', { n }) }}</option>
                     </select>
                   </label>
                 </div>
                 <div v-if="quote" class="mt-3 space-y-1 text-[14px]">
-                  <div class="row"><span>ค่าห้อง {{ quote.nights }} คืน × {{ units }} ห้อง</span><span>฿{{ money(quote.room_amount) }}</span></div>
-                  <div v-if="quote.extra_guest_amount" class="row"><span>คนเพิ่ม {{ quote.extra_guests }} คน</span><span>฿{{ money(quote.extra_guest_amount) }}</span></div>
+                  <div class="row"><span>{{ $t('ค่าห้อง {nights} คืน × {units} ห้อง', { nights: quote.nights, units }) }}</span><span>฿{{ money(quote.room_amount) }}</span></div>
+                  <div v-if="quote.extra_guest_amount" class="row"><span>{{ $t('คนเพิ่ม {extra_guests} คน', { extra_guests: quote.extra_guests }) }}</span><span>฿{{ money(quote.extra_guest_amount) }}</span></div>
                   <div v-for="x in quote.experiences" :key="x.id" class="row"><span>{{ x.title }} × {{ x.people }}</span><span>฿{{ money(x.amount) }}</span></div>
-                  <div class="row total"><span>รวม</span><span>฿{{ money(quote.total_amount) }}</span></div>
+                  <div class="row total"><span>{{ $t('รวม') }}</span><span>฿{{ money(quote.total_amount) }}</span></div>
                 </div>
                 <p v-if="quoteError" class="mt-2 text-sm font-bold text-red-600">{{ quoteError }}</p>
               </div>
 
               <template v-if="auth.isLoggedIn">
-                <label class="field mt-3"><span>ชื่อผู้เข้าพัก</span><input v-model="guestName" maxlength="150" /></label>
-                <label class="field mt-2"><span>เบอร์โทร</span><input v-model="guestPhone" inputmode="tel" maxlength="30" /></label>
-                <label class="field mt-2"><span>ถึงเจ้าของที่พัก (ไม่บังคับ)</span><textarea v-model="note" rows="2" maxlength="1000" placeholder="เช่น ถึงประมาณ 2 ทุ่ม / แพ้อาหารทะเล"></textarea></label>
+                <label class="field mt-3"><span>{{ $t('ชื่อผู้เข้าพัก') }}</span><input v-model="guestName" maxlength="150" /></label>
+                <label class="field mt-2"><span>{{ $t('เบอร์โทร') }}</span><input v-model="guestPhone" inputmode="tel" maxlength="30" /></label>
+                <label class="field mt-2"><span>{{ $t('ถึงเจ้าของที่พัก (ไม่บังคับ)') }}</span><textarea v-model="note" rows="2" maxlength="1000" :placeholder="$t('เช่น ถึงประมาณ 2 ทุ่ม / แพ้อาหารทะเล')"></textarea></label>
                 <label v-if="tripBookingRef" class="mt-2 flex items-center gap-2 text-[13px] font-bold text-[var(--color-text-mid)]">
-                  <input type="checkbox" v-model="linkTrip" /> ผูกกับการจองทริป {{ tripBookingRef }}
+                  <input type="checkbox" v-model="linkTrip" /> {{ $t('ผูกกับการจองทริป {tripBookingRef}', { tripBookingRef }) }}
                 </label>
                 <button type="button" class="book-btn press mt-4" :disabled="!quote || submitting || !guestName.trim() || !guestPhone.trim()" @click="submit">
-                  {{ submitting ? 'กำลังจอง…' : stay.booking_mode === 'instant' ? 'จองและไปชำระเงิน' : 'ส่งคำขอจอง' }}
+                  {{ submitting ? $t('กำลังจอง…') : stay.booking_mode === 'instant' ? $t('จองและไปชำระเงิน') : $t('ส่งคำขอจอง') }}
                 </button>
               </template>
-              <router-link v-else :to="{ name: 'login', query: { redirect: $route.fullPath } }" class="book-btn press mt-4 text-center">
-                เข้าสู่ระบบเพื่อจอง
-              </router-link>
+              <router-link v-else :to="{ name: 'login', query: { redirect: $route.fullPath } }" class="book-btn press mt-4 text-center"> {{ $t('เข้าสู่ระบบเพื่อจอง') }} </router-link>
             </template>
           </div>
         </aside>
@@ -239,6 +236,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -313,7 +311,7 @@ async function onDates() {
     availability.value = res.data.data;
   } catch (err) {
     availability.value = null;
-    availError.value = err.response?.data?.message || 'ดูห้องว่างไม่สำเร็จ';
+    availError.value = err.response?.data?.message || $t('ดูห้องว่างไม่สำเร็จ');
   }
 }
 
@@ -331,7 +329,7 @@ async function refreshQuote() {
     quote.value = res.data.data;
   } catch (err) {
     quote.value = null;
-    quoteError.value = err.response?.data?.message || 'คิดราคาไม่สำเร็จ';
+    quoteError.value = err.response?.data?.message || $t('คิดราคาไม่สำเร็จ');
   }
 }
 
@@ -357,7 +355,7 @@ async function submit() {
     toast.success(res.data.message);
     router.push(`/stays/bookings/${res.data.data.ref}`);
   } catch (err) {
-    toast.error(err.response?.data?.message || 'จองไม่สำเร็จ');
+    toast.error(err.response?.data?.message || $t('จองไม่สำเร็จ'));
     // ห้องอาจเพิ่งเต็ม — โหลดห้องว่างใหม่
     if (err.response?.status === 422) onDates();
   } finally {
@@ -371,7 +369,7 @@ async function load(slug) {
   try {
     const res = await api.get(`/stays/${slug}`);
     stay.value = res.data.data;
-    document.title = `${stay.value.name} | ที่พักชุมชน | ลุยเลเขา`;
+    document.title = $t('{name} | ที่พักชุมชน | ลุยเลเขา', { name: stay.value.name });
     if (checkIn.value && checkOut.value) onDates();
   } catch {
     notFound.value = true;

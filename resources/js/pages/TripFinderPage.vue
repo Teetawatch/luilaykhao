@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)] pb-16">
     <PageHeader
-      title="ค้นหาทริปที่ใช่"
-      subtitle="ตอบคำถามสั้น ๆ ไม่กี่ข้อ แล้วเราจะคัดทริปที่เปิดจองอยู่จริงมาให้"
+      :title="$t('ค้นหาทริปที่ใช่')"
+      :subtitle="$t('ตอบคำถามสั้น ๆ ไม่กี่ข้อ แล้วเราจะคัดทริปที่เปิดจองอยู่จริงมาให้')"
       container="max-w-3xl px-4 sm:px-6"
     />
     <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8 md:pt-10">
@@ -40,13 +40,10 @@
         <div class="flex items-center justify-between mt-10">
           <button v-if="step > 0" @click="back"
             class="inline-flex items-center gap-1.5 text-[var(--color-text-mid)] hover:text-[var(--color-text-dark)] font-bold text-sm px-4 py-2.5 rounded-full hover:bg-white transition-all cursor-pointer">
-            <span class="material-symbols-rounded text-[20px]">arrow_back</span> ย้อนกลับ
-          </button>
+            <span class="material-symbols-rounded text-[20px]">arrow_back</span> {{ $t('ย้อนกลับ') }} </button>
           <span v-else></span>
           <button @click="skip"
-            class="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] font-bold text-sm px-4 py-2.5 rounded-full transition-all cursor-pointer">
-            ข้ามขั้นนี้
-          </button>
+            class="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] font-bold text-sm px-4 py-2.5 rounded-full transition-all cursor-pointer"> {{ $t('ข้ามขั้นนี้') }} </button>
         </div>
       </template>
 
@@ -54,7 +51,7 @@
       <template v-else>
         <div class="text-center mb-8">
           <h2 class="text-2xl md:text-3xl font-bold text-[var(--color-text-dark)] leading-tight">
-            {{ loading ? 'กำลังค้นหา…' : results.length ? 'ทริปที่ใช่สำหรับคุณ' : 'ยังไม่เจอทริปที่ตรงเป๊ะ' }}
+            {{ loading ? $t('กำลังค้นหา…') : results.length ? $t('ทริปที่ใช่สำหรับคุณ') : $t('ยังไม่เจอทริปที่ตรงเป๊ะ') }}
           </h2>
           <p v-if="selectionSummary" class="text-[var(--color-text-muted)] text-base font-medium mt-3">{{ selectionSummary }}</p>
         </div>
@@ -77,19 +74,17 @@
 
           <div v-else class="text-center py-16 bg-white rounded-[2rem] border border-gray-100">
             <span class="material-symbols-rounded text-[56px] text-[var(--color-sand-dark)]">travel_explore</span>
-            <p class="text-[var(--color-text-muted)] font-medium mt-3">ลองเริ่มใหม่แล้วปรับเงื่อนไขให้กว้างขึ้นนะครับ</p>
+            <p class="text-[var(--color-text-muted)] font-medium mt-3">{{ $t('ลองเริ่มใหม่แล้วปรับเงื่อนไขให้กว้างขึ้นนะครับ') }}</p>
           </div>
 
           <!-- actions -->
           <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
             <button @click="viewAll"
               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[var(--color-accent)] text-white px-8 py-4 rounded-full text-base font-extrabold hover:bg-[var(--color-accent-mid)] transition-all duration-300 hover:-translate-y-1 cursor-pointer">
-              <span class="material-symbols-rounded text-[20px]">grid_view</span> ดูทั้งหมดในหน้าทริป
-            </button>
+              <span class="material-symbols-rounded text-[20px]">grid_view</span> {{ $t('ดูทั้งหมดในหน้าทริป') }} </button>
             <button @click="restart"
               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white text-[var(--color-text-dark)] px-8 py-4 rounded-full text-base font-extrabold border border-[var(--color-sand-dark)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all duration-300 cursor-pointer">
-              <span class="material-symbols-rounded text-[20px]">restart_alt</span> เริ่มใหม่
-            </button>
+              <span class="material-symbols-rounded text-[20px]">restart_alt</span> {{ $t('เริ่มใหม่') }} </button>
           </div>
         </template>
       </template>
@@ -99,6 +94,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTripsStore } from '../stores/trips';
@@ -124,30 +120,30 @@ const answers = reactive({
 });
 
 const difficultyOptions = [
-  { key: 'easy', label: 'เริ่มต้น', desc: 'สบายๆ เหมาะกับมือใหม่', icon: 'sentiment_satisfied', value: 'easy' },
-  { key: 'medium', label: 'ปานกลาง', desc: 'ท้าทายพอประมาณ', icon: 'directions_walk', value: 'medium' },
-  { key: 'hard', label: 'ขาโหด', desc: 'สายลุยตัวจริง', icon: 'local_fire_department', value: 'hard' },
-  { key: 'any', label: 'ระดับไหนก็ได้', desc: 'ขอแค่ได้ออกไปเที่ยว', icon: 'all_inclusive', value: '' },
+  { key: 'easy', label: $t('เริ่มต้น'), desc: $t('สบายๆ เหมาะกับมือใหม่'), icon: 'sentiment_satisfied', value: 'easy' },
+  { key: 'medium', label: $t('ปานกลาง'), desc: $t('ท้าทายพอประมาณ'), icon: 'directions_walk', value: 'medium' },
+  { key: 'hard', label: $t('ขาโหด'), desc: $t('สายลุยตัวจริง'), icon: 'local_fire_department', value: 'hard' },
+  { key: 'any', label: $t('ระดับไหนก็ได้'), desc: $t('ขอแค่ได้ออกไปเที่ยว'), icon: 'all_inclusive', value: '' },
 ];
 
 const dayOptions = [
-  { key: 'day', label: 'ไปเช้า-เย็นกลับ / 1 วัน', icon: 'wb_sunny', max_days: 1 },
-  { key: 'short', label: '2–3 วัน', desc: 'เที่ยวสุดสัปดาห์', icon: 'weekend', min_days: 2, max_days: 3 },
-  { key: 'long', label: '4 วันขึ้นไป', desc: 'ทริปยาวจัดเต็ม', icon: 'hiking', min_days: 4 },
-  { key: 'any', label: 'กี่วันก็ได้', icon: 'all_inclusive' },
+  { key: 'day', label: $t('ไปเช้า-เย็นกลับ / 1 วัน'), icon: 'wb_sunny', max_days: 1 },
+  { key: 'short', label: $t('2–3 วัน'), desc: $t('เที่ยวสุดสัปดาห์'), icon: 'weekend', min_days: 2, max_days: 3 },
+  { key: 'long', label: $t('4 วันขึ้นไป'), desc: $t('ทริปยาวจัดเต็ม'), icon: 'hiking', min_days: 4 },
+  { key: 'any', label: $t('กี่วันก็ได้'), icon: 'all_inclusive' },
 ];
 
 const typeOptions = computed(() => {
   const cats = (categoriesStore.categories || []).map(c => ({
     key: c.slug, label: c.name, icon: c.icon || 'category', value: c.slug,
   }));
-  return [{ key: 'all', label: 'ทั้งหมด', desc: 'ดูทุกประเภทกิจกรรม', icon: 'explore', value: '' }, ...cats];
+  return [{ key: 'all', label: $t('ทั้งหมด'), desc: $t('ดูทุกประเภทกิจกรรม'), icon: 'explore', value: '' }, ...cats];
 });
 
 const steps = computed(() => [
-  { id: 'type', title: 'อยากไปแนวไหน?', subtitle: 'เลือกประเภทกิจกรรมที่สนใจ', options: typeOptions.value },
-  { id: 'difficulty', title: 'คุณเป็นสายไหน?', subtitle: 'บอกระดับความท้าทายที่ชอบ', options: difficultyOptions },
-  { id: 'days', title: 'มีเวลากี่วัน?', subtitle: 'เลือกความยาวของทริป', options: dayOptions },
+  { id: 'type', title: $t('อยากไปแนวไหน?'), subtitle: $t('เลือกประเภทกิจกรรมที่สนใจ'), options: typeOptions.value },
+  { id: 'difficulty', title: $t('คุณเป็นสายไหน?'), subtitle: $t('บอกระดับความท้าทายที่ชอบ'), options: difficultyOptions },
+  { id: 'days', title: $t('มีเวลากี่วัน?'), subtitle: $t('เลือกความยาวของทริป'), options: dayOptions },
 ]);
 
 const selectionSummary = computed(() => {
@@ -155,7 +151,7 @@ const selectionSummary = computed(() => {
   if (answers.typeLabel) parts.push(answers.typeLabel);
   if (answers.difficultyLabel) parts.push(answers.difficultyLabel);
   if (answers.days?.label) parts.push(answers.days.label);
-  return parts.length ? `ตามที่เลือก: ${parts.join(' · ')}` : '';
+  return parts.length ? $t('ตามที่เลือก: {parts}', { parts: parts.join(' · ') }) : '';
 });
 
 function choose(opt) {

@@ -166,13 +166,16 @@ const FIELD_LABELS = {
   meeting_point: 'จุดนัดพบ',
   baggage_allowance: 'น้ำหนักกระเป๋า',
   force_majeure_reason: 'เหตุผลที่เลื่อน',
+  content: 'เนื้อหาหน้า',
 };
 
 const PART_LABELS = {
   question: 'คำถาม', answer: 'คำตอบ', title: 'หัวข้อ', desc: 'คำอธิบาย', name: 'ชื่อ',
   description: 'รายละเอียด', items: 'รายการ', stops: 'จุดแวะ', detail: 'รายละเอียด', sector: 'ช่วง',
   remarks: 'หมายเหตุ', note: 'หมายเหตุ', label: 'ชื่อเอกสาร', guide: 'วิธีแนบ', tips: 'คำแนะนำ',
-  parts: 'ของในชุด', days: 'วัน', breakfast: 'มื้อเช้า', lunch: 'มื้อกลางวัน', dinner: 'มื้อเย็น',
+  parts: 'ของในชุด', days: 'วัน', intro: 'คำนำ', footnote: 'หมายเหตุท้ายหน้า', groups: 'หมวด',
+  categories: 'หมวด', steps: 'ขั้นตอน', levels: 'ระดับ', factors: 'ปัจจัย', caveats: 'ข้อควรระวัง',
+  trip_types: 'แบบทริป', seasons: 'ช่วงเวลา', nights: 'ระยะเวลา', faqs: 'คำถาม', problems: 'ปัญหา', breakfast: 'มื้อเช้า', lunch: 'มื้อกลางวัน', dinner: 'มื้อเย็น',
 };
 
 const counts = computed(() => ({
@@ -185,20 +188,28 @@ const groups = computed(() => {
   );
   const byField = new Map();
   for (const item of items) {
-    if (!byField.has(item.field)) byField.set(item.field, []);
-    byField.get(item.field).push(item);
+    // หน้าเนื้อหา (FAQ ฯลฯ) อยู่ใต้ช่องเดียว "content" — แยกกลุ่มตามหัวข้อย่อยแทน
+    const key = item.field === 'content' ? `content.${item.path.split('.')[1]}` : item.field;
+    if (!byField.has(key)) byField.set(key, []);
+    byField.get(key).push(item);
   }
 
   return [...byField].map(([field, list]) => ({ field, items: list }));
 });
 
 function fieldLabel(field) {
+  if (field.startsWith('content.')) {
+    const part = field.slice('content.'.length);
+
+    return FIELD_LABELS[part] || PART_LABELS[part] || part;
+  }
+
   return FIELD_LABELS[field] || field;
 }
 
 /** "faqs.2.answer" → "ข้อ 3 · คำตอบ" */
 function pathLabel(path) {
-  const parts = path.split('.').slice(1);
+  const parts = path.split('.').slice(path.startsWith('content.') ? 2 : 1);
   if (!parts.length) return fieldLabel(path);
 
   return parts

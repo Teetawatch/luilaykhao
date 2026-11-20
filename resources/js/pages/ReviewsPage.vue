@@ -6,15 +6,13 @@
     ══════════════════════════════════════════ -->
     <PageHero
       image="/images/landscape.webp"
-      title="รีวิวจากนักเดินทาง"
-      subtitle="คะแนนและความเห็นจากคนที่ไปทริปกับเรา ทั้งเรื่องที่ชอบและเรื่องที่อยากให้ปรับ"
+      :title="$t('รีวิวจากนักเดินทาง')"
+      :subtitle="$t('คะแนนและความเห็นจากคนที่ไปทริปกับเรา ทั้งเรื่องที่ชอบและเรื่องที่อยากให้ปรับ')"
     >
       <template #actions>
-        <a href="#reviews" class="hero-btn hero-btn--solid" @click.prevent="scrollToList">
-          อ่านรีวิว
-          <span class="material-symbols-rounded text-[20px]">arrow_downward</span>
+        <a href="#reviews" class="hero-btn hero-btn--solid" @click.prevent="scrollToList"> {{ $t('อ่านรีวิว') }} <span class="material-symbols-rounded text-[20px]">arrow_downward</span>
         </a>
-        <router-link to="/my-reviews" class="hero-btn hero-btn--outline">เขียนรีวิวของฉัน</router-link>
+        <router-link to="/my-reviews" class="hero-btn hero-btn--outline">{{ $t('เขียนรีวิวของฉัน') }}</router-link>
       </template>
     </PageHero>
 
@@ -30,10 +28,9 @@
             <span class="text-5xl md:text-6xl font-extrabold leading-none tracking-tight text-[var(--color-text-dark)] tabular-nums">{{ stats.average.toFixed(1) }}</span>
             <div>
               <StarRow :value="stats.average" size="20" />
-              <p class="mt-1 text-[13px] font-semibold text-[var(--color-text-muted)]">จาก {{ stats.total.toLocaleString() }} รีวิว</p>
+              <p class="mt-1 text-[13px] font-semibold text-[var(--color-text-muted)]">{{ $t('จาก {total} รีวิว', { total: stats.total.toLocaleString() }) }}</p>
               <p v-if="stats.with_reply" class="mt-2 hidden md:flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-text-muted)]">
-                <span class="material-symbols-rounded text-[16px]">forum</span>
-                ทีมงานตอบแล้ว {{ stats.with_reply.toLocaleString() }}
+                <span class="material-symbols-rounded text-[16px]">forum</span> {{ $t('ทีมงานตอบแล้ว {with_reply}', { with_reply: stats.with_reply.toLocaleString() }) }}
               </p>
             </div>
           </div>
@@ -90,9 +87,7 @@
                 class="chip"
                 :class="{ 'chip--active': !filters.rating && !filters.media }"
                 @click="setFilter({ rating: null, media: false })"
-              >
-                ทั้งหมด
-                <span v-if="stats" class="chip-count">{{ stats.total.toLocaleString() }}</span>
+              > {{ $t('ทั้งหมด') }} <span v-if="stats" class="chip-count">{{ stats.total.toLocaleString() }}</span>
               </button>
               <button
                 type="button"
@@ -101,9 +96,7 @@
                 :disabled="stats && !stats.with_media"
                 @click="setFilter({ media: !filters.media })"
               >
-                <span class="material-symbols-rounded text-[16px]">photo_library</span>
-                มีรูป/วิดีโอ
-                <span v-if="stats" class="chip-count">{{ stats.with_media.toLocaleString() }}</span>
+                <span class="material-symbols-rounded text-[16px]">photo_library</span> {{ $t('มีรูป/วิดีโอ') }} <span v-if="stats" class="chip-count">{{ stats.with_media.toLocaleString() }}</span>
               </button>
               <button
                 v-for="level in LEVELS"
@@ -144,20 +137,18 @@
           <!-- Error -->
           <div v-else-if="error" class="mt-4 rounded-3xl border border-[var(--color-sand-dark)] bg-white px-6 py-14 text-center">
             <span class="material-symbols-rounded text-5xl text-[var(--color-text-muted)]/50">wifi_off</span>
-            <h2 class="mt-3 text-lg font-extrabold text-[var(--color-text-dark)]">โหลดรีวิวไม่สำเร็จ</h2>
+            <h2 class="mt-3 text-lg font-extrabold text-[var(--color-text-dark)]">{{ $t('โหลดรีวิวไม่สำเร็จ') }}</h2>
             <p class="mt-1 text-sm text-[var(--color-text-muted)]">{{ error }}</p>
             <button type="button" class="btn-primary mt-5" @click="fetchReviews">
-              <span class="material-symbols-rounded text-[18px]">refresh</span>
-              ลองใหม่
-            </button>
+              <span class="material-symbols-rounded text-[18px]">refresh</span> {{ $t('ลองใหม่') }} </button>
           </div>
 
           <!-- Empty -->
           <div v-else-if="!reviews.length" class="mt-4 rounded-3xl border border-dashed border-[var(--color-sand-dark)] bg-white px-6 py-14 text-center">
             <span class="material-symbols-rounded text-5xl text-[var(--color-text-muted)]/50">rate_review</span>
-            <h2 class="mt-3 text-lg font-extrabold text-[var(--color-text-dark)]">{{ hasFilter ? 'ไม่มีรีวิวที่ตรงกับตัวกรองนี้' : 'ยังไม่มีรีวิว' }}</h2>
-            <p class="mt-1 text-sm text-[var(--color-text-muted)]">{{ hasFilter ? 'ลองเลือกตัวกรองอื่นดูนะครับ' : 'รีวิวที่ผ่านการอนุมัติแล้วจะแสดงที่หน้านี้' }}</p>
-            <button v-if="hasFilter" type="button" class="btn-ghost mt-5" @click="setFilter({ rating: null, media: false })">ล้างตัวกรอง</button>
+            <h2 class="mt-3 text-lg font-extrabold text-[var(--color-text-dark)]">{{ hasFilter ? $t('ไม่มีรีวิวที่ตรงกับตัวกรองนี้') : $t('ยังไม่มีรีวิว') }}</h2>
+            <p class="mt-1 text-sm text-[var(--color-text-muted)]">{{ hasFilter ? $t('ลองเลือกตัวกรองอื่นดูนะครับ') : $t('รีวิวที่ผ่านการอนุมัติแล้วจะแสดงที่หน้านี้') }}</p>
+            <button v-if="hasFilter" type="button" class="btn-ghost mt-5" @click="setFilter({ rating: null, media: false })">{{ $t('ล้างตัวกรอง') }}</button>
           </div>
 
           <!-- Reviews -->
@@ -217,7 +208,7 @@
                   type="button"
                   class="mt-1 text-sm font-bold text-[var(--color-accent)] hover:underline"
                   @click="expanded[review.id] = !expanded[review.id]"
-                >{{ expanded[review.id] ? 'ย่อลง' : 'อ่านต่อ' }}</button>
+                >{{ expanded[review.id] ? $t('ย่อลง') : $t('อ่านต่อ') }}</button>
               </div>
 
               <!-- Sub-ratings -->
@@ -240,7 +231,7 @@
                   :key="index"
                   type="button"
                   class="media-thumb group relative aspect-square rounded-xl overflow-hidden bg-[var(--color-sand)]"
-                  :aria-label="item.type === 'video' ? 'เล่นวิดีโอรีวิว' : `ดูรูปที่ ${index + 1}`"
+                  :aria-label="item.type === 'video' ? $t('เล่นวิดีโอรีวิว') : $t('ดูรูปที่ {p}', { p: index + 1 })"
                   @click="openLightbox(review, index)"
                 >
                   <img
@@ -266,8 +257,7 @@
               <!-- Admin reply -->
               <div v-if="review.admin_reply" class="mt-4 rounded-2xl bg-[var(--color-sand)] p-4">
                 <p class="flex items-center gap-1.5 text-[12px] font-bold text-[var(--color-accent)]">
-                  <span class="material-symbols-rounded text-[16px]" :style="FILLED">support_agent</span>
-                  ตอบกลับจากทีมงาน{{ review.admin_replied_by ? ` · ${review.admin_replied_by}` : '' }}
+                  <span class="material-symbols-rounded text-[16px]" :style="FILLED">support_agent</span> {{ $t('ตอบกลับจากทีมงาน{p}', { p: review.admin_replied_by ? ` · ${review.admin_replied_by}` : '' }) }}
                 </p>
                 <p class="mt-1.5 text-sm text-[var(--color-text-dark)] leading-relaxed whitespace-pre-line break-words">{{ review.admin_reply }}</p>
               </div>
@@ -275,8 +265,8 @@
           </div>
 
           <!-- Pagination -->
-          <nav v-if="!error && lastPage > 1" class="mt-8 flex justify-center items-center gap-1.5" aria-label="หน้ารีวิว">
-            <button type="button" class="page-btn" :disabled="currentPage <= 1 || loading" aria-label="หน้าก่อนหน้า" @click="goToPage(currentPage - 1)">
+          <nav v-if="!error && lastPage > 1" class="mt-8 flex justify-center items-center gap-1.5" :aria-label="$t('หน้ารีวิว')">
+            <button type="button" class="page-btn" :disabled="currentPage <= 1 || loading" :aria-label="$t('หน้าก่อนหน้า')" @click="goToPage(currentPage - 1)">
               <span class="material-symbols-rounded">chevron_left</span>
             </button>
             <template v-for="item in paginationItems" :key="item.key">
@@ -291,7 +281,7 @@
                 @click="goToPage(item.page)"
               >{{ item.page }}</button>
             </template>
-            <button type="button" class="page-btn" :disabled="currentPage >= lastPage || loading" aria-label="หน้าถัดไป" @click="goToPage(currentPage + 1)">
+            <button type="button" class="page-btn" :disabled="currentPage >= lastPage || loading" :aria-label="$t('หน้าถัดไป')" @click="goToPage(currentPage + 1)">
               <span class="material-symbols-rounded">chevron_right</span>
             </button>
           </nav>
@@ -299,17 +289,13 @@
           <!-- CTA -->
           <div class="mt-10 rounded-3xl bg-[var(--color-primary)] p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center gap-5">
             <div class="flex-1">
-              <p class="font-extrabold text-xl">เคยไปทริปกับเราแล้ว?</p>
-              <p class="mt-1 text-sm md:text-base text-white/70 leading-relaxed">เล่าให้คนที่กำลังตัดสินใจฟังหน่อย รีวิวของคุณช่วยเขาได้มาก</p>
+              <p class="font-extrabold text-xl">{{ $t('เคยไปทริปกับเราแล้ว?') }}</p>
+              <p class="mt-1 text-sm md:text-base text-white/70 leading-relaxed">{{ $t('เล่าให้คนที่กำลังตัดสินใจฟังหน่อย รีวิวของคุณช่วยเขาได้มาก') }}</p>
             </div>
             <div class="flex flex-wrap gap-2 shrink-0">
               <router-link to="/my-reviews" class="inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-colors">
-                <span class="material-symbols-rounded text-[18px]">rate_review</span>
-                เขียนรีวิวของฉัน
-              </router-link>
-              <router-link to="/trips" class="inline-flex items-center rounded-xl border border-white/25 px-5 py-3 text-sm font-bold text-white hover:bg-white/10 transition-colors">
-                ดูทริปที่เปิดรับ
-              </router-link>
+                <span class="material-symbols-rounded text-[18px]">rate_review</span> {{ $t('เขียนรีวิวของฉัน') }} </router-link>
+              <router-link to="/trips" class="inline-flex items-center rounded-xl border border-white/25 px-5 py-3 text-sm font-bold text-white hover:bg-white/10 transition-colors"> {{ $t('ดูทริปที่เปิดรับ') }} </router-link>
             </div>
           </div>
       </main>
@@ -325,7 +311,7 @@
           class="lightbox"
           role="dialog"
           aria-modal="true"
-          aria-label="รูปและวิดีโอจากรีวิว"
+          :aria-label="$t('รูปและวิดีโอจากรีวิว')"
           @click.self="closeLightbox"
           @touchstart.passive="onTouchStart"
           @touchend="onTouchEnd"
@@ -333,12 +319,12 @@
           <div class="lightbox-top">
             <span class="truncate">{{ lightbox.author }}</span>
             <span v-if="lightbox.items.length > 1" class="tabular-nums shrink-0">{{ lightbox.index + 1 }} / {{ lightbox.items.length }}</span>
-            <button ref="lightboxClose" type="button" class="lightbox-btn ml-auto" aria-label="ปิด" @click="closeLightbox">
+            <button ref="lightboxClose" type="button" class="lightbox-btn ml-auto" :aria-label="$t('ปิด')" @click="closeLightbox">
               <span class="material-symbols-rounded">close</span>
             </button>
           </div>
 
-          <button v-if="lightbox.items.length > 1" type="button" class="lightbox-btn lightbox-prev" aria-label="ก่อนหน้า" @click.stop="stepMedia(-1)">
+          <button v-if="lightbox.items.length > 1" type="button" class="lightbox-btn lightbox-prev" :aria-label="$t('ก่อนหน้า')" @click.stop="stepMedia(-1)">
             <span class="material-symbols-rounded">chevron_left</span>
           </button>
 
@@ -347,7 +333,7 @@
             <video v-else :key="`vid-${lightbox.index}`" :src="currentMedia.url" class="lightbox-media lightbox-video" controls autoplay playsinline></video>
           </div>
 
-          <button v-if="lightbox.items.length > 1" type="button" class="lightbox-btn lightbox-next" aria-label="ถัดไป" @click.stop="stepMedia(1)">
+          <button v-if="lightbox.items.length > 1" type="button" class="lightbox-btn lightbox-next" :aria-label="$t('ถัดไป')" @click.stop="stepMedia(1)">
             <span class="material-symbols-rounded">chevron_right</span>
           </button>
         </div>
@@ -357,6 +343,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../lib/axios';
@@ -376,20 +363,20 @@ const PER_PAGE = 10;
 const MEDIA_PREVIEW = 5;
 const LONG_COMMENT = 320;
 
-const RATING_WORDS = { 5: 'ดีมาก', 4: 'ดี', 3: 'พอใช้', 2: 'ควรปรับปรุง', 1: 'ไม่ประทับใจ' };
+const RATING_WORDS = { 5: $t('ดีมาก'), 4: $t('ดี'), 3: $t('พอใช้'), 2: $t('ควรปรับปรุง'), 1: $t('ไม่ประทับใจ') };
 
 const CATEGORY_META = [
-  { key: 'guide', label: 'ไกด์นำเที่ยว', icon: 'hiking' },
-  { key: 'vehicle', label: 'ยานพาหนะ', icon: 'directions_bus' },
-  { key: 'food', label: 'อาหาร', icon: 'restaurant' },
-  { key: 'value', label: 'ความคุ้มค่า', icon: 'savings' },
+  { key: 'guide', label: $t('ไกด์นำเที่ยว'), icon: 'hiking' },
+  { key: 'vehicle', label: $t('ยานพาหนะ'), icon: 'directions_bus' },
+  { key: 'food', label: $t('อาหาร'), icon: 'restaurant' },
+  { key: 'value', label: $t('ความคุ้มค่า'), icon: 'savings' },
 ];
 
 /** ดาว 5 ดวง — เต็ม/ครึ่ง/ว่าง ตามค่าเฉลี่ย */
 const StarRow = defineComponent({
   props: { value: { type: Number, default: 0 }, size: { type: [String, Number], default: 18 } },
   setup(props) {
-    return () => h('span', { class: 'inline-flex items-center', role: 'img', 'aria-label': `${props.value.toFixed(1)} จาก 5 ดาว` },
+    return () => h('span', { class: 'inline-flex items-center', role: 'img', 'aria-label': $t('{props} จาก 5 ดาว', { props: props.value.toFixed(1) }) },
       [1, 2, 3, 4, 5].map((i) => {
         const diff = props.value - i + 1;
         const icon = diff >= 0.75 ? 'star' : diff >= 0.25 ? 'star_half' : 'star';
@@ -451,9 +438,9 @@ const lastPage = computed(() => Number(meta.value?.last_page || 1));
 const resultLabel = computed(() => {
   const total = Number(meta.value?.total || 0);
   const parts = [];
-  if (filters.value.rating) parts.push(`${filters.value.rating} ดาว`);
-  if (filters.value.media) parts.push('มีรูป/วิดีโอ');
-  return `${total.toLocaleString()} รีวิว${parts.length ? ` · ${parts.join(' · ')}` : ''}`;
+  if (filters.value.rating) parts.push($t('{rating} ดาว', { rating: filters.value.rating }));
+  if (filters.value.media) parts.push($t('มีรูป/วิดีโอ'));
+  return $t('{total} รีวิว{parts}', { total: total.toLocaleString(), parts: parts.length ? ` · ${parts.join(' · ')}` : '' });
 });
 
 const activeCategories = computed(() => {
@@ -523,7 +510,7 @@ async function fetchReviews() {
     }
   } catch (err) {
     if (seq !== requestSeq) return;
-    error.value = err.response?.data?.message || 'ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง';
+    error.value = err.response?.data?.message || $t('ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง');
   } finally {
     if (seq === requestSeq) loading.value = false;
   }
@@ -627,10 +614,10 @@ function relativeDate(value) {
   if (Number.isNaN(date.getTime())) return '';
   const startOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((startOf(new Date()) - startOf(date)) / 86400000);
-  if (days <= 0) return 'วันนี้';
-  if (days === 1) return 'เมื่อวาน';
-  if (days < 7) return `${days} วันที่แล้ว`;
-  if (days < 30) return `${Math.floor(days / 7)} สัปดาห์ที่แล้ว`;
+  if (days <= 0) return $t('วันนี้');
+  if (days === 1) return $t('เมื่อวาน');
+  if (days < 7) return $t('{days} วันที่แล้ว', { days });
+  if (days < 30) return $t('{floor} สัปดาห์ที่แล้ว', { floor: Math.floor(days / 7) });
   return thaiShort(date);
 }
 

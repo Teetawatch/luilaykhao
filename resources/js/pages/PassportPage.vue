@@ -1,9 +1,9 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)] pb-32">
     <PageHeader
-      title="สมุดสะสมการเดินทาง"
-      subtitle="ทุกทริปที่คุณเดินจบแล้ว รวมกันเป็นตัวเลขของคุณเอง"
-      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      :title="$t('สมุดสะสมการเดินทาง')"
+      :subtitle="$t('ทุกทริปที่คุณเดินจบแล้ว รวมกันเป็นตัวเลขของคุณเอง')"
+      :crumbs="[{ to: '/profile', label: $t('บัญชีของฉัน') }]"
       container="max-w-3xl px-4 sm:px-6"
     />
     <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
@@ -11,56 +11,50 @@
       <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดข้อมูล...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm">{{ $t('กำลังโหลดข้อมูล...') }}</p>
       </div>
 
       <template v-else>
         <!-- ยังไม่มีทริปที่จบ -->
         <div v-if="!stats?.trips_count" class="bg-white rounded-[20px] border border-[#E8EEEF] p-8 text-center">
           <span class="material-symbols-rounded text-[44px] text-[#B4C4C4]">hiking</span>
-          <p class="text-[#1a1c1c] font-bold mt-3 mb-1">สมุดยังว่างอยู่</p>
-          <p class="text-[#505E5E] text-sm mb-5">
-            พอคุณเดินจบทริปแรก ตัวเลขและตราสะสมจะเริ่มบันทึกลงที่นี่เอง
-          </p>
+          <p class="text-[#1a1c1c] font-bold mt-3 mb-1">{{ $t('สมุดยังว่างอยู่') }}</p>
+          <p class="text-[#505E5E] text-sm mb-5"> {{ $t('พอคุณเดินจบทริปแรก ตัวเลขและตราสะสมจะเริ่มบันทึกลงที่นี่เอง') }} </p>
           <router-link
             to="/trips"
             class="inline-flex items-center gap-1.5 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold px-5 py-3"
           >
-            <span class="material-symbols-rounded text-[18px]">explore</span>
-            ดูทริปที่เปิดอยู่
-          </router-link>
+            <span class="material-symbols-rounded text-[18px]">explore</span> {{ $t('ดูทริปที่เปิดอยู่') }} </router-link>
         </div>
 
         <template v-else>
           <!-- สรุปตัวเลขหลัก -->
           <div class="rounded-[24px] overflow-hidden mb-6 bg-[#0F3D3E] text-white">
             <div class="p-6 sm:p-8">
-              <p class="text-white/70 text-[13px] font-bold mb-5">สถิติตลอดชีพ</p>
+              <p class="text-white/70 text-[13px] font-bold mb-5">{{ $t('สถิติตลอดชีพ') }}</p>
 
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4">
                 <div>
                   <p class="text-3xl font-extrabold tracking-tight">{{ stats.trips_count }}</p>
-                  <p class="text-white/70 text-[13px] font-bold mt-0.5">ทริปที่จบแล้ว</p>
+                  <p class="text-white/70 text-[13px] font-bold mt-0.5">{{ $t('ทริปที่จบแล้ว') }}</p>
                 </div>
                 <div>
                   <p class="text-3xl font-extrabold tracking-tight">{{ fmt(stats.total_distance_km) }}</p>
-                  <p class="text-white/70 text-[13px] font-bold mt-0.5">กม. สะสม</p>
+                  <p class="text-white/70 text-[13px] font-bold mt-0.5">{{ $t('กม. สะสม') }}</p>
                 </div>
                 <div>
                   <p class="text-3xl font-extrabold tracking-tight">{{ fmt(stats.total_elevation_gain_m) }}</p>
-                  <p class="text-white/70 text-[13px] font-bold mt-0.5">เมตรที่ไต่ขึ้น</p>
+                  <p class="text-white/70 text-[13px] font-bold mt-0.5">{{ $t('เมตรที่ไต่ขึ้น') }}</p>
                 </div>
                 <div>
                   <p class="text-3xl font-extrabold tracking-tight">{{ stats.regions_count }}</p>
-                  <p class="text-white/70 text-[13px] font-bold mt-0.5">ภูมิภาคที่ไป</p>
+                  <p class="text-white/70 text-[13px] font-bold mt-0.5">{{ $t('ภูมิภาคที่ไป') }}</p>
                 </div>
               </div>
 
               <!-- เทียบกับดอยอินทนนท์ให้เห็นภาพ -->
               <div v-if="highlights?.inthanon_multiple > 0" class="mt-6 bg-white/10 rounded-[16px] p-4">
-                <p class="text-sm font-medium text-white/90">
-                  ความสูงที่คุณไต่สะสม เท่ากับปีนดอยอินทนนท์
-                  <span class="font-extrabold">{{ highlights.inthanon_multiple }} รอบ</span>
+                <p class="text-sm font-medium text-white/90"> {{ $t('ความสูงที่คุณไต่สะสม เท่ากับปีนดอยอินทนนท์') }} <span class="font-extrabold">{{ $t('{inthanon_multiple} รอบ', { inthanon_multiple: highlights.inthanon_multiple }) }}</span>
                 </p>
               </div>
             </div>
@@ -69,40 +63,37 @@
           <!-- สถิติจาก GPS ที่บันทึกเอง -->
           <section v-if="recorded?.tracks_count" class="mb-6 bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6">
             <div class="flex items-baseline justify-between mb-4">
-              <h2 class="text-[13px] font-bold text-[#505E5E]">ที่คุณบันทึกด้วย GPS เอง</h2>
-              <span class="text-[12px] font-bold text-[#8A9A9A]">{{ recorded.tracks_count }} ครั้ง</span>
+              <h2 class="text-[13px] font-bold text-[#505E5E]">{{ $t('ที่คุณบันทึกด้วย GPS เอง') }}</h2>
+              <span class="text-[12px] font-bold text-[#8A9A9A]">{{ $t('{tracks_count} ครั้ง', { tracks_count: recorded.tracks_count }) }}</span>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-4">
               <div>
                 <p class="text-xl font-extrabold text-[#1a1c1c]">{{ fmt(recorded.distance_km) }}</p>
-                <p class="text-[#505E5E] text-[12px] font-bold">กม. ที่เดินจริง</p>
+                <p class="text-[#505E5E] text-[12px] font-bold">{{ $t('กม. ที่เดินจริง') }}</p>
               </div>
               <div>
                 <p class="text-xl font-extrabold text-[#1a1c1c]">{{ fmt(recorded.elevation_gain_m) }}</p>
-                <p class="text-[#505E5E] text-[12px] font-bold">เมตรที่ไต่จริง</p>
+                <p class="text-[#505E5E] text-[12px] font-bold">{{ $t('เมตรที่ไต่จริง') }}</p>
               </div>
               <div v-if="recorded.average_pace_kmh">
                 <p class="text-xl font-extrabold text-[#1a1c1c]">{{ recorded.average_pace_kmh }}</p>
-                <p class="text-[#505E5E] text-[12px] font-bold">กม./ชม. เฉลี่ย</p>
+                <p class="text-[#505E5E] text-[12px] font-bold">{{ $t('กม./ชม. เฉลี่ย') }}</p>
               </div>
               <div v-if="recorded.highest_point_m">
                 <p class="text-xl font-extrabold text-[#1a1c1c]">{{ fmt(recorded.highest_point_m) }}</p>
-                <p class="text-[#505E5E] text-[12px] font-bold">จุดสูงสุดที่เคยยืน (ม.)</p>
+                <p class="text-[#505E5E] text-[12px] font-bold">{{ $t('จุดสูงสุดที่เคยยืน (ม.)') }}</p>
               </div>
             </div>
-            <router-link to="/my-tracks" class="mt-4 inline-flex items-center gap-1 text-[13px] font-bold text-[var(--color-accent)]">
-              ดูบันทึกการเดินทั้งหมด
-              <span class="material-symbols-rounded text-[16px]">chevron_right</span>
+            <router-link to="/my-tracks" class="mt-4 inline-flex items-center gap-1 text-[13px] font-bold text-[var(--color-accent)]"> {{ $t('ดูบันทึกการเดินทั้งหมด') }} <span class="material-symbols-rounded text-[16px]">chevron_right</span>
             </router-link>
           </section>
 
           <!-- แผนที่พิชิต -->
           <section v-if="pins.length" class="mb-6 bg-white rounded-[20px] border border-[#E8EEEF] overflow-hidden">
             <div class="p-5 sm:p-6 pb-4">
-              <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">แผนที่พิชิต</h2>
+              <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">{{ $t('แผนที่พิชิต') }}</h2>
               <p class="text-sm text-[#1a1c1c] font-medium">
-                {{ mapSummary.trips_visited }} ที่ที่คุณเคยไป จาก {{ mapSummary.departures_count }} ครั้งการเดินทาง
-              </p>
+                {{ $t('{trips_visited} ที่ที่คุณเคยไป จาก {departures_count} ครั้งการเดินทาง', { trips_visited: mapSummary.trips_visited, departures_count: mapSummary.departures_count }) }} </p>
             </div>
             <div ref="mapEl" class="h-[340px] w-full bg-[#EDF2F2]"></div>
 
@@ -116,19 +107,16 @@
               />
               <div class="min-w-0">
                 <p class="font-bold text-[#1a1c1c] text-sm truncate">{{ selectedPin.title }}</p>
-                <p class="text-[12px] text-[#505E5E] mt-0.5">
-                  ไปมา {{ selectedPin.visits }} ครั้ง · ครั้งแรก {{ selectedPin.first_visit_label }}
+                <p class="text-[12px] text-[#505E5E] mt-0.5"> {{ $t('ไปมา {visits} ครั้ง · ครั้งแรก {first_visit_label}', { visits: selectedPin.visits, first_visit_label: selectedPin.first_visit_label }) }}
                 </p>
-                <p v-if="selectedPin.elevation_gain_m" class="text-[12px] text-[#505E5E]">
-                  ไต่ {{ fmt(selectedPin.elevation_gain_m) }} ม. · {{ fmt(selectedPin.distance_km) }} กม.
-                </p>
+                <p v-if="selectedPin.elevation_gain_m" class="text-[12px] text-[#505E5E]"> {{ $t('ไต่ {fmt} ม. · {fmt2} กม.', { fmt: fmt(selectedPin.elevation_gain_m), fmt2: fmt(selectedPin.distance_km) }) }} </p>
               </div>
             </div>
           </section>
 
           <!-- ความลึกรายภาค -->
           <section v-if="visitedRegions.length" class="mb-6 bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6">
-            <h2 class="text-[13px] font-bold text-[#505E5E] mb-4">ภาคที่คุณไปแล้ว</h2>
+            <h2 class="text-[13px] font-bold text-[#505E5E] mb-4">{{ $t('ภาคที่คุณไปแล้ว') }}</h2>
             <ul class="space-y-3">
               <li
                 v-for="region in visitedRegions"
@@ -138,16 +126,14 @@
                 <div class="min-w-0">
                   <p class="font-bold text-[#1a1c1c] text-sm">{{ region.label }}</p>
                   <p class="text-[12px] text-[#505E5E] mt-0.5">
-                    {{ region.trips_count }} ที่ · {{ region.departures_count }} ครั้ง ·
-                    {{ region.first_visit_label }} ถึง {{ region.last_visit_label }}
+                    {{ $t('{trips_count} ที่ · {departures_count} ครั้ง · {first_visit_label} ถึง {last_visit_label}', { trips_count: region.trips_count, departures_count: region.departures_count, first_visit_label: region.first_visit_label, last_visit_label: region.last_visit_label }) }}
                   </p>
-                  <p v-if="region.highest_trip" class="text-[12px] text-[#505E5E]">
-                    หนักสุด: {{ region.highest_trip.title }}
+                  <p v-if="region.highest_trip" class="text-[12px] text-[#505E5E]"> {{ $t('หนักสุด: {title}', { title: region.highest_trip.title }) }}
                   </p>
                 </div>
                 <div class="text-right shrink-0">
-                  <p class="text-sm font-extrabold text-[#1a1c1c]">{{ fmt(region.distance_km) }} กม.</p>
-                  <p class="text-[12px] text-[#505E5E]">{{ fmt(region.elevation_gain_m) }} ม.</p>
+                  <p class="text-sm font-extrabold text-[#1a1c1c]">{{ $t('{fmt} กม.', { fmt: fmt(region.distance_km) }) }}</p>
+                  <p class="text-[12px] text-[#505E5E]">{{ $t('{fmt} ม.', { fmt: fmt(region.elevation_gain_m) }) }}</p>
                 </div>
               </li>
             </ul>
@@ -156,7 +142,7 @@
           <!-- ตราสะสม -->
           <section class="mb-6 bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6">
             <div class="flex items-baseline justify-between mb-4">
-              <h2 class="text-[13px] font-bold text-[#505E5E]">ตราสะสม</h2>
+              <h2 class="text-[13px] font-bold text-[#505E5E]">{{ $t('ตราสะสม') }}</h2>
               <span class="text-[12px] font-bold text-[#8A9A9A]">
                 {{ badgesEarned }} / {{ badgesTotal }}
               </span>
@@ -179,8 +165,7 @@
                 </p>
                 <p class="text-[11px] text-[#8A9A9A] mt-0.5 leading-snug">{{ badge.description }}</p>
 
-                <p v-if="badge.earned && badge.earned_at" class="text-[11px] font-bold text-[var(--color-accent)] mt-1.5">
-                  ปลดล็อก {{ thaiShort(badge.earned_at) }}
+                <p v-if="badge.earned && badge.earned_at" class="text-[11px] font-bold text-[var(--color-accent)] mt-1.5"> {{ $t('ปลดล็อก {thaiShort}', { thaiShort: thaiShort(badge.earned_at) }) }}
                 </p>
 
                 <!-- ความคืบหน้าของตราที่ยังไม่ได้ -->
@@ -201,8 +186,8 @@
 
           <!-- ภาคที่ยังไม่เคยไป -->
           <section v-if="frontier.length" class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6">
-            <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">ยังไม่เคยไป</h2>
-            <p class="text-[12px] text-[#8A9A9A] mb-4">เหลืออีก {{ frontier.length }} ภาคที่สมุดเล่มนี้ยังว่าง</p>
+            <h2 class="text-[13px] font-bold text-[#505E5E] mb-1">{{ $t('ยังไม่เคยไป') }}</h2>
+            <p class="text-[12px] text-[#8A9A9A] mb-4">{{ $t('เหลืออีก {frontierCount} ภาคที่สมุดเล่มนี้ยังว่าง', { frontierCount: frontier.length }) }}</p>
             <div class="flex flex-wrap gap-2">
               <span
                 v-for="region in frontier"
@@ -210,9 +195,7 @@
                 class="rounded-full border border-[#E8EEEF] bg-[#FAFBFB] px-3.5 py-1.5 text-[13px] font-bold text-[#505E5E]"
               >
                 {{ region.label }}
-                <span v-if="region.open_trips_count" class="text-[#8A9A9A] font-medium">
-                  · {{ region.open_trips_count }} ทริป
-                </span>
+                <span v-if="region.open_trips_count" class="text-[#8A9A9A] font-medium"> {{ $t('· {open_trips_count} ทริป', { open_trips_count: region.open_trips_count }) }} </span>
               </span>
             </div>
           </section>

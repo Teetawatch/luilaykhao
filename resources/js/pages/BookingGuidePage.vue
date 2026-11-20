@@ -9,10 +9,10 @@
     >
       <template #actions>
         <router-link to="/trips" class="hero-btn hero-btn--solid">
-          {{ content.cta_label || 'ดูทริปที่เปิดรับ' }}
+          {{ content.cta_label || $t('ดูทริปที่เปิดรับ') }}
           <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
         </router-link>
-        <router-link to="/faq" class="hero-btn hero-btn--outline">คำถามที่พบบ่อย</router-link>
+        <router-link to="/faq" class="hero-btn hero-btn--outline">{{ $t('คำถามที่พบบ่อย') }}</router-link>
       </template>
     </PageHero>
 
@@ -22,10 +22,8 @@
 
           <header class="lg:col-span-4 reveal">
             <div class="lg:sticky lg:top-28">
-              <SectionHeading eyebrow="ขั้นตอนการจอง" :title="steps.length ? `${steps.length} ขั้นตอน ก็พร้อมออกเดินทาง` : 'ขั้นตอนการจอง'" />
-              <p class="mt-4 text-[15px] text-[var(--color-text-mid)] leading-relaxed">
-                จองได้เองทั้งบนเว็บและในแอป ที่นั่งจะถูกกันไว้ให้ระหว่างทำรายการ
-              </p>
+              <SectionHeading :eyebrow="$t('ขั้นตอนการจอง')" :title="steps.length ? $t('{stepsCount} ขั้นตอน ก็พร้อมออกเดินทาง', { stepsCount: steps.length }) : $t('ขั้นตอนการจอง')" />
+              <p class="mt-4 text-[15px] text-[var(--color-text-mid)] leading-relaxed"> {{ $t('จองได้เองทั้งบนเว็บและในแอป ที่นั่งจะถูกกันไว้ให้ระหว่างทำรายการ') }} </p>
             </div>
           </header>
 
@@ -77,9 +75,7 @@
                   <span class="material-symbols-rounded text-[18px]">call</span>
                   {{ supportPhone() }}
                 </a>
-                <router-link to="/contact" class="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white/80 hover:text-white transition-colors">
-                  ส่งข้อความหาเรา
-                </router-link>
+                <router-link to="/contact" class="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white/80 hover:text-white transition-colors"> {{ $t('ส่งข้อความหาเรา') }} </router-link>
               </div>
             </div>
 
@@ -102,6 +98,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, ref } from 'vue'
 import PageHero from '../components/PageHero.vue'
 import SectionHeading from '../components/SectionHeading.vue'
@@ -124,9 +121,9 @@ const { content, loading } = usePageContent('booking_guide', {
 const steps = computed(() => (content.value.steps || []).filter((s) => s?.title))
 
 const related = [
-  { to: '/faq', icon: 'quiz', label: 'คำถามที่พบบ่อย', desc: 'การจอง ชำระเงิน การเดินทาง' },
-  { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'การยกเลิก เลื่อน และคืนเงิน' },
-  { to: '/checklist', icon: 'checklist', label: 'ของที่ควรเตรียม', desc: 'เช็กลิสต์ก่อนออกเดินทาง' },
+  { to: '/faq', icon: 'quiz', label: $t('คำถามที่พบบ่อย'), desc: $t('การจอง ชำระเงิน การเดินทาง') },
+  { to: '/terms', icon: 'gavel', label: $t('เงื่อนไขการให้บริการ'), desc: $t('การยกเลิก เลื่อน และคืนเงิน') },
+  { to: '/checklist', icon: 'checklist', label: $t('ของที่ควรเตรียม'), desc: $t('เช็กลิสต์ก่อนออกเดินทาง') },
 ]
 </script>
 

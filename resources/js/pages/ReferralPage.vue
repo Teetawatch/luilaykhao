@@ -1,9 +1,9 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)] pb-32 font-anuphan">
     <PageHeader
-      title="ชวนเพื่อน รับแต้ม"
-      subtitle="แชร์โค้ดให้เพื่อน เมื่อเพื่อนจองทริปแรกสำเร็จ รับแต้มทั้งคู่"
-      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      :title="$t('ชวนเพื่อน รับแต้ม')"
+      :subtitle="$t('แชร์โค้ดให้เพื่อน เมื่อเพื่อนจองทริปแรกสำเร็จ รับแต้มทั้งคู่')"
+      :crumbs="[{ to: '/profile', label: $t('บัญชีของฉัน') }]"
       container="max-w-2xl px-4 sm:px-6"
     />
     <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-8">
@@ -17,7 +17,7 @@
         <div class="bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-light)] rounded-[24px] p-7 text-white mb-5 relative overflow-hidden">
           <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
           <div class="absolute -right-2 bottom-2 w-20 h-20 rounded-full bg-white/5"></div>
-          <p class="text-white/80 text-xs font-bold uppercase tracking-wider mb-2">โค้ดชวนเพื่อนของคุณ</p>
+          <p class="text-white/80 text-xs font-bold uppercase tracking-wider mb-2">{{ $t('โค้ดชวนเพื่อนของคุณ') }}</p>
           <div class="flex items-center gap-3 mb-5">
             <span class="text-3xl font-black tracking-widest">{{ data.code }}</span>
             <button
@@ -30,13 +30,11 @@
             <button
               @click="share"
               class="flex-1 min-w-[130px] bg-white text-[var(--color-accent)] py-2.5 px-4 rounded-full font-extrabold text-sm hover:bg-white/90 transition flex items-center justify-center gap-1.5">
-              <span class="material-symbols-rounded text-[18px]">share</span> แชร์ลิงก์ชวนเพื่อน
-            </button>
+              <span class="material-symbols-rounded text-[18px]">share</span> {{ $t('แชร์ลิงก์ชวนเพื่อน') }} </button>
             <button
               @click="copy(data.share_url, 'url')"
               class="bg-white/20 hover:bg-white/30 text-white py-2.5 px-4 rounded-full font-bold text-sm transition flex items-center justify-center gap-1.5">
-              <span class="material-symbols-rounded text-[18px]">{{ copied === 'url' ? 'check' : 'link' }}</span> คัดลอกลิงก์
-            </button>
+              <span class="material-symbols-rounded text-[18px]">{{ copied === 'url' ? 'check' : 'link' }}</span> {{ $t('คัดลอกลิงก์') }} </button>
           </div>
         </div>
 
@@ -45,38 +43,36 @@
           <div class="flex items-center gap-4">
             <div class="flex-1 text-center">
               <p class="text-2xl font-black text-[var(--color-accent)]">+{{ data.referrer_points }}</p>
-              <p class="text-xs font-bold text-[#889696] mt-0.5">แต้มสำหรับคุณ</p>
+              <p class="text-xs font-bold text-[#889696] mt-0.5">{{ $t('แต้มสำหรับคุณ') }}</p>
             </div>
             <div class="w-px h-10 bg-[#E8EEEF]"></div>
             <div class="flex-1 text-center">
               <p class="text-2xl font-black text-[var(--color-accent-light)]">+{{ data.referee_points }}</p>
-              <p class="text-xs font-bold text-[#889696] mt-0.5">แต้มสำหรับเพื่อน</p>
+              <p class="text-xs font-bold text-[#889696] mt-0.5">{{ $t('แต้มสำหรับเพื่อน') }}</p>
             </div>
           </div>
-          <p class="text-[11px] text-[#889696] text-center mt-3 leading-relaxed">
-            เพื่อนกรอกโค้ดตอนสมัคร และรับแต้มเมื่อจ่ายเงินทริปแรกสำเร็จ
-          </p>
+          <p class="text-[11px] text-[#889696] text-center mt-3 leading-relaxed"> {{ $t('เพื่อนกรอกโค้ดตอนสมัคร และรับแต้มเมื่อจ่ายเงินทริปแรกสำเร็จ') }} </p>
         </div>
 
         <!-- Summary stats -->
         <div class="grid grid-cols-3 gap-3 mb-5">
           <div class="bg-white rounded-[16px] border border-[#E8EEEF] p-4 text-center">
             <p class="text-xl font-black text-[#1a1c1c]">{{ data.summary.invited }}</p>
-            <p class="text-[11px] font-bold text-[#889696] mt-0.5">ชวนแล้ว</p>
+            <p class="text-[11px] font-bold text-[#889696] mt-0.5">{{ $t('ชวนแล้ว') }}</p>
           </div>
           <div class="bg-white rounded-[16px] border border-[#E8EEEF] p-4 text-center">
             <p class="text-xl font-black text-green-600">{{ data.summary.rewarded }}</p>
-            <p class="text-[11px] font-bold text-[#889696] mt-0.5">สำเร็จ</p>
+            <p class="text-[11px] font-bold text-[#889696] mt-0.5">{{ $t('สำเร็จ') }}</p>
           </div>
           <div class="bg-white rounded-[16px] border border-[#E8EEEF] p-4 text-center">
             <p class="text-xl font-black text-[var(--color-accent)]">{{ data.summary.points_earned }}</p>
-            <p class="text-[11px] font-bold text-[#889696] mt-0.5">แต้มที่ได้</p>
+            <p class="text-[11px] font-bold text-[#889696] mt-0.5">{{ $t('แต้มที่ได้') }}</p>
           </div>
         </div>
 
         <!-- Friends list -->
         <div v-if="data.friends.length > 0" class="bg-white rounded-[20px] border border-[#E8EEEF] p-5">
-          <h2 class="text-sm font-black text-[#1a1c1c] mb-3">เพื่อนที่คุณชวน</h2>
+          <h2 class="text-sm font-black text-[#1a1c1c] mb-3">{{ $t('เพื่อนที่คุณชวน') }}</h2>
           <div class="space-y-2.5">
             <div v-for="(f, i) in data.friends" :key="i" class="flex items-center gap-3">
               <div class="w-9 h-9 rounded-full bg-[#F4F7F6] flex items-center justify-center text-[var(--color-accent)] font-black text-sm shrink-0">
@@ -89,14 +85,14 @@
               <span
                 class="text-[11px] font-black px-2.5 py-1 rounded-full"
                 :class="f.status === 'rewarded' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'">
-                {{ f.status === 'rewarded' ? `+${f.points} แต้ม` : 'รอจองทริปแรก' }}
+                {{ f.status === 'rewarded' ? $t('+{points} แต้ม', { points: f.points }) : $t('รอจองทริปแรก') }}
               </span>
             </div>
           </div>
         </div>
         <div v-else class="bg-white rounded-[20px] border border-dashed border-[#E8EEEF] p-8 text-center">
           <span class="material-symbols-rounded text-4xl text-[#A0B0B0] mb-2">group_add</span>
-          <p class="text-sm font-bold text-[#505E5E]">ยังไม่มีเพื่อนที่ชวน — แชร์โค้ดด้านบนได้เลย!</p>
+          <p class="text-sm font-bold text-[#505E5E]">{{ $t('ยังไม่มีเพื่อนที่ชวน — แชร์โค้ดด้านบนได้เลย!') }}</p>
         </div>
       </template>
 
@@ -111,13 +107,14 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
 import { useHead } from '@unhead/vue';
 
-useHead({ title: 'ชวนเพื่อน รับแต้ม — ลุยเลเขา' });
+useHead({ title: $t('ชวนเพื่อน รับแต้ม — ลุยเลเขา') });
 
 const data = ref(null);
 const loading = ref(true);
@@ -138,7 +135,7 @@ async function copy(text, key) {
   try {
     await navigator.clipboard.writeText(text);
     copied.value = key;
-    showToast('คัดลอกแล้ว');
+    showToast($t('คัดลอกแล้ว'));
     setTimeout(() => { if (copied.value === key) copied.value = null; }, 1500);
   } catch {
     showToast(text);
@@ -147,8 +144,8 @@ async function copy(text, key) {
 
 async function share() {
   const payload = {
-    title: 'ลุยเลเขา',
-    text: data.value?.share_message || 'มาลุยทริปกับลุยเลเขากัน!',
+    title: $t('ลุยเลเขา'),
+    text: data.value?.share_message || $t('มาลุยทริปกับลุยเลเขากัน!'),
     url: data.value?.share_url,
   };
   if (navigator.share) {

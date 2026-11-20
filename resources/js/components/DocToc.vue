@@ -1,5 +1,5 @@
 <template>
-  <nav v-if="items.length" aria-label="สารบัญ" class="lg:sticky lg:top-28">
+  <nav v-if="items.length" :aria-label="$t('สารบัญ')" class="lg:sticky lg:top-28">
     <!-- มือถือ: พับเก็บ -->
     <button
       type="button"
@@ -8,15 +8,13 @@
       @click="mobileOpen = !mobileOpen"
     >
       <span class="flex items-center gap-2">
-        <span class="material-symbols-rounded text-[20px] text-[var(--color-accent)]">toc</span>
-        สารบัญ
-        <span class="text-[var(--color-text-muted)] font-semibold">· {{ items.length }} หัวข้อ</span>
+        <span class="material-symbols-rounded text-[20px] text-[var(--color-accent)]">toc</span> {{ $t('สารบัญ') }} <span class="text-[var(--color-text-muted)] font-semibold">{{ $t('· {itemsCount} หัวข้อ', { itemsCount: items.length }) }}</span>
       </span>
       <span class="material-symbols-rounded text-[20px] transition-transform" :class="{ 'rotate-180': mobileOpen }">expand_more</span>
     </button>
 
     <div :class="mobileOpen ? 'block' : 'hidden lg:block'" class="mt-2 lg:mt-0 rounded-2xl lg:rounded-none border lg:border-0 border-[var(--color-sand-dark)] bg-white lg:bg-transparent p-2 lg:p-0">
-      <p class="hidden lg:block mb-3 text-[13px] font-bold text-[var(--color-text-muted)]">สารบัญ</p>
+      <p class="hidden lg:block mb-3 text-[13px] font-bold text-[var(--color-text-muted)]">{{ $t('สารบัญ') }}</p>
       <ol class="space-y-0.5 lg:border-l lg:border-[var(--color-sand-dark)]">
         <li v-for="item in items" :key="item.id">
           <a

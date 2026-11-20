@@ -8,38 +8,33 @@
       <!-- รหัสสมาชิกของฉัน — ให้เพื่อนเอาไปกรอกตอนจะโอนแต้มมาให้ -->
       <div class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 flex items-center gap-4">
         <div class="flex-1 min-w-0">
-          <p class="text-[13px] font-bold text-[#505E5E]">รหัสสมาชิกของคุณ</p>
+          <p class="text-[13px] font-bold text-[#505E5E]">{{ $t('รหัสสมาชิกของคุณ') }}</p>
           <p class="font-mono text-2xl font-bold text-[var(--color-accent)] tracking-widest mt-0.5">{{ info.member_code }}</p>
-          <p class="text-[12px] text-[#889696] mt-1">ส่งรหัสนี้ให้เพื่อน เพื่อให้เพื่อนโอนแต้มมาให้คุณได้</p>
+          <p class="text-[12px] text-[#889696] mt-1">{{ $t('ส่งรหัสนี้ให้เพื่อน เพื่อให้เพื่อนโอนแต้มมาให้คุณได้') }}</p>
         </div>
         <button @click="copyCode"
           class="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-[12px] border border-[#BCDFDF] text-[var(--color-accent)] text-sm font-bold hover:bg-[#F0FAFA] transition-colors">
           <span class="material-symbols-rounded text-[18px]">{{ copied ? 'check' : 'content_copy' }}</span>
-          {{ copied ? 'คัดลอกแล้ว' : 'คัดลอก' }}
+          {{ copied ? $t('คัดลอกแล้ว') : $t('คัดลอก') }}
         </button>
       </div>
 
       <!-- ฟอร์มโอน -->
       <div class="bg-white rounded-[20px] border border-[#E8EEEF] p-5 sm:p-6">
-        <h2 class="text-lg font-bold text-[#1a1c1c] mb-1">โอนแต้มให้เพื่อน</h2>
-        <p class="text-[13px] text-[#505E5E] mb-5">
-          ขั้นต่ำครั้งละ {{ fmt(info.limits.min_points) }} แต้ม · วันนี้โอนได้อีก {{ fmt(info.limits.remaining_today_points) }} แต้ม
-          ({{ info.limits.sent_today_count }}/{{ info.limits.daily_max_count }} ครั้ง)
-        </p>
+        <h2 class="text-lg font-bold text-[#1a1c1c] mb-1">{{ $t('โอนแต้มให้เพื่อน') }}</h2>
+        <p class="text-[13px] text-[#505E5E] mb-5"> {{ $t('ขั้นต่ำครั้งละ {fmt} แต้ม · วันนี้โอนได้อีก {fmt2} แต้ม ({sent_today_count}/{daily_max_count} ครั้ง)', { fmt: fmt(info.limits.min_points), fmt2: fmt(info.limits.remaining_today_points), sent_today_count: info.limits.sent_today_count, daily_max_count: info.limits.daily_max_count }) }} </p>
 
-        <p v-if="!info.limits.enabled" class="text-sm font-bold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-[12px] px-4 py-3">
-          ระบบโอนแต้มปิดให้บริการชั่วคราว
-        </p>
+        <p v-if="!info.limits.enabled" class="text-sm font-bold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-[12px] px-4 py-3"> {{ $t('ระบบโอนแต้มปิดให้บริการชั่วคราว') }} </p>
 
         <template v-else>
-          <label class="block text-[13px] font-bold text-[#505E5E] mb-1.5" for="pt-recipient">ผู้รับ</label>
+          <label class="block text-[13px] font-bold text-[#505E5E] mb-1.5" for="pt-recipient">{{ $t('ผู้รับ') }}</label>
           <div class="flex gap-2">
             <input id="pt-recipient" v-model.trim="recipientInput" @input="recipient = null" @keyup.enter="lookup"
-              type="text" autocomplete="off" placeholder="เบอร์โทร อีเมล หรือรหัสสมาชิกของเพื่อน"
+              type="text" autocomplete="off" :placeholder="$t('เบอร์โทร อีเมล หรือรหัสสมาชิกของเพื่อน')"
               class="flex-1 min-w-0 rounded-[12px] border border-[#D5DEDE] px-4 py-3 text-[15px] focus:outline-none focus:border-[var(--color-accent)]" />
             <button @click="lookup" :disabled="!recipientInput || looking"
               class="shrink-0 px-4 rounded-[12px] bg-[#E3F2F2] text-[var(--color-accent)] text-sm font-bold disabled:opacity-50">
-              {{ looking ? 'กำลังค้นหา...' : 'ตรวจสอบ' }}
+              {{ looking ? $t('กำลังค้นหา...') : $t('ตรวจสอบ') }}
             </button>
           </div>
           <p v-if="lookupError" class="text-[13px] text-[#DC2626] font-medium mt-2">{{ lookupError }}</p>
@@ -48,14 +43,14 @@
             <img v-if="recipient.avatar_url" :src="recipient.avatar_url" alt="" class="w-10 h-10 rounded-full object-cover" />
             <div v-else class="w-10 h-10 rounded-full bg-[var(--color-accent)] text-white font-bold flex items-center justify-center">{{ recipient.initial }}</div>
             <div class="min-w-0">
-              <p class="text-[12px] text-[#505E5E]">โอนให้</p>
+              <p class="text-[12px] text-[#505E5E]">{{ $t('โอนให้') }}</p>
               <p class="font-bold text-[#1a1c1c] truncate">{{ recipient.display_name }}</p>
             </div>
             <span class="material-symbols-rounded text-[#0F6B5C] ml-auto" style="font-variation-settings:'FILL' 1">verified</span>
           </div>
 
           <template v-if="recipient">
-            <label class="block text-[13px] font-bold text-[#505E5E] mt-5 mb-1.5" for="pt-points">จำนวนแต้ม</label>
+            <label class="block text-[13px] font-bold text-[#505E5E] mt-5 mb-1.5" for="pt-points">{{ $t('จำนวนแต้ม') }}</label>
             <input id="pt-points" v-model.number="points" type="number" inputmode="numeric"
               :min="info.limits.min_points" :max="maxSendable"
               class="w-full rounded-[12px] border border-[#D5DEDE] px-4 py-3 text-xl font-bold focus:outline-none focus:border-[var(--color-accent)]" />
@@ -66,32 +61,32 @@
                 {{ fmt(q) }}
               </button>
             </div>
-            <p class="text-[12px] text-[#889696] mt-2">คุณมี {{ fmt(info.points) }} แต้ม · โอนได้สูงสุด {{ fmt(maxSendable) }} แต้ม</p>
+            <p class="text-[12px] text-[#889696] mt-2">{{ $t('คุณมี {fmt} แต้ม · โอนได้สูงสุด {fmt2} แต้ม', { fmt: fmt(info.points), fmt2: fmt(maxSendable) }) }}</p>
 
-            <label class="block text-[13px] font-bold text-[#505E5E] mt-5 mb-1.5" for="pt-message">ข้อความถึงเพื่อน (ไม่บังคับ)</label>
-            <input id="pt-message" v-model="message" type="text" maxlength="120" placeholder="เช่น ขอบคุณที่ชวนไปเที่ยวนะ"
+            <label class="block text-[13px] font-bold text-[#505E5E] mt-5 mb-1.5" for="pt-message">{{ $t('ข้อความถึงเพื่อน (ไม่บังคับ)') }}</label>
+            <input id="pt-message" v-model="message" type="text" maxlength="120" :placeholder="$t('เช่น ขอบคุณที่ชวนไปเที่ยวนะ')"
               class="w-full rounded-[12px] border border-[#D5DEDE] px-4 py-3 text-[15px] focus:outline-none focus:border-[var(--color-accent)]" />
 
             <button @click="send" :disabled="!canSend || sending"
               class="mt-6 w-full bg-[var(--color-accent)] text-white py-3.5 rounded-[14px] font-bold hover:bg-[var(--color-accent-mid)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
               <span v-if="sending" class="material-symbols-rounded text-[18px] animate-spin">progress_activity</span>
-              {{ sending ? 'กำลังโอน...' : `โอน ${fmt(points || 0)} แต้ม` }}
+              {{ sending ? $t('กำลังโอน...') : $t('โอน {fmt} แต้ม', { fmt: fmt(points || 0) }) }}
             </button>
-            <p class="text-[12px] text-[#889696] mt-2 text-center">แต้มที่โอนแล้วเรียกคืนไม่ได้ และยังหมดอายุตามวันเดิมของแต้มก้อนนั้น</p>
+            <p class="text-[12px] text-[#889696] mt-2 text-center">{{ $t('แต้มที่โอนแล้วเรียกคืนไม่ได้ และยังหมดอายุตามวันเดิมของแต้มก้อนนั้น') }}</p>
           </template>
         </template>
       </div>
 
       <!-- ประวัติโอนเข้า-ออก -->
       <div v-if="info.history.length" class="bg-white rounded-[20px] border border-[#E8EEEF] overflow-hidden">
-        <h3 class="text-[13px] font-bold text-[#505E5E] px-5 pt-5 pb-3">ประวัติการโอนแต้ม</h3>
+        <h3 class="text-[13px] font-bold text-[#505E5E] px-5 pt-5 pb-3">{{ $t('ประวัติการโอนแต้ม') }}</h3>
         <div v-for="h in info.history" :key="h.id" class="flex items-center gap-3 px-5 py-3.5 border-t border-[#F0F4F4]">
           <span class="material-symbols-rounded text-[22px]" :class="h.direction === 'in' ? 'text-[var(--color-accent)]' : 'text-[#D97706]'">
             {{ h.direction === 'in' ? 'call_received' : 'call_made' }}
           </span>
           <div class="flex-1 min-w-0">
             <p class="text-[14px] font-bold text-[#1a1c1c] truncate">
-              {{ h.direction === 'in' ? 'ได้รับจาก' : 'โอนให้' }} {{ h.counterpart_name }}
+              {{ h.direction === 'in' ? $t('ได้รับจาก') : $t('โอนให้') }} {{ h.counterpart_name }}
             </p>
             <p v-if="h.message" class="text-[12px] text-[#505E5E] truncate">"{{ h.message }}"</p>
             <p class="text-[12px] text-[#A0B0B0]">{{ thaiShort(h.created_at) }}</p>
@@ -106,6 +101,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { ref, computed, onMounted } from 'vue';
 import api from '../lib/axios';
 import { thaiShort } from '../lib/thaiDate';
@@ -154,7 +150,7 @@ async function lookup() {
     const res = await api.post('/loyalty/transfers/lookup', { recipient: recipientInput.value });
     recipient.value = res.data.data;
   } catch (e) {
-    lookupError.value = e?.response?.data?.message || 'ค้นหาไม่สำเร็จ ลองอีกครั้ง';
+    lookupError.value = e?.response?.data?.message || $t('ค้นหาไม่สำเร็จ ลองอีกครั้ง');
   } finally {
     looking.value = false;
   }
@@ -162,7 +158,7 @@ async function lookup() {
 
 async function send() {
   if (!canSend.value) return;
-  if (!confirm(`ยืนยันโอน ${fmt(points.value)} แต้ม ให้ ${recipient.value.display_name}?`)) return;
+  if (!confirm($t('ยืนยันโอน {fmt} แต้ม ให้ {display_name}?', { fmt: fmt(points.value), display_name: recipient.value.display_name }))) return;
   sending.value = true;
   try {
     const res = await api.post('/loyalty/transfers', {
@@ -170,7 +166,7 @@ async function send() {
       points: points.value,
       message: message.value || null,
     });
-    alert(`โอน ${fmt(res.data.data.points)} แต้ม ให้ ${res.data.data.recipient_name} แล้ว`);
+    alert($t('โอน {fmt} แต้ม ให้ {recipient_name} แล้ว', { fmt: fmt(res.data.data.points), recipient_name: res.data.data.recipient_name }));
     recipientInput.value = '';
     recipient.value = null;
     points.value = null;
@@ -178,7 +174,7 @@ async function send() {
     await load();
     emit('transferred');
   } catch (e) {
-    alert(e?.response?.data?.message || 'โอนแต้มไม่สำเร็จ');
+    alert(e?.response?.data?.message || $t('โอนแต้มไม่สำเร็จ'));
   } finally {
     sending.value = false;
   }

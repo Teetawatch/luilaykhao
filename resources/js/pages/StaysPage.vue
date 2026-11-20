@@ -2,13 +2,11 @@
   <div class="font-anuphan bg-[var(--color-sand)] min-h-screen pb-24">
     <PageHero
       image="/images/landscape.webp"
-      title="ที่พักชุมชนใกล้ทริป"
-      subtitle="โฮมสเตย์และที่พักของคนในพื้นที่ จองคืนก่อนหรือหลังทริปได้ในที่เดียว"
+      :title="$t('ที่พักชุมชนใกล้ทริป')"
+      :subtitle="$t('โฮมสเตย์และที่พักของคนในพื้นที่ จองคืนก่อนหรือหลังทริปได้ในที่เดียว')"
     >
       <template #actions>
-        <router-link v-if="auth.isLoggedIn" to="/my-stays" class="hero-btn hero-btn--outline">
-          ที่พักที่จองไว้
-          <span class="material-symbols-rounded icon-20">arrow_forward</span>
+        <router-link v-if="auth.isLoggedIn" to="/my-stays" class="hero-btn hero-btn--outline"> {{ $t('ที่พักที่จองไว้') }} <span class="material-symbols-rounded icon-20">arrow_forward</span>
         </router-link>
       </template>
     </PageHero>
@@ -18,24 +16,22 @@
         <div class="flex gap-2 overflow-x-auto no-scrollbar">
           <label class="filter-pill" :class="{ 'is-set': filters.province }">
             <span class="material-symbols-rounded filter-pill__icon">map</span>
-            <select v-model="filters.province" aria-label="จังหวัด">
-              <option value="">ทุกจังหวัด</option>
+            <select v-model="filters.province" :aria-label="$t('จังหวัด')">
+              <option value="">{{ $t('ทุกจังหวัด') }}</option>
               <option v-for="p in provinces" :key="p" :value="p">{{ p }}</option>
             </select>
             <span class="material-symbols-rounded filter-pill__chevron">expand_more</span>
           </label>
           <label class="filter-pill" :class="{ 'is-set': filters.type }">
             <span class="material-symbols-rounded filter-pill__icon">cottage</span>
-            <select v-model="filters.type" aria-label="ประเภท">
-              <option value="">ทุกประเภท</option>
+            <select v-model="filters.type" :aria-label="$t('ประเภท')">
+              <option value="">{{ $t('ทุกประเภท') }}</option>
               <option v-for="t in types" :key="t.key" :value="t.key">{{ t.label }}</option>
             </select>
             <span class="material-symbols-rounded filter-pill__chevron">expand_more</span>
           </label>
           <button v-if="filters.province || filters.type || filters.trip" type="button" class="filter-clear press" @click="reset">
-            <span class="material-symbols-rounded icon-18">close</span>
-            ล้าง
-          </button>
+            <span class="material-symbols-rounded icon-18">close</span> {{ $t('ล้าง') }} </button>
         </div>
       </div>
 
@@ -43,21 +39,19 @@
       <div v-if="impact && impact.stays" class="impact mt-6">
         <div class="impact__item">
           <span class="impact__num">{{ impact.stays }}</span>
-          <span class="impact__label">ที่พักในเครือข่าย</span>
+          <span class="impact__label">{{ $t('ที่พักในเครือข่าย') }}</span>
         </div>
         <div v-if="impact.communities" class="impact__item">
           <span class="impact__num">{{ impact.communities }}</span>
-          <span class="impact__label">ชุมชน</span>
+          <span class="impact__label">{{ $t('ชุมชน') }}</span>
         </div>
         <div v-if="impact.nights_hosted" class="impact__item">
           <span class="impact__num">{{ impact.nights_hosted.toLocaleString($dateLocale) }}</span>
-          <span class="impact__label">คืนที่ต้อนรับแขก</span>
+          <span class="impact__label">{{ $t('คืนที่ต้อนรับแขก') }}</span>
         </div>
       </div>
 
-      <p v-if="filters.trip && !loading" class="mt-6 text-sm font-bold text-[var(--color-text-mid)]">
-        ที่พักใกล้ทริปที่คุณดูอยู่
-      </p>
+      <p v-if="filters.trip && !loading" class="mt-6 text-sm font-bold text-[var(--color-text-mid)]"> {{ $t('ที่พักใกล้ทริปที่คุณดูอยู่') }} </p>
 
       <div v-if="loading" class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" aria-hidden="true">
         <div v-for="i in 6" :key="i" class="rounded-3xl bg-white border border-[var(--color-sand-dark)] overflow-hidden">
@@ -73,8 +67,8 @@
         <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent-tint)] text-[var(--color-accent)]">
           <span class="material-symbols-rounded icon-32">cottage</span>
         </span>
-        <p class="mt-4 text-lg font-extrabold text-[var(--color-text-dark)]">ยังไม่มีที่พักตามที่เลือก</p>
-        <p class="mt-1 text-sm text-[var(--color-text-muted)]">เรากำลังชวนชุมชนใหม่ ๆ มาร่วม ลองล้างตัวกรองดูก่อนนะครับ</p>
+        <p class="mt-4 text-lg font-extrabold text-[var(--color-text-dark)]">{{ $t('ยังไม่มีที่พักตามที่เลือก') }}</p>
+        <p class="mt-1 text-sm text-[var(--color-text-muted)]">{{ $t('เรากำลังชวนชุมชนใหม่ ๆ มาร่วม ลองล้างตัวกรองดูก่อนนะครับ') }}</p>
       </div>
 
       <div v-else v-reveal.stagger class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -107,9 +101,9 @@
                 <span class="material-symbols-rounded icon-16 align-[-3px] text-amber-500">star</span>
                 {{ stay.rating_avg.toFixed(1) }} ({{ stay.rating_count }})
               </span>
-              <span v-else class="text-[12px] font-bold text-[var(--color-text-muted)]">ที่พักใหม่</span>
+              <span v-else class="text-[12px] font-bold text-[var(--color-text-muted)]">{{ $t('ที่พักใหม่') }}</span>
               <span v-if="stay.price_from !== null" class="text-right">
-                <span class="block text-[11px] font-bold text-[var(--color-text-muted)]">เริ่มต้น/คืน</span>
+                <span class="block text-[11px] font-bold text-[var(--color-text-muted)]">{{ $t('เริ่มต้น/คืน') }}</span>
                 <span class="text-lg font-black text-[var(--color-text-dark)]">฿{{ Math.round(stay.price_from).toLocaleString($dateLocale) }}</span>
               </span>
             </div>

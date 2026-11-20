@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\PageContentDocument;
 use App\Support\PageContent;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +37,8 @@ class AdminPageContentController extends Controller
             'description' => $definition['description'],
             'fields' => $definition['fields'],
             'content' => PageContent::get($key),
+            // เลขที่แท็บ English ใช้ดู/แก้คำแปล (admin/translations/page/{id})
+            'translation_id' => PageContentDocument::IDS[$key] ?? null,
         ]);
     }
 

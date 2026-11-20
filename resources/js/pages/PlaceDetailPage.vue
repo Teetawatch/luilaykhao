@@ -12,10 +12,8 @@
       <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent-tint)] text-[var(--color-accent)]">
         <span class="material-symbols-rounded icon-32">explore_off</span>
       </span>
-      <p class="mt-4 text-xl font-extrabold text-[var(--color-text-dark)]">ไม่พบสถานที่นี้</p>
-      <router-link to="/places" class="mt-6 inline-flex rounded-full bg-[var(--color-accent)] px-6 py-3 text-sm font-bold text-white press">
-        ดูสถานที่ทั้งหมด
-      </router-link>
+      <p class="mt-4 text-xl font-extrabold text-[var(--color-text-dark)]">{{ $t('ไม่พบสถานที่นี้') }}</p>
+      <router-link to="/places" class="mt-6 inline-flex rounded-full bg-[var(--color-accent)] px-6 py-3 text-sm font-bold text-white press"> {{ $t('ดูสถานที่ทั้งหมด') }} </router-link>
     </div>
 
     <template v-else-if="place">
@@ -31,8 +29,8 @@
         />
         <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/40"></div>
 
-        <nav aria-label="เส้นทางนำทาง" class="relative z-10 mx-auto flex w-full max-w-6xl items-center gap-1 px-4 pt-6 text-[13px] font-semibold text-white/75 sm:px-6 md:px-8">
-          <router-link to="/places" class="hover:text-white">สถานที่ธรรมชาติ</router-link>
+        <nav :aria-label="$t('เส้นทางนำทาง')" class="relative z-10 mx-auto flex w-full max-w-6xl items-center gap-1 px-4 pt-6 text-[13px] font-semibold text-white/75 sm:px-6 md:px-8">
+          <router-link to="/places" class="hover:text-white">{{ $t('สถานที่ธรรมชาติ') }}</router-link>
           <span class="material-symbols-rounded icon-16 opacity-60">chevron_right</span>
           <span class="truncate text-white">{{ place.name }}</span>
         </nav>
@@ -43,10 +41,8 @@
           <div class="flex flex-wrap gap-2">
             <span v-if="place.type_label" class="hero-tag">{{ place.type_label }}</span>
             <span v-if="bestNow" class="hero-tag hero-tag--accent">
-              <span class="material-symbols-rounded icon-16">wb_sunny</span>
-              ช่วงพีคเดือนนี้
-            </span>
-            <span v-else-if="closedNow" class="hero-tag hero-tag--closed">ปิดเดือนนี้</span>
+              <span class="material-symbols-rounded icon-16">wb_sunny</span> {{ $t('ช่วงพีคเดือนนี้') }} </span>
+            <span v-else-if="closedNow" class="hero-tag hero-tag--closed">{{ $t('ปิดเดือนนี้') }}</span>
           </div>
           <h1 class="mt-4 text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl md:text-5xl">{{ place.name }}</h1>
           <p class="mt-3 flex items-center gap-1.5 text-[15px] font-semibold text-white/85">
@@ -68,7 +64,7 @@
             </p>
             <p class="fact__label">
               {{ fact.label }}
-              <router-link v-if="fact.link" :to="fact.link" class="ml-1 text-[var(--color-accent)] hover:underline">คืออะไร</router-link>
+              <router-link v-if="fact.link" :to="fact.link" class="ml-1 text-[var(--color-accent)] hover:underline">{{ $t('คืออะไร') }}</router-link>
             </p>
           </div>
         </section>
@@ -77,13 +73,13 @@
           <!-- ── เนื้อหาหลัก ── -->
           <div class="space-y-10 lg:col-span-7">
             <section v-if="place.summary || place.description" v-reveal>
-              <p class="section-kicker">เกี่ยวกับที่นี่</p>
+              <p class="section-kicker">{{ $t('เกี่ยวกับที่นี่') }}</p>
               <p v-if="place.summary" class="mt-3 text-xl font-bold leading-relaxed text-[var(--color-text-dark)]">{{ place.summary }}</p>
               <p v-if="place.description" class="mt-4 whitespace-pre-line text-[16px] leading-[1.9] text-[var(--color-text-mid)]">{{ place.description }}</p>
             </section>
 
             <section v-if="place.highlights?.length" v-reveal>
-              <p class="section-kicker">ไฮไลต์</p>
+              <p class="section-kicker">{{ $t('ไฮไลต์') }}</p>
               <ul v-reveal.stagger class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <li v-for="(item, i) in place.highlights" :key="i" class="flex items-start gap-3 rounded-2xl border border-[var(--color-sand-dark)] bg-white p-4">
                   <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-tint)] text-[var(--color-accent)]">
@@ -96,9 +92,7 @@
 
             <section v-if="place.know_before?.length" v-reveal class="rounded-3xl border border-amber-200 bg-amber-50/60 p-6">
               <p class="flex items-center gap-2 text-[15px] font-extrabold text-amber-800">
-                <span class="material-symbols-rounded icon-20">info</span>
-                ต้องรู้ก่อนไป
-              </p>
+                <span class="material-symbols-rounded icon-20">info</span> {{ $t('ต้องรู้ก่อนไป') }} </p>
               <ul class="mt-4 space-y-3">
                 <li v-for="(item, i) in place.know_before" :key="i" class="flex gap-3 text-[15px] leading-relaxed text-[var(--color-text-dark)]">
                   <span class="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"></span>
@@ -108,7 +102,7 @@
             </section>
 
             <section v-if="place.gallery?.length" v-reveal>
-              <p class="section-kicker">ภาพจากที่นี่</p>
+              <p class="section-kicker">{{ $t('ภาพจากที่นี่') }}</p>
               <div v-reveal.stagger:scale class="gallery mt-4">
                 <a
                   v-for="(photo, i) in place.gallery"
@@ -118,7 +112,7 @@
                   rel="noopener"
                   class="zoom-media gallery__item"
                 >
-                  <img :src="photo" :alt="`${place.name} ภาพที่ ${i + 1}`" loading="lazy" />
+                  <img :src="photo" :alt="$t('{name} ภาพที่ {p}', { name: place.name, p: i + 1 })" loading="lazy" />
                 </a>
               </div>
             </section>
@@ -127,13 +121,13 @@
           <!-- ── ข้างขวา: ปฏิทิน แผนที่ ทริป ── -->
           <aside class="space-y-6 lg:col-span-5">
             <section v-reveal class="side-card">
-              <p class="section-kicker">ไปเดือนไหนดี</p>
+              <p class="section-kicker">{{ $t('ไปเดือนไหนดี') }}</p>
               <MonthStrip class="mt-4" size="lg" :best="place.best_months || []" :closed="place.closed_months || []" />
               <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] font-semibold text-[var(--color-text-muted)]">
-                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-[var(--color-accent)]"></span>ควรไป</span>
-                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-[#FEE4E2]"></span>ปิด</span>
-                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-[var(--color-sand-dark)]"></span>ไปได้แต่ไม่ใช่ช่วงพีค</span>
-                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded border-2 border-[var(--color-text-dark)]"></span>เดือนนี้</span>
+                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-[var(--color-accent)]"></span>{{ $t('ควรไป') }}</span>
+                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-[#FEE4E2]"></span>{{ $t('ปิด') }}</span>
+                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded bg-[var(--color-sand-dark)]"></span>{{ $t('ไปได้แต่ไม่ใช่ช่วงพีค') }}</span>
+                <span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded border-2 border-[var(--color-text-dark)]"></span>{{ $t('เดือนนี้') }}</span>
               </div>
               <p v-if="place.season_note" class="mt-4 text-[15px] leading-relaxed text-[var(--color-text-dark)]">{{ place.season_note }}</p>
               <p v-if="place.closure_note" class="mt-3 flex gap-2 rounded-2xl bg-[#FEF3F2] p-3 text-[14px] font-semibold leading-relaxed text-[#B42318]">
@@ -144,10 +138,8 @@
 
             <section v-if="place.latitude && place.longitude" v-reveal class="side-card overflow-hidden !p-0">
               <div class="flex items-center justify-between gap-3 p-6 pb-4">
-                <p class="section-kicker">อยู่ตรงไหน</p>
-                <a :href="mapsUrl" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[13px] font-bold text-[var(--color-accent)] hover:underline">
-                  เปิดใน Google Maps
-                  <span class="material-symbols-rounded icon-16">open_in_new</span>
+                <p class="section-kicker">{{ $t('อยู่ตรงไหน') }}</p>
+                <a :href="mapsUrl" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-[13px] font-bold text-[var(--color-accent)] hover:underline"> {{ $t('เปิดใน Google Maps') }} <span class="material-symbols-rounded icon-16">open_in_new</span>
                 </a>
               </div>
               <div ref="mapEl" class="h-[260px] w-full bg-[var(--color-sand-dark)]"></div>
@@ -155,8 +147,8 @@
 
             <!-- ทริปที่ไปที่นี่ — วางท้ายสุดโดยตั้งใจ หน้านี้เป็นหน้าข้อมูล ไม่ใช่หน้าขาย -->
             <section v-if="place.trips?.length" v-reveal class="side-card">
-              <p class="section-kicker">ถ้าอยากไปกับกลุ่ม</p>
-              <p class="mt-1 text-[13px] text-[var(--color-text-muted)]">ทริปของเราที่พาไปที่นี่</p>
+              <p class="section-kicker">{{ $t('ถ้าอยากไปกับกลุ่ม') }}</p>
+              <p class="mt-1 text-[13px] text-[var(--color-text-muted)]">{{ $t('ทริปของเราที่พาไปที่นี่') }}</p>
               <ul class="mt-4 space-y-2">
                 <li v-for="trip in place.trips" :key="trip.id">
                   <router-link :to="`/trips/${trip.slug}`" class="group -mx-2 flex items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-[var(--color-sand)]">
@@ -166,8 +158,8 @@
                     <span class="min-w-0 flex-1">
                       <span class="block truncate font-bold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)]">{{ trip.title }}</span>
                       <span class="mt-0.5 block text-[13px] text-[var(--color-text-muted)]">
-                        <template v-if="trip.upcoming_count">รอบถัดไป {{ trip.next_departure_label }} · อีก {{ trip.upcoming_count }} รอบ</template>
-                        <template v-else>ยังไม่มีรอบเปิด</template>
+                        <template v-if="trip.upcoming_count">{{ $t('รอบถัดไป {next_departure_label} · อีก {upcoming_count} รอบ', { next_departure_label: trip.next_departure_label, upcoming_count: trip.upcoming_count }) }}</template>
+                        <template v-else>{{ $t('ยังไม่มีรอบเปิด') }}</template>
                       </span>
                     </span>
                     <span class="material-symbols-rounded icon-20 text-[var(--color-text-muted)] transition-transform group-hover:translate-x-1">chevron_right</span>
@@ -185,6 +177,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
@@ -210,10 +203,10 @@ const facts = computed(() => {
   const p = place.value;
   if (!p) return [];
   const out = [];
-  if (p.elevation_m) out.push({ icon: 'altitude', number: p.elevation_m, unit: 'ม.', label: 'เหนือระดับน้ำทะเล' });
-  if (p.trail_distance_km) out.push({ icon: 'route', number: p.trail_distance_km, unit: 'กม.', label: 'ระยะเดิน' });
-  if (p.elevation_gain_m) out.push({ icon: 'trending_up', number: p.elevation_gain_m, unit: 'ม.', label: 'ที่ต้องไต่ขึ้น' });
-  if (p.difficulty_label) out.push({ icon: 'hiking', text: p.difficulty_label, label: 'ระดับความยาก', link: '/difficulty' });
+  if (p.elevation_m) out.push({ icon: 'altitude', number: p.elevation_m, unit: $t('ม.'), label: $t('เหนือระดับน้ำทะเล') });
+  if (p.trail_distance_km) out.push({ icon: 'route', number: p.trail_distance_km, unit: $t('กม.'), label: $t('ระยะเดิน') });
+  if (p.elevation_gain_m) out.push({ icon: 'trending_up', number: p.elevation_gain_m, unit: $t('ม.'), label: $t('ที่ต้องไต่ขึ้น') });
+  if (p.difficulty_label) out.push({ icon: 'hiking', text: p.difficulty_label, label: $t('ระดับความยาก'), link: '/difficulty' });
   return out;
 });
 
@@ -262,7 +255,7 @@ async function load(slug) {
   try {
     const res = await api.get(`/places/${encodeURIComponent(slug)}`);
     place.value = res.data?.data;
-    document.title = `${place.value.name} | ลุยเลเขา`;
+    document.title = $t('{name} | ลุยเลเขา', { name: place.value.name });
   } catch (err) {
     if (err.response?.status === 404) notFound.value = true;
   } finally {

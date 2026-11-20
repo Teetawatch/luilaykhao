@@ -20,7 +20,7 @@
             <div class="flex items-start justify-between gap-4">
               <span class="level-card__emoji">{{ level.emoji }}</span>
               <!-- มาตรวัดความหนัก: 1–3 ขีดตามลำดับระดับ -->
-              <span class="level-meter" :aria-label="`ระดับ ${i + 1} จาก ${content.levels.length}`">
+              <span class="level-meter" :aria-label="$t('ระดับ {p} จาก {levelsCount}', { p: i + 1, levelsCount: content.levels.length })">
                 <span
                   v-for="n in content.levels.length"
                   :key="n"
@@ -38,14 +38,12 @@
 
             <div class="mt-5 rounded-2xl p-4" :style="{ backgroundColor: 'var(--tone-tint)' }">
               <p class="flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wide" :style="{ color: 'var(--tone)' }">
-                <span class="material-symbols-rounded icon-16">compare_arrows</span>
-                เทียบให้เห็นภาพ
-              </p>
+                <span class="material-symbols-rounded icon-16">compare_arrows</span> {{ $t('เทียบให้เห็นภาพ') }} </p>
               <p class="mt-1.5 text-[14px] leading-relaxed text-[var(--color-text-dark)]">{{ level.reference }}</p>
             </div>
 
             <p class="mt-auto pt-5 text-[14px] leading-relaxed text-[var(--color-text-mid)]">
-              <span class="font-extrabold text-[var(--color-text-dark)]">เหมาะกับ</span> {{ level.suited_for }}
+              <span class="font-extrabold text-[var(--color-text-dark)]">{{ $t('เหมาะกับ') }}</span> {{ level.suited_for }}
             </p>
           </article>
         </div>
@@ -60,9 +58,7 @@
         <header v-reveal class="lg:col-span-4">
           <div class="lg:sticky lg:top-28">
             <p class="inline-flex items-center gap-2 text-[13px] font-bold text-[var(--color-accent)]">
-              <span class="h-[2px] w-6 rounded-full bg-[var(--color-accent)]"></span>
-              เกณฑ์ของเรา
-            </p>
+              <span class="h-[2px] w-6 rounded-full bg-[var(--color-accent)]"></span> {{ $t('เกณฑ์ของเรา') }} </p>
             <h2 class="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-[var(--color-text-dark)] md:text-4xl">
               {{ content.factors_title }}
             </h2>
@@ -91,11 +87,9 @@
           <h2 class="text-2xl font-black leading-tight text-white md:text-4xl">{{ content.self_check_title }}</h2>
           <p class="mt-4 whitespace-pre-line text-[15px] leading-relaxed text-white/80 md:text-base">{{ content.self_check_body }}</p>
           <div class="mt-8 flex flex-wrap gap-3">
-            <router-link to="/passport" class="hero-btn hero-btn--solid">
-              ดูสถิติของฉัน
-              <span class="material-symbols-rounded icon-20">arrow_forward</span>
+            <router-link to="/passport" class="hero-btn hero-btn--solid"> {{ $t('ดูสถิติของฉัน') }} <span class="material-symbols-rounded icon-20">arrow_forward</span>
             </router-link>
-            <router-link to="/places" class="hero-btn hero-btn--outline">ดูสถานที่ทั้งหมด</router-link>
+            <router-link to="/places" class="hero-btn hero-btn--outline">{{ $t('ดูสถานที่ทั้งหมด') }}</router-link>
           </div>
         </div>
       </section>

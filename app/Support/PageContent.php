@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\PageContentDocument;
 use App\Models\Setting;
 
 /**
@@ -127,6 +128,7 @@ class PageContent
     public static function put(string $key, array $value): void
     {
         Setting::put(self::STORAGE_PREFIX.$key, $value);
+        PageContentDocument::queueTranslation($key);
     }
 
     /** กลับไปใช้เนื้อหาเริ่มต้นที่มากับระบบ */
@@ -134,6 +136,7 @@ class PageContent
     {
         Setting::where('key', self::STORAGE_PREFIX.$key)->delete();
         Setting::forget(self::STORAGE_PREFIX.$key);
+        PageContentDocument::queueTranslation($key);
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Category;
 use App\Models\Concerns\HasContentTranslations;
 use App\Models\ContentTranslation;
+use App\Models\PageContentDocument;
 use App\Models\Review;
 use App\Models\SchedulePickupPoint;
 use App\Models\Trip;
@@ -14,6 +15,7 @@ use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\ContentTranslationService;
 use App\Support\ContentText;
+use App\Support\PageContent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Bus;
@@ -355,6 +357,27 @@ class ContentTranslationTest extends TestCase
         $this->getJson("/api/v1/trips/{$trip->slug}")
             ->assertJsonPath('data.meals.label', 'อาหาร 1 มื้อ')
             ->assertJsonPath('data.meals.days.0.label', 'วันที่ 1');
+    }
+
+    public function test_cms_pages_are_translated_when_saved(): void
+    {
+        $content = PageContent::get('checklist');
+        $content['title'] = 'เช็คลิสต์ของที่ต้องเตรียม';
+        PageContent::put('checklist', $content);
+
+        $this->getJson('/api/v1/content/checklist', ['X-App-Language' => 'en'])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'EN เช็คลิสต์ของที่ต้องเตรียม')
+            ->assertJsonPath('data.trip_types.0.key', 'hiking')
+            ->assertJsonPath('data.trip_types.0.label', 'EN เดินป่า / ขึ้นดอย');
+
+        $this->getJson('/api/v1/content/checklist')
+            ->assertJsonPath('data.title', 'เช็คลิสต์ของที่ต้องเตรียม');
+
+        $this->actingAs($this->admin(), 'sanctum')
+            ->getJson('/api/v1/admin/translations/page/'.PageContentDocument::IDS['checklist'])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.path', 'content.title');
     }
 
     public function test_deleting_content_removes_its_translations(): void

@@ -24,6 +24,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed } from 'vue';
 import { THAI_MONTHS_LONG, THAI_MONTHS_SHORT } from '../lib/thaiDate';
 
@@ -37,7 +38,7 @@ const props = defineProps({
 
 defineEmits(['select']);
 
-const STATE_LABEL = { best: 'ช่วงที่ควรไป', closed: 'ปิด', open: 'ไปได้ แต่ไม่ใช่ช่วงพีค' };
+const STATE_LABEL = { best: $t('ช่วงที่ควรไป'), closed: $t('ปิด'), open: $t('ไปได้ แต่ไม่ใช่ช่วงพีค') };
 
 // เดือนปัจจุบันตามเวลาไทย ไม่ใช่ตามเครื่องผู้ใช้
 const nowMonth = Number(new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Bangkok', month: 'numeric' }));
@@ -51,7 +52,7 @@ function stateOf(m) {
 const ariaLabel = computed(() => {
   const best = props.best.map((m) => THAI_MONTHS_SHORT[m - 1]).join(' ');
   const closed = props.closed.map((m) => THAI_MONTHS_SHORT[m - 1]).join(' ');
-  return [best && `ควรไป ${best}`, closed && `ปิด ${closed}`].filter(Boolean).join(' · ') || 'ไปได้ทั้งปี';
+  return [best && $t('ควรไป {best}', { best }), closed && $t('ปิด {closed}', { closed })].filter(Boolean).join(' · ') || $t('ไปได้ทั้งปี');
 });
 </script>
 

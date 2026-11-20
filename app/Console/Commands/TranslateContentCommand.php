@@ -44,14 +44,20 @@ class TranslateContentCommand extends Command
                 return self::FAILURE;
             }
 
-            $query = $class::query()->orderBy('id');
-            if ($this->option('id')) {
-                $query->whereKey((int) $this->option('id'));
+            if (method_exists($class, 'allForTranslation')) {
+                $models = collect($class::allForTranslation())
+                    ->when($this->option('id'), fn ($all) => $all->filter(fn ($m) => (int) $m->getKey() === (int) $this->option('id')));
+            } else {
+                $query = $class::query()->orderBy('id');
+                if ($this->option('id')) {
+                    $query->whereKey((int) $this->option('id'));
+                }
+                $this->scopeForBackfill($type, $query);
+                $models = $query->lazyById();
             }
-            $this->scopeForBackfill($type, $query);
 
             $count = 0;
-            $query->each(function ($model) use ($translations, &$count) {
+            $models->each(function ($model) use ($translations, &$count) {
                 if ($translations->segments($model) === []) {
                     return;
                 }

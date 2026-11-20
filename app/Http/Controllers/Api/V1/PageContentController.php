@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\PageContentDocument;
 use App\Support\PageContent;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +21,10 @@ class PageContentController extends Controller
             return $this->error('ไม่พบหน้าเนื้อหานี้', 404);
         }
 
-        return $this->success(PageContent::get($key));
+        // หน้าอังกฤษ: เนื้อหาตามคำแปล (ช่องที่ยังไม่แปลเป็นไทยไปก่อน)
+        $content = PageContent::get($key);
+        $document = PageContentDocument::for($key);
+
+        return $this->success($document ? $document->tr('content', $content) : $content);
     }
 }

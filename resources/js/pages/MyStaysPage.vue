@@ -1,16 +1,14 @@
 <template>
   <div class="font-anuphan bg-[var(--color-sand)] min-h-screen pb-24">
     <PageHeader
-      title="ที่พักของฉัน"
-      subtitle="ใบจองที่พักชุมชนทั้งหมด"
-      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      :title="$t('ที่พักของฉัน')"
+      :subtitle="$t('ใบจองที่พักชุมชนทั้งหมด')"
+      :crumbs="[{ to: '/profile', label: $t('บัญชีของฉัน') }]"
       container="max-w-3xl px-4 sm:px-6"
     >
       <template #actions>
         <router-link to="/stays" class="ph-btn ph-btn--solid">
-          <span class="material-symbols-rounded icon-18">cottage</span>
-          หาที่พัก
-        </router-link>
+          <span class="material-symbols-rounded icon-18">cottage</span> {{ $t('หาที่พัก') }} </router-link>
       </template>
     </PageHeader>
     <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-2">
@@ -21,8 +19,8 @@
 
       <div v-else-if="!items.length" class="mt-8 rounded-3xl bg-white border border-[var(--color-sand-dark)] px-6 py-14 text-center">
         <span class="material-symbols-rounded icon-32 text-[var(--color-accent)]">cottage</span>
-        <p class="mt-3 font-extrabold text-[var(--color-text-dark)]">ยังไม่มีการจองที่พัก</p>
-        <p class="mt-1 text-sm text-[var(--color-text-muted)]">พักคืนก่อนหรือหลังทริปกับชุมชนใกล้ ๆ ได้เลย</p>
+        <p class="mt-3 font-extrabold text-[var(--color-text-dark)]">{{ $t('ยังไม่มีการจองที่พัก') }}</p>
+        <p class="mt-1 text-sm text-[var(--color-text-muted)]">{{ $t('พักคืนก่อนหรือหลังทริปกับชุมชนใกล้ ๆ ได้เลย') }}</p>
       </div>
 
       <div v-else class="mt-6 grid gap-3">
@@ -31,9 +29,9 @@
           <div class="min-w-0 flex-1">
             <span class="status" :class="'status--' + tone(b.status)">{{ b.status_label }}</span>
             <p class="mt-1 truncate font-extrabold text-[var(--color-text-dark)]">{{ b.stay?.name }}</p>
-            <p class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ range(b) }} · {{ b.guests }} คน</p>
-            <p v-if="b.can_pay" class="text-[13px] font-bold text-amber-700">รอชำระ ฿{{ Number(b.total_amount).toLocaleString($dateLocale) }}</p>
-            <p v-else-if="b.can_review" class="text-[13px] font-bold text-[var(--color-accent)]">รีวิวที่พักนี้</p>
+            <p class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ $t('{range} · {guests} คน', { range: range(b), guests: b.guests }) }}</p>
+            <p v-if="b.can_pay" class="text-[13px] font-bold text-amber-700">{{ $t('รอชำระ ฿{Number}', { Number: Number(b.total_amount).toLocaleString($dateLocale) }) }}</p>
+            <p v-else-if="b.can_review" class="text-[13px] font-bold text-[var(--color-accent)]">{{ $t('รีวิวที่พักนี้') }}</p>
           </div>
           <span class="material-symbols-rounded text-[var(--color-text-muted)]">chevron_right</span>
         </router-link>
@@ -43,11 +41,12 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { onMounted, ref } from 'vue';
 import api from '../lib/axios';
 
-const MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const MONTHS = [$t('ม.ค.'), $t('ก.พ.'), $t('มี.ค.'), $t('เม.ย.'), $t('พ.ค.'), $t('มิ.ย.'), $t('ก.ค.'), $t('ส.ค.'), $t('ก.ย.'), $t('ต.ค.'), $t('พ.ย.'), $t('ธ.ค.')];
 const loading = ref(true);
 const items = ref([]);
 

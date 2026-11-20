@@ -2,8 +2,8 @@
   <div class="font-anuphan bg-[var(--color-sand)] min-h-screen pb-24">
     <PageHero
       image="/images/phusoidao.webp"
-      title="เดือนไหนไปไหนดี"
-      subtitle="ปฏิทินธรรมชาติของไทยทั้งปี ที่ไหนอยู่ในช่วงพีค ที่ไหนปิด ใช้วางแผนล่วงหน้าได้แม้ยังไม่คิดจะจองอะไร"
+      :title="$t('เดือนไหนไปไหนดี')"
+      :subtitle="$t('ปฏิทินธรรมชาติของไทยทั้งปี ที่ไหนอยู่ในช่วงพีค ที่ไหนปิด ใช้วางแผนล่วงหน้าได้แม้ยังไม่คิดจะจองอะไร')"
     />
 
     <div class="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
@@ -16,14 +16,14 @@
         <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-accent-tint)] text-[var(--color-accent)]">
           <span class="material-symbols-rounded icon-32">calendar_month</span>
         </span>
-        <p class="mt-4 text-lg font-extrabold text-[var(--color-text-dark)]">ยังไม่มีข้อมูลฤดูกาล</p>
-        <p class="mt-1 text-sm text-[var(--color-text-muted)]">ทีมงานกำลังทยอยเพิ่มข้อมูลของแต่ละสถานที่</p>
+        <p class="mt-4 text-lg font-extrabold text-[var(--color-text-dark)]">{{ $t('ยังไม่มีข้อมูลฤดูกาล') }}</p>
+        <p class="mt-1 text-sm text-[var(--color-text-muted)]">{{ $t('ทีมงานกำลังทยอยเพิ่มข้อมูลของแต่ละสถานที่') }}</p>
       </div>
 
       <template v-else>
         <!-- แถบเลือกเดือน — ไฮไลต์ชิ้นเดียวเลื่อนไปหาเดือนที่เลือก -->
         <div class="month-bar sticky top-16 z-30 -mt-7">
-          <div ref="monthBarEl" class="relative flex overflow-x-auto no-scrollbar" role="tablist" aria-label="เลือกเดือน">
+          <div ref="monthBarEl" class="relative flex overflow-x-auto no-scrollbar" role="tablist" :aria-label="$t('เลือกเดือน')">
             <span class="month-bar__ink" :style="inkStyle" aria-hidden="true"></span>
             <button
               v-for="month in months"
@@ -37,7 +37,7 @@
               @click="selected = month.month"
             >
               {{ THAI_MONTHS_SHORT[month.month - 1] }}
-              <span v-if="month.month === currentMonth" class="month-bar__now" aria-label="เดือนนี้"></span>
+              <span v-if="month.month === currentMonth" class="month-bar__now" :aria-label="$t('เดือนนี้')"></span>
             </button>
           </div>
         </div>
@@ -49,22 +49,21 @@
               <div class="min-w-0">
                 <p class="flex items-center gap-2 text-[14px] font-bold text-white/70">
                   <span class="material-symbols-rounded icon-20 text-white/80">{{ seasonIcon(active.season) }}</span>
-                  {{ active.season_label }}<span v-if="active.month === currentMonth"> · เดือนนี้</span>
+                  {{ active.season_label }}<span v-if="active.month === currentMonth"> {{ $t('· เดือนนี้') }}</span>
                 </p>
                 <h2 class="mt-1 text-4xl md:text-5xl font-black tracking-tight text-white">{{ active.label }}</h2>
                 <p class="mt-3 text-[15px] text-white/75">
                   <template v-if="active.best.length">
-                    <span class="font-extrabold text-white">{{ active.best.length }}</span> ที่อยู่ในช่วงที่ควรไป
-                  </template>
-                  <template v-else>เดือนนี้ไม่มีที่ไหนอยู่ในช่วงพีค เป็นช่วงพักของหลายเส้นทาง</template>
-                  <template v-if="active.closed.length"> · <span class="font-extrabold text-white">{{ active.closed.length }}</span> ที่ปิด</template>
+                    <span class="font-extrabold text-white">{{ active.best.length }}</span> {{ $t('ที่อยู่ในช่วงที่ควรไป') }} </template>
+                  <template v-else>{{ $t('เดือนนี้ไม่มีที่ไหนอยู่ในช่วงพีค เป็นช่วงพักของหลายเส้นทาง') }}</template>
+                  <template v-if="active.closed.length"> · <span class="font-extrabold text-white">{{ active.closed.length }}</span> {{ $t('ที่ปิด') }}</template>
                 </p>
               </div>
               <div class="flex shrink-0 gap-2">
-                <button type="button" class="month-step press" aria-label="เดือนก่อนหน้า" @click="step(-1)">
+                <button type="button" class="month-step press" :aria-label="$t('เดือนก่อนหน้า')" @click="step(-1)">
                   <span class="material-symbols-rounded">chevron_left</span>
                 </button>
-                <button type="button" class="month-step press" aria-label="เดือนถัดไป" @click="step(1)">
+                <button type="button" class="month-step press" :aria-label="$t('เดือนถัดไป')" @click="step(1)">
                   <span class="material-symbols-rounded">chevron_right</span>
                 </button>
               </div>
@@ -72,7 +71,7 @@
 
             <!-- ที่ที่ควรไป -->
             <section v-if="active.best.length" class="mt-8">
-              <h3 class="section-kicker">ช่วงที่ควรไป</h3>
+              <h3 class="section-kicker">{{ $t('ช่วงที่ควรไป') }}</h3>
               <div v-reveal.stagger class="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 <router-link v-for="place in active.best" :key="place.id" :to="`/places/${place.slug}`" class="best-card group">
                   <span class="zoom-media relative block aspect-[4/3] bg-[var(--color-primary)]">
@@ -93,10 +92,8 @@
             <!-- ที่ที่ปิด -->
             <section v-if="active.closed.length" class="mt-8 rounded-3xl border border-[var(--color-sand-dark)] bg-white p-6">
               <h3 class="flex items-center gap-2 text-[15px] font-extrabold text-[#B42318]">
-                <span class="material-symbols-rounded icon-20">block</span>
-                ปิดในเดือนนี้
-              </h3>
-              <p class="mt-1 text-[13px] text-[var(--color-text-muted)]">อย่าเพิ่งวางแผนไป ยังเข้าไม่ได้</p>
+                <span class="material-symbols-rounded icon-20">block</span> {{ $t('ปิดในเดือนนี้') }} </h3>
+              <p class="mt-1 text-[13px] text-[var(--color-text-muted)]">{{ $t('อย่าเพิ่งวางแผนไป ยังเข้าไม่ได้') }}</p>
               <ul class="mt-4 divide-y divide-[var(--color-sand-dark)]">
                 <li v-for="place in active.closed" :key="place.slug">
                   <router-link :to="`/places/${place.slug}`" class="group flex items-center gap-3 py-3">
@@ -114,8 +111,8 @@
 
         <!-- ภาพรวมทั้งปี — ทุกสถานที่ในตารางเดียว กดหัวเดือนเพื่อดูรายละเอียดเดือนนั้น -->
         <section v-if="yearRows.length" v-reveal class="mt-16 rounded-3xl border border-[var(--color-sand-dark)] bg-white p-6 md:p-8">
-          <h3 class="section-kicker">ภาพรวมทั้งปี</h3>
-          <p class="mt-1 text-[13px] text-[var(--color-text-muted)]">เขียว = ช่วงที่ควรไป · แดง = ปิด · เทา = ไปได้แต่ไม่ใช่ช่วงพีค</p>
+          <h3 class="section-kicker">{{ $t('ภาพรวมทั้งปี') }}</h3>
+          <p class="mt-1 text-[13px] text-[var(--color-text-muted)]">{{ $t('เขียว = ช่วงที่ควรไป · แดง = ปิด · เทา = ไปได้แต่ไม่ใช่ช่วงพีค') }}</p>
 
           <div class="mt-6 overflow-x-auto no-scrollbar">
             <div class="year-grid">
@@ -139,9 +136,7 @@
           </div>
         </section>
 
-        <p class="mt-6 text-center text-[13px] text-[var(--color-text-muted)]">
-          ข้อมูลช่วงปิดอ้างอิงประกาศของอุทยาน อาจเปลี่ยนได้ตามสภาพอากาศแต่ละปี
-        </p>
+        <p class="mt-6 text-center text-[13px] text-[var(--color-text-muted)]"> {{ $t('ข้อมูลช่วงปิดอ้างอิงประกาศของอุทยาน อาจเปลี่ยนได้ตามสภาพอากาศแต่ละปี') }} </p>
       </template>
 
       <GuideNextLinks current="/seasons" class="mt-20" />

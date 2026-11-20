@@ -2,12 +2,8 @@
   <!-- ท้ายหน้ากลุ่ม "ข้อมูลก่อนไป" — โยงไปอีกสามหน้าในชุดเดียวกัน ให้อ่านต่อกันเป็นเรื่องเดียว -->
   <section class="guide-next" aria-labelledby="guide-next-title">
     <p class="inline-flex items-center gap-2 text-[13px] font-bold text-[var(--color-accent)]">
-      <span class="w-6 h-[2px] rounded-full bg-[var(--color-accent)]"></span>
-      ข้อมูลก่อนไป
-    </p>
-    <h2 id="guide-next-title" class="mt-2 text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight">
-      อ่านต่อก่อนออกเดินทาง
-    </h2>
+      <span class="w-6 h-[2px] rounded-full bg-[var(--color-accent)]"></span> {{ $t('ข้อมูลก่อนไป') }} </p>
+    <h2 id="guide-next-title" class="mt-2 text-2xl md:text-3xl font-extrabold text-[var(--color-text-dark)] tracking-tight"> {{ $t('อ่านต่อก่อนออกเดินทาง') }} </h2>
 
     <div v-reveal.stagger class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
       <router-link v-for="item in others" :key="item.to" :to="item.to" class="guide-next__card group">
@@ -26,6 +22,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -34,10 +31,10 @@ const props = defineProps({
 });
 
 const ITEMS = [
-  { to: '/places', icon: 'landscape', image: '/images/landscape.webp', title: 'สถานที่ธรรมชาติ', desc: 'ความสูง ระยะเดิน ช่วงที่ควรไปของแต่ละที่' },
-  { to: '/seasons', icon: 'calendar_month', image: '/images/phusoidao.webp', title: 'เดือนไหนไปไหนดี', desc: 'ปฏิทินธรรมชาติของไทยทั้งปี' },
-  { to: '/difficulty', icon: 'terrain', image: '/images/khaochangphueak.webp', title: 'ระดับความยาก', desc: 'สายชิล ปานกลาง สายโหด ต่างกันยังไง' },
-  { to: '/checklist', icon: 'checklist', image: '/images/hiking.webp', title: 'เช็คลิสต์ของที่ต้องเตรียม', desc: 'ติ๊กจัดกระเป๋าได้ทันที พิมพ์ได้' },
+  { to: '/places', icon: 'landscape', image: '/images/landscape.webp', title: $t('สถานที่ธรรมชาติ'), desc: $t('ความสูง ระยะเดิน ช่วงที่ควรไปของแต่ละที่') },
+  { to: '/seasons', icon: 'calendar_month', image: '/images/phusoidao.webp', title: $t('เดือนไหนไปไหนดี'), desc: $t('ปฏิทินธรรมชาติของไทยทั้งปี') },
+  { to: '/difficulty', icon: 'terrain', image: '/images/khaochangphueak.webp', title: $t('ระดับความยาก'), desc: $t('สายชิล ปานกลาง สายโหด ต่างกันยังไง') },
+  { to: '/checklist', icon: 'checklist', image: '/images/hiking.webp', title: $t('เช็คลิสต์ของที่ต้องเตรียม'), desc: $t('ติ๊กจัดกระเป๋าได้ทันที พิมพ์ได้') },
 ];
 
 const others = computed(() => ITEMS.filter((item) => item.to !== props.current));

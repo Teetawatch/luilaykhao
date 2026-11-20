@@ -15,15 +15,15 @@
           type="search"
           inputmode="search"
           enterkeyhint="search"
-          aria-label="ค้นหาคำถาม"
-          placeholder="ค้นหา เช่น มัดจำ, ยกเลิก, จุดขึ้นรถ"
+          :aria-label="$t('ค้นหาคำถาม')"
+          :placeholder="$t('ค้นหา เช่น มัดจำ, ยกเลิก, จุดขึ้นรถ')"
           class="w-full rounded-2xl bg-white py-4 pl-12 pr-12 text-[15px] font-semibold text-[var(--color-text-dark)] placeholder:text-[var(--color-text-muted)]/70 placeholder:font-medium outline-none focus:ring-4 focus:ring-white/30"
         />
         <button
           v-if="query"
           type="button"
           class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-sand)]"
-          aria-label="ล้างคำค้นหา"
+          :aria-label="$t('ล้างคำค้นหา')"
           @click="query = ''"
         >
           <span class="material-symbols-rounded text-[20px]">close</span>
@@ -36,9 +36,9 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
 
           <!-- Categories -->
-          <nav v-if="groups.length > 1" class="lg:col-span-3" aria-label="หมวดคำถาม">
+          <nav v-if="groups.length > 1" class="lg:col-span-3" :aria-label="$t('หมวดคำถาม')">
             <div class="lg:sticky lg:top-28">
-              <p class="hidden lg:block text-[13px] font-bold text-[var(--color-text-muted)] mb-3">หมวดคำถาม</p>
+              <p class="hidden lg:block text-[13px] font-bold text-[var(--color-text-muted)] mb-3">{{ $t('หมวดคำถาม') }}</p>
               <div class="-mx-4 px-4 lg:mx-0 lg:px-0 overflow-x-auto scrollbar-none">
                 <div class="flex lg:flex-col gap-2 lg:gap-1 w-max lg:w-auto">
                   <button
@@ -61,9 +61,7 @@
 
           <!-- Questions -->
           <div :class="groups.length > 1 ? 'lg:col-span-9' : 'lg:col-span-12 max-w-3xl'" class="min-w-0">
-            <p v-if="query" class="mb-5 text-sm font-semibold text-[var(--color-text-muted)]" aria-live="polite">
-              พบ {{ matchCount }} คำถามที่เกี่ยวกับ “{{ query.trim() }}”
-            </p>
+            <p v-if="query" class="mb-5 text-sm font-semibold text-[var(--color-text-muted)]" aria-live="polite"> {{ $t('พบ {matchCount} คำถามที่เกี่ยวกับ “{query}”', { matchCount, query: query.trim() }) }} </p>
 
             <div v-if="loading && !groups.length" class="space-y-3" aria-hidden="true">
               <div v-for="n in 6" :key="n" class="h-16 rounded-2xl bg-white border border-[var(--color-sand-dark)] animate-pulse"></div>
@@ -71,9 +69,9 @@
 
             <div v-else-if="query && !matchCount" class="rounded-3xl border border-dashed border-[var(--color-sand-dark)] bg-white px-6 py-14 text-center">
               <span class="material-symbols-rounded text-5xl text-[var(--color-text-muted)]/50">search_off</span>
-              <p class="mt-3 text-lg font-extrabold text-[var(--color-text-dark)]">ไม่พบคำถามที่ตรงกับคำค้นหา</p>
-              <p class="mt-1 text-sm text-[var(--color-text-muted)]">ลองใช้คำอื่น หรือถามทีมงานโดยตรงได้เลยครับ</p>
-              <button type="button" class="mt-5 rounded-xl border border-[var(--color-sand-dark)] px-5 py-2.5 text-sm font-bold text-[var(--color-text-dark)] hover:border-[var(--color-accent)]" @click="query = ''">ล้างคำค้นหา</button>
+              <p class="mt-3 text-lg font-extrabold text-[var(--color-text-dark)]">{{ $t('ไม่พบคำถามที่ตรงกับคำค้นหา') }}</p>
+              <p class="mt-1 text-sm text-[var(--color-text-muted)]">{{ $t('ลองใช้คำอื่น หรือถามทีมงานโดยตรงได้เลยครับ') }}</p>
+              <button type="button" class="mt-5 rounded-xl border border-[var(--color-sand-dark)] px-5 py-2.5 text-sm font-bold text-[var(--color-text-dark)] hover:border-[var(--color-accent)]" @click="query = ''">{{ $t('ล้างคำค้นหา') }}</button>
             </div>
 
             <div v-else class="space-y-10">
@@ -114,17 +112,15 @@
             <!-- Still need help -->
             <div class="mt-12 rounded-3xl bg-[var(--color-primary)] p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center gap-5">
               <div class="flex-1">
-                <p class="text-xl font-extrabold">{{ content.footer_text || 'ยังไม่เจอคำตอบที่ต้องการ?' }}</p>
-                <p class="mt-1 text-[15px] text-white/70">ทีมงานตอบทาง LINE {{ supportLine() }} · {{ supportHours() }}</p>
+                <p class="text-xl font-extrabold">{{ content.footer_text || $t('ยังไม่เจอคำตอบที่ต้องการ?') }}</p>
+                <p class="mt-1 text-[15px] text-white/70">{{ $t('ทีมงานตอบทาง LINE {supportLine} · {supportHours}', { supportLine: supportLine(), supportHours: supportHours() }) }}</p>
               </div>
               <div class="flex flex-wrap gap-2 shrink-0">
                 <router-link to="/contact" class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[var(--color-primary)] hover:bg-[var(--color-sand)] transition-colors">
                   <span class="material-symbols-rounded text-[18px]">chat</span>
-                  {{ content.footer_cta || 'ติดต่อเรา' }}
+                  {{ content.footer_cta || $t('ติดต่อเรา') }}
                 </router-link>
-                <a :href="supportLineUrl()" target="_blank" rel="noopener" class="inline-flex items-center rounded-xl border border-white/25 px-5 py-3 text-sm font-bold text-white hover:bg-white/10 transition-colors">
-                  แชท LINE
-                </a>
+                <a :href="supportLineUrl()" target="_blank" rel="noopener" class="inline-flex items-center rounded-xl border border-white/25 px-5 py-3 text-sm font-bold text-white hover:bg-white/10 transition-colors"> {{ $t('แชท LINE') }} </a>
               </div>
             </div>
           </div>

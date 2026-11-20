@@ -1,42 +1,40 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)] pb-32">
     <PageHeader
-      title="บันทึกการเดินของฉัน"
-      subtitle="ระยะและความสูงที่วัดจาก GPS ของคุณเอง ไม่ใช่ตัวเลขประมาณการของเส้นทาง"
-      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      :title="$t('บันทึกการเดินของฉัน')"
+      :subtitle="$t('ระยะและความสูงที่วัดจาก GPS ของคุณเอง ไม่ใช่ตัวเลขประมาณการของเส้นทาง')"
+      :crumbs="[{ to: '/profile', label: $t('บัญชีของฉัน') }]"
       container="max-w-2xl px-4 sm:px-6"
     />
     <div class="max-w-2xl mx-auto px-4 sm:px-6 pt-8">
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดบันทึก...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm">{{ $t('กำลังโหลดบันทึก...') }}</p>
       </div>
 
       <div v-else-if="!tracks.length" class="bg-white rounded-[20px] border border-[#E8EEEF] p-8 text-center">
         <span class="material-symbols-rounded text-[44px] text-[#B4C4C4]">route</span>
-        <p class="text-[#1a1c1c] font-bold mt-3 mb-1">ยังไม่มีบันทึกการเดิน</p>
-        <p class="text-[#505E5E] text-sm">
-          เปิดแอปลุยเลเขาแล้วกดบันทึกระหว่างเดิน เส้นทางกับสถิติจะมาโผล่ที่นี่
-        </p>
+        <p class="text-[#1a1c1c] font-bold mt-3 mb-1">{{ $t('ยังไม่มีบันทึกการเดิน') }}</p>
+        <p class="text-[#505E5E] text-sm"> {{ $t('เปิดแอปลุยเลเขาแล้วกดบันทึกระหว่างเดิน เส้นทางกับสถิติจะมาโผล่ที่นี่') }} </p>
       </div>
 
       <template v-else>
         <!-- สรุปรวม -->
         <div class="rounded-[20px] bg-[#0F3D3E] text-white p-5 sm:p-6 mb-5">
-          <p class="text-white/70 text-[13px] font-bold mb-4">รวมทุกครั้งที่บันทึก</p>
+          <p class="text-white/70 text-[13px] font-bold mb-4">{{ $t('รวมทุกครั้งที่บันทึก') }}</p>
           <div class="grid grid-cols-3 gap-4">
             <div>
               <p class="text-2xl font-extrabold">{{ tracks.length }}</p>
-              <p class="text-white/70 text-[12px] font-bold">ครั้ง</p>
+              <p class="text-white/70 text-[12px] font-bold">{{ $t('ครั้ง') }}</p>
             </div>
             <div>
               <p class="text-2xl font-extrabold">{{ fmt(totalDistance) }}</p>
-              <p class="text-white/70 text-[12px] font-bold">กม.</p>
+              <p class="text-white/70 text-[12px] font-bold">{{ $t('กม.') }}</p>
             </div>
             <div>
               <p class="text-2xl font-extrabold">{{ fmt(totalElevation) }}</p>
-              <p class="text-white/70 text-[12px] font-bold">ม. ที่ไต่</p>
+              <p class="text-white/70 text-[12px] font-bold">{{ $t('ม. ที่ไต่') }}</p>
             </div>
           </div>
         </div>
@@ -52,7 +50,7 @@
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="font-bold text-[#1a1c1c] text-sm truncate">{{ track.trip_title || 'บันทึกการเดิน' }}</p>
+                  <p class="font-bold text-[#1a1c1c] text-sm truncate">{{ track.trip_title || $t('บันทึกการเดิน') }}</p>
                   <p class="text-[12px] text-[#8A9A9A] mt-0.5">{{ track.started_at_label || '—' }}</p>
                 </div>
                 <span
@@ -64,13 +62,13 @@
 
               <div class="flex flex-wrap gap-x-5 gap-y-1 mt-3 text-[13px]">
                 <span class="font-extrabold text-[#1a1c1c]">
-                  {{ fmt(track.distance_km) }} <span class="font-medium text-[#8A9A9A]">กม.</span>
+                  {{ fmt(track.distance_km) }} <span class="font-medium text-[#8A9A9A]">{{ $t('กม.') }}</span>
                 </span>
                 <span class="font-extrabold text-[#1a1c1c]">
-                  {{ fmt(track.elevation_gain_m) }} <span class="font-medium text-[#8A9A9A]">ม. ไต่ขึ้น</span>
+                  {{ fmt(track.elevation_gain_m) }} <span class="font-medium text-[#8A9A9A]">{{ $t('ม. ไต่ขึ้น') }}</span>
                 </span>
                 <span v-if="track.moving_seconds" class="font-extrabold text-[#1a1c1c]">
-                  {{ duration(track.moving_seconds) }} <span class="font-medium text-[#8A9A9A]">เดินจริง</span>
+                  {{ duration(track.moving_seconds) }} <span class="font-medium text-[#8A9A9A]">{{ $t('เดินจริง') }}</span>
                 </span>
               </div>
             </button>
@@ -87,47 +85,45 @@
                 <div class="p-5">
                   <!-- กราฟความชัน -->
                   <template v-if="profile.points.length > 1">
-                    <h3 class="text-[13px] font-bold text-[#505E5E] mb-3">โปรไฟล์ความสูง</h3>
+                    <h3 class="text-[13px] font-bold text-[#505E5E] mb-3">{{ $t('โปรไฟล์ความสูง') }}</h3>
                     <svg :viewBox="`0 0 ${PROFILE_W} ${PROFILE_H}`" class="w-full h-32" preserveAspectRatio="none">
                       <polygon :points="profile.area" fill="#047857" fill-opacity="0.12" />
                       <polyline :points="profile.line" fill="none" stroke="#047857" stroke-width="2" vector-effect="non-scaling-stroke" />
                     </svg>
                     <div class="flex justify-between text-[11px] text-[#8A9A9A] mt-1">
-                      <span>0 กม.</span>
-                      <span>{{ fmt(detail.distance_km) }} กม.</span>
+                      <span>{{ $t('0 กม.') }}</span>
+                      <span>{{ $t('{fmt} กม.', { fmt: fmt(detail.distance_km) }) }}</span>
                     </div>
                     <div class="flex justify-between text-[11px] text-[#8A9A9A] mt-0.5">
-                      <span>ต่ำสุด {{ fmt(profile.min) }} ม.</span>
-                      <span>สูงสุด {{ fmt(profile.max) }} ม.</span>
+                      <span>{{ $t('ต่ำสุด {fmt} ม.', { fmt: fmt(profile.min) }) }}</span>
+                      <span>{{ $t('สูงสุด {fmt} ม.', { fmt: fmt(profile.max) }) }}</span>
                     </div>
                   </template>
 
                   <div class="grid grid-cols-2 gap-y-3 gap-x-4 mt-5">
                     <div v-if="detail.average_pace_kmh">
                       <p class="text-lg font-extrabold text-[#1a1c1c]">{{ detail.average_pace_kmh }}</p>
-                      <p class="text-[12px] font-bold text-[#8A9A9A]">กม./ชม. ตอนกำลังเดิน</p>
+                      <p class="text-[12px] font-bold text-[#8A9A9A]">{{ $t('กม./ชม. ตอนกำลังเดิน') }}</p>
                     </div>
                     <div v-if="detail.elevation_loss_m">
                       <p class="text-lg font-extrabold text-[#1a1c1c]">{{ fmt(detail.elevation_loss_m) }}</p>
-                      <p class="text-[12px] font-bold text-[#8A9A9A]">ม. ที่ลงเขา</p>
+                      <p class="text-[12px] font-bold text-[#8A9A9A]">{{ $t('ม. ที่ลงเขา') }}</p>
                     </div>
                     <div v-if="detail.max_elevation_m">
                       <p class="text-lg font-extrabold text-[#1a1c1c]">{{ fmt(detail.max_elevation_m) }}</p>
-                      <p class="text-[12px] font-bold text-[#8A9A9A]">ม. จุดสูงสุด</p>
+                      <p class="text-[12px] font-bold text-[#8A9A9A]">{{ $t('ม. จุดสูงสุด') }}</p>
                     </div>
                     <div v-if="detail.rank_by_distance && detail.peers_count > 1">
                       <p class="text-lg font-extrabold text-[#1a1c1c]">
                         {{ detail.rank_by_distance }} <span class="text-[13px] font-bold text-[#8A9A9A]">/ {{ detail.peers_count }}</span>
                       </p>
-                      <p class="text-[12px] font-bold text-[#8A9A9A]">อันดับระยะทางในรอบนี้</p>
+                      <p class="text-[12px] font-bold text-[#8A9A9A]">{{ $t('อันดับระยะทางในรอบนี้') }}</p>
                     </div>
                   </div>
                 </div>
               </template>
 
-              <div v-else class="p-6 text-center text-sm text-[#8A9A9A]">
-                โหลดรายละเอียดแทร็กไม่สำเร็จ
-              </div>
+              <div v-else class="p-6 text-center text-sm text-[#8A9A9A]"> {{ $t('โหลดรายละเอียดแทร็กไม่สำเร็จ') }} </div>
             </div>
           </li>
         </ul>
@@ -137,6 +133,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
@@ -167,7 +164,7 @@ function duration(seconds) {
   const total = Number(seconds) || 0;
   const hours = Math.floor(total / 3600);
   const minutes = Math.round((total % 3600) / 60);
-  return hours ? `${hours} ชม. ${minutes} นาที` : `${minutes} นาที`;
+  return hours ? $t('{hours} ชม. {minutes} นาที', { hours, minutes }) : $t('{minutes} นาที', { minutes });
 }
 
 /**

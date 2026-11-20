@@ -6,7 +6,7 @@
     — แก้ MedalGeometry แล้วต้องแก้ที่นี่และ lib/widgets/medal_art.dart ด้วย
   -->
   <div class="medal-art" :style="{ width: `${size}px`, height: `${size * 1.18}px` }">
-    <img v-if="design.image" :src="design.image" class="medal-art__custom" alt="ภาพเหรียญ" />
+    <img v-if="design.image" :src="design.image" class="medal-art__custom" :alt="$t('ภาพเหรียญ')" />
     <svg v-else-if="geometry" viewBox="0 0 100 118" :width="size" :height="size * 1.18" aria-hidden="true">
       <defs>
         <path :id="arcId" d="M 11.8,68 A 38.2,38.2 0 0,1 88.2,68" />
