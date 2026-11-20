@@ -20,7 +20,20 @@ use Illuminate\Support\Facades\Log;
  */
 class GoogleRoutesClient
 {
+    /**
+     * สาเหตุที่คำขอล่าสุดได้ null — ให้ `maps:check` บอกคนตั้งค่าได้ว่าพังตรงไหน
+     *
+     * @var array{reason: string, sku?: string, http?: int, status?: ?string, message?: ?string}|null
+     */
+    private ?array $lastError = null;
+
     public function __construct(private MapsUsageMeter $meter) {}
+
+    /** @return array{reason: string, sku?: string, http?: int, status?: ?string, message?: ?string}|null */
+    public function lastError(): ?array
+    {
+        return $this->lastError;
+    }
 
     public function configured(): bool
     {
@@ -42,7 +55,11 @@ class GoogleRoutesClient
         bool $trafficAware = false,
         bool $legPolylines = false,
     ): ?array {
+        $this->lastError = null;
+
         if (! $this->configured()) {
+            $this->lastError = ['reason' => 'not_configured'];
+
             return null;
         }
 
@@ -52,6 +69,8 @@ class GoogleRoutesClient
             : MapsUsageMeter::ROUTES_ESSENTIALS;
 
         if (! $this->meter->allow($sku)) {
+            $this->lastError = ['reason' => 'cap_reached', 'sku' => $sku];
+
             return null;
         }
 
@@ -91,6 +110,7 @@ class GoogleRoutesClient
         } catch (\Throwable $e) {
             // ต่อไม่ติด/หมดเวลา — ไม่ถึง Google ก็ไม่ถูกคิดเงิน แต่นับไว้ดูความผิดปกติ
             $this->meter->record($sku, 1, false);
+            $this->lastError = ['reason' => 'connection', 'message' => $e->getMessage()];
             Log::error('Google Routes API error', ['error' => $e->getMessage()]);
 
             return null;
@@ -101,10 +121,18 @@ class GoogleRoutesClient
 
         if (! is_array($route)) {
             if (! $response->successful()) {
+                $this->lastError = [
+                    'reason' => 'http',
+                    'http' => $response->status(),
+                    'status' => $response->json('error.status'),
+                    'message' => $response->json('error.message'),
+                ];
                 Log::error('Google Routes API HTTP error', [
                     'status' => $response->status(),
                     'message' => $response->json('error.message'),
                 ]);
+            } else {
+                $this->lastError = ['reason' => 'no_route'];
             }
 
             return null;

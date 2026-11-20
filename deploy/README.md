@@ -179,8 +179,8 @@ event สดที่ล้มไปแล้วหมดความหมา�
 2. **Quota** — Google Maps Platform → Quotas → Routes API: ลด "Compute Routes requests per minute" และ
    "Compute Route Matrix elements per minute" เหลือราว 60 (ค่าเริ่มต้น 3,000/นาที) — ถ้ามีโควตาต่อวันให้เลือก
    ให้ตั้งไม่เกิน 300/วัน (โค้ดเรามีเพดานรายวันของตัวเองอยู่แล้วที่ `MAPS_CAP_*_DAILY`)
-3. ตั้ง restriction ของทั้งสองคีย์ตามตารางด้านบน แล้วทดสอบ: `php artisan tinker` →
-   `app(\App\Services\Maps\GoogleRoutesClient::class)->route(['lat'=>13.75,'lng'=>100.5],['lat'=>13.8,'lng'=>100.55])`
+3. ตั้ง restriction ของทั้งสองคีย์ตามตารางด้านบน แล้วทดสอบบนเซิร์ฟเวอร์: `php artisan maps:check`
+   (ยิงคำขอจริง 1 ครั้ง ถ้าใช้ไม่ได้จะบอกสาเหตุ — ไม่มีคีย์, config cache เก่า, IP ไม่ตรง, ยังไม่เปิด Routes API, ยังไม่ผูก billing)
 
 ## Log
 

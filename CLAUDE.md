@@ -41,6 +41,9 @@ php artisan line:check
 
 # Verify Laravel can publish to Reverb (realtime chat/seats/payments); explains the failure if not
 php artisan reverb:check
+
+# Verify the server Google Routes API key with one real request; explains the failure if not
+php artisan maps:check
 ```
 
 ### Flutter apps
