@@ -127,6 +127,9 @@ class ContentTranslationTest extends TestCase
         $this->assertTrue(ContentText::numbersPreserved('๒ วัน ๑ คืน', '2 days 1 night'));
         $this->assertFalse(ContentText::numbersPreserved('ราคา 1,500 บาท', 'Price 1,200 baht'));
         $this->assertFalse(ContentText::numbersPreserved('13.00 น.', '1:00 p.m.'));
+        // ปี พ.ศ. → ค.ศ. ได้ แต่เลขอื่นห้ามเปลี่ยน
+        $this->assertTrue(ContentText::numbersPreserved('ออก 25 ก.ค. 2569', 'Departs 25 Jul 2026'));
+        $this->assertFalse(ContentText::numbersPreserved('ออก 25 ก.ค. 2569', 'Departs 25 Jul 2027'));
     }
 
     public function test_saving_a_trip_translates_it_and_english_requests_get_the_translation(): void

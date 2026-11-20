@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Jobs\DeliverTranslatedNotificationJob;
 use App\Jobs\SendLineMessageJob;
 use App\Services\FcmService;
 use App\Services\LineMessagingService;
+use App\Services\NotificationTranslator;
+use App\Support\AppLocale;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log;
@@ -52,6 +55,14 @@ class SmartNotification extends Model
             'broadcast_dispatch_id' => $dispatchId,
         ]);
 
+        // ลูกค้าที่ใช้ภาษาอังกฤษ: แปลในคิวก่อนแล้วค่อยส่ง (ดู NotificationTranslator)
+        $translator = app(NotificationTranslator::class);
+        if ($translator->needs($type, $title, $body) && $translator->localeFor($userId) === AppLocale::ENGLISH) {
+            DeliverTranslatedNotificationJob::dispatch($notification->id)->afterCommit();
+
+            return $notification;
+        }
+
         try {
             app(FcmService::class)->sendNotification($notification);
         } catch (\Throwable $e) {
@@ -87,11 +98,18 @@ class SmartNotification extends Model
         array $data = [],
         ?int $dispatchId = null,
     ): array {
+        // ประกาศถึงหลายคน: แปลครั้งเดียวให้ทุกคนที่ใช้ภาษาอังกฤษ (งานนี้วิ่งในคิวอยู่แล้ว)
+        $translator = app(NotificationTranslator::class);
+        $englishIds = $translator->needs($type, $title, $body) && $userIds !== []
+            ? array_flip(User::whereIn('id', $userIds)->where('locale', AppLocale::ENGLISH)->pluck('id')->all())
+            : [];
+        $english = $englishIds !== [] ? $translator->translate($title, $body) : null;
+
         $notifications = array_map(fn (int $userId) => static::create([
             'user_id' => $userId,
             'type' => $type,
-            'title' => $title,
-            'body' => $body,
+            'title' => isset($englishIds[$userId]) ? $english['title'] : $title,
+            'body' => isset($englishIds[$userId]) ? $english['body'] : $body,
             'data' => $data,
             'broadcast_dispatch_id' => $dispatchId,
         ]), $userIds);

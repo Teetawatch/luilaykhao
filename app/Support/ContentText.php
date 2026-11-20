@@ -85,6 +85,13 @@ class ContentText
         foreach (self::numbers($translation) as $number) {
             if (isset($missing[$number])) {
                 $missing[$number]--;
+
+                continue;
+            }
+            // ปี พ.ศ. ที่แปลงเป็น ค.ศ. แล้ว (2569 → 2026) ถือว่าเป็นเลขเดียวกัน
+            $buddhist = (string) ((int) $number + 543);
+            if ((int) $number >= 1900 && (int) $number <= 2200 && ($missing[$buddhist] ?? 0) > 0) {
+                $missing[$buddhist]--;
             }
         }
 
