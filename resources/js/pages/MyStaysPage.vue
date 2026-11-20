@@ -32,7 +32,7 @@
             <span class="status" :class="'status--' + tone(b.status)">{{ b.status_label }}</span>
             <p class="mt-1 truncate font-extrabold text-[var(--color-text-dark)]">{{ b.stay?.name }}</p>
             <p class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ range(b) }} · {{ b.guests }} คน</p>
-            <p v-if="b.can_pay" class="text-[13px] font-bold text-amber-700">รอชำระ ฿{{ Number(b.total_amount).toLocaleString('th-TH') }}</p>
+            <p v-if="b.can_pay" class="text-[13px] font-bold text-amber-700">รอชำระ ฿{{ Number(b.total_amount).toLocaleString($dateLocale) }}</p>
             <p v-else-if="b.can_review" class="text-[13px] font-bold text-[var(--color-accent)]">รีวิวที่พักนี้</p>
           </div>
           <span class="material-symbols-rounded text-[var(--color-text-muted)]">chevron_right</span>

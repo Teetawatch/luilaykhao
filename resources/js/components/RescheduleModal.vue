@@ -6,15 +6,15 @@
         <div class="px-5 py-4 border-b border-[#E8EEEF] flex items-start justify-between gap-3 shrink-0">
           <div class="min-w-0">
             <h3 class="text-lg font-bold text-[#1a1c1c]">
-              {{ isForceMajeure ? 'เลือกรอบเดินทางใหม่' : 'เปลี่ยนวันเดินทาง' }}
+              {{ isForceMajeure ? $t('เลือกรอบเดินทางใหม่') : $t('เปลี่ยนวันเดินทาง') }}
             </h3>
             <p class="text-xs text-[#505E5E] mt-0.5 truncate">
-              {{ booking.schedule?.trip?.title || 'ทริป' }} · {{ booking.booking_ref }}
+              {{ booking.schedule?.trip?.title || $t('ทริป') }} · {{ booking.booking_ref }}
             </p>
           </div>
           <button @click="close" :disabled="submitting"
             class="w-8 h-8 rounded-lg border border-[#E8EEEF] hover:bg-[#F4F7F6] inline-flex items-center justify-center shrink-0"
-            aria-label="ปิด">
+            :aria-label="$t('ปิด')">
             <span class="material-symbols-rounded text-[18px]">close</span>
           </button>
         </div>
@@ -24,31 +24,31 @@
           <div v-if="isForceMajeure" class="rounded-[16px] bg-[#FFFBEB] border border-[#FDE68A] p-4 text-sm text-[#78350F] space-y-1.5">
             <p class="font-bold flex items-center gap-1.5">
               <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">{{ isUnderfilled ? 'groups' : 'thunderstorm' }}</span>
-              รอบเดิม{{ fm.original_departure_label ? ` ${fm.original_departure_label}` : '' }} {{ isUnderfilled ? 'ไม่ได้ออกเดินทาง' : 'ออกเดินทางไม่ได้' }}
+              {{ $t('รอบเดิม{v} {v2}', { v: fm.original_departure_label ? ` ${fm.original_departure_label}` : '', v2: isUnderfilled ? $t('ไม่ได้ออกเดินทาง') : $t('ออกเดินทางไม่ได้') }) }}
             </p>
-            <p v-if="fm.reason" class="text-[13px]">เนื่องจาก{{ fm.reason }}</p>
+            <p v-if="fm.reason" class="text-[13px]">{{ $t('เนื่องจาก{reason}', { reason: fm.reason }) }}</p>
             <ul class="text-[13px] list-disc pl-5 space-y-0.5">
-              <li>ยอดที่ชำระไว้ยังอยู่ครบ <strong>ราคาเดิม ไม่มีค่าธรรมเนียม</strong></li>
-              <li>เลือกรอบที่ออกเดินทางได้ถึง <strong>{{ fm.until_label }}</strong></li>
-              <li v-if="isUnderfilled">ตัดสินใจได้ถึง <strong>{{ fm.decide_by_label }}</strong></li>
-              <li>ไม่นับรวมกับสิทธิ์เลื่อนวันเดินทางตามปกติ</li>
+              <li>{{ $t('ยอดที่ชำระไว้ยังอยู่ครบ') }} <strong>{{ $t('ราคาเดิม ไม่มีค่าธรรมเนียม') }}</strong></li>
+              <li>{{ $t('เลือกรอบที่ออกเดินทางได้ถึง') }} <strong>{{ fm.until_label }}</strong></li>
+              <li v-if="isUnderfilled">{{ $t('ตัดสินใจได้ถึง') }} <strong>{{ fm.decide_by_label }}</strong></li>
+              <li>{{ $t('ไม่นับรวมกับสิทธิ์เลื่อนวันเดินทางตามปกติ') }}</li>
             </ul>
             <button v-if="fm.can_request_refund" type="button" @click="emit('refund')" :disabled="submitting"
               class="text-[13px] font-bold underline text-[#B45309] pt-1">
-              ไม่สะดวกรอบไหนเลย? ขอรับเงินคืนเต็มจำนวนแทน
+              {{ $t('ไม่สะดวกรอบไหนเลย? ขอรับเงินคืนเต็มจำนวนแทน') }}
             </button>
           </div>
           <div v-else class="rounded-[16px] bg-[#F0FAFA] border border-[#BCDFDF] p-4 text-[13px] text-[#0F3D3E]">
             <ul class="list-disc pl-5 space-y-0.5">
-              <li>เปลี่ยนได้ครั้งเดียวเท่านั้น</li>
-              <li>ต้องเปลี่ยนก่อนเดินทางอย่างน้อย 20 วัน<template v-if="deadlineLabel"> (ภายใน {{ deadlineLabel }})</template></li>
-              <li>คงราคาเดิม · เลือกได้เฉพาะรอบของทริปนี้</li>
+              <li>{{ $t('เปลี่ยนได้ครั้งเดียวเท่านั้น') }}</li>
+              <li>{{ $t('ต้องเปลี่ยนก่อนเดินทางอย่างน้อย 20 วัน') }}<template v-if="deadlineLabel"> {{ $t('(ภายใน {deadlineLabel})', { deadlineLabel }) }}</template></li>
+              <li>{{ $t('คงราคาเดิม · เลือกได้เฉพาะรอบของทริปนี้') }}</li>
             </ul>
           </div>
 
           <!-- ขั้นที่ 1: เลือกรอบ -->
           <section>
-            <p class="text-sm font-bold text-[#1a1c1c] mb-2.5">เลือกรอบเดินทางใหม่</p>
+            <p class="text-sm font-bold text-[#1a1c1c] mb-2.5">{{ $t('เลือกรอบเดินทางใหม่') }}</p>
 
             <div v-if="loading" class="py-10 flex justify-center">
               <div class="w-8 h-8 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
@@ -56,15 +56,15 @@
 
             <p v-else-if="loadError" class="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] p-3">
               {{ loadError }}
-              <button class="underline font-bold ml-1" @click="loadSchedules">ลองใหม่</button>
+              <button class="underline font-bold ml-1" @click="loadSchedules">{{ $t('ลองใหม่') }}</button>
             </p>
 
             <div v-else-if="!options.length" class="text-center text-sm text-[#505E5E] bg-[#F4F7F6] rounded-[16px] px-4 py-6">
               <template v-if="isForceMajeure">
-                ตอนนี้ยังไม่มีรอบที่เปิดในช่วงนี้<br />
-                เปิดรอบใหม่เมื่อไหร่ เราจะแจ้งให้ทราบทันทีครับ
+                {{ $t('ตอนนี้ยังไม่มีรอบที่เปิดในช่วงนี้') }}<br />
+                {{ $t('เปิดรอบใหม่เมื่อไหร่ เราจะแจ้งให้ทราบทันทีครับ') }}
               </template>
-              <template v-else>ไม่มีรอบเดินทางอื่นให้เลือกในขณะนี้</template>
+              <template v-else>{{ $t('ไม่มีรอบเดินทางอื่นให้เลือกในขณะนี้') }}</template>
             </div>
 
             <div v-else class="space-y-2">
@@ -89,11 +89,11 @@
                   <span class="block text-xs text-[#505E5E]">{{ s.nightsLabel }}</span>
                   <span v-if="s.hold" class="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-full px-2 py-0.5">
                     <span class="material-symbols-rounded text-[13px]">lock_clock</span>
-                    กันที่ไว้ให้คุณ {{ s.hold.seat_count }} ที่ ถึง {{ s.hold.expires_label }}
+                    {{ $t('กันที่ไว้ให้คุณ {seat_count} ที่ ถึง {expires_label}', { seat_count: s.hold.seat_count, expires_label: s.hold.expires_label }) }}
                   </span>
                 </span>
                 <span class="text-xs font-bold shrink-0" :class="s.fits ? 'text-[var(--color-accent)]' : 'text-[#DC2626]'">
-                  {{ s.fits ? `ว่าง ${s.seatsLeft} ที่` : 'ที่นั่งไม่พอ' }}
+                  {{ s.fits ? $t('ว่าง {seatsLeft} ที่', { seatsLeft: s.seatsLeft }) : $t('ที่นั่งไม่พอ') }}
                 </span>
               </button>
             </div>
@@ -101,17 +101,17 @@
 
           <!-- ขั้นที่ 2: ที่นั่ง (เฉพาะใบที่มีที่นั่งและรอบใหม่มีผัง) -->
           <section v-if="selected && needsSeats">
-            <p class="text-sm font-bold text-[#1a1c1c] mb-2.5">ที่นั่งในรอบใหม่</p>
+            <p class="text-sm font-bold text-[#1a1c1c] mb-2.5">{{ $t('ที่นั่งในรอบใหม่') }}</p>
             <div class="grid grid-cols-2 gap-2 mb-3">
               <button type="button" @click="pickSeats = false"
                 class="rounded-[12px] border-2 px-3 py-2.5 text-sm font-bold transition"
                 :class="!pickSeats ? 'border-[var(--color-accent)] bg-[#F0FAFA] text-[var(--color-accent)]' : 'border-[#E8EEEF] text-[#505E5E]'">
-                จัดที่นั่งให้อัตโนมัติ
+                {{ $t('จัดที่นั่งให้อัตโนมัติ') }}
               </button>
               <button type="button" @click="enableSeatPicking"
                 class="rounded-[12px] border-2 px-3 py-2.5 text-sm font-bold transition"
                 :class="pickSeats ? 'border-[var(--color-accent)] bg-[#F0FAFA] text-[var(--color-accent)]' : 'border-[#E8EEEF] text-[#505E5E]'">
-                เลือกที่นั่งเอง
+                {{ $t('เลือกที่นั่งเอง') }}
               </button>
             </div>
 
@@ -120,10 +120,10 @@
                 <div class="w-7 h-7 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
               </div>
               <p v-else-if="!seatMap?.has_seat_map" class="text-xs text-[#505E5E]">
-                รอบนี้ไม่มีผังที่นั่งให้เลือก ทีมงานจะจัดที่นั่งให้ครับ
+                {{ $t('รอบนี้ไม่มีผังที่นั่งให้เลือก ทีมงานจะจัดที่นั่งให้ครับ') }}
               </p>
               <template v-else>
-                <p class="text-xs text-[#505E5E] mb-2">เลือก {{ selectedSeats.length }}/{{ passengerCount }} ที่นั่ง</p>
+                <p class="text-xs text-[#505E5E] mb-2">{{ $t('เลือก {length}/{passengerCount} ที่นั่ง', { length: selectedSeats.length, passengerCount }) }}</p>
                 <div class="grid grid-cols-5 sm:grid-cols-6 gap-2">
                   <button
                     v-for="seat in seatMap.seats"
@@ -140,7 +140,7 @@
                 </div>
               </template>
             </template>
-            <p v-else class="text-xs text-[#505E5E]">ระบบจะเลือกที่นั่งที่ว่างให้ {{ passengerCount }} ที่ ดู/เปลี่ยนได้ภายหลังกับทีมงาน</p>
+            <p v-else class="text-xs text-[#505E5E]">{{ $t('ระบบจะเลือกที่นั่งที่ว่างให้ {passengerCount} ที่ ดู/เปลี่ยนได้ภายหลังกับทีมงาน', { passengerCount }) }}</p>
           </section>
 
           <p v-if="submitError" class="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] p-3">{{ submitError }}</p>
@@ -150,12 +150,12 @@
         <div class="px-5 py-4 border-t border-[#E8EEEF] flex gap-2 shrink-0">
           <button @click="close" :disabled="submitting"
             class="px-4 py-3 rounded-[14px] border border-[#E8EEEF] text-sm font-bold text-[#505E5E] hover:bg-[#F4F7F6]">
-            ปิด
+            {{ $t('ปิด') }}
           </button>
           <button @click="submit" :disabled="!canSubmit"
             class="flex-1 py-3 rounded-[14px] bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[var(--color-accent-mid)] disabled:opacity-50 flex items-center justify-center gap-2">
             <span v-if="submitting" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
-            {{ submitting ? 'กำลังย้ายรอบ...' : selected ? `ยืนยันรอบ ${formatShortDate(selected.departure_date)}` : 'เลือกรอบก่อน' }}
+            {{ submitting ? $t('กำลังย้ายรอบ...') : selected ? $t('ยืนยันรอบ {formatShortDate}', { formatShortDate: formatShortDate(selected.departure_date) }) : $t('เลือกรอบก่อน') }}
           </button>
         </div>
       </div>
@@ -164,6 +164,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, onMounted } from 'vue';
 import api from '../lib/axios';
 import { bangkokToday } from '../lib/bangkokDate';
@@ -235,7 +237,7 @@ const options = computed(() => {
         seatsLeft,
         hold,
         fits: seatsLeft >= pax,
-        nightsLabel: nights > 0 ? `${nights + 1} วัน ${nights} คืน` : 'ไป-กลับวันเดียว',
+        nightsLabel: nights > 0 ? $t('{v} วัน {nights} คืน', { v: nights + 1, nights }) : $t('ไป-กลับวันเดียว'),
       };
     });
 });
@@ -250,14 +252,14 @@ const canSubmit = computed(() => {
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', {
+  return new Date(d).toLocaleDateString(DATE_LOCALE, {
     weekday: 'short', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Bangkok',
   });
 }
 
 function formatShortDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', timeZone: 'Asia/Bangkok' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', timeZone: 'Asia/Bangkok' });
 }
 
 async function loadSchedules() {
@@ -269,7 +271,7 @@ async function loadSchedules() {
     const data = res.data?.data;
     schedules.value = Array.isArray(data) ? data : (data?.data ?? []);
   } catch (e) {
-    loadError.value = e?.response?.data?.message || 'โหลดรอบเดินทางไม่สำเร็จ';
+    loadError.value = e?.response?.data?.message || $t('โหลดรอบเดินทางไม่สำเร็จ');
   } finally {
     loading.value = false;
   }
@@ -300,7 +302,7 @@ async function loadSeats() {
     // ผู้ใช้อาจสลับไปรอบอื่นระหว่างรอ — ทิ้งผลของรอบเก่า
     if (selected.value?.id === scheduleId) seatMap.value = res.data?.data ?? null;
   } catch (e) {
-    submitError.value = e?.response?.data?.message || 'โหลดผังที่นั่งไม่สำเร็จ';
+    submitError.value = e?.response?.data?.message || $t('โหลดผังที่นั่งไม่สำเร็จ');
   } finally {
     seatsLoading.value = false;
   }
@@ -328,7 +330,7 @@ async function submit() {
     const res = await api.post(`/bookings/${encodeURIComponent(props.booking.booking_ref)}/reschedule`, body);
     emit('done', res.data?.data);
   } catch (e) {
-    submitError.value = e?.response?.data?.message || 'ย้ายรอบไม่สำเร็จ กรุณาลองใหม่';
+    submitError.value = e?.response?.data?.message || $t('ย้ายรอบไม่สำเร็จ กรุณาลองใหม่');
     // ที่นั่งอาจถูกจองไปก่อน — โหลดผังใหม่ให้เห็นสถานะล่าสุด
     if (pickSeats.value) loadSeats();
   } finally {

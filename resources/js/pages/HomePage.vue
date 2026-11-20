@@ -8,7 +8,7 @@
     <section
       class="home-hero relative w-full overflow-hidden bg-[var(--color-primary)] h-[460px] sm:h-[500px] lg:h-[560px] xl:h-[600px]"
       aria-roledescription="carousel"
-      aria-label="ทริปแนะนำ"
+      :aria-label="$t('ทริปแนะนำ')"
       @focusin="onHeroFocusIn"
       @focusout="onHeroFocusOut"
       @touchstart.passive="onHeroTouchStart"
@@ -22,7 +22,7 @@
         :aria-hidden="index !== currentSlide"
         role="group"
         aria-roledescription="slide"
-        :aria-label="`${index + 1} จาก ${heroSlides.length}`"
+        :aria-label="$t('{v} จาก {length}', { v: index + 1, length: heroSlides.length })"
       >
         <img
           :src="slide.image"
@@ -84,12 +84,12 @@
 
             <!-- รอบถัดไปที่ยังจองได้ -->
             <div v-if="slide.rounds?.length" class="hero-meta mt-4 hidden sm:flex flex-wrap items-center gap-2">
-              <span class="text-[13px] font-semibold text-white/75 mr-0.5">รอบถัดไป</span>
+              <span class="text-[13px] font-semibold text-white/75 mr-0.5">{{ $t('รอบถัดไป') }}</span>
               <span v-for="round in slide.rounds" :key="round.id" class="hero-chip">
                 {{ round.label }}
                 <span v-if="round.seatsNote" class="text-[#FFB3A8] font-bold">· {{ round.seatsNote }}</span>
               </span>
-              <span v-if="slide.moreRounds" class="text-[13px] font-semibold text-white/75">+{{ slide.moreRounds }} รอบ</span>
+              <span v-if="slide.moreRounds" class="text-[13px] font-semibold text-white/75">{{ $t('+{moreRounds} รอบ', { moreRounds: slide.moreRounds }) }}</span>
             </div>
             <!-- หยุดเลื่อนเฉพาะตอนเมาส์ชี้ปุ่ม — กันสไลด์เปลี่ยนตอนกำลังจะกด
                  (เคยหยุดทั้งภาพ เมาส์ที่วางค้างบนภาพใหญ่เลยทำให้สไลด์ดูเหมือนค้างเอง) -->
@@ -104,11 +104,11 @@
               </router-link>
               <p v-if="slide.price" class="hero-price ml-1 flex flex-col leading-none text-white">
                 <span class="text-[12px] font-semibold text-white/75">
-                  เริ่มต้น
+                  {{ $t('เริ่มต้น') }}
                   <s v-if="slide.originalPrice" class="ml-1 text-white/60">{{ slide.originalPrice }}</s>
                 </span>
                 <span class="mt-1 text-[22px] sm:text-[26px] font-extrabold tracking-tight tabular-nums">
-                  {{ slide.price }}<span class="ml-1 text-[13px] font-semibold text-white/80">บาท/ท่าน</span>
+                  {{ slide.price }}<span class="ml-1 text-[13px] font-semibold text-white/80">{{ $t('บาท/ท่าน') }}</span>
                 </span>
               </p>
               <router-link
@@ -124,7 +124,7 @@
               v-if="slide.photos?.length && index === currentSlide"
               :to="slide.cta.to"
               class="hero-photos mt-6 hidden sm:flex items-center gap-2"
-              :aria-label="`ดูรูปทริป ${slide.title}`"
+              :aria-label="$t('ดูรูปทริป {title}', { title: slide.title })"
               tabindex="-1"
             >
               <span v-for="(photo, pi) in slide.photos" :key="photo" class="hero-photo">
@@ -140,10 +140,10 @@
 
       <!-- ลูกศรเปลี่ยนสไลด์ -->
       <template v-if="heroSlides.length > 1">
-        <button type="button" class="hero-arrow left-2 sm:left-4 lg:left-6" aria-label="สไลด์ก่อนหน้า" @click="goSlide(currentSlide - 1)">
+        <button type="button" class="hero-arrow left-2 sm:left-4 lg:left-6" :aria-label="$t('สไลด์ก่อนหน้า')" @click="goSlide(currentSlide - 1)">
           <span class="material-symbols-rounded icon-48">chevron_left</span>
         </button>
-        <button type="button" class="hero-arrow right-2 sm:right-4 lg:right-6" aria-label="สไลด์ถัดไป" @click="goSlide(currentSlide + 1)">
+        <button type="button" class="hero-arrow right-2 sm:right-4 lg:right-6" :aria-label="$t('สไลด์ถัดไป')" @click="goSlide(currentSlide + 1)">
           <span class="material-symbols-rounded icon-48">chevron_right</span>
         </button>
 
@@ -156,7 +156,7 @@
             type="button"
             class="hero-dot"
             :class="{ 'hero-dot--active': index === currentSlide }"
-            :aria-label="`ไปสไลด์ที่ ${index + 1}`"
+            :aria-label="$t('ไปสไลด์ที่ {v}', { v: index + 1 })"
             :aria-current="index === currentSlide ? 'true' : undefined"
             @click="goSlide(index)"
           ></button>
@@ -166,9 +166,9 @@
              แถบเขียวใต้รายการที่เปิดอยู่ไล่ตามเวลาที่เหลือก่อนสไลด์เปลี่ยนเอง -->
         <div v-if="showHeroRail" class="absolute inset-0 z-20 pointer-events-none hidden lg:block">
           <div class="h-full max-w-7xl mx-auto px-20 flex items-center justify-end pb-20">
-            <nav class="hero-rail pointer-events-auto" aria-label="เลือกสไลด์">
+            <nav class="hero-rail pointer-events-auto" :aria-label="$t('เลือกสไลด์')">
               <div class="flex items-baseline justify-between px-1.5 pb-2">
-                <span class="text-[13px] font-bold text-white/90">ทริปแนะนำ</span>
+                <span class="text-[13px] font-bold text-white/90">{{ $t('ทริปแนะนำ') }}</span>
                 <span class="text-[12.5px] font-semibold text-white/65 tabular-nums">
                   {{ String(currentSlide + 1).padStart(2, '0') }} / {{ String(heroSlides.length).padStart(2, '0') }}
                 </span>
@@ -211,16 +211,16 @@
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="home-panel -mt-20 rounded-2xl bg-[#fff] border border-[var(--color-sand-dark)] p-4 sm:p-5 md:p-7">
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
-            <h2 class="text-[19px] md:text-[22px] font-bold text-[var(--color-text-dark)]">ค้นหารอบเดินทาง</h2>
+            <h2 class="text-[19px] md:text-[22px] font-bold text-[var(--color-text-dark)]">{{ $t('ค้นหารอบเดินทาง') }}</h2>
             <router-link to="/find" class="inline-flex items-center gap-1 text-[14px] font-bold text-[var(--color-accent)] hover:underline underline-offset-2">
               <span class="material-symbols-rounded icon-18">auto_awesome</span>
-              ยังเลือกไม่ถูก? ให้เราช่วยแนะนำ
+              {{ $t('ยังเลือกไม่ถูก? ให้เราช่วยแนะนำ') }}
             </router-link>
           </div>
 
           <HeroSearchBar class="home-search" :trips="allTrips" :loading="loading" />
 
-          <nav aria-label="ทางลัดบริการ" class="mt-5 md:mt-6 pt-5 md:pt-6 border-t border-[var(--color-sand-dark)] grid grid-cols-4 gap-2 md:gap-3" :class="shortcutColsClass">
+          <nav :aria-label="$t('ทางลัดบริการ')" class="mt-5 md:mt-6 pt-5 md:pt-6 border-t border-[var(--color-sand-dark)] grid grid-cols-4 gap-2 md:gap-3" :class="shortcutColsClass">
             <router-link
               v-for="item in shortcuts"
               :key="item.label"
@@ -264,7 +264,7 @@
       class="bg-[var(--color-primary)] py-16 md:py-20"
     >
       <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <SectionTitle dark class="mb-10 md:mb-12" title="ตัวเลขจากการเดินทางจริง" subtitle="คำนวณจากรอบที่เดินทางจบแล้วในระบบ อัปเดตอัตโนมัติทุกชั่วโมง" />
+        <SectionTitle dark class="mb-10 md:mb-12" :title="$t('ตัวเลขจากการเดินทางจริง')" :subtitle="$t('คำนวณจากรอบที่เดินทางจบแล้วในระบบ อัปเดตอัตโนมัติทุกชั่วโมง')" />
         <div class="grid grid-cols-2 gap-y-10 gap-x-4" :class="statsGridColsClass">
           <div
             v-for="(stat, index) in visibleStats"
@@ -292,7 +292,7 @@
     ══════════════════════════════════════════ -->
     <section class="py-16 md:py-24 bg-white relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-6 md:px-8">
-        <SectionTitle class="mb-10 md:mb-12" title="รีวิวจากลูกค้า" subtitle="เสียงจริงจากผู้ร่วมทริปที่ออกเดินทางไปกับเรา" />
+        <SectionTitle class="mb-10 md:mb-12" :title="$t('รีวิวจากลูกค้า')" :subtitle="$t('เสียงจริงจากผู้ร่วมทริปที่ออกเดินทางไปกับเรา')" />
       </div>
 
       <!-- Continuous marquee slider (full-bleed) -->
@@ -320,7 +320,7 @@
                 </span>
               </div>
 
-              <p class="text-[var(--color-text-mid)] text-[15px] font-medium leading-relaxed mb-7 line-clamp-4">“{{ review.comment || 'ไม่มีความคิดเห็น' }}”</p>
+              <p class="text-[var(--color-text-mid)] text-[15px] font-medium leading-relaxed mb-7 line-clamp-4">“{{ review.comment || $t('ไม่มีความคิดเห็น') }}”</p>
 
               <div class="mt-auto flex items-center gap-3.5 pt-5 border-t border-[var(--color-sand-dark)]">
                 <div class="relative w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-2 ring-[var(--color-accent)]/15 shrink-0">
@@ -335,7 +335,7 @@
                 <div class="min-w-0">
                   <div class="flex items-center gap-1">
                     <span class="font-extrabold text-[var(--color-text-dark)] text-base truncate">{{ review.user_name }}</span>
-                    <span class="material-symbols-rounded text-[15px] text-[var(--color-accent)] shrink-0" style="font-variation-settings:'FILL' 1" title="ยืนยันการเดินทางจริง">verified</span>
+                    <span class="material-symbols-rounded text-[15px] text-[var(--color-accent)] shrink-0" style="font-variation-settings:'FILL' 1" :title="$t('ยืนยันการเดินทางจริง')">verified</span>
                   </div>
                   <div class="text-[var(--color-text-muted)] text-sm font-medium truncate">{{ review.trip_title }}</div>
                 </div>
@@ -346,7 +346,7 @@
       </div>
       <div v-else class="max-w-7xl mx-auto px-6 md:px-8">
         <div class="text-center py-12 bg-white/50 rounded-xl border-2 border-dashed border-gray-200">
-          <p class="text-[var(--color-text-muted)] font-bold">ยังไม่มีรีวิวจากนักเดินทาง</p>
+          <p class="text-[var(--color-text-muted)] font-bold">{{ $t('ยังไม่มีรีวิวจากนักเดินทาง') }}</p>
         </div>
       </div>
     </section>
@@ -359,8 +359,8 @@
       <div class="max-w-7xl mx-auto px-6 md:px-8 relative z-10">
         <SectionTitle
           class="mb-6"
-          title="ทำไมต้องเดินทางกับลุยเลเขา"
-          subtitle="บริษัทนำเที่ยวที่จดทะเบียนถูกต้อง ดูแลตั้งแต่ก่อนออกเดินทางจนกลับถึงบ้าน"
+          :title="$t('ทำไมต้องเดินทางกับลุยเลเขา')"
+          :subtitle="$t('บริษัทนำเที่ยวที่จดทะเบียนถูกต้อง ดูแลตั้งแต่ก่อนออกเดินทางจนกลับถึงบ้าน')"
         />
         
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 mt-16 md:mt-12 items-stretch">
@@ -403,8 +403,8 @@
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionTitle
           class="mb-10"
-          title="ยังหาทริปที่ใช่ไม่เจอ?"
-          subtitle="เลือกทางที่สะดวก ให้ระบบแนะนำ ถามผู้ช่วย หรือคุยกับทีมงานโดยตรง"
+          :title="$t('ยังหาทริปที่ใช่ไม่เจอ?')"
+          :subtitle="$t('เลือกทางที่สะดวก ให้ระบบแนะนำ ถามผู้ช่วย หรือคุยกับทีมงานโดยตรง')"
         />
         <div class="grid gap-4 md:grid-cols-3">
           <component
@@ -435,17 +435,19 @@
       :href="supportLineUrl()"
       target="_blank"
       rel="noopener"
-      aria-label="ติดต่อเราผ่าน LINE"
+      :aria-label="$t('ติดต่อเราผ่าน LINE')"
       class="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full bg-[#06C755] text-white font-bold text-[0.95rem] px-5 py-3.5 hover:bg-[#05b34c] transition-colors"
     >
       <span class="material-symbols-rounded text-[22px]">chat</span>
-      <span>แชทผ่าน LINE</span>
+      <span>{{ $t('แชทผ่าน LINE') }}</span>
     </a>
 
   </div>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import api from '../lib/axios';
 import { tripCardImage } from '../lib/tripImage';
@@ -511,9 +513,9 @@ const featuredTrips = ref([]);
 const loading = ref(true);
 
 const helpOptions = [
-  { to: '/find', icon: 'travel_explore', title: 'ช่วยเลือกทริป', desc: 'ตอบคำถามสั้น ๆ ไม่กี่ข้อ แล้วให้ระบบแนะนำทริปที่เหมาะ' },
-  { to: '/assistant', icon: 'auto_awesome', title: 'ถามผู้ช่วย', desc: 'พิมพ์บอกงบ วันที่ว่าง และสิ่งที่อยากเจอ ผู้ช่วยหาให้' },
-  { to: supportLineUrl(), external: true, line: true, title: 'คุยกับทีมงาน', desc: `ทักไลน์ได้เลย ทีมงานตอบ${supportHours()}` },
+  { to: '/find', icon: 'travel_explore', title: $t('ช่วยเลือกทริป'), desc: $t('ตอบคำถามสั้น ๆ ไม่กี่ข้อ แล้วให้ระบบแนะนำทริปที่เหมาะ') },
+  { to: '/assistant', icon: 'auto_awesome', title: $t('ถามผู้ช่วย'), desc: $t('พิมพ์บอกงบ วันที่ว่าง และสิ่งที่อยากเจอ ผู้ช่วยหาให้') },
+  { to: supportLineUrl(), external: true, line: true, title: $t('คุยกับทีมงาน'), desc: $t('ทักไลน์ได้เลย ทีมงานตอบ{supportHours}', { supportHours: supportHours() }) },
 ];
 
 // หมวดทริปจากแอดมิน — ใช้ทั้งแท็บแพ็กเกจและทางลัดในแผงค้นหา
@@ -526,10 +528,10 @@ const shortcuts = computed(() => [
     icon: c.icon || 'explore',
     label: c.name,
   })),
-  { to: '/calendar', icon: 'event', label: 'ปฏิทินทริป' },
-  { to: '/explore', icon: 'map', label: 'แผนที่ทริป' },
-  { to: '/stays', icon: 'cottage', label: 'ที่พักชุมชน' },
-  { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง' },
+  { to: '/calendar', icon: 'event', label: $t('ปฏิทินทริป') },
+  { to: '/explore', icon: 'map', label: $t('แผนที่ทริป') },
+  { to: '/stays', icon: 'cottage', label: $t('ที่พักชุมชน') },
+  { to: '/how-to-book', icon: 'menu_book', label: $t('วิธีการจอง') },
 ]);
 
 // สตริงเต็มให้ Tailwind เห็น — 8 ช่องพอดีหนึ่งแถวบนจอใหญ่
@@ -550,11 +552,11 @@ const shortcutColsClass = computed(() => {
  * ถ้ายังไม่มีทริปแนะนำ ใช้ภาพที่เหลือจาก /hero-slides เป็นสไลด์แบรนด์แทน
  */
 const BRAND_COPY = {
-  title: 'เดินป่า ดำน้ำ ขึ้นดอย',
-  accent: 'รู้ทุกอย่างก่อนออกเดินทาง',
-  subtitle: 'ทุกรอบบอกระยะทาง ความสูงสะสม จุดรับ และเวลาออกไว้ล่วงหน้า ระหว่างทางที่บ้านตามดูตำแหน่งรถได้ตลอด',
-  cta: { to: '/trips', label: 'ดูทริปที่เปิดจอง' },
-  cta2: { to: '/calendar', label: 'ปฏิทินทริป' },
+  title: $t('เดินป่า ดำน้ำ ขึ้นดอย'),
+  accent: $t('รู้ทุกอย่างก่อนออกเดินทาง'),
+  subtitle: $t('ทุกรอบบอกระยะทาง ความสูงสะสม จุดรับ และเวลาออกไว้ล่วงหน้า ระหว่างทางที่บ้านตามดูตำแหน่งรถได้ตลอด'),
+  cta: { to: '/trips', label: $t('ดูทริปที่เปิดจอง') },
+  cta2: { to: '/calendar', label: $t('ปฏิทินทริป') },
 };
 
 const starFillStyle = { fontVariationSettings: "'FILL' 1" };
@@ -562,15 +564,15 @@ const starFillStyle = { fontVariationSettings: "'FILL' 1" };
 const MIN_PROOF_TRAVELLERS = 50;
 const MIN_PROOF_REVIEWS = 5;
 
-const DIFFICULTY_LABELS = { easy: 'ระดับง่าย', medium: 'ระดับปานกลาง', hard: 'ระดับท้าทาย' };
+const DIFFICULTY_LABELS = { easy: $t('ระดับง่าย'), medium: $t('ระดับปานกลาง'), hard: $t('ระดับท้าทาย') };
 
 function tripDaysLabel(trip) {
   const days = Number(trip.duration_days) || 1;
-  return days > 1 ? `${days} วัน ${days - 1} คืน` : 'ไปเช้าเย็นกลับ';
+  return days > 1 ? $t('{days} วัน {v} คืน', { days, v: days - 1 }) : $t('ไปเช้าเย็นกลับ');
 }
 
 function formatBaht(n) {
-  return Number(n).toLocaleString('th-TH');
+  return Number(n).toLocaleString(DATE_LOCALE);
 }
 
 const HERO_PHOTO_COUNT = 4;
@@ -593,10 +595,10 @@ function tripFacts(trip) {
   const facts = [{ icon: 'schedule', text: tripDaysLabel(trip) }];
   if (DIFFICULTY_LABELS[trip.difficulty]) facts.push({ icon: 'terrain', text: DIFFICULTY_LABELS[trip.difficulty] });
   if (Number(trip.review_count) > 0) {
-    facts.push({ icon: 'star', text: `${Number(trip.rating).toFixed(1)} (${trip.review_count} รีวิว)` });
+    facts.push({ icon: 'star', text: $t('{Number} ({review_count} รีวิว)', { Number: Number(trip.rating).toFixed(1), review_count: trip.review_count }) });
   }
   const km = Number(trip.distance_km);
-  if (km > 0) facts.push({ icon: 'hiking', text: `${km % 1 ? km.toFixed(1) : km} กม.` });
+  if (km > 0) facts.push({ icon: 'hiking', text: $t('{v} กม.', { v: km % 1 ? km.toFixed(1) : km }) });
   return facts;
 }
 
@@ -611,10 +613,10 @@ function openRounds(trip) {
 const brandProof = computed(() => {
   const out = [];
   const no = licenceNo();
-  if (no) out.push({ icon: 'verified', text: `ใบอนุญาตนำเที่ยว ${no}` });
+  if (no) out.push({ icon: 'verified', text: $t('ใบอนุญาตนำเที่ยว {no}', { no }) });
   const { travellers, rating, reviews } = brandStats.value;
-  if (travellers >= MIN_PROOF_TRAVELLERS) out.push({ icon: 'groups', text: `นักเดินทาง ${formatBaht(travellers)} คน` });
-  if (reviews >= MIN_PROOF_REVIEWS && rating > 0) out.push({ icon: 'star', text: `${Number(rating).toFixed(1)} จาก ${formatBaht(reviews)} รีวิว` });
+  if (travellers >= MIN_PROOF_TRAVELLERS) out.push({ icon: 'groups', text: $t('นักเดินทาง {formatBaht} คน', { formatBaht: formatBaht(travellers) }) });
+  if (reviews >= MIN_PROOF_REVIEWS && rating > 0) out.push({ icon: 'star', text: $t('{Number} จาก {formatBaht} รีวิว', { Number: Number(rating).toFixed(1), formatBaht: formatBaht(reviews) }) });
   return out;
 });
 
@@ -625,10 +627,10 @@ const heroSlides = computed(() => {
   const brand = {
     key: 'brand',
     image: heroImages.value[0],
-    alt: 'ลุยเลเขา',
+    alt: $t('ลุยเลเขา'),
     ...BRAND_COPY,
     proof: brandProof.value,
-    railTitle: 'ลุยเลเขา',
+    railTitle: $t('ลุยเลเขา'),
     railMeta: BRAND_COPY.title,
   };
   const tripSlides = featuredTrips.value
@@ -645,19 +647,19 @@ const heroSlides = computed(() => {
         ...tripPhotos(t, image),
         thumb: tripCardImage(t) || t.cover_image,
         alt: t.title,
-        kicker: 'ทริปแนะนำ',
+        kicker: $t('ทริปแนะนำ'),
         location: t.location || '',
         title: t.title,
         facts: tripFacts(t),
         rounds: rounds.slice(0, 3).map((s) => {
           const seats = bookableSeats(s);
-          return { id: s.id, label: thaiDayMonth(s.departure_date), seatsNote: seats <= 5 ? `เหลือ ${seats} ที่` : '' };
+          return { id: s.id, label: thaiDayMonth(s.departure_date), seatsNote: seats <= 5 ? $t('เหลือ {seats} ที่', { seats }) : '' };
         }),
         moreRounds: Math.max(0, rounds.length - 3),
         price: price > 0 ? formatBaht(price) : '',
         originalPrice: original > price && price > 0 ? formatBaht(original) : '',
-        railMeta: [t.location, price > 0 ? `฿${formatBaht(price)}` : ''].filter(Boolean).join(' · '),
-        cta: { to: `/trips/${t.slug}`, label: 'ดูรายละเอียด' },
+        railMeta: [t.location, price > 0 ? $t('฿{formatBaht}', { formatBaht: formatBaht(price) }) : ''].filter(Boolean).join(' · '),
+        cta: { to: `/trips/${t.slug}`, label: $t('ดูรายละเอียด') },
       };
     });
   if (tripSlides.length) return [brand, ...tripSlides];
@@ -750,24 +752,24 @@ const statItems = ref([
     icon: 'footprint',
     target: 0,
     displayValue: '0',
-    suffix: 'กม.',
-    label: 'ระยะทางที่ชุมชนเราเดินสะสม',
+    suffix: $t('กม.'),
+    label: $t('ระยะทางที่ชุมชนเราเดินสะสม'),
     context: '',
   },
   {
     icon: 'landscape',
     target: 0,
     displayValue: '0',
-    suffix: 'ม.',
-    label: 'ความสูงที่ไต่ขึ้นไปรวมกัน',
+    suffix: $t('ม.'),
+    label: $t('ความสูงที่ไต่ขึ้นไปรวมกัน'),
     context: '',
   },
   {
     icon: 'groups',
     target: 0,
     displayValue: '0',
-    suffix: 'คน',
-    label: 'นักเดินทางที่ไปกับเราจริง',
+    suffix: $t('คน'),
+    label: $t('นักเดินทางที่ไปกับเราจริง'),
     context: '',
   },
   {
@@ -775,7 +777,7 @@ const statItems = ref([
     target: 0,
     displayValue: '0.0',
     suffix: '/5',
-    label: 'คะแนนจากคนที่เดินทางแล้ว',
+    label: $t('คะแนนจากคนที่เดินทางแล้ว'),
     context: '',
   },
 ]);
@@ -839,28 +841,28 @@ const marqueeDuration = computed(() => Math.max(30, reviews.value.length * 8));
 const trustItems = [
   {
     image: '/images/travel_safety.webp',
-    title: 'ความปลอดภัยมาก่อน',
-    desc: 'ตรวจสภาพรถและอุปกรณ์ก่อนออกเดินทางทุกรอบ พร้อมปุ่มแจ้งเหตุฉุกเฉินที่ถึงทีมงานทันที',
+    title: $t('ความปลอดภัยมาก่อน'),
+    desc: $t('ตรวจสภาพรถและอุปกรณ์ก่อนออกเดินทางทุกรอบ พร้อมปุ่มแจ้งเหตุฉุกเฉินที่ถึงทีมงานทันที'),
   },
   {
     // เคยเขียนว่า 24/7 ทั้งที่หน้าติดต่อกับหน้าชำระเงินบอกเวลาทำการไว้ชัดเจน —
     // คำโฆษณาที่เว็บตัวเองแย้งสองหน้าถัดมา ทำให้ที่เหลือพลอยไม่น่าเชื่อไปด้วย
     image: '/images/247_support.webp',
-    title: 'มีทีมงานอยู่ด้วยตลอดทริป',
-    desc: `ทีมงานดูแลตั้งแต่ก่อนออกเดินทางจนกลับถึงบ้าน สอบถามก่อนเดินทางได้${supportHours()} ส่วนวันเดินทางติดต่อทีมงานได้ตลอดทริป`,
+    title: $t('มีทีมงานอยู่ด้วยตลอดทริป'),
+    desc: $t('ทีมงานดูแลตั้งแต่ก่อนออกเดินทางจนกลับถึงบ้าน สอบถามก่อนเดินทางได้{supportHours} ส่วนวันเดินทางติดต่อทีมงานได้ตลอดทริป', { supportHours: supportHours() }),
   },
   {
     image: '/images/nature_travel.webp',
-    title: 'ท่องเที่ยวสายอนุรักษ์',
-    desc: 'ทุกทริปของเรามุ่งเน้นความยั่งยืน สนับสนุนชุมชนท้องถิ่นและอนุรักษ์ธรรมชาติอย่างจริงจัง',
+    title: $t('ท่องเที่ยวสายอนุรักษ์'),
+    desc: $t('ทุกทริปของเรามุ่งเน้นความยั่งยืน สนับสนุนชุมชนท้องถิ่นและอนุรักษ์ธรรมชาติอย่างจริงจัง'),
   },
   {
     // "จ่ายครั้งเดียวจบ" ขัดกับตัวสินค้าเอง — มีทั้งจุดรับที่ราคาต่างกัน
     // ประเภทรถ อุปกรณ์เช่า และการผ่อน/แบ่งจ่าย สิ่งที่เรารับปากได้จริงคือ
     // เห็นยอดสุทธิครบก่อนกดจ่าย ไม่ใช่ว่ามีค่าใช้จ่ายก้อนเดียว
     image: '/images/nohidden_show.webp',
-    title: 'เห็นยอดสุทธิก่อนจ่าย',
-    desc: 'ค่าจุดขึ้นรถ ประเภทรถ และของเช่า คิดแยกให้เห็นทีละรายการ แล้วสรุปยอดสุทธิให้ดูก่อนกดชำระเงินเสมอ',
+    title: $t('เห็นยอดสุทธิก่อนจ่าย'),
+    desc: $t('ค่าจุดขึ้นรถ ประเภทรถ และของเช่า คิดแยกให้เห็นทีละรายการ แล้วสรุปยอดสุทธิให้ดูก่อนกดชำระเงินเสมอ'),
   },
 ];
 
@@ -920,23 +922,23 @@ onMounted(async () => {
 
       statItems.value[0].target = Math.round(c.total_distance_km || 0);
       statItems.value[0].context = c.rounds_completed
-        ? `จาก ${c.rounds_completed.toLocaleString()} รอบที่เดินทางจบแล้ว`
+        ? $t('จาก {toLocaleString} รอบที่เดินทางจบแล้ว', { toLocaleString: c.rounds_completed.toLocaleString() })
         : '';
 
       statItems.value[1].target = c.total_elevation_gain_m || 0;
       statItems.value[1].context = c.highlights?.inthanon_multiple
-        ? `เท่ากับปีนดอยอินทนนท์ ${c.highlights.inthanon_multiple.toLocaleString()} รอบ`
+        ? $t('เท่ากับปีนดอยอินทนนท์ {toLocaleString} รอบ', { toLocaleString: c.highlights.inthanon_multiple.toLocaleString() })
         : '';
 
       statItems.value[2].target = c.travellers_count || 0;
       statItems.value[2].context = c.regions_count
-        ? `ไปมาแล้ว ${c.regions_count} ภูมิภาคทั่วไทย`
+        ? $t('ไปมาแล้ว {regions_count} ภูมิภาคทั่วไทย', { regions_count: c.regions_count })
         : '';
 
       // avg_rating เป็น 5.0 by default แม้ยังไม่มีรีวิว — อย่าโชว์คะแนนที่ไม่มีใครให้
       statItems.value[3].target = c.reviews_count ? s.avg_rating : 0;
       statItems.value[3].context = c.reviews_count
-        ? `จาก ${c.reviews_count.toLocaleString()} รีวิวของคนที่เดินทางจริง`
+        ? $t('จาก {toLocaleString} รีวิวของคนที่เดินทางจริง', { toLocaleString: c.reviews_count.toLocaleString() })
         : '';
 
       brandStats.value = {

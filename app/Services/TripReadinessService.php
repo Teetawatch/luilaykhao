@@ -230,11 +230,11 @@ class TripReadinessService
     private function messageFor(string $verdict, float $ratio): string
     {
         return match ($verdict) {
-            self::VERDICT_COMFORTABLE => 'ทริปนี้อยู่ในระดับที่คุณเคยเดินมาแล้ว น่าจะไปได้สบาย',
-            self::VERDICT_STRETCH => 'ทริปนี้หนักกว่าที่คุณเคยเดินอยู่บ้าง เตรียมร่างกายสักหน่อยจะสนุกกว่าเดิม',
-            self::VERDICT_BEYOND => sprintf(
-                'ทริปนี้หนักกว่าที่คุณเคยเดินมาราว %s เท่า แนะนำให้ซ้อมก่อน หรือลองทริปที่เบากว่านี้ดูก่อน',
-                $ratio >= 10 ? round($ratio) : round($ratio, 1),
+            self::VERDICT_COMFORTABLE => __('ทริปนี้อยู่ในระดับที่คุณเคยเดินมาแล้ว น่าจะไปได้สบาย'),
+            self::VERDICT_STRETCH => __('ทริปนี้หนักกว่าที่คุณเคยเดินอยู่บ้าง เตรียมร่างกายสักหน่อยจะสนุกกว่าเดิม'),
+            self::VERDICT_BEYOND => __(
+                'ทริปนี้หนักกว่าที่คุณเคยเดินมาราว :ratio เท่า แนะนำให้ซ้อมก่อน หรือลองทริปที่เบากว่านี้ดูก่อน',
+                ['ratio' => $ratio >= 10 ? round($ratio) : round($ratio, 1)],
             ),
             default => '',
         };
@@ -253,9 +253,9 @@ class TripReadinessService
                 'duration_days' => $trip->duration_days,
             ],
             'message' => match ($reason) {
-                'trip_data_missing' => 'ทริปนี้ยังไม่ได้ระบุระยะทางและความสูง จึงยังเทียบให้ไม่ได้',
-                'not_logged_in' => 'เข้าสู่ระบบเพื่อดูว่าทริปนี้เหมาะกับคุณแค่ไหน',
-                'no_baseline' => 'บอกเราหน่อยว่าคุณเคยเดินไกลสุดเท่าไหร่ แล้วเราจะเทียบให้',
+                'trip_data_missing' => __('ทริปนี้ยังไม่ได้ระบุระยะทางและความสูง จึงยังเทียบให้ไม่ได้'),
+                'not_logged_in' => __('เข้าสู่ระบบเพื่อดูว่าทริปนี้เหมาะกับคุณแค่ไหน'),
+                'no_baseline' => __('บอกเราหน่อยว่าคุณเคยเดินไกลสุดเท่าไหร่ แล้วเราจะเทียบให้'),
                 default => '',
             },
         ];

@@ -32,9 +32,9 @@
             <span class="material-symbols-rounded hs-ico">explore</span>
           </span>
           <span class="min-w-0 flex-1 text-left">
-            <span class="hs-label">อยากไปเที่ยวที่ไหน?</span>
+            <span class="hs-label">{{ $t('อยากไปเที่ยวที่ไหน?') }}</span>
             <span class="hs-value" :class="selectedTrip ? 'text-gray-900' : 'text-gray-400'">
-              {{ selectedTrip ? selectedTrip.title : 'เลือกทริปที่ต้องการ' }}
+              {{ selectedTrip ? selectedTrip.title : $t('เลือกทริปที่ต้องการ') }}
             </span>
           </span>
           <span class="material-symbols-rounded hs-ico hs-ico--sm hs-chevron" :class="{ 'hs-chevron--open': open === 'trip' }">
@@ -62,7 +62,7 @@
             <span v-else class="material-symbols-rounded hs-ico">calendar_month</span>
           </span>
           <span class="min-w-0 flex-1 text-left">
-            <span class="hs-label">รอบวันเดินทาง</span>
+            <span class="hs-label">{{ $t('รอบวันเดินทาง') }}</span>
             <span class="hs-value" :class="selectedSchedule ? 'text-gray-900' : 'text-gray-400'">
               {{ scheduleFieldText }}
             </span>
@@ -80,7 +80,7 @@
         @click="goBook"
       >
         <span class="material-symbols-rounded hs-ico">search</span>
-        <span>{{ selectedTrip ? 'ไปที่ทริปนี้' : 'ค้นหาทริป' }}</span>
+        <span>{{ selectedTrip ? $t('ไปที่ทริปนี้') : $t('ค้นหาทริป') }}</span>
       </button>
     </div>
 
@@ -99,7 +99,7 @@
           :class="isMobile ? 'hs-panel--sheet' : 'hs-panel--drop'"
           :style="isMobile ? null : panelStyle"
           role="dialog"
-          :aria-label="open === 'trip' ? 'เลือกทริป' : 'เลือกรอบวันเดินทาง'"
+          :aria-label="open === 'trip' ? $t('เลือกทริป') : $t('เลือกรอบวันเดินทาง')"
           @keydown.esc.prevent="close(true)"
           @keydown.down.prevent="move(1)"
           @keydown.up.prevent="move(-1)"
@@ -110,12 +110,12 @@
             <div class="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-3"></div>
             <div class="flex items-center gap-2">
               <h3 class="flex-1 text-[15px] font-extrabold text-gray-900">
-                {{ open === 'trip' ? 'เลือกทริป' : 'เลือกรอบวันเดินทาง' }}
+                {{ open === 'trip' ? $t('เลือกทริป') : $t('เลือกรอบวันเดินทาง') }}
               </h3>
               <button
                 type="button"
                 class="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"
-                aria-label="ปิด"
+                :aria-label="$t('ปิด')"
                 @click="close(true)"
               >
                 <span class="material-symbols-rounded hs-ico hs-ico--sm">close</span>
@@ -134,13 +134,13 @@
                   type="text"
                   inputmode="search"
                   class="flex-1 min-w-0 bg-transparent border-none outline-none p-0 text-[14px] font-bold text-gray-900 placeholder:font-normal placeholder:text-gray-400"
-                  placeholder="พิมพ์ชื่อทริป หรือจังหวัด"
+                  :placeholder="$t('พิมพ์ชื่อทริป หรือจังหวัด')"
                 />
                 <button
                   v-if="tripQuery"
                   type="button"
                   class="text-gray-400 hover:text-gray-600 flex items-center"
-                  aria-label="ล้างคำค้นหา"
+                  :aria-label="$t('ล้างคำค้นหา')"
                   @click="tripQuery = ''"
                 >
                   <span class="material-symbols-rounded hs-ico hs-ico--sm">cancel</span>
@@ -148,12 +148,12 @@
               </div>
             </div>
 
-            <ul ref="listEl" class="hs-list" role="listbox" aria-label="ทริปทั้งหมด">
+            <ul ref="listEl" class="hs-list" role="listbox" :aria-label="$t('ทริปทั้งหมด')">
               <li v-if="loading && !tripOptions.length" class="px-4 py-8 text-center text-sm text-gray-400">
-                กำลังโหลดทริป...
+                {{ $t('กำลังโหลดทริป...') }}
               </li>
               <li v-else-if="!tripOptions.length" class="px-4 py-8 text-center text-sm text-gray-500">
-                ไม่พบทริปที่ตรงกับ “{{ tripQuery }}”
+                {{ $t('ไม่พบทริปที่ตรงกับ “{tripQuery}”', { tripQuery }) }}
               </li>
               <li
                 v-for="(t, i) in tripOptions"
@@ -183,9 +183,9 @@
                 </span>
 
                 <span v-if="tripPrice(t)" class="shrink-0 text-right">
-                  <span class="block text-[10px] text-gray-400 leading-tight">เริ่มต้น</span>
+                  <span class="block text-[10px] text-gray-400 leading-tight">{{ $t('เริ่มต้น') }}</span>
                   <span class="block text-[13px] font-extrabold text-[var(--color-accent)] leading-tight">
-                    ฿{{ tripPrice(t) }}
+                    {{ $t('฿{tripPrice}', { tripPrice: tripPrice(t) }) }}
                   </span>
                 </span>
                 <span
@@ -206,20 +206,20 @@
                 class="ml-auto shrink-0 text-[12px] font-bold text-[var(--color-accent)] hover:underline"
                 @click="openPanel('trip')"
               >
-                เปลี่ยนทริป
+                {{ $t('เปลี่ยนทริป') }}
               </button>
             </div>
 
-            <ul ref="listEl" class="hs-list" role="listbox" aria-label="รอบวันเดินทาง">
+            <ul ref="listEl" class="hs-list" role="listbox" :aria-label="$t('รอบวันเดินทาง')">
               <li v-if="!selectedTrip" class="px-6 py-10 text-center">
                 <span class="material-symbols-rounded hs-ico hs-ico--lg text-gray-300">explore</span>
-                <p class="mt-2 text-sm text-gray-500">เลือกทริปก่อน แล้วรอบที่ยังว่างจะขึ้นตรงนี้</p>
+                <p class="mt-2 text-sm text-gray-500">{{ $t('เลือกทริปก่อน แล้วรอบที่ยังว่างจะขึ้นตรงนี้') }}</p>
                 <button
                   type="button"
                   class="mt-3 px-4 py-2 rounded-full bg-[var(--color-accent)] text-white text-[13px] font-bold"
                   @click="openPanel('trip')"
                 >
-                  เลือกทริป
+                  {{ $t('เลือกทริป') }}
                 </button>
               </li>
 
@@ -228,9 +228,9 @@
               </li>
 
               <li v-else-if="!schedules.length" class="px-6 py-10 text-center text-sm text-gray-500">
-                รอบของทริปนี้เต็มหรือยังไม่เปิดขาย —
+                {{ $t('รอบของทริปนี้เต็มหรือยังไม่เปิดขาย —') }}
                 <button type="button" class="font-bold text-[var(--color-accent)] hover:underline" @click="goBook">
-                  ดูรายละเอียดทริป
+                  {{ $t('ดูรายละเอียดทริป') }}
                 </button>
               </li>
 
@@ -260,9 +260,9 @@
                   </span>
 
                   <span v-if="s.price" class="shrink-0 text-right">
-                    <span class="block text-[10px] text-gray-400 leading-tight">ต่อท่าน</span>
+                    <span class="block text-[10px] text-gray-400 leading-tight">{{ $t('ต่อท่าน') }}</span>
                     <span class="block text-[13px] font-extrabold text-[var(--color-accent)] leading-tight">
-                      ฿{{ money(s.price) }}
+                      {{ $t('฿{money}', { money: money(s.price) }) }}
                     </span>
                   </span>
                 </li>
@@ -276,11 +276,13 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { tripCardImage } from '../lib/tripImage';
-import { THAI_MONTHS_SHORT } from '../lib/thaiDate';
+import { MONTHS_SHORT, displayYear } from '../lib/thaiDate';
 import {
   bookableSeats,
   isScheduleBookable,
@@ -298,7 +300,7 @@ const props = defineProps({
 
 const router = useRouter();
 
-const ALL_TRIPS = { slug: '', title: 'ทุกทริป', all: true };
+const ALL_TRIPS = { slug: '', title: $t('ทุกทริป'), all: true };
 
 const rootEl = ref(null);
 const panelEl = ref(null);
@@ -345,9 +347,9 @@ const options = computed(() => (open.value === 'trip' ? tripOptions.value : sche
 
 const scheduleFieldText = computed(() => {
   if (selectedSchedule.value) return dateRangeLabel(selectedSchedule.value);
-  if (!selectedTripSlug.value) return 'เลือกวันเดินทาง';
-  if (schedulesLoading.value) return 'กำลังโหลดรอบ...';
-  return schedules.value.length ? `${schedules.value.length} รอบที่ยังว่าง` : 'ยังไม่มีรอบว่าง';
+  if (!selectedTripSlug.value) return $t('เลือกวันเดินทาง');
+  if (schedulesLoading.value) return $t('กำลังโหลดรอบ...');
+  return schedules.value.length ? $t('{length} รอบที่ยังว่าง', { length: schedules.value.length }) : $t('ยังไม่มีรอบว่าง');
 });
 
 // ── เปิด/ปิดแผง ─────────────────────────────────────────────
@@ -480,12 +482,12 @@ function goBook() {
 // ── ข้อความในแต่ละแถว ───────────────────────────────────────
 
 function money(value) {
-  return Number(value || 0).toLocaleString('th-TH');
+  return Number(value || 0).toLocaleString(DATE_LOCALE);
 }
 
 function tripSubtitle(trip) {
-  if (trip.all) return 'ดูรอบเดินทางทั้งหมด';
-  return [trip.location || trip.region, trip.duration_days ? `${trip.duration_days} วัน` : null]
+  if (trip.all) return $t('ดูรอบเดินทางทั้งหมด');
+  return [trip.location || trip.region, trip.duration_days ? $t('{duration_days} วัน', { duration_days: trip.duration_days }) : null]
     .filter(Boolean)
     .join(' · ');
 }
@@ -503,7 +505,7 @@ function parts(iso) {
   return y && m && d ? { y, m, d } : null;
 }
 
-const WEEKDAYS = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+const WEEKDAYS = [$t('อา.'), $t('จ.'), $t('อ.'), $t('พ.'), $t('พฤ.'), $t('ศ.'), $t('ส.')];
 
 function weekday(iso) {
   const p = parts(iso);
@@ -526,16 +528,16 @@ function dateRangeLabel(s) {
   const from = parts(s.departure_date);
   if (!from) return '';
   const to = parts(s.return_date);
-  const year = from.y + 543;
-  const head = `${from.d} ${THAI_MONTHS_SHORT[from.m - 1]}`;
+  const year = displayYear(from.y);
+  const head = `${from.d} ${MONTHS_SHORT[from.m - 1]}`;
 
   if (!to || (to.d === from.d && to.m === from.m && to.y === from.y)) {
     return `${head} ${year}`;
   }
   if (to.m === from.m && to.y === from.y) {
-    return `${from.d}–${to.d} ${THAI_MONTHS_SHORT[to.m - 1]} ${to.y + 543}`;
+    return `${from.d}–${to.d} ${MONTHS_SHORT[to.m - 1]} ${displayYear(to.y)}`;
   }
-  return `${head} – ${to.d} ${THAI_MONTHS_SHORT[to.m - 1]} ${to.y + 543}`;
+  return `${head} – ${to.d} ${MONTHS_SHORT[to.m - 1]} ${displayYear(to.y)}`;
 }
 
 function seatLabel(s) {

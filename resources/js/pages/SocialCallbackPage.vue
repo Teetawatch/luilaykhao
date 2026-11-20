@@ -3,18 +3,19 @@
     <div class="text-center">
       <div v-if="!errorMsg" class="space-y-4">
         <i class="fa-solid fa-circle-notch fa-spin text-4xl text-accent"></i>
-        <p class="text-text-muted font-anuphan">กำลังเข้าสู่ระบบ...</p>
+        <p class="text-text-muted font-anuphan">{{ $t('กำลังเข้าสู่ระบบ...') }}</p>
       </div>
       <div v-else class="space-y-4">
         <i class="fa-solid fa-circle-exclamation text-4xl text-red-500"></i>
         <p class="text-red-700 font-anuphan">{{ errorMsg }}</p>
-        <router-link to="/login" class="text-accent hover:underline text-sm">กลับสู่หน้าเข้าสู่ระบบ</router-link>
+        <router-link to="/login" class="text-accent hover:underline text-sm">{{ $t('กลับสู่หน้าเข้าสู่ระบบ') }}</router-link>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
@@ -32,7 +33,7 @@ onMounted(() => {
   console.log('Social callback:', { token, userParam, error });
 
   if (error || !token || !userParam) {
-    errorMsg.value = 'การเข้าสู่ระบบผ่าน Social ล้มเหลว กรุณาลองใหม่อีกครั้ง';
+    errorMsg.value = $t('การเข้าสู่ระบบผ่าน Social ล้มเหลว กรุณาลองใหม่อีกครั้ง');
     console.error('Missing params:', { error, hasToken: !!token, hasUser: !!userParam });
     return;
   }
@@ -46,7 +47,7 @@ onMounted(() => {
     router.replace(redirect);
   } catch (e) {
     console.error('Parse error:', e);
-    errorMsg.value = 'เกิดข้อผิดพลาดในการประมวลผลข้อมูล กรุณาลองใหม่อีกครั้ง';
+    errorMsg.value = $t('เกิดข้อผิดพลาดในการประมวลผลข้อมูล กรุณาลองใหม่อีกครั้ง');
   }
 });
 </script>

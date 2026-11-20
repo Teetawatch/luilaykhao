@@ -3,10 +3,10 @@
   <section v-if="posts.length > 0" class="mt-16 pt-16 border-t border-gray-200">
     <div class="mb-10">
       <h3 class="text-2xl md:text-4xl font-extrabold text-[var(--color-text-dark)] tracking-tight mb-2">
-        ฟีดจากนักเดินทาง
+        {{ $t('ฟีดจากนักเดินทาง') }}
       </h3>
       <p class="text-[var(--color-text-muted)] font-semibold">
-        รูปจริงจากลูกค้าที่เพิ่งกลับจากทริปนี้ · {{ total }} โพสต์
+        {{ $t('รูปจริงจากลูกค้าที่เพิ่งกลับจากทริปนี้ · {total} โพสต์', { total }) }}
       </p>
     </div>
 
@@ -24,7 +24,7 @@
         >
           <img
             :src="firstPhoto(post)"
-            :alt="post.caption || 'รูปจากนักเดินทาง'"
+            :alt="post.caption || $t('รูปจากนักเดินทาง')"
             loading="lazy"
             class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
@@ -53,11 +53,11 @@
               v-else
               class="w-9 h-9 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)] font-extrabold"
             >
-              {{ (post.user?.name || 'น')[0] }}
+              {{ (post.user?.name || $t('น'))[0] }}
             </div>
             <div class="min-w-0">
               <p class="font-extrabold text-sm text-[var(--color-text-dark)] truncate">
-                {{ post.user?.name || 'นักเดินทาง' }}
+                {{ post.user?.name || $t('นักเดินทาง') }}
                 <TierBadge :tier="post.user?.tier" :label="post.user?.tier_label" size="sm" class="ml-1" />
               </p>
               <p class="text-xs text-[var(--color-text-muted)] font-semibold">
@@ -103,7 +103,7 @@
           v-if="loadingMore"
           class="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"
         ></span>
-        {{ loadingMore ? 'กำลังโหลด...' : 'ดูโพสต์เพิ่มเติม' }}
+        {{ loadingMore ? $t('กำลังโหลด...') : $t('ดูโพสต์เพิ่มเติม') }}
       </button>
     </div>
 
@@ -117,7 +117,7 @@
         <button
           type="button"
           class="absolute top-4 right-4 text-white/80 hover:text-white p-2"
-          aria-label="ปิด"
+          :aria-label="$t('ปิด')"
           @click="lightboxPost = null"
         >
           <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,6 +142,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { computed, ref, onMounted } from 'vue';
 import api from '../lib/axios';
 import TierBadge from './TierBadge.vue';
@@ -169,13 +171,13 @@ function timeAgo(value) {
   if (Number.isNaN(date.getTime())) return '';
   const diffMs = Date.now() - date.getTime();
   const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'เมื่อกี้';
-  if (mins < 60) return `${mins} นาทีที่แล้ว`;
+  if (mins < 1) return $t('เมื่อกี้');
+  if (mins < 60) return $t('{mins} นาทีที่แล้ว', { mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} ชม.ที่แล้ว`;
+  if (hours < 24) return $t('{hours} ชม.ที่แล้ว', { hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} วันที่แล้ว`;
-  return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (days < 7) return $t('{days} วันที่แล้ว', { days });
+  return date.toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function openLightbox(post) {

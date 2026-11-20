@@ -218,6 +218,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -262,7 +263,7 @@ function timeAgo(iso) {
   const days = Math.round(hours / 24);
   if (days < 30) return `${days} วันที่แล้ว`;
 
-  return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 async function fetchPage(target) {

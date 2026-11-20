@@ -5,7 +5,7 @@
     <PageHeader
       :title="heroCopy.title"
       :subtitle="heroCopy.subtitle"
-      crumb-label="ทริปทั้งหมด"
+      :crumb-label="$t('ทริปทั้งหมด')"
       container="max-w-[1600px] px-4 sm:px-6 md:px-8 lg:px-12"
       flush
     >
@@ -13,17 +13,17 @@
         <div class="relative w-full md:w-[22rem] xl:w-[26rem]">
           <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
           <!-- text-base ไว้เท่าเดิม ถ้าเล็กกว่า 16px ซาฟารีบน iOS จะซูมหน้าจอตอนกดพิมพ์ -->
-          <input v-model="searchTerm" type="text" placeholder="ค้นหาชื่อทริปหรือสถานที่..."
-            aria-label="ค้นหาทริป"
+          <input v-model="searchTerm" type="text" :placeholder="$t('ค้นหาชื่อทริปหรือสถานที่...')"
+            :aria-label="$t('ค้นหาทริป')"
             class="w-full bg-white border border-gray-200 rounded-full pl-12 pr-11 py-3 text-base font-medium text-[var(--color-text-dark)] placeholder:text-gray-400 outline-none hover:border-gray-300 focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[var(--color-accent)]/10 transition-all" />
-          <button v-if="searchTerm" type="button" @click="clearSearch" aria-label="ล้างคำค้นหา"
+          <button v-if="searchTerm" type="button" @click="clearSearch" :aria-label="$t('ล้างคำค้นหา')"
             class="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors">
             <span class="material-symbols-rounded text-[16px]">close</span>
           </button>
         </div>
       </template>
 
-      <nav class="mt-5 md:mt-7 -mb-px grid grid-cols-3 sm:flex sm:gap-8" aria-label="ปลายทาง">
+      <nav class="mt-5 md:mt-7 -mb-px grid grid-cols-3 sm:flex sm:gap-8" :aria-label="$t('ปลายทาง')">
         <button v-for="tab in destinationTabs" :key="tab.value" type="button"
           @click="selectDestination(tab.value)"
           :aria-pressed="tripsStore.filters.destination === tab.value"
@@ -103,14 +103,14 @@
           <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
             <div class="flex items-baseline gap-2">
               <span class="text-2xl font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ resultCount.toLocaleString() }}</span>
-              <span class="text-[var(--color-text-muted)] text-base font-medium">ทริปที่พบ</span>
+              <span class="text-[var(--color-text-muted)] text-base font-medium">{{ $t('ทริปที่พบ') }}</span>
             </div>
 
             <div class="flex items-center gap-2.5">
               <button type="button" @click="filtersOpen = true"
                 class="lg:hidden inline-flex items-center gap-2 bg-white border border-gray-200 rounded-full pl-4 pr-3 py-2.5 text-sm font-bold text-[var(--color-text-dark)] cursor-pointer">
                 <span class="material-symbols-rounded text-[20px]">tune</span>
-                ตัวกรอง
+                {{ $t('ตัวกรอง') }}
                 <span v-if="activeFilters.length"
                   class="w-5 h-5 rounded-full bg-[var(--color-accent)] text-white text-[11px] font-black flex items-center justify-center">
                   {{ activeFilters.length }}
@@ -119,11 +119,11 @@
 
               <div class="relative">
                 <select v-model="tripsStore.filters.sort" @change="applyFilters()"
-                  aria-label="เรียงลำดับ"
+                  :aria-label="$t('เรียงลำดับ')"
                   class="appearance-none bg-white pl-5 pr-10 py-2.5 rounded-full border border-gray-200 text-base sm:text-sm font-bold text-[var(--color-text-dark)] cursor-pointer hover:border-[var(--color-accent)] transition-colors outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20">
-                  <option value="popular">ทริปยอดนิยม</option>
-                  <option value="price_asc">ราคาจากน้อยไปมาก</option>
-                  <option value="price_desc">ราคาจากมากไปน้อย</option>
+                  <option value="popular">{{ $t('ทริปยอดนิยม') }}</option>
+                  <option value="price_asc">{{ $t('ราคาจากน้อยไปมาก') }}</option>
+                  <option value="price_desc">{{ $t('ราคาจากมากไปน้อย') }}</option>
                 </select>
                 <span class="material-symbols-rounded text-[20px] text-gray-400 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">keyboard_arrow_down</span>
               </div>
@@ -135,14 +135,14 @@
             <span v-for="chip in activeFilters" :key="chip.key"
               class="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-full pl-3.5 pr-2 py-1.5 text-sm font-bold text-[var(--color-text-dark)]">
               {{ chip.label }}
-              <button type="button" @click="chip.clear()" :aria-label="`เอา ${chip.label} ออก`"
+              <button type="button" @click="chip.clear()" :aria-label="$t('เอา {label} ออก', { label: chip.label })"
                 class="w-5 h-5 rounded-full bg-gray-100 hover:bg-red-100 hover:text-red-500 text-gray-500 flex items-center justify-center cursor-pointer transition-colors">
                 <span class="material-symbols-rounded text-[14px]">close</span>
               </button>
             </span>
             <button type="button" @click="clearAndFetch"
               class="text-sm font-bold text-[var(--color-text-muted)] hover:text-red-500 transition-colors ml-1 cursor-pointer">
-              ล้างทั้งหมด
+              {{ $t('ล้างทั้งหมด') }}
             </button>
           </div>
 
@@ -164,14 +164,14 @@
             <div class="w-20 h-20 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-6">
               <span class="material-symbols-rounded text-gray-300 text-5xl">explore_off</span>
             </div>
-            <h3 class="text-[var(--color-text-dark)] text-xl md:text-2xl font-extrabold mb-3">ยังไม่มีทริปที่ตรงกับที่เลือกไว้</h3>
+            <h3 class="text-[var(--color-text-dark)] text-xl md:text-2xl font-extrabold mb-3">{{ $t('ยังไม่มีทริปที่ตรงกับที่เลือกไว้') }}</h3>
             <p class="text-[var(--color-text-muted)] text-base font-medium mb-8 max-w-md mx-auto">
               {{ emptyHint }}
             </p>
             <button @click="clearAndFetch"
               class="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-7 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent-mid)] transition-colors duration-300 cursor-pointer">
               <span class="material-symbols-rounded text-[20px]">refresh</span>
-              ล้างตัวกรองและดูทั้งหมด
+              {{ $t('ล้างตัวกรองและดูทั้งหมด') }}
             </button>
           </div>
 
@@ -192,7 +192,7 @@
               <button
                 @click="goToPage(tripsStore.meta.current_page - 1)"
                 :disabled="tripsStore.meta.current_page <= 1"
-                aria-label="หน้าก่อนหน้า"
+                :aria-label="$t('หน้าก่อนหน้า')"
                 class="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
                 :class="tripsStore.meta.current_page <= 1 ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-dark)] hover:bg-[var(--color-sand)] cursor-pointer'">
                 <span class="material-symbols-rounded">chevron_left</span>
@@ -200,7 +200,7 @@
 
               <!-- มือถือ: เลขหน้าเต็มชุด (สูงสุด 9 ปุ่ม × 44px) กว้างเกินจอ จึงย่อเป็น "หน้า x / y" -->
               <span class="sm:hidden px-3 text-sm font-extrabold text-[var(--color-text-dark)] tabular-nums whitespace-nowrap">
-                หน้า {{ tripsStore.meta.current_page }} / {{ tripsStore.meta.last_page }}
+                {{ $t('หน้า {current_page} / {last_page}', { current_page: tripsStore.meta.current_page, last_page: tripsStore.meta.last_page }) }}
               </span>
               <div class="hidden sm:flex items-center gap-1 px-1">
                 <template v-for="(page, i) in paginationPages" :key="`${page}-${i}`">
@@ -220,7 +220,7 @@
               <button
                 @click="goToPage(tripsStore.meta.current_page + 1)"
                 :disabled="tripsStore.meta.current_page >= tripsStore.meta.last_page"
-                aria-label="หน้าถัดไป"
+                :aria-label="$t('หน้าถัดไป')"
                 class="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
                 :class="tripsStore.meta.current_page >= tripsStore.meta.last_page ? 'text-gray-300 cursor-not-allowed' : 'text-[var(--color-text-dark)] hover:bg-[var(--color-sand)] cursor-pointer'">
                 <span class="material-symbols-rounded">chevron_right</span>
@@ -237,12 +237,12 @@
     <Teleport to="body">
       <!-- ไม่ผูกกับ lg:hidden เพราะถ้าย่อ/ขยายจอตอนแผ่นเปิดอยู่ แผ่นจะหายไป
            แต่ body ยังถูกล็อกไม่ให้เลื่อน ปล่อยให้ปิดเองได้ทุกขนาดจอ -->
-      <div v-if="filtersOpen" class="fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true" aria-label="ตัวกรอง">
+      <div v-if="filtersOpen" class="fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true" :aria-label="$t('ตัวกรอง')">
         <div class="absolute inset-0 bg-black/40" @click="filtersOpen = false"></div>
         <div class="relative w-full bg-white rounded-t-[1.75rem] max-h-[85vh] flex flex-col animate-sheet-up">
           <div class="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
-            <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">ตัวกรอง</h2>
-            <button type="button" @click="filtersOpen = false" aria-label="ปิด"
+            <h2 class="text-lg font-extrabold text-[var(--color-text-dark)]">{{ $t('ตัวกรอง') }}</h2>
+            <button type="button" @click="filtersOpen = false" :aria-label="$t('ปิด')"
               class="w-9 h-9 rounded-full bg-[var(--color-sand)] flex items-center justify-center cursor-pointer">
               <span class="material-symbols-rounded text-[20px]">close</span>
             </button>
@@ -264,7 +264,7 @@
           <div class="px-6 py-4 border-t border-gray-100 shrink-0">
             <button type="button" @click="filtersOpen = false"
               class="w-full bg-[var(--color-accent)] text-white py-4 rounded-full text-base font-extrabold cursor-pointer">
-              ดู {{ resultCount.toLocaleString() }} ทริป
+              {{ $t('ดู {toLocaleString} ทริป', { toLocaleString: resultCount.toLocaleString() }) }}
             </button>
           </div>
         </div>
@@ -274,6 +274,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import PackageCard from '../components/PackageCard.vue';
@@ -294,23 +295,23 @@ const resultsTop = ref(null);
 /* ── ตัวเลือกคงที่ ────────────────────────────────────────── */
 
 const destinationTabs = [
-  { value: '', label: 'ทั้งหมด', icon: 'public' },
-  { value: 'domestic', label: 'ในประเทศ', icon: 'landscape' },
-  { value: 'international', label: 'ต่างประเทศ', icon: 'flight_takeoff' },
+  { value: '', label: $t('ทั้งหมด'), icon: 'public' },
+  { value: 'domestic', label: $t('ในประเทศ'), icon: 'landscape' },
+  { value: 'international', label: $t('ต่างประเทศ'), icon: 'flight_takeoff' },
 ];
 
 const difficulties = [
-  { value: 'easy', label: 'ระดับเริ่มต้น' },
-  { value: 'medium', label: 'ระดับปานกลาง' },
-  { value: 'hard', label: 'ระดับท้าทาย' },
+  { value: 'easy', label: $t('ระดับเริ่มต้น') },
+  { value: 'medium', label: $t('ระดับปานกลาง') },
+  { value: 'hard', label: $t('ระดับท้าทาย') },
 ];
 
 // ช่วงวันที่คนถามกันจริง ๆ ไม่ใช่ให้พิมพ์ตัวเลขเอง
 const durations = [
-  { key: '1', label: 'ไปเช้า–เย็นกลับ', min: 1, max: 1 },
-  { key: '2-3', label: '2–3 วัน', min: 2, max: 3 },
-  { key: '4-6', label: '4–6 วัน', min: 4, max: 6 },
-  { key: '7', label: '7 วันขึ้นไป', min: 7, max: '' },
+  { key: '1', label: $t('ไปเช้า–เย็นกลับ'), min: 1, max: 1 },
+  { key: '2-3', label: $t('2–3 วัน'), min: 2, max: 3 },
+  { key: '4-6', label: $t('4–6 วัน'), min: 4, max: 6 },
+  { key: '7', label: $t('7 วันขึ้นไป'), min: 7, max: '' },
 ];
 
 const categories = computed(() => categoriesStore.categories.map(c => ({
@@ -325,22 +326,22 @@ const heroCopy = computed(() => {
   const dest = tripsStore.filters.destination;
   if (dest === 'domestic') {
     return {
-      eyebrow: 'ในประเทศ',
-      title: 'ดอย ทะเล น้ำตก ทั่วไทย',
-      subtitle: 'มีรถรับจากจุดนัดหมายในหลายภาค ทุกรอบบอกจุดขึ้นรถและเวลาออกไว้ล่วงหน้า',
+      eyebrow: $t('ในประเทศ'),
+      title: $t('ดอย ทะเล น้ำตก ทั่วไทย'),
+      subtitle: $t('มีรถรับจากจุดนัดหมายในหลายภาค ทุกรอบบอกจุดขึ้นรถและเวลาออกไว้ล่วงหน้า'),
     };
   }
   if (dest === 'international') {
     return {
-      eyebrow: `ต่างประเทศ · ใบอนุญาต ${licenceNo()}`,
-      title: 'ข้ามพรมแดนไปเดินเขากับเรา',
-      subtitle: 'ทริปต่างประเทศต้องใช้พาสปอร์ตที่เหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง และนัดเจอกันที่สนามบินแทนจุดขึ้นรถ',
+      eyebrow: $t('ต่างประเทศ · ใบอนุญาต {licenceNo}', { licenceNo: licenceNo() }),
+      title: $t('ข้ามพรมแดนไปเดินเขากับเรา'),
+      subtitle: $t('ทริปต่างประเทศต้องใช้พาสปอร์ตที่เหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง และนัดเจอกันที่สนามบินแทนจุดขึ้นรถ'),
     };
   }
   return {
-    eyebrow: 'ทริปทั้งหมด',
-    title: 'ไปที่ไหนต่อดี',
-    subtitle: 'ทุกทริปที่เปิดรับจองอยู่ตอนนี้ ทั้งในประเทศและต่างประเทศ กรองต่อตามประเภทหรือระยะเวลาได้',
+    eyebrow: $t('ทริปทั้งหมด'),
+    title: $t('ไปที่ไหนต่อดี'),
+    subtitle: $t('ทุกทริปที่เปิดรับจองอยู่ตอนนี้ ทั้งในประเทศและต่างประเทศ กรองต่อตามประเภทหรือระยะเวลาได้'),
   };
 });
 
@@ -370,7 +371,7 @@ const subRail = computed(() => {
 
   if (showCountries) {
     return {
-      label: tripsStore.filters.destination === 'international' ? 'เลือกประเทศ' : 'บินไปกับเรา',
+      label: tripsStore.filters.destination === 'international' ? $t('เลือกประเทศ') : $t('บินไปกับเรา'),
       active: tripsStore.filters.country,
       items: facets.international.countries.map(c => ({
         key: c.code, label: c.name, flag: c.flag, count: c.count,
@@ -379,7 +380,7 @@ const subRail = computed(() => {
   }
 
   return {
-    label: 'เลือกภาค',
+    label: $t('เลือกภาค'),
     active: tripsStore.filters.region,
     items: facets.domestic.regions.map(r => ({
       key: r.key, label: r.label, icon: regionIcons[r.key] || 'place', count: r.count,
@@ -421,7 +422,7 @@ const activeFilters = computed(() => {
     chips.push({ key: 'duration', label: dur.label, clear: () => selectDuration(dur.key) });
   }
   if (f.date) {
-    chips.push({ key: 'date', label: `ออกวันที่ ${f.date}`, clear: () => { f.date = ''; applyFilters(); } });
+    chips.push({ key: 'date', label: $t('ออกวันที่ {date}', { date: f.date }), clear: () => { f.date = ''; applyFilters(); } });
   }
 
   return chips;
@@ -436,9 +437,9 @@ const activeDuration = computed(() => {
 const resultCount = computed(() => tripsStore.meta?.total ?? tripsStore.trips.length);
 
 const emptyHint = computed(() => {
-  if (activeFilters.value.length > 1) return 'ลองเอาตัวกรองออกสักอย่างสองอย่าง แล้วดูใหม่อีกครั้ง';
-  if (tripsStore.filters.search) return 'ลองค้นด้วยชื่อสถานที่หรือชื่อดอยแทนชื่อเต็มของทริป';
-  return 'ปลายทางนี้ยังไม่มีรอบเปิดขายอยู่ตอนนี้ ลองดูปลายทางอื่นก่อนได้';
+  if (activeFilters.value.length > 1) return $t('ลองเอาตัวกรองออกสักอย่างสองอย่าง แล้วดูใหม่อีกครั้ง');
+  if (tripsStore.filters.search) return $t('ลองค้นด้วยชื่อสถานที่หรือชื่อดอยแทนชื่อเต็มของทริป');
+  return $t('ปลายทางนี้ยังไม่มีรอบเปิดขายอยู่ตอนนี้ ลองดูปลายทางอื่นก่อนได้');
 });
 
 /* ── การกระทำ ───────────────────────────────────────────── */

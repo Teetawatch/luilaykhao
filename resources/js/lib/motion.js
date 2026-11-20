@@ -1,4 +1,5 @@
 import { nextTick } from 'vue';
+import { DATE_LOCALE } from '../i18n/index.js';
 
 /**
  * ระบบการเคลื่อนไหวกลางของเว็บ — ทุกหน้าใช้ชุดนี้ชุดเดียว ไม่ต้องเขียน IntersectionObserver เองทีละหน้า
@@ -144,7 +145,7 @@ export const vParallax = {
 /* ── Count-up ─────────────────────────────────────────────── */
 
 function formatCount(value, decimals) {
-  return Number(value).toLocaleString('th-TH', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return Number(value).toLocaleString(DATE_LOCALE, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
 function decimalsOf(value) {

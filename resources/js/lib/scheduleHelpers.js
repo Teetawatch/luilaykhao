@@ -1,3 +1,4 @@
+import { $t, DATE_LOCALE } from '../i18n/index.js';
 // Pure, framework-agnostic helpers for trip-schedule availability and display.
 // Shared between TripDetailPage.vue and ScheduleCalendar.vue.
 
@@ -50,11 +51,11 @@ export function joinTripFull(schedule) {
 export function joinTripSeatLabel(schedule) {
   const booked = joinTripBookedSeats(schedule);
   const total = joinTripSeats(schedule);
-  if (total === null) return `จอยแล้ว ${booked} ท่าน`;
+  if (total === null) return $t('จอยแล้ว {booked} ท่าน', { booked });
   const left = joinTripAvailableSeats(schedule);
   return left > 0
-    ? `จอยแล้ว ${booked}/${total} ท่าน · ว่าง ${left} ที่`
-    : 'จอยทริปเต็มแล้ว';
+    ? $t('จอยแล้ว {booked}/{total} ท่าน · ว่าง {left} ที่', { booked, total, left })
+    : $t('จอยทริปเต็มแล้ว');
 }
 
 export function scheduleAvailabilityBadgeClass(schedule) {
@@ -82,14 +83,14 @@ export function scheduleAvailabilityDotClass(schedule) {
 }
 
 export function scheduleAvailabilityLabel(schedule) {
-  if (schedule?.is_charter) return 'รอบเหมา';
-  if (hasAvailableSeats(schedule)) return `ว่าง ${bookableSeats(schedule)} ที่`;
+  if (schedule?.is_charter) return $t('รอบเหมา');
+  if (hasAvailableSeats(schedule)) return $t('ว่าง {bookableSeats} ที่', { bookableSeats: bookableSeats(schedule) });
   // ที่นั่งบนรถเต็ม แต่ถ้าจอยทริปยังเปิดและยังมีโควตาก็ยังจองได้อยู่
   if (schedule?.join_trip_enabled && !joinTripFull(schedule)) {
     const left = joinTripAvailableSeats(schedule);
-    return left === null ? 'จอยทริปได้' : `จอยทริปว่าง ${left} ที่`;
+    return left === null ? $t('จอยทริปได้') : $t('จอยทริปว่าง {left} ที่', { left });
   }
-  return 'เต็มแล้ว';
+  return $t('เต็มแล้ว');
 }
 
 // ─── Trip-level scarcity (uses TripResource `seats_left`) ───
@@ -116,11 +117,11 @@ export function tripScarcityLabel(trip) {
   const n = tripSeatsLeft(trip);
   const level = tripScarcityLevel(trip);
   if (!level) return null;
-  return level === 'last' ? `เหลือ ${n} ที่นั่งสุดท้าย` : `ใกล้เต็ม · เหลือ ${n} ที่`;
+  return level === 'last' ? $t('เหลือ {n} ที่นั่งสุดท้าย', { n }) : $t('ใกล้เต็ม · เหลือ {n} ที่', { n });
 }
 
 export function formatDate(d) {
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function getSortedPickupPoints(points) {

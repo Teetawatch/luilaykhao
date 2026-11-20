@@ -6,12 +6,12 @@
       <SectionTitle
         align="left"
         class="mb-8 md:mb-10"
-        title="ออกเดินทางเร็ว ๆ นี้"
-        subtitle="รอบที่ยังเปิดรับ เรียงตามวันเดินทาง พร้อมที่นั่งว่างตอนนี้"
+        :title="$t('ออกเดินทางเร็ว ๆ นี้')"
+        :subtitle="$t('รอบที่ยังเปิดรับ เรียงตามวันเดินทาง พร้อมที่นั่งว่างตอนนี้')"
       >
         <template #action>
           <router-link to="/calendar" class="section-more">
-            ดูปฏิทินทริปทั้งหมด
+            {{ $t('ดูปฏิทินทริปทั้งหมด') }}
             <span class="material-symbols-rounded icon-18">chevron_right</span>
           </router-link>
         </template>
@@ -47,16 +47,16 @@
                   <span :style="{ width: `${row.fillPct}%` }" :class="row.seatsLeft <= 2 ? 'bg-amber-500' : 'bg-[var(--color-accent-light)]'"></span>
                 </span>
                 <span class="text-[12.5px] font-semibold whitespace-nowrap" :class="row.seatsLeft <= 2 ? 'text-amber-700' : 'text-[var(--color-text-mid)]'">
-                  ว่าง {{ row.seatsLeft }} ที่
+                  {{ $t('ว่าง {seatsLeft} ที่', { seatsLeft: row.seatsLeft }) }}
                 </span>
-                <span class="sm:hidden ml-auto text-[14px] font-extrabold text-[var(--color-text-dark)] tabular-nums">฿{{ row.price }}</span>
+                <span class="sm:hidden ml-auto text-[14px] font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ $t('฿{price}', { price: row.price }) }}</span>
               </span>
             </span>
 
             <span class="hidden sm:flex flex-col items-end shrink-0 pl-2">
-              <span class="text-[12px] text-[var(--color-text-muted)]">เริ่มต้น</span>
-              <span class="text-[19px] font-extrabold text-[var(--color-text-dark)] tabular-nums">฿{{ row.price }}</span>
-              <span class="dep-cta">ดูรอบนี้</span>
+              <span class="text-[12px] text-[var(--color-text-muted)]">{{ $t('เริ่มต้น') }}</span>
+              <span class="text-[19px] font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ $t('฿{price}', { price: row.price }) }}</span>
+              <span class="dep-cta">{{ $t('ดูรอบนี้') }}</span>
             </span>
           </router-link>
         </li>
@@ -66,6 +66,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { computed } from 'vue';
 import SectionTitle from '../SectionTitle.vue';
 import { tripCardImage } from '../../lib/tripImage';
@@ -77,8 +79,8 @@ const props = defineProps({
   limit: { type: Number, default: 8 },
 });
 
-const WEEKDAYS = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
-const MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const WEEKDAYS = [$t('อา.'), $t('จ.'), $t('อ.'), $t('พ.'), $t('พฤ.'), $t('ศ.'), $t('ส.')];
+const MONTHS = [$t('ม.ค.'), $t('ก.พ.'), $t('มี.ค.'), $t('เม.ย.'), $t('พ.ค.'), $t('มิ.ย.'), $t('ก.ค.'), $t('ส.ค.'), $t('ก.ย.'), $t('ต.ค.'), $t('พ.ย.'), $t('ธ.ค.')];
 
 // ราคาต่ำสุดของรอบ — จุดขึ้นรถแต่ละจุดตั้งราคาเองได้ จึงดูจากจุดรับก่อน
 function schedulePrice(schedule) {
@@ -118,10 +120,10 @@ const rows = computed(() => {
         month: MONTHS[d.getUTCMonth()],
         daysLeft: daysUntil(schedule.departure_date) ?? 99,
         image: tripCardImage(trip),
-        meta: [trip.country_label || trip.location, days > 1 ? `${days} วัน ${days - 1} คืน` : '1 วัน'].filter(Boolean).join(' · '),
+        meta: [trip.country_label || trip.location, days > 1 ? $t('{days} วัน {v} คืน', { days, v: days - 1 }) : $t('1 วัน')].filter(Boolean).join(' · '),
         seatsLeft: seats,
         fillPct: total ? Math.min(100, Math.round(((total - seats) / total) * 100)) : 0,
-        price: price ? price.toLocaleString('th-TH') : Number(trip.min_price || 0).toLocaleString('th-TH'),
+        price: price ? price.toLocaleString(DATE_LOCALE) : Number(trip.min_price || 0).toLocaleString(DATE_LOCALE),
       };
     });
 });

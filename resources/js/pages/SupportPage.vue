@@ -105,6 +105,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../lib/axios';
@@ -147,8 +148,8 @@ function formatTime(d) {
   const date = new Date(d);
   const sameDay = date.toDateString() === new Date().toDateString();
   return sameDay
-    ? date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
-    : `${date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ${date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`;
+    ? date.toLocaleTimeString(DATE_LOCALE, { hour: '2-digit', minute: '2-digit' })
+    : `${date.toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short' })} ${date.toLocaleTimeString(DATE_LOCALE, { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function scrollToBottom() {

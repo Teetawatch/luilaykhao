@@ -84,7 +84,7 @@
               </template>
             </p>
             <p class="font-black text-[var(--color-text-dark)] mt-1">
-              ฿{{ Number(selected.price_from).toLocaleString('th-TH') }}
+              ฿{{ Number(selected.price_from).toLocaleString($dateLocale) }}
               <span class="text-xs font-medium text-[var(--color-text-muted)]">/ คน</span>
             </p>
           </div>
@@ -108,6 +108,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import api from '../lib/axios';
 import { loadLeaflet } from '../lib/leaflet';
@@ -186,7 +187,7 @@ function clearSelection() {
 
 /** ป้ายราคาแทนหมุดกลม — บอกได้ทั้งตำแหน่งและราคาโดยไม่ต้องกดดู */
 function priceMarker(trip, isSelected) {
-  const price = Math.round(Number(trip.price_from) || 0).toLocaleString('th-TH');
+  const price = Math.round(Number(trip.price_from) || 0).toLocaleString(DATE_LOCALE);
   return L.divIcon({
     className: '',
     html: `<span class="map-pin${isSelected ? ' map-pin--on' : ''}">฿${price}</span>`,

@@ -3,12 +3,12 @@
     <div class="max-w-7xl mx-auto px-6 md:px-8">
       <SectionTitle
         class="mb-8 md:mb-10"
-        title="บทความแนะนำ"
-        subtitle="คู่มือเตรียมตัว รีวิวเส้นทาง และเรื่องที่ควรรู้ก่อนไป เขียนจากทริปที่เราพาไปเอง"
+        :title="$t('บทความแนะนำ')"
+        :subtitle="$t('คู่มือเตรียมตัว รีวิวเส้นทาง และเรื่องที่ควรรู้ก่อนไป เขียนจากทริปที่เราพาไปเอง')"
       >
         <template #action>
           <a href="/blog" class="section-more">
-            บทความทั้งหมด
+            {{ $t('บทความทั้งหมด') }}
             <span class="material-symbols-rounded icon-18">chevron_right</span>
           </a>
         </template>
@@ -33,7 +33,7 @@
           <div class="flex items-center gap-2 text-[12px] font-bold text-[var(--color-text-muted)] mb-2">
             <span v-if="article.category">{{ article.category.name }}</span>
             <span v-if="article.category && article.reading_minutes">·</span>
-            <span v-if="article.reading_minutes">อ่าน {{ article.reading_minutes }} นาที</span>
+            <span v-if="article.reading_minutes">{{ $t('อ่าน {reading_minutes} นาที', { reading_minutes: article.reading_minutes }) }}</span>
           </div>
           <h3 class="text-lg font-extrabold text-[var(--color-text-dark)] leading-snug mb-2 group-hover:text-[var(--color-accent)] transition-colors">
             {{ article.title }}
@@ -48,7 +48,7 @@
         href="/blog"
         class="sm:hidden mt-8 flex items-center justify-center gap-1.5 w-full py-3 rounded-full border border-black/10 text-sm font-bold text-[var(--color-primary)]"
       >
-        บทความทั้งหมด
+        {{ $t('บทความทั้งหมด') }}
         <span class="material-symbols-rounded text-[18px]">arrow_forward</span>
       </a>
     </div>

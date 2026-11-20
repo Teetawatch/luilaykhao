@@ -268,6 +268,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
@@ -607,7 +608,7 @@ function roleTagClass(role) {
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 /**
@@ -633,7 +634,7 @@ function systemBodyHtml(body) {
 
 function formatTime(d) {
   if (!d) return '';
-  return new Date(d).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  return new Date(d).toLocaleTimeString(DATE_LOCALE, { hour: '2-digit', minute: '2-digit' });
 }
 
 onMounted(async () => {

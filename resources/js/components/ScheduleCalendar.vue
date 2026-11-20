@@ -16,13 +16,13 @@
           <div v-if="expanded" class="flex items-center justify-between mb-5">
             <div class="flex items-center gap-2 min-w-0">
               <span class="material-symbols-rounded text-[var(--color-accent)]">calendar_month</span>
-              <p class="font-black text-lg text-[var(--color-text-dark)] truncate">เลือกวันเดินทาง</p>
+              <p class="font-black text-lg text-[var(--color-text-dark)] truncate">{{ $t('เลือกวันเดินทาง') }}</p>
             </div>
             <button
               type="button"
               @click="expanded = false"
               class="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 text-gray-500 hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)] active:scale-95 transition-all shrink-0"
-              aria-label="ปิด"
+              :aria-label="$t('ปิด')"
             >
               <span class="material-symbols-rounded text-[20px]">close</span>
             </button>
@@ -36,7 +36,7 @@
               class="flex items-center gap-1 text-[11px] font-black text-gray-400 hover:text-[var(--color-accent)] px-2 py-1 rounded-lg hover:bg-[var(--color-accent)]/8 transition-colors"
             >
               <span class="material-symbols-rounded text-[15px]">open_in_full</span>
-              ขยายปฏิทิน
+              {{ $t('ขยายปฏิทิน') }}
             </button>
           </div>
 
@@ -50,7 +50,7 @@
         :class="hasPrevMonth
           ? 'bg-white border-gray-200 text-[var(--color-text-dark)] hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)] active:scale-95'
           : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'"
-        aria-label="เดือนก่อนหน้า"
+        :aria-label="$t('เดือนก่อนหน้า')"
       >
         <span class="material-symbols-rounded text-[20px]">chevron_left</span>
       </button>
@@ -59,7 +59,7 @@
         <p class="font-black text-[var(--color-text-dark)] text-base leading-tight truncate">{{ currentMonthLabel }}</p>
         <p class="text-[11px] font-bold leading-tight"
           :class="currentMonthAvailableDays > 0 ? 'text-[var(--color-accent)]' : 'text-gray-400'">
-          {{ currentMonthAvailableDays > 0 ? `ว่าง ${currentMonthAvailableDays} วัน` : 'ไม่มีวันที่ว่าง' }}
+          {{ currentMonthAvailableDays > 0 ? $t('ว่าง {currentMonthAvailableDays} วัน', { currentMonthAvailableDays }) : $t('ไม่มีวันที่ว่าง') }}
         </p>
       </div>
 
@@ -71,7 +71,7 @@
         :class="hasNextMonth
           ? 'bg-white border-gray-200 text-[var(--color-text-dark)] hover:border-[var(--color-accent)]/50 hover:text-[var(--color-accent)] active:scale-95'
           : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'"
-        aria-label="เดือนถัดไป"
+        :aria-label="$t('เดือนถัดไป')"
       >
         <span class="material-symbols-rounded text-[20px]">chevron_right</span>
       </button>
@@ -124,7 +124,7 @@
             <span class="hidden sm:inline">{{ cellSeatLabel(cell) }}</span>
             <span class="sm:hidden">{{ cell.joinOnly ? '✓' : cell.totalAvailable }}</span>
           </span>
-          <span v-else class="text-[9px] sm:text-[10px] font-black leading-none text-red-400">เต็ม</span>
+          <span v-else class="text-[9px] sm:text-[10px] font-black leading-none text-red-400">{{ $t('เต็ม') }}</span>
 
           <!-- Multi-round badge -->
           <span
@@ -146,7 +146,7 @@
           <span class="text-sm sm:text-base font-black leading-none text-[var(--color-accent)]">{{ cell.day }}</span>
           <span class="text-[8px] sm:text-[9px] font-black leading-none text-[var(--color-accent)]/70 flex items-center gap-0.5">
             <span class="material-symbols-rounded text-[10px] sm:text-[11px]">{{ cellRangeRole(cell) === 'end' ? 'flag' : 'more_horiz' }}</span>
-            <span class="hidden sm:inline">{{ cellRangeRole(cell) === 'end' ? 'กลับ' : 'ระหว่างทริป' }}</span>
+            <span class="hidden sm:inline">{{ cellRangeRole(cell) === 'end' ? $t('กลับ') : $t('ระหว่างทริป') }}</span>
           </span>
         </div>
 
@@ -175,12 +175,12 @@
 
     <!-- Legend -->
     <div class="flex items-center justify-center flex-wrap gap-x-4 gap-y-1.5 mt-3 text-[10px] font-bold text-gray-400">
-      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>ว่าง</span>
-      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>ใกล้เต็ม</span>
-      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span>เต็ม</span>
-      <span class="flex items-center gap-1"><span class="w-3 h-2 rounded-sm bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30"></span>ช่วงทริปหลายวัน</span>
-      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span>วันหยุดราชการ</span>
-      <span class="flex items-center gap-1"><span class="text-[var(--color-accent)] font-black">2</span>= จำนวนรอบ</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>{{ $t('ว่าง') }}</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>{{ $t('ใกล้เต็ม') }}</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span>{{ $t('เต็ม') }}</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-2 rounded-sm bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30"></span>{{ $t('ช่วงทริปหลายวัน') }}</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span>{{ $t('วันหยุดราชการ') }}</span>
+      <span class="flex items-center gap-1"><span class="text-[var(--color-accent)] font-black">2</span>{{ $t('= จำนวนรอบ') }}</span>
     </div>
 
     <!-- Selected date — round picker -->
@@ -191,7 +191,7 @@
         <span
           v-if="activeDateSchedules.length > 1"
           class="ml-auto text-[10px] font-black px-2 py-0.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/15"
-        >{{ activeDateSchedules.length }} รอบ</span>
+        >{{ $t('{length} รอบ', { length: activeDateSchedules.length }) }}</span>
       </div>
 
       <div class="space-y-2">
@@ -213,7 +213,7 @@
               <span
                 v-if="activeDateSchedules.length > 1"
                 class="text-[10px] font-black text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full shrink-0"
-              >รอบ {{ idx + 1 }}</span>
+              >{{ $t('รอบ {v}', { v: idx + 1 }) }}</span>
               <span
                 class="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full border"
                 :class="scheduleAvailabilityBadgeClass(s)"
@@ -225,7 +225,7 @@
               </span>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              <span class="text-[11px] font-black text-[var(--color-text-dark)]">฿{{ Number(s.price ?? 0).toLocaleString() }}</span>
+              <span class="text-[11px] font-black text-[var(--color-text-dark)]">{{ $t('฿{Number}', { Number: Number(s.price ?? 0).toLocaleString() }) }}</span>
               <!-- รอบที่บินไปไม่มีผังที่นั่งให้ดู (allows_seat_selection = false) -->
               <button
                 v-if="s.total_seats > 0 && s.allows_seat_selection !== false"
@@ -233,7 +233,7 @@
                 class="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-[var(--color-accent)] transition-colors px-1.5 py-1 rounded-lg hover:bg-[var(--color-accent)]/8"
               >
                 <span class="material-symbols-rounded text-[15px]">grid_view</span>
-                ดูผัง
+                {{ $t('ดูผัง') }}
               </button>
               <span class="material-symbols-rounded text-[20px] transition-transform duration-300"
                 :class="selectedSchedule?.id === s.id ? 'text-[var(--color-accent)] rotate-180' : 'text-gray-300'"
@@ -253,12 +253,12 @@
                 <a v-if="pt.map_url" :href="pt.map_url" target="_blank" @click.stop
                   class="ml-5 flex items-center gap-1 text-[10px] font-bold text-[var(--color-accent)] hover:underline"
                 >
-                  <span class="material-symbols-rounded text-[12px]">map</span>ดูแผนที่
+                  <span class="material-symbols-rounded text-[12px]">map</span>{{ $t('ดูแผนที่') }}
                 </a>
               </div>
             </div>
             <p v-else class="text-[11px] text-gray-400 font-medium">
-              {{ isTrekking ? 'ไม่มีข้อมูลจุดรับสำหรับภูมิภาคนี้' : 'ไม่มีข้อมูลจุดรับ' }}
+              {{ isTrekking ? $t('ไม่มีข้อมูลจุดรับสำหรับภูมิภาคนี้') : $t('ไม่มีข้อมูลจุดรับ') }}
             </p>
           </div>
         </div>
@@ -268,7 +268,7 @@
     <!-- Hint when nothing selected -->
     <p v-else class="mt-3 text-center text-[11px] font-bold text-gray-400 flex items-center justify-center gap-1.5">
       <span class="material-symbols-rounded text-[15px]">touch_app</span>
-      แตะวันที่ในปฏิทินเพื่อเลือกรอบเดินทาง
+      {{ $t('แตะวันที่ในปฏิทินเพื่อเลือกรอบเดินทาง') }}
     </p>
         </div>
       </div>
@@ -277,6 +277,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import {
   bookableSeats,
@@ -298,7 +300,7 @@ const props = defineProps({
 
 const emit = defineEmits(['select', 'preview-seats']);
 
-const weekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const weekdays = [$t('อา'), $t('จ'), $t('อ'), $t('พ'), $t('พฤ'), $t('ศ'), $t('ส')];
 
 // Expand the calendar into a centred modal for a roomier date picker.
 const expanded = ref(false);
@@ -407,7 +409,7 @@ function goNextMonth() {
 const currentMonthLabel = computed(() => {
   if (!currentMonthKey.value) return '';
   const [y, m] = currentMonthKey.value.split('-').map(Number);
-  return new Date(y, m, 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+  return new Date(y, m, 1).toLocaleDateString(DATE_LOCALE, { month: 'long', year: 'numeric' });
 });
 
 const calendarCells = computed(() => {
@@ -525,8 +527,8 @@ function availabilityTextClass(cell) {
 }
 
 function cellSeatLabel(cell) {
-  if (cell.joinOnly) return 'จองได้';
-  return `ว่าง ${cell.totalAvailable}`;
+  if (cell.joinOnly) return $t('จองได้');
+  return $t('ว่าง {totalAvailable}', { totalAvailable: cell.totalAvailable });
 }
 
 // Pick a concrete round and, when expanded, collapse the modal back to the
@@ -559,7 +561,7 @@ const activeDateSchedules = computed(() => {
 const activeDateLabel = computed(() => {
   if (!activeDateKey.value) return '';
   return new Date(activeDateKey.value + 'T00:00:00')
-    .toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    .toLocaleDateString(DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 });
 
 function pickupPointsFor(schedule) {

@@ -10,9 +10,9 @@
       <div class="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center">
         <span class="material-symbols-rounded text-lg">directions_bus</span>
       </div>
-      <h2 class="text-2xl font-bold text-gray-900">เลือกประเภทรถ</h2>
+      <h2 class="text-2xl font-bold text-gray-900">{{ $t('เลือกประเภทรถ') }}</h2>
     </div>
-    <p class="text-gray-500 mb-6">รอบนี้มีให้เลือกมากกว่าหนึ่งแบบ ราคาต่อท่านต่างกันตามคันที่เลือก</p>
+    <p class="text-gray-500 mb-6">{{ $t('รอบนี้มีให้เลือกมากกว่าหนึ่งแบบ ราคาต่อท่านต่างกันตามคันที่เลือก') }}</p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <button
@@ -53,24 +53,25 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 defineProps({
   options: { type: Array, default: () => [] },
   modelValue: { type: Number, default: null },
 });
 defineEmits(['update:modelValue']);
 
-const money = (value) => `฿${Number(value || 0).toLocaleString()}`;
+const money = (value) => $t('฿{Number}', { Number: Number(value || 0).toLocaleString() });
 
 const priceLabel = (option) => {
   const adjustment = Number(option.price_adjustment || 0);
-  if (adjustment === 0) return 'ราคาปกติ';
-  return `${adjustment > 0 ? '+' : '-'}${money(Math.abs(adjustment))} / ท่าน`;
+  if (adjustment === 0) return $t('ราคาปกติ');
+  return $t('{v}{money} / ท่าน', { v: adjustment > 0 ? '+' : '-', money: money(Math.abs(adjustment)) });
 };
 
 // null = ไม่ได้กำหนดโควตาย่อย ใช้ที่นั่งว่างรวมของรอบ จึงไม่ขึ้นตัวเลข
 const seatLabel = (option) => {
-  if (option.is_sold_out) return 'เต็มแล้ว';
+  if (option.is_sold_out) return $t('เต็มแล้ว');
   if (option.available_seats === null || option.available_seats === undefined) return '';
-  return `เหลือ ${option.available_seats} ที่`;
+  return $t('เหลือ {available_seats} ที่', { available_seats: option.available_seats });
 };
 </script>

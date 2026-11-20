@@ -10,9 +10,9 @@
     <div class="flex items-start gap-3 mb-1">
       <span class="material-symbols-rounded text-accent text-[22px] shrink-0">airport_shuttle</span>
       <div class="min-w-0">
-        <h3 class="font-bold text-gray-900">รถรับ-ส่งมาที่จุดขึ้นรถ</h3>
+        <h3 class="font-bold text-gray-900">{{ $t('รถรับ-ส่งมาที่จุดขึ้นรถ') }}</h3>
         <p v-if="matched" class="text-sm font-bold text-accent mt-0.5">
-          เดินทาง {{ paxCount }} ท่าน โดยประมาณจะใช้{{ matched.label }}
+          {{ $t('เดินทาง {paxCount} ท่าน โดยประมาณจะใช้{label}', { paxCount, label: matched.label }) }}
         </p>
       </div>
     </div>
@@ -50,9 +50,9 @@
 
     <p class="text-xs text-gray-500 mt-4 leading-relaxed">
       <template v-if="hasSurcharge">
-        ค่าจุดรับที่จ่ายเพิ่มคือค่ารถรับ-ส่งมาที่จุดขึ้นรถจุดแรก
+        {{ $t('ค่าจุดรับที่จ่ายเพิ่มคือค่ารถรับ-ส่งมาที่จุดขึ้นรถจุดแรก') }}
       </template>
-      ประเภทรถขึ้นกับจำนวนผู้โดยสารรวมที่จุดนั้นในวันเดินทาง ทีมงานจะแจ้งรถคันจริงก่อนออกเดินทาง
+      {{ $t('ประเภทรถขึ้นกับจำนวนผู้โดยสารรวมที่จุดนั้นในวันเดินทาง ทีมงานจะแจ้งรถคันจริงก่อนออกเดินทาง') }}
     </p>
   </div>
 </template>

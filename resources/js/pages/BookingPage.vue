@@ -5,7 +5,7 @@
     <div v-if="loading" class="flex items-center justify-center min-h-screen">
       <div class="flex flex-col items-center gap-4">
         <div class="w-12 h-12 rounded-full border-4 border-accent/15 border-t-accent animate-spin"></div>
-        <p class="text-sm text-gray-500 font-medium animate-pulse">กำลังโหลดข้อมูล...</p>
+        <p class="text-sm text-gray-500 font-medium animate-pulse">{{ $t('กำลังโหลดข้อมูล...') }}</p>
       </div>
     </div>
 
@@ -16,7 +16,7 @@
       <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2 bg-white px-4 py-3 rounded-2xl border border-gray-100 w-fit max-w-full min-w-0">
         <router-link to="/trips" class="shrink-0 hover:text-accent transition-colors flex items-center gap-1.5 font-medium">
           <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 0,'wght' 400">explore</span>
-          <span class="hidden sm:inline">กิจกรรม</span>
+          <span class="hidden sm:inline">{{ $t('กิจกรรม') }}</span>
         </router-link>
         <template v-if="schedule.trip?.slug">
           <span class="material-symbols-rounded shrink-0 text-gray-300 text-[20px]">chevron_right</span>
@@ -25,7 +25,7 @@
           </router-link>
         </template>
         <span class="material-symbols-rounded shrink-0 text-gray-300 text-[20px]">chevron_right</span>
-        <span class="shrink-0 text-gray-700 font-bold bg-gray-100 px-3 py-1 rounded-full">จองกิจกรรม</span>
+        <span class="shrink-0 text-gray-700 font-bold bg-gray-100 px-3 py-1 rounded-full">{{ $t('จองกิจกรรม') }}</span>
       </nav>
 
       <!-- Trip strip — the trip is already chosen; this is a reminder, not a pitch -->
@@ -46,13 +46,13 @@
             <span class="flex items-center gap-1.5" :class="bookableSeats(schedule) < 3 ? 'text-gray-900 font-bold' : ''">
               <span class="material-symbols-rounded text-gray-400 text-[18px]">event_seat</span>
               <span v-if="isJoinTrip">{{ joinTripSeatLabel(schedule) }}</span>
-              <span v-else>ว่าง {{ bookableSeats(schedule) }}/{{ schedule.total_seats }} ที่นั่ง</span>
+              <span v-else>{{ $t('ว่าง {bookableSeats}/{total_seats} ที่นั่ง', { bookableSeats: bookableSeats(schedule), total_seats: schedule.total_seats }) }}</span>
             </span>
             <template v-if="isJoinTrip">
               <span class="text-gray-200">·</span>
               <span class="flex items-center gap-1.5">
                 <span class="material-symbols-rounded text-gray-400 text-[18px]">confirmation_number</span>
-                จอยทริป (ไปเจอกันที่จุดนัดพบ)
+                {{ $t('จอยทริป (ไปเจอกันที่จุดนัดพบ)') }}
               </span>
             </template>
             <template v-if="schedule.trip?.meals">
@@ -66,7 +66,7 @@
               <span class="text-gray-200">·</span>
               <span class="flex items-center gap-1.5 text-pink-700">
                 <span class="material-symbols-rounded text-pink-400 text-[18px]" style="font-variation-settings:'FILL' 1">female</span>
-                รับเฉพาะผู้หญิง
+                {{ $t('รับเฉพาะผู้หญิง') }}
               </span>
             </template>
           </div>
@@ -114,35 +114,35 @@
               <div class="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center">
                 <span class="material-symbols-rounded text-lg">location_on</span>
               </div>
-              <h2 class="text-2xl font-bold text-gray-900">เลือกจุดขึ้นรถของคุณ</h2>
+              <h2 class="text-2xl font-bold text-gray-900">{{ $t('เลือกจุดขึ้นรถของคุณ') }}</h2>
             </div>
-            <p class="text-gray-500">กรุณาเลือกจุดนัดพบที่สะดวกที่สุดสำหรับการเดินทางของคุณ</p>
+            <p class="text-gray-500">{{ $t('กรุณาเลือกจุดนัดพบที่สะดวกที่สุดสำหรับการเดินทางของคุณ') }}</p>
           </div>
 
           <div v-if="!pickupPoints.length" class="flex flex-col items-center justify-center py-20 text-gray-400 bg-white rounded-3xl border border-gray-100">
             <div class="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-4">
               <span class="material-symbols-rounded text-6xl text-gray-300" style="font-variation-settings:'FILL' 0,'wght' 300">map</span>
             </div>
-            <p class="text-lg font-bold text-gray-600">ยังไม่ได้กำหนดจุดรับผู้เดินทาง</p>
-            <p class="text-sm text-gray-400 mt-1">ปักหมุดจุดที่สะดวก แล้วจองได้ทันที ไม่มีค่าบริการเพิ่ม</p>
+            <p class="text-lg font-bold text-gray-600">{{ $t('ยังไม่ได้กำหนดจุดรับผู้เดินทาง') }}</p>
+            <p class="text-sm text-gray-400 mt-1">{{ $t('ปักหมุดจุดที่สะดวก แล้วจองได้ทันที ไม่มีค่าบริการเพิ่ม') }}</p>
 
             <div v-if="customPickup" class="mt-5 w-full max-w-sm p-4 rounded-2xl border-2 border-amber-300 bg-amber-50/40 text-left">
-              <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">จุดรับที่ปักหมุดเอง</p>
+              <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">{{ $t('จุดรับที่ปักหมุดเอง') }}</p>
               <p class="font-bold text-gray-900 leading-tight">{{ customPickup.label }}</p>
               <p v-if="customPickup.note" class="text-sm text-gray-500 mt-0.5">{{ customPickup.note }}</p>
               <div class="flex gap-3 mt-2">
-                <button @click="openCustomPickup" class="text-xs font-bold text-accent hover:text-accent-mid">แก้ไขจุด</button>
-                <button @click="clearCustomPickup" class="text-xs font-bold text-gray-400 hover:text-red-500">เอาออก</button>
+                <button @click="openCustomPickup" class="text-xs font-bold text-accent hover:text-accent-mid">{{ $t('แก้ไขจุด') }}</button>
+                <button @click="clearCustomPickup" class="text-xs font-bold text-gray-400 hover:text-red-500">{{ $t('เอาออก') }}</button>
               </div>
             </div>
 
             <div class="mt-6 flex flex-col sm:flex-row gap-3">
               <button @click="openCustomPickup" class="px-6 py-2 rounded-xl bg-amber-50 text-amber-700 font-bold hover:bg-amber-100 transition-all flex items-center gap-2">
                 <span class="material-symbols-rounded text-[18px]">add_location_alt</span>
-                {{ customPickup ? 'แก้ไขจุดที่ปักหมุด' : 'ปักหมุดจุดรับเอง' }}
+                {{ customPickup ? $t('แก้ไขจุดที่ปักหมุด') : $t('ปักหมุดจุดรับเอง') }}
               </button>
               <button @click="skipRegionStep" class="px-6 py-2 rounded-xl bg-accent-tint text-accent font-bold hover:bg-accent/10 transition-all">
-                ดำเนินการต่อ
+                {{ $t('ดำเนินการต่อ') }}
               </button>
             </div>
           </div>
@@ -169,7 +169,7 @@
                       {{ pt.region_label }}
                     </span>
                     <span v-if="pt.pickup_location.includes('BTS') || pt.pickup_location.includes('MRT')" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-100">
-                      <span class="material-symbols-rounded text-[14px]">train</span> ใกล้รถไฟฟ้า
+                      <span class="material-symbols-rounded text-[14px]">train</span> {{ $t('ใกล้รถไฟฟ้า') }}
                     </span>
                   </div>
                   
@@ -194,10 +194,10 @@
                   @click.stop
                   class="inline-flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-accent transition-colors">
                   <span class="material-symbols-rounded text-[18px]">map</span>
-                  ดูแผนที่
+                  {{ $t('ดูแผนที่') }}
                 </a>
                 <span class="text-xs font-bold text-gray-400 group-hover:text-gray-500 transition-colors">
-                  {{ selectedPickup?.id === pt.id ? 'เลือกไว้แล้ว' : 'คลิกเพื่อเลือก' }}
+                  {{ selectedPickup?.id === pt.id ? $t('เลือกไว้แล้ว') : $t('คลิกเพื่อเลือก') }}
                 </span>
               </div>
 
@@ -212,19 +212,19 @@
                 <span class="material-symbols-rounded">add_location_alt</span>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">จุดรับที่ปักหมุดเอง</p>
+                <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">{{ $t('จุดรับที่ปักหมุดเอง') }}</p>
                 <p class="font-bold text-gray-900 leading-tight">{{ customPickup.label }}</p>
                 <p v-if="customPickup.note" class="text-sm text-gray-500 mt-0.5">{{ customPickup.note }}</p>
                 <p class="text-xs text-amber-700 mt-2 flex items-center gap-1">
                   <span class="material-symbols-rounded text-[15px]">info</span>
                   <span v-if="customPickupMatchesZone">
-                    คิดราคาเท่าจุดรับ {{ nearestPickupPoint.pickup_location }} ที่ใกล้หมุดที่สุด · ฿{{ customPickupPrice.toLocaleString() }} / คน
+                    {{ $t('คิดราคาเท่าจุดรับ {pickup_location} ที่ใกล้หมุดที่สุด · ฿{toLocaleString} / คน', { pickup_location: nearestPickupPoint.pickup_location, toLocaleString: customPickupPrice.toLocaleString() }) }}
                   </span>
-                  <span v-else>ใช้ราคาเดียวกับรอบเดินทาง · ฿{{ customPickupPrice.toLocaleString() }} / คน</span>
+                  <span v-else>{{ $t('ใช้ราคาเดียวกับรอบเดินทาง · ฿{toLocaleString} / คน', { toLocaleString: customPickupPrice.toLocaleString() }) }}</span>
                 </p>
                 <div class="flex gap-3 mt-3">
-                  <button @click="openCustomPickup" class="text-xs font-bold text-accent hover:text-accent-mid">แก้ไขจุด</button>
-                  <button @click="clearCustomPickup" class="text-xs font-bold text-gray-400 hover:text-red-500">เอาออก</button>
+                  <button @click="openCustomPickup" class="text-xs font-bold text-accent hover:text-accent-mid">{{ $t('แก้ไขจุด') }}</button>
+                  <button @click="clearCustomPickup" class="text-xs font-bold text-gray-400 hover:text-red-500">{{ $t('เอาออก') }}</button>
                 </div>
               </div>
             </div>
@@ -232,7 +232,7 @@
             <button v-else @click="openCustomPickup"
               class="w-full p-5 rounded-[2rem] border-2 border-dashed border-gray-200 hover:border-accent/50 hover:bg-accent-tint/50 transition-all flex items-center justify-center gap-3 text-gray-500 hover:text-accent font-bold">
               <span class="material-symbols-rounded">add_location_alt</span>
-              ไม่มีจุดที่สะดวก? ปักหมุดจุดรับเอง
+              {{ $t('ไม่มีจุดที่สะดวก? ปักหมุดจุดรับเอง') }}
             </button>
           </div>
 
@@ -245,7 +245,7 @@
             <button @click="$router.push('/trips')"
               class="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-500 hover:text-gray-900 px-6 py-3 rounded-2xl font-bold transition-all">
               <span class="material-symbols-rounded text-[20px]">arrow_back</span>
-              ยกเลิก
+              {{ $t('ยกเลิก') }}
             </button>
             
             <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -259,10 +259,10 @@
             </div>
           </div>
           <p v-if="offersVehicleChoice && !selectedVehicleOptionId" class="text-center mt-4 text-sm text-gray-500 font-medium">
-            เลือกประเภทรถก่อน จึงจะไปขั้นตอนถัดไปได้
+            {{ $t('เลือกประเภทรถก่อน จึงจะไปขั้นตอนถัดไปได้') }}
           </p>
           <p v-else-if="!selectedPickup && !customPickup && pickupPoints.length > 0" class="text-center mt-4 text-sm text-gray-500 font-medium">
-            เลือกจุดขึ้นรถก่อน จึงจะไปขั้นตอนถัดไปได้
+            {{ $t('เลือกจุดขึ้นรถก่อน จึงจะไปขั้นตอนถัดไปได้') }}
           </p>
         </div>
 
@@ -271,24 +271,24 @@
           <div class="bg-white rounded-[2rem] p-6 border border-gray-100 overflow-hidden relative">
             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-900">
               <span class="material-symbols-rounded text-accent">receipt_long</span>
-              สรุปรายการจอง
+              {{ $t('สรุปรายการจอง') }}
             </h2>
             
             <!-- Trip Basic Info -->
             <div class="mb-6 p-4 rounded-3xl bg-gray-50 border border-gray-100">
-              <p class="text-[11px] font-bold text-accent uppercase tracking-[0.1em] mb-3">รายละเอียดทริป</p>
+              <p class="text-[11px] font-bold text-accent uppercase tracking-[0.1em] mb-3">{{ $t('รายละเอียดทริป') }}</p>
               <div class="space-y-3">
                 <div class="flex items-start gap-3">
                   <span class="material-symbols-rounded text-accent text-xl">calendar_today</span>
                   <div>
-                    <p class="text-xs text-gray-500 font-medium">วันเดินทาง</p>
+                    <p class="text-xs text-gray-500 font-medium">{{ $t('วันเดินทาง') }}</p>
                     <p class="text-sm font-bold text-gray-900">{{ formatDate(schedule.departure_date) }}</p>
                   </div>
                 </div>
                 <div v-if="selectedPickup" class="flex items-start gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                   <span class="material-symbols-rounded text-accent text-xl">location_on</span>
                   <div>
-                    <p class="text-xs text-gray-500 font-medium">จุดขึ้นรถ</p>
+                    <p class="text-xs text-gray-500 font-medium">{{ $t('จุดขึ้นรถ') }}</p>
                     <p class="text-sm font-bold text-gray-900 leading-tight">{{ selectedPickup.pickup_location }}</p>
                     <p class="text-[11px] text-accent font-bold mt-1 bg-accent/10 px-2 py-0.5 rounded-full w-fit">{{ selectedPickup.region_label }}</p>
                     <img v-if="selectedPickup.image_url" :src="selectedPickup.image_url" :alt="selectedPickup.pickup_location" class="mt-2 w-full max-w-[220px] h-28 object-cover rounded-xl border border-gray-100" loading="lazy" />
@@ -299,29 +299,29 @@
 
             <div class="space-y-4 bg-gray-50 rounded-3xl p-5 border border-gray-100">
               <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-500 font-medium">ราคาเริ่มต้น</span>
-                <span class="text-gray-900 font-bold">฿{{ Number(schedule.price).toLocaleString() }}</span>
+                <span class="text-gray-500 font-medium">{{ $t('ราคาเริ่มต้น') }}</span>
+                <span class="text-gray-900 font-bold">{{ $t('฿{Number}', { Number: Number(schedule.price).toLocaleString() }) }}</span>
               </div>
               <div v-if="Number(effectivePrice) !== Number(schedule.price)" class="flex justify-between items-center text-sm text-accent">
-                <span class="font-medium">ส่วนต่างภูมิภาค</span>
-                <span class="font-bold">+฿{{ (Number(effectivePrice) - Number(schedule.price)).toLocaleString() }}</span>
+                <span class="font-medium">{{ $t('ส่วนต่างภูมิภาค') }}</span>
+                <span class="font-bold">{{ $t('+฿{v}', { v: (Number(effectivePrice) - Number(schedule.price)).toLocaleString() }) }}</span>
               </div>
               
               <div class="pt-4 border-t border-dashed border-gray-300 flex flex-col gap-1">
                 <div class="flex justify-between items-end">
-                  <span class="text-sm font-bold text-gray-500 mb-1">ราคาต่อคน</span>
+                  <span class="text-sm font-bold text-gray-500 mb-1">{{ $t('ราคาต่อคน') }}</span>
                   <div class="text-right">
                     <span class="text-3xl font-extrabold text-accent font-anuphan tracking-tight">
-                      <span class="text-lg text-accent mr-0.5">฿</span>{{ Number(effectivePrice).toLocaleString() }}
+                      <span class="text-lg text-accent mr-0.5">{{ $t('฿') }}</span>{{ Number(effectivePrice).toLocaleString() }}
                     </span>
                   </div>
                 </div>
-                <p class="text-[11px] text-gray-400 text-right font-medium">รวมประกันอุบัติเหตุระหว่างเดินทางแล้ว</p>
+                <p class="text-[11px] text-gray-400 text-right font-medium">{{ $t('รวมประกันอุบัติเหตุระหว่างเดินทางแล้ว') }}</p>
               </div>
             </div>
 
             <p class="text-center text-[11px] text-gray-400 font-medium mt-6">
-              เลือกภูมิภาคที่ต้องการเพื่อดำเนินการในขั้นตอนถัดไป
+              {{ $t('เลือกภูมิภาคที่ต้องการเพื่อดำเนินการในขั้นตอนถัดไป') }}
             </p>
           </div>
         </aside>
@@ -345,9 +345,9 @@
                 <div>
                   <h2 class="text-xl font-black text-gray-900 mb-1 flex items-center gap-2">
                     <span class="material-symbols-rounded text-accent text-[22px]" style="font-variation-settings:'FILL' 1">airline_seat_recline_extra</span>
-                    เลือกที่นั่งของคุณ
+                    {{ $t('เลือกที่นั่งของคุณ') }}
                   </h2>
-                  <p class="text-sm text-gray-400 font-medium">แตะที่นั่งสีขาวเพื่อเลือก · แตะซ้ำเพื่อยกเลิก</p>
+                  <p class="text-sm text-gray-400 font-medium">{{ $t('แตะที่นั่งสีขาวเพื่อเลือก · แตะซ้ำเพื่อยกเลิก') }}</p>
                 </div>
                 <!-- Live seat counter -->
                 <div v-if="seatsStore.seatMap" class="shrink-0 text-right">
@@ -355,7 +355,7 @@
                     :class="seatsStore.seatMap.available_seats === 0 ? 'text-red-500' : seatsStore.seatMap.available_seats <= 3 ? 'text-amber-500' : 'text-accent'">
                     {{ seatsStore.seatMap.available_seats }}
                   </p>
-                  <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">ที่ว่าง</p>
+                  <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{{ $t('ที่ว่าง') }}</p>
                 </div>
               </div>
               <!-- Seat progress bar -->
@@ -368,7 +368,7 @@
                       :style="{ width: `${Math.round((seatsStore.seatMap.booked_seats / seatsStore.seatMap.total_seats) * 100)}%` }"
                     ></div>
                   </div>
-                  <span class="text-[11px] font-bold text-gray-400 shrink-0">จองแล้ว {{ seatsStore.seatMap.booked_seats }}/{{ seatsStore.seatMap.total_seats }}</span>
+                  <span class="text-[11px] font-bold text-gray-400 shrink-0">{{ $t('จองแล้ว {booked_seats}/{total_seats}', { booked_seats: seatsStore.seatMap.booked_seats, total_seats: seatsStore.seatMap.total_seats }) }}</span>
                 </div>
               </div>
             </div>
@@ -388,7 +388,7 @@
               <!-- Section label -->
               <div class="px-5 pt-5 pb-3 flex items-center gap-2 border-b border-gray-50">
                 <span class="material-symbols-rounded text-accent text-[18px]" style="font-variation-settings:'FILL' 1">airport_shuttle</span>
-                <span class="text-xs font-black text-gray-500 uppercase tracking-wider">รายละเอียดรถ</span>
+                <span class="text-xs font-black text-gray-500 uppercase tracking-wider">{{ $t('รายละเอียดรถ') }}</span>
               </div>
 
               <!-- Image Carousel -->
@@ -441,7 +441,7 @@
               <!-- Interior video -->
               <div v-if="schedule.vehicle.interior_video" class="px-5 pt-4">
                 <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-[15px]">videocam</span>วิดีโอภายในรถ
+                  <span class="material-symbols-rounded text-[15px]">videocam</span>{{ $t('วิดีโอภายในรถ') }}
                 </p>
                 <video :src="schedule.vehicle.interior_video" controls class="w-full rounded-2xl border border-gray-100"></video>
               </div>
@@ -456,7 +456,7 @@
                     <p class="font-black text-gray-900 text-sm truncate">{{ schedule.vehicle.name }}</p>
                     <div class="flex flex-wrap gap-1.5 mt-1.5">
                       <span class="text-[10px] font-bold bg-accent-tint text-accent border border-accent/15 px-2 py-0.5 rounded-full">
-                        {{ schedule.vehicle.capacity }} ที่นั่ง
+                        {{ $t('{capacity} ที่นั่ง', { capacity: schedule.vehicle.capacity }) }}
                       </span>
                       <span v-if="schedule.vehicle.color" class="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                         {{ schedule.vehicle.color }}
@@ -478,7 +478,7 @@
                     </div>
                   </div>
                   <div class="min-w-0">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">พนักงานขับรถ</p>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ $t('พนักงานขับรถ') }}</p>
                     <p class="text-sm font-black text-gray-900 truncate mt-0.5">{{ schedule.vehicle.driver_name }}</p>
                     <p v-if="schedule.vehicle.driver_phone" class="text-xs font-bold text-accent mt-0.5 flex items-center gap-1">
                       <span class="material-symbols-rounded text-[13px]">call</span>
@@ -495,8 +495,8 @@
           <div v-if="(step === (isTrekking ? 1 : 0) && !hasSeatMap) || step === (isTrekking ? 2 : 1)">
             <VehicleOptionPicker v-if="step === 0" :options="vehicleOptions" v-model="selectedVehicleOptionId" />
             <div class="mb-8 bg-white p-6 rounded-3xl border border-gray-100">
-              <h2 class="text-2xl font-bold text-gray-900 mb-2">ข้อมูลผู้เดินทาง</h2>
-              <p class="text-gray-500">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อความปลอดภัยในการเดินทาง</p>
+              <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ $t('ข้อมูลผู้เดินทาง') }}</h2>
+              <p class="text-gray-500">{{ $t('กรุณากรอกข้อมูลให้ครบถ้วนเพื่อความปลอดภัยในการเดินทาง') }}</p>
             </div>
 
             <!-- รอบที่บินไปไม่มีผังที่นั่งให้เลือก — บอกไว้ตรงนี้ ไม่งั้นลูกค้าที่เคยจอง
@@ -505,7 +505,7 @@
               class="mb-6 flex items-start gap-3 p-5 rounded-3xl bg-sky-50 border border-sky-100">
               <span class="material-symbols-rounded text-sky-600 shrink-0">flight</span>
               <div>
-                <p class="font-bold text-sky-900">ทริปนี้ไม่ต้องเลือกที่นั่ง</p>
+                <p class="font-bold text-sky-900">{{ $t('ทริปนี้ไม่ต้องเลือกที่นั่ง') }}</p>
                 <p class="text-sm text-sky-800 mt-0.5">{{ seatSelectionDisabledReason }}</p>
               </div>
             </div>
@@ -531,28 +531,28 @@
                 <div>
                   <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
                     <span class="material-symbols-rounded text-accent">assignment_ind</span>
-                    ผู้เดินทางหลัก
+                    {{ $t('ผู้เดินทางหลัก') }}
                   </h3>
-                  <p class="text-sm text-gray-500 mt-1">เลือกว่ากำลังกรอกข้อมูลของตนเอง หรือจองแทนเพื่อนที่ฝากจอง</p>
+                  <p class="text-sm text-gray-500 mt-1">{{ $t('เลือกว่ากำลังกรอกข้อมูลของตนเอง หรือจองแทนเพื่อนที่ฝากจอง') }}</p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto">
                   <button type="button" @click="bookingFor = 'self'"
                     class="px-5 py-3 rounded-2xl border-2 text-sm font-bold transition-all flex items-center justify-center gap-2"
                     :class="bookingFor === 'self' ? 'border-accent bg-accent-tint text-accent' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
                     <span class="material-symbols-rounded text-[18px]">person</span>
-                    กรอกข้อมูลตนเอง
+                    {{ $t('กรอกข้อมูลตนเอง') }}
                   </button>
                   <button type="button" @click="bookingFor = 'friend'"
                     class="px-5 py-3 rounded-2xl border-2 text-sm font-bold transition-all flex items-center justify-center gap-2"
                     :class="bookingFor === 'friend' ? 'border-accent bg-accent-tint text-accent' : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'">
                     <span class="material-symbols-rounded text-[18px]">group_add</span>
-                    กรอกข้อมูลให้เพื่อน
+                    {{ $t('กรอกข้อมูลให้เพื่อน') }}
                   </button>
                 </div>
               </div>
               <div v-if="bookingFor === 'friend'" class="mt-5 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-sm text-amber-800 font-medium flex gap-3">
                 <span class="material-symbols-rounded text-[20px] shrink-0">mail</span>
-                <span>กรุณาระบุอีเมลของเพื่อนในผู้เดินทางคนแรก เพื่อส่งสถานะการจองและการชำระเงินให้เพื่อนโดยตรง</span>
+                <span>{{ $t('กรุณาระบุอีเมลของเพื่อนในผู้เดินทางคนแรก เพื่อส่งสถานะการจองและการชำระเงินให้เพื่อนโดยตรง') }}</span>
               </div>
             </div>
 
@@ -567,21 +567,21 @@
                 <div>
                   <span class="flex items-center gap-2 text-base font-bold text-gray-900 group-hover:text-accent transition-colors">
                     <span class="material-symbols-rounded text-accent" style="font-variation-settings:'FILL' 0,'wght' 400">groups</span>
-                    การจองกลุ่ม
+                    {{ $t('การจองกลุ่ม') }}
                   </span>
-                  <span class="text-sm text-gray-500">จองสำหรับหลายผู้เดินทางในการจองเดียว</span>
+                  <span class="text-sm text-gray-500">{{ $t('จองสำหรับหลายผู้เดินทางในการจองเดียว') }}</span>
                 </div>
               </label>
               
               <div v-if="isGroup" class="mt-6 pt-6 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-5 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อกลุ่ม</label>
-                  <input v-model="groupName" type="text" placeholder="เช่น ทีมบริษัท ABC"
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ชื่อกลุ่ม') }}</label>
+                  <input v-model="groupName" type="text" :placeholder="$t('เช่น ทีมบริษัท ABC')"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">หมายเหตุกลุ่ม</label>
-                  <input v-model="groupNotes" type="text" placeholder="ข้อมูลเพิ่มเติมสำหรับกลุ่ม"
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('หมายเหตุกลุ่ม') }}</label>
+                  <input v-model="groupNotes" type="text" :placeholder="$t('ข้อมูลเพิ่มเติมสำหรับกลุ่ม')"
                     class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white" />
                 </div>
               </div>
@@ -591,21 +591,21 @@
             <div class="mb-8 p-6 bg-white rounded-3xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <label class="flex items-center gap-2 text-base font-bold text-gray-900">
                 <span class="material-symbols-rounded text-accent" style="font-variation-settings:'FILL' 0,'wght' 400">group</span>
-                จำนวนผู้เดินทาง
+                {{ $t('จำนวนผู้เดินทาง') }}
               </label>
               <!-- Locked to seat selection -->
               <div v-if="hasSeatMap" class="flex items-center gap-3">
-                <span class="text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 hidden md:inline-block">กำหนดตามที่นั่งที่เลือก ({{ seatsStore.selectedSeatIds.join(', ') }})</span>
+                <span class="text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 hidden md:inline-block">{{ $t('กำหนดตามที่นั่งที่เลือก ({join})', { join: seatsStore.selectedSeatIds.join(', ') }) }}</span>
                 <div class="inline-flex items-center gap-2 border-2 border-gray-200 rounded-2xl px-5 py-3 text-base bg-gray-50 text-gray-700 font-bold">
                   <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1,'wght' 400">event_seat</span>
-                  {{ seatsStore.selectedSeats.length }} คน
+                  {{ $t('{length} คน', { length: seatsStore.selectedSeats.length }) }}
                 </div>
               </div>
               <!-- Free selection -->
               <div v-else class="relative">
                 <select v-model="passengerCount"
                   class="w-full md:w-48 appearance-none border-2 border-gray-200 rounded-2xl px-5 py-3 text-base font-bold bg-white text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all cursor-pointer">
-                  <option v-for="n in maxPassengers" :key="n" :value="n">{{ n }} คน</option>
+                  <option v-for="n in maxPassengers" :key="n" :value="n">{{ $t('{n} คน', { n }) }}</option>
                 </select>
                 <span class="material-symbols-rounded absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
               </div>
@@ -615,10 +615,10 @@
               <div class="flex items-center justify-between gap-4 mb-5">
                 <label class="flex items-center gap-2 text-base font-bold text-gray-900">
                   <span class="material-symbols-rounded text-amber-500">add_task</span>
-                  ตัวเลือกเสริม
+                  {{ $t('ตัวเลือกเสริม') }}
                 </label>
                 <span v-if="addonsTotal > 0" class="text-sm font-black text-amber-700 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">
-                  +฿{{ addonsTotal.toLocaleString() }}
+                  {{ $t('+฿{toLocaleString}', { toLocaleString: addonsTotal.toLocaleString() }) }}
                 </span>
               </div>
 
@@ -638,7 +638,7 @@
                       type="button"
                       @click.stop="zoomImage = addon.image_url"
                       class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/65"
-                      title="ดูรูปใหญ่"
+                      :title="$t('ดูรูปใหญ่')"
                     >
                       <span class="material-symbols-rounded" style="font-size:16px;">zoom_in</span>
                     </button>
@@ -653,7 +653,7 @@
                   <div class="p-3 flex-1 flex flex-col" :class="addonQty(addon.index) > 0 ? 'bg-amber-50/60' : 'bg-white'">
                     <p class="font-black text-gray-900 text-sm leading-tight line-clamp-2">{{ addon.name }}</p>
                     <p class="text-[11px] font-bold text-amber-600 mt-1">
-                      ฿{{ addon.price.toLocaleString() }} {{ addonPriceTypeLabel(addon) }}
+                      {{ $t('฿{toLocaleString} {addonPriceTypeLabel}', { toLocaleString: addon.price.toLocaleString(), addonPriceTypeLabel: addonPriceTypeLabel(addon) }) }}
                     </p>
                     <!-- quantity stepper -->
                     <div class="mt-3 flex items-center justify-between gap-2">
@@ -688,14 +688,14 @@
               <div class="flex items-center justify-between gap-4 mb-5">
                 <label class="flex items-center gap-2 text-base font-bold text-gray-900">
                   <span class="material-symbols-rounded text-sky-600">backpack</span>
-                  อุปกรณ์ให้เช่า
+                  {{ $t('อุปกรณ์ให้เช่า') }}
                 </label>
                 <span v-if="rentalsTotal > 0" class="text-sm font-black text-sky-700 bg-sky-50 border border-sky-100 px-3 py-1 rounded-full">
-                  +฿{{ rentalsTotal.toLocaleString() }}
+                  {{ $t('+฿{toLocaleString}', { toLocaleString: rentalsTotal.toLocaleString() }) }}
                 </span>
               </div>
 
-              <p class="text-xs text-gray-500 font-medium mb-4">เช่าได้ตามจำนวนที่ต้องการ รับอุปกรณ์จากทีมงานในวันเดินทาง</p>
+              <p class="text-xs text-gray-500 font-medium mb-4">{{ $t('เช่าได้ตามจำนวนที่ต้องการ รับอุปกรณ์จากทีมงานในวันเดินทาง') }}</p>
 
               <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div
@@ -713,7 +713,7 @@
                       type="button"
                       @click.stop="zoomImage = item.image_url"
                       class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/65"
-                      title="ดูรูปใหญ่"
+                      :title="$t('ดูรูปใหญ่')"
                     >
                       <span class="material-symbols-rounded" style="font-size:16px;">zoom_in</span>
                     </button>
@@ -729,7 +729,7 @@
                     <p class="font-black text-gray-900 text-sm leading-tight line-clamp-2">{{ item.name }}</p>
                     <p v-if="item.description" class="text-[11px] text-gray-500 font-medium mt-1 line-clamp-2">{{ item.description }}</p>
                     <p class="text-[11px] font-bold text-sky-600 mt-1">
-                      ฿{{ item.price.toLocaleString() }} ต่อชิ้น
+                      {{ $t('฿{toLocaleString} ต่อชิ้น', { toLocaleString: item.price.toLocaleString() }) }}
                     </p>
                     <!-- quantity stepper -->
                     <div class="mt-3 flex items-center justify-between gap-2">
@@ -786,30 +786,30 @@
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 class="flex items-center gap-3 font-bold text-gray-900 text-lg">
                   <span class="w-10 h-10 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center text-base font-bold border border-gray-200">{{ i + 1 }}</span>
-                  ผู้เดินทางคนที่ {{ i + 1 }}
+                  {{ $t('ผู้เดินทางคนที่ {v}', { v: i + 1 }) }}
                 </h3>
                 <div class="flex flex-wrap items-center gap-2">
                   <!-- กรอกจาก: โปรไฟล์ตัวเอง / สมุดผู้ร่วมเดินทาง — เปิดให้ทุกคน ไม่ใช่แค่คนที่ 1 -->
                   <button v-if="authStore.isLoggedIn" type="button" @click="autoFillFromProfile(i)"
                     class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-700 text-sm font-bold border border-gray-200 hover:bg-gray-100 transition-all active:scale-95">
                     <span class="material-symbols-rounded text-[18px]">account_circle</span>
-                    ข้อมูลของฉัน
+                    {{ $t('ข้อมูลของฉัน') }}
                   </button>
                   <button v-if="authStore.isLoggedIn" type="button" @click="openTravellerPicker(i)"
                     class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-700 text-sm font-bold border border-gray-200 hover:bg-gray-100 transition-all active:scale-95">
                     <span class="material-symbols-rounded text-[18px]">contacts</span>
-                    สมุดผู้ร่วมเดินทาง
+                    {{ $t('สมุดผู้ร่วมเดินทาง') }}
                   </button>
                   <button v-if="i > 0" type="button" @click="copyFromFirst(i)"
                     class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-700 text-sm font-bold border border-gray-200 hover:bg-gray-100 transition-all active:scale-95"
-                    title="คัดลอกผู้ติดต่อฉุกเฉิน จุดขึ้นรถ และอาหารฮาลาล จากคนที่ 1">
+                    :title="$t('คัดลอกผู้ติดต่อฉุกเฉิน จุดขึ้นรถ และอาหารฮาลาล จากคนที่ 1')">
                     <span class="material-symbols-rounded text-[18px]">content_copy</span>
-                    เหมือนคนที่ 1
+                    {{ $t('เหมือนคนที่ 1') }}
                   </button>
                   <div v-if="hasSeatMap && seatsStore.selectedSeats[i]"
                     class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-sm font-bold w-fit">
                     <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1,'wght' 400">airline_seat_recline_extra</span>
-                    ที่นั่ง {{ seatsStore.selectedSeats[i].id }}
+                    {{ $t('ที่นั่ง {v}', { v: seatsStore.selectedSeats[i].id }) }}
                   </div>
                 </div>
               </div>
@@ -818,14 +818,14 @@
               <div v-if="customPickup" class="mb-6 p-4 rounded-2xl bg-amber-50/50 border border-amber-200 flex items-start gap-3">
                 <span class="material-symbols-rounded text-amber-600 text-[20px]">add_location_alt</span>
                 <div class="min-w-0">
-                  <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">จุดรับที่ปักหมุดเอง</p>
+                  <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider mb-0.5">{{ $t('จุดรับที่ปักหมุดเอง') }}</p>
                   <p class="font-bold text-gray-900 leading-tight">{{ customPickup.label }}</p>
                   <p class="text-xs text-amber-700 mt-1 flex items-center gap-1">
                     <span class="material-symbols-rounded text-[14px]">info</span>
                     <span v-if="customPickupMatchesZone">
-                      คิดราคาเท่าจุดรับ {{ nearestPickupPoint.pickup_location }} ที่ใกล้หมุดที่สุด · ฿{{ customPickupPrice.toLocaleString() }} / คน
+                      {{ $t('คิดราคาเท่าจุดรับ {pickup_location} ที่ใกล้หมุดที่สุด · ฿{toLocaleString} / คน', { pickup_location: nearestPickupPoint.pickup_location, toLocaleString: customPickupPrice.toLocaleString() }) }}
                     </span>
-                    <span v-else>ใช้ราคาเดียวกับรอบเดินทาง · ฿{{ customPickupPrice.toLocaleString() }} / คน</span>
+                    <span v-else>{{ $t('ใช้ราคาเดียวกับรอบเดินทาง · ฿{toLocaleString} / คน', { toLocaleString: customPickupPrice.toLocaleString() }) }}</span>
                   </p>
                 </div>
               </div>
@@ -834,7 +834,7 @@
               <div v-else-if="pickupPoints.length" class="mb-6 p-4 rounded-2xl bg-gray-50 border border-gray-100">
                 <label class="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                   <span class="material-symbols-rounded text-accent text-[18px]">location_on</span>
-                  จุดขึ้นรถ <span class="text-red-500">*</span>
+                  {{ $t('จุดขึ้นรถ') }} <span class="text-red-500">*</span>
                 </label>
                 <div class="flex flex-wrap gap-2">
                   <button v-for="pt in pickupPoints" :key="pt.id" type="button"
@@ -846,7 +846,7 @@
                     <span class="material-symbols-rounded text-[16px]" v-if="p.pickup_point_id === pt.id">check_circle</span>
                     <span class="material-symbols-rounded text-[16px]" v-else>radio_button_unchecked</span>
                     <span>{{ pt.pickup_location }}</span>
-                    <span class="text-[11px] font-normal opacity-70">฿{{ Number(pt.price).toLocaleString() }}</span>
+                    <span class="text-[11px] font-normal opacity-70">{{ $t('฿{Number}', { Number: Number(pt.price).toLocaleString() }) }}</span>
                   </button>
                 </div>
                 <p v-if="showErr(i, 'pickup_point_id')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -857,60 +857,66 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="md:col-span-2 grid grid-cols-12 gap-5">
                   <div class="col-span-12 md:col-span-3">
-                    <label class="block text-sm font-bold text-gray-700 mb-2">คำนำหน้า <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('คำนำหน้า') }} <span class="text-red-500">*</span></label>
                     <select v-model="p.title" required :autocomplete="`section-traveller${i} honorific-prefix`"
                       class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                       :class="showErr(i, 'title') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
-                      <option value="" disabled>เลือก...</option>
-                      <option v-if="!schedule.trip?.is_women_only" value="นาย">นาย</option>
-                      <option value="นาง">นาง</option>
-                      <option value="นางสาว">นางสาว</option>
+                      <option value="" disabled>{{ $t('เลือก...') }}</option>
+                      <option v-if="!schedule.trip?.is_women_only" value="นาย">{{ $t('นาย') }}</option>
+                      <option value="นาง">{{ $t('นาง') }}</option>
+                      <option value="นางสาว">{{ $t('นางสาว') }}</option>
                     </select>
                     <p v-if="showErr(i, 'title')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
                       <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'title') }}
                     </p>
                   </div>
                   <div class="col-span-12 md:col-span-9">
-                    <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
-                    <input v-model="p.name" type="text" required :placeholder="isThaiTraveller(p) ? 'ชื่อจริง นามสกุล ภาษาไทย' : 'กรอกชื่อ-นามสกุล'" :autocomplete="`section-traveller${i} name`"
+                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ชื่อ-นามสกุล') }} <span class="text-red-500">*</span></label>
+                    <input v-model="p.name" type="text" required :placeholder="isThaiTraveller(p) ? $t('ชื่อจริง นามสกุล ภาษาไทย') : $t('กรอกชื่อ-นามสกุล')" :autocomplete="`section-traveller${i} name`"
                       class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                       :class="showErr(i, 'name') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
                     <p v-if="showErr(i, 'name')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
                       <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'name') }}
                     </p>
                     <p v-else-if="isThaiTraveller(p)" class="text-xs text-gray-400 font-medium mt-2">
-                      ภาษาไทยตามบัตรประชาชน ใช้ส่งทำประกันการเดินทาง
+                      {{ $t('ภาษาไทยตามบัตรประชาชน ใช้ส่งทำประกันการเดินทาง') }}
                     </p>
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อเล่น <span class="text-red-500">*</span></label>
-                  <input v-model="p.nickname" type="text" required placeholder="กรอกชื่อเล่น"
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ชื่อเล่น') }} <span class="text-red-500">*</span></label>
+                  <input v-model="p.nickname" type="text" required :placeholder="$t('กรอกชื่อเล่น')"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                     :class="showErr(i, 'nickname') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
                   <p v-if="showErr(i, 'nickname')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
                     <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'nickname') }}
                   </p>
                 </div>
-                <!-- สัญชาติเลือกได้เฉพาะทริปต่างประเทศ — ทริปในประเทศทุกคนเป็นไทย
-                     โดยปริยาย ไม่ต้องเพิ่มช่องให้กรอกเปล่า ๆ -->
-                <div v-if="isInternational">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">สัญชาติ <span class="text-red-500">*</span></label>
+                <!-- สัญชาติ — ทุกทริป: ลูกค้าต่างชาติจองทริปในประเทศด้วย คนไทยกรอกบัตรประชาชน
+                     คนต่างชาติกรอกชื่อและเลขพาสปอร์ตแทน (ประกันใช้) ตรงกับ
+                     CreateBookingRequest::validateForeignerInsuranceDocuments -->
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('สัญชาติ') }} <span class="text-red-500">*</span></label>
                   <select v-model="p.nationality"
-                    class="w-full border-2 border-gray-200 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white">
+                    class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                    :class="showErr(i, 'nationality') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
+                    <option value="" disabled>{{ $t('เลือกสัญชาติ') }}</option>
                     <option v-for="c in countries" :key="c.code" :value="c.code">{{ c.flag }} {{ c.name }}</option>
                   </select>
+                  <p v-if="showErr(i, 'nationality')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                    <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'nationality') }}
+                  </p>
                 </div>
 
-                <div v-if="!isInternational || p.nationality === 'TH'">
+                <div v-if="isThaiTraveller(p)">
                   <label class="block text-sm font-bold text-gray-700 mb-2 flex items-center justify-between">
-                    <span>เลขที่บัตรประชาชน (สำหรับประกัน) <span class="text-red-500">*</span></span>
+                    <span>{{ $t('เลขที่บัตรประชาชน (สำหรับประกัน)') }} <span class="text-red-500">*</span></span>
                     <button type="button" @click="showInsuranceModal = true" class="text-accent hover:text-accent-mid flex items-center gap-1 text-[11px] font-bold bg-accent-tint px-2 py-1 rounded-lg border border-accent/15 transition-all active:scale-95">
                       <span class="material-symbols-rounded text-[14px]">info</span>
-                      รายละเอียดประกัน
+                      {{ $t('รายละเอียดประกัน') }}
                     </button>
                   </label>
-                  <input v-model="p.id_card" type="text" required placeholder="เลขบัตรประชาชน 13 หลัก"
+                  <input v-model="p.id_card" type="text" required :placeholder="$t('เลขบัตรประชาชน 13 หลัก')"
                     inputmode="numeric" pattern="[0-9]{13}"
                     maxlength="13"
                     @input="limitDigits(p, 'id_card', 13)"
@@ -925,27 +931,27 @@
                 <div v-if="travelDocumentMode === 'on_site'" class="rounded-2xl border-2 border-amber-200 bg-amber-50/50 p-4 flex items-start gap-2">
                   <span class="material-symbols-rounded text-[20px] text-amber-600">badge</span>
                   <div>
-                    <p class="text-sm font-bold text-gray-900">เอกสารเดินทาง</p>
-                    <p class="text-xs text-gray-600 mt-0.5">ไม่ต้องกรอกล่วงหน้า วันเดินทางนำเอกสารเดินทางฉบับจริงมาแสดงกับทีมงาน</p>
+                    <p class="text-sm font-bold text-gray-900">{{ $t('เอกสารเดินทาง') }}</p>
+                    <p class="text-xs text-gray-600 mt-0.5">{{ $t('ไม่ต้องกรอกล่วงหน้า วันเดินทางนำเอกสารเดินทางฉบับจริงมาแสดงกับทีมงาน') }}</p>
                   </div>
                 </div>
 
                 <!-- เอกสารเดินทาง — ข้อมูลชุดนี้เอาไปออกตั๋วเครื่องบินตรง ๆ
                      สะกดผิดแม้ตัวเดียวคือขึ้นเครื่องไม่ได้ จึงแยกกล่องให้เห็นชัด -->
-                <div v-if="collectsPassport" class="rounded-2xl border-2 border-amber-200 bg-amber-50/50 p-4 space-y-4">
+                <div v-if="collectsPassport || needsPassport(p)" class="rounded-2xl border-2 border-amber-200 bg-amber-50/50 p-4 space-y-4">
                   <div class="flex items-start gap-2">
                     <span class="material-symbols-rounded text-[20px] text-amber-600">flight_takeoff</span>
                     <div>
-                      <p class="text-sm font-bold text-gray-900">เอกสารเดินทาง</p>
+                      <p class="text-sm font-bold text-gray-900">{{ $t('เอกสารเดินทาง') }}</p>
                       <p class="text-xs text-gray-600 mt-0.5">
-                        {{ canChooseBorderPass(p) ? 'ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้' : 'กรอกให้ตรงกับหน้าพาสปอร์ตทุกตัวอักษร เพราะใช้ออกตั๋วเครื่องบิน' }}
+                        {{ canChooseBorderPass(p) ? $t('ทริปนี้ใช้พาสปอร์ต หรือ Border Pass ก็ได้') : collectsPassport ? $t('กรอกให้ตรงกับหน้าพาสปอร์ตทุกตัวอักษร เพราะใช้ออกตั๋วเครื่องบิน') : $t('ผู้เดินทางต่างชาติใช้ชื่อและเลขพาสปอร์ตทำประกันการเดินทาง กรอกให้ตรงกับหน้าพาสปอร์ต') }}
                       </p>
                     </div>
                   </div>
 
                   <!-- Border Pass ออกจากบัตรประชาชนไทย — คนต่างชาติไม่เห็นตัวเลือกนี้ -->
                   <div v-if="canChooseBorderPass(p)">
-                    <label class="block text-sm font-bold text-gray-700 mb-2">มีพาสปอร์ตไหม <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('มีพาสปอร์ตไหม') }} <span class="text-red-500">*</span></label>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <button v-for="opt in travelDocumentOptions" :key="opt.value" type="button"
                         @click="p.travel_document = opt.value"
@@ -959,13 +965,13 @@
                       <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'travel_document') }}
                     </p>
                     <p v-else-if="p.travel_document === 'border_pass'" class="text-xs text-gray-600 mt-2">
-                      ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนด้านบน วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย
+                      {{ $t('ทีมงานยื่นทำ Border Pass จากเลขบัตรประชาชนด้านบน วันเดินทางพกบัตรประชาชนตัวจริงมาด้วย') }}
                     </p>
                   </div>
 
                   <template v-if="needsPassport(p) && (!canChooseBorderPass(p) || p.travel_document === 'passport')">
                   <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต) <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)') }} <span class="text-red-500">*</span></label>
                     <input v-model="p.name_en" type="text" required placeholder="SOMCHAI JAIDEE"
                       @input="p.name_en = p.name_en.toUpperCase()"
                       class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 uppercase focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-white"
@@ -976,7 +982,7 @@
                   </div>
 
                   <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">เลขที่พาสปอร์ต <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('เลขที่พาสปอร์ต') }} <span class="text-red-500">*</span></label>
                     <input v-model="p.passport_no" type="text" required placeholder="AA1234567"
                       maxlength="20"
                       @input="p.passport_no = p.passport_no.toUpperCase().replace(/[^A-Z0-9]/g, '')"
@@ -987,38 +993,38 @@
                     </p>
                   </div>
 
-                  <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">วันหมดอายุพาสปอร์ต <span class="text-red-500">*</span></label>
+                  <div v-if="collectsPassport">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('วันหมดอายุพาสปอร์ต') }} <span class="text-red-500">*</span></label>
                     <input v-model="p.passport_expires_at" type="date" required :min="minPassportExpiry"
                       class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all bg-white"
                       :class="showErr(i, 'passport_expires_at') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
                     <p v-if="showErr(i, 'passport_expires_at')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
                       <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'passport_expires_at') }}
                     </p>
-                    <p v-else class="text-xs text-gray-500 mt-2">ต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง</p>
+                    <p v-else class="text-xs text-gray-500 mt-2">{{ $t('ต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง') }}</p>
                   </div>
                   </template>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">วัน/เดือน/ปีเกิด (พ.ศ.) <span class="text-red-500">*</span></label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('วัน/เดือน/ปีเกิด (พ.ศ.)') }} <span class="text-red-500">*</span></label>
                   <div class="grid grid-cols-3 gap-2">
                     <select :value="p.birth_day" @change="updateBirth(p, 'birth_day', $event.target.value)" required
                       class="w-full border-2 rounded-2xl px-3 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                       :class="showErr(i, 'birth_date') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
-                      <option value="" disabled>วัน</option>
+                      <option value="" disabled>{{ $t('วัน') }}</option>
                       <option v-for="d in daysFor(p)" :key="d" :value="String(d)">{{ d }}</option>
                     </select>
                     <select :value="p.birth_month" @change="updateBirth(p, 'birth_month', $event.target.value)" required
                       class="w-full border-2 rounded-2xl px-3 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                       :class="showErr(i, 'birth_date') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
-                      <option value="" disabled>เดือน</option>
+                      <option value="" disabled>{{ $t('เดือน') }}</option>
                       <option v-for="(m, mi) in thaiMonths" :key="mi" :value="String(mi + 1)">{{ m }}</option>
                     </select>
                     <select :value="p.birth_year" @change="updateBirth(p, 'birth_year', $event.target.value)" required
                       class="w-full border-2 rounded-2xl px-3 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                       :class="showErr(i, 'birth_date') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
-                      <option value="" disabled>พ.ศ.</option>
-                      <option v-for="y in birthYears" :key="y" :value="String(y)">{{ y + 543 }}</option>
+                      <option value="" disabled>{{ $t('พ.ศ.') }}</option>
+                      <option v-for="y in birthYears" :key="y" :value="String(y)">{{ $isEnglish ? y : y + 543 }}</option>
                     </select>
                   </div>
                   <p v-if="showErr(i, 'birth_date')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -1026,7 +1032,7 @@
                   </p>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์โทรศัพท์ <span class="text-red-500">*</span></label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('เบอร์โทรศัพท์') }} <span class="text-red-500">*</span></label>
                   <input v-model="p.phone" type="tel" required placeholder="08X-XXX-XXXX"
                     inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
                     :autocomplete="`section-traveller${i} tel-national`"
@@ -1038,7 +1044,7 @@
                   </p>
                 </div>
                 <div v-if="bookingFor === 'friend' && i === 0">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">อีเมลสำหรับแจ้งสถานะการจอง <span class="text-red-500">*</span></label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('อีเมลสำหรับแจ้งสถานะการจอง') }} <span class="text-red-500">*</span></label>
                   <input v-model.trim="p.email" type="email" required placeholder="friend@example.com" autocomplete="email"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                     :class="showErr(i, 'email') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
@@ -1047,11 +1053,11 @@
                   </p>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">กรุ๊ปเลือด <span class="text-red-500">*</span></label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('กรุ๊ปเลือด') }} <span class="text-red-500">*</span></label>
                   <select v-model="p.blood_group" required
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                     :class="showErr(i, 'blood_group') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'">
-                    <option value="" disabled>เลือกกรุ๊ปเลือด</option>
+                    <option value="" disabled>{{ $t('เลือกกรุ๊ปเลือด') }}</option>
                     <option value="A">A</option>
                     <option value="B">B</option>
                     <option value="O">O</option>
@@ -1062,8 +1068,8 @@
                   </p>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">ผู้ติดต่อฉุกเฉิน <span class="text-red-500">*</span></label>
-                  <input v-model="p.emergency_contact" type="text" required placeholder="ชื่อผู้ติดต่อ"
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ผู้ติดต่อฉุกเฉิน') }} <span class="text-red-500">*</span></label>
+                  <input v-model="p.emergency_contact" type="text" required :placeholder="$t('ชื่อผู้ติดต่อ')"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                     :class="showErr(i, 'emergency_contact') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
                   <p v-if="showErr(i, 'emergency_contact')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -1071,7 +1077,7 @@
                   </p>
                 </div>
                 <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-2">เบอร์ฉุกเฉิน <span class="text-red-500">*</span></label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('เบอร์ฉุกเฉิน') }} <span class="text-red-500">*</span></label>
                   <input v-model="p.emergency_phone" type="tel" required placeholder="08X-XXX-XXXX"
                     inputmode="numeric" pattern="[0-9]{10}" maxlength="10"
                     @input="limitDigits(p, 'emergency_phone', 10)"
@@ -1082,15 +1088,15 @@
                   </p>
                 </div>
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">ผู้ติดต่อเป็นอะไรกับผู้เดินทาง <span class="text-red-500">*</span></label>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ผู้ติดต่อเป็นอะไรกับผู้เดินทาง') }} <span class="text-red-500">*</span></label>
                   <EmergencyRelationPicker v-model="p.emergency_relation" :error="!!showErr(i, 'emergency_relation')" />
                   <p v-if="showErr(i, 'emergency_relation')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
                     <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'emergency_relation') }}
                   </p>
                 </div>
                 <div class="md:col-span-2">
-                  <label class="block text-sm font-bold text-gray-700 mb-2">ต้องการอาหารฮาลาล <span class="text-red-500">*</span></label>
-                  <p class="text-xs text-gray-500 mb-3">เพื่อให้เราจัดเตรียมอาหารได้เหมาะสม รบกวนแจ้งว่าท่านต้องการอาหารฮาลาลหรือไม่</p>
+                  <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ต้องการอาหารฮาลาล') }} <span class="text-red-500">*</span></label>
+                  <p class="text-xs text-gray-500 mb-3">{{ $t('เพื่อให้เราจัดเตรียมอาหารได้เหมาะสม รบกวนแจ้งว่าท่านต้องการอาหารฮาลาลหรือไม่') }}</p>
                   <div class="flex gap-3">
                     <label class="flex-1 flex items-center gap-3 border-2 rounded-2xl px-4 py-3 cursor-pointer transition-all"
                       :class="p.halal_food === true ? 'border-accent bg-accent-tint' : showErr(i, 'halal_food') ? 'border-red-300 bg-red-50/40' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
@@ -1099,7 +1105,7 @@
                         :class="p.halal_food === true ? 'border-accent' : 'border-gray-300'">
                         <span v-if="p.halal_food === true" class="w-2.5 h-2.5 rounded-full bg-accent"></span>
                       </span>
-                      <span class="text-sm font-bold" :class="p.halal_food === true ? 'text-accent' : 'text-gray-700'">ต้องการ</span>
+                      <span class="text-sm font-bold" :class="p.halal_food === true ? 'text-accent' : 'text-gray-700'">{{ $t('ต้องการ') }}</span>
                     </label>
                     <label class="flex-1 flex items-center gap-3 border-2 rounded-2xl px-4 py-3 cursor-pointer transition-all"
                       :class="p.halal_food === false ? 'border-gray-400 bg-gray-100' : showErr(i, 'halal_food') ? 'border-red-300 bg-red-50/40' : 'border-gray-200 bg-gray-50/50 hover:bg-gray-50'">
@@ -1108,7 +1114,7 @@
                         :class="p.halal_food === false ? 'border-gray-500' : 'border-gray-300'">
                         <span v-if="p.halal_food === false" class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
                       </span>
-                      <span class="text-sm font-bold" :class="p.halal_food === false ? 'text-gray-700' : 'text-gray-700'">ไม่จำเป็น</span>
+                      <span class="text-sm font-bold" :class="p.halal_food === false ? 'text-gray-700' : 'text-gray-700'">{{ $t('ไม่จำเป็น') }}</span>
                     </label>
                   </div>
                   <p v-if="showErr(i, 'halal_food')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -1118,14 +1124,14 @@
 
                 <div class="md:col-span-2">
                   <div class="flex items-center justify-between gap-3 text-sm font-bold text-gray-700 mb-2">
-                    <label :for="`allergies-${i}`">การแพ้อาหาร / อื่นๆ <span class="text-red-500">*</span></label>
+                    <label :for="`allergies-${i}`">{{ $t('การแพ้อาหาร / อื่นๆ') }} <span class="text-red-500">*</span></label>
                     <button type="button" @click="p.allergies = 'ไม่มี'"
                       class="px-3 py-1 rounded-lg text-xs font-bold border transition-all active:scale-95"
                       :class="p.allergies === 'ไม่มี' ? 'bg-accent-tint border-accent/25 text-accent' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'">
-                      ไม่มี
+                      {{ $t('ไม่มี') }}
                     </button>
                   </div>
-                  <input :id="`allergies-${i}`" v-model="p.allergies" type="text" required placeholder="เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ หรือ ไม่มี"
+                  <input :id="`allergies-${i}`" v-model="p.allergies" type="text" required :placeholder="$t('เช่น แพ้อาหารทะเล, ไม่ทานเนื้อ หรือ ไม่มี')"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
                     :class="showErr(i, 'allergies') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
                   <p v-if="showErr(i, 'allergies')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -1135,14 +1141,14 @@
 
                 <div class="md:col-span-2">
                   <div class="flex items-center justify-between gap-3 text-sm font-bold text-gray-700 mb-2">
-                    <label :for="`health-notes-${i}`">หมายเหตุสุขภาพ <span class="text-red-500">*</span></label>
+                    <label :for="`health-notes-${i}`">{{ $t('หมายเหตุสุขภาพ') }} <span class="text-red-500">*</span></label>
                     <button type="button" @click="p.health_notes = 'ไม่มี'"
                       class="px-3 py-1 rounded-lg text-xs font-bold border transition-all active:scale-95"
                       :class="p.health_notes === 'ไม่มี' ? 'bg-accent-tint border-accent/25 text-accent' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'">
-                      ไม่มี
+                      {{ $t('ไม่มี') }}
                     </button>
                   </div>
-                  <textarea :id="`health-notes-${i}`" v-model="p.health_notes" rows="2" required placeholder="แพ้ยา, โรคประจำตัว หรือ ไม่มี"
+                  <textarea :id="`health-notes-${i}`" v-model="p.health_notes" rows="2" required :placeholder="$t('แพ้ยา, โรคประจำตัว หรือ ไม่มี')"
                     class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white resize-none"
                     :class="showErr(i, 'health_notes') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'"></textarea>
                   <p v-if="showErr(i, 'health_notes')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
@@ -1156,17 +1162,17 @@
                   <div class="flex items-start gap-2">
                     <span class="material-symbols-rounded text-[20px] text-violet-600">attach_file</span>
                     <div>
-                      <p class="text-sm font-bold text-gray-900">เอกสารที่ต้องแนบ</p>
-                      <p class="text-xs text-gray-600 mt-0.5">รองรับไฟล์รูปภาพและ PDF ขนาดไม่เกิน {{ MAX_DOC_MB }} MB ต่อไฟล์</p>
-                      <p class="text-xs text-violet-700 font-bold mt-1">ยังไม่พร้อม? กดจองต่อได้เลย แล้วกลับมาแนบที่หน้ารายละเอียดการจองก่อนวันเดินทาง</p>
+                      <p class="text-sm font-bold text-gray-900">{{ $t('เอกสารที่ต้องแนบ') }}</p>
+                      <p class="text-xs text-gray-600 mt-0.5">{{ $t('รองรับไฟล์รูปภาพและ PDF ขนาดไม่เกิน {MAX_DOC_MB} MB ต่อไฟล์', { MAX_DOC_MB }) }}</p>
+                      <p class="text-xs text-violet-700 font-bold mt-1">{{ $t('ยังไม่พร้อม? กดจองต่อได้เลย แล้วกลับมาแนบที่หน้ารายละเอียดการจองก่อนวันเดินทาง') }}</p>
                     </div>
                   </div>
 
                   <div v-for="doc in passengerDocRequirements(p)" :key="doc.key">
                     <label class="block text-sm font-bold text-gray-700">
                       {{ doc.label }}
-                      <span v-if="doc.required" class="text-xs font-bold text-red-500">(ต้องแนบก่อนเดินทาง)</span>
-                      <span v-else class="text-xs font-bold text-gray-400">(ไม่บังคับ)</span>
+                      <span v-if="doc.required" class="text-xs font-bold text-red-500">{{ $t('(ต้องแนบก่อนเดินทาง)') }}</span>
+                      <span v-else class="text-xs font-bold text-gray-400">{{ $t('(ไม่บังคับ)') }}</span>
                     </label>
                     <p v-if="doc.note" class="text-xs text-gray-600 mt-1">{{ doc.note }}</p>
                     <DocumentGuideButton :doc="doc" :max-size-mb="MAX_DOC_MB" :max-files="maxDocFiles(doc)" class="mt-1" />
@@ -1179,7 +1185,7 @@
                         </span>
                         <span class="text-xs font-bold text-gray-700 truncate flex-1">{{ file.name }}</span>
                         <span class="text-[11px] text-gray-400 font-bold shrink-0">{{ fileSizeLabel(file.size) }}</span>
-                        <button type="button" @click="removeDocFile(i, doc.key, fi)" title="เอาไฟล์นี้ออก"
+                        <button type="button" @click="removeDocFile(i, doc.key, fi)" :title="$t('เอาไฟล์นี้ออก')"
                           class="text-gray-400 hover:text-red-500 shrink-0">
                           <span class="material-symbols-rounded text-[18px]">close</span>
                         </button>
@@ -1189,7 +1195,7 @@
                     <label v-if="docFiles(i, doc.key).length < maxDocFiles(doc)"
                       class="mt-2 flex items-center justify-center gap-2 w-full py-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all font-bold text-sm border-violet-200 text-violet-600 bg-white hover:border-violet-400">
                       <span class="material-symbols-rounded text-[18px]">upload_file</span>
-                      {{ docFiles(i, doc.key).length ? 'แนบไฟล์เพิ่ม' : 'เลือกไฟล์' }}
+                      {{ docFiles(i, doc.key).length ? $t('แนบไฟล์เพิ่ม') : $t('เลือกไฟล์') }}
                       <input type="file" class="hidden" :accept="ACCEPTED_DOC_TYPES" :multiple="maxDocFiles(doc) > 1"
                         @change="addDocFiles(i, doc.key, $event)" />
                     </label>
@@ -1204,14 +1210,14 @@
               class="mt-8 p-5 rounded-2xl bg-red-50 border border-red-200 text-sm">
               <p class="flex items-center gap-2 font-bold text-red-700 mb-2">
                 <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 1">error</span>
-                ยังกรอกข้อมูลไม่ครบ กรุณาตรวจสอบช่องที่ทำเครื่องหมายสีแดง
+                {{ $t('ยังกรอกข้อมูลไม่ครบ กรุณาตรวจสอบช่องที่ทำเครื่องหมายสีแดง') }}
               </p>
               <ul class="space-y-3 text-red-600 font-medium">
                 <li v-for="item in incompletePassengers" :key="item.index" class="flex items-start gap-2">
                   <span class="material-symbols-rounded text-[16px] mt-0.5">person</span>
                   <div class="min-w-0">
                     <button type="button" @click="scrollToPassenger(item.index)" class="text-left font-bold text-red-700 hover:underline">
-                      ผู้เดินทางคนที่ {{ item.index + 1 }} — ยังขาดข้อมูล {{ item.count }} ช่อง
+                      {{ $t('ผู้เดินทางคนที่ {v} — ยังขาดข้อมูล {count} ช่อง', { v: item.index + 1, count: item.count }) }}
                     </button>
                     <ul class="mt-1 ml-1 space-y-0.5 text-[13px] text-red-500">
                       <li v-for="(msg, field) in passengerErrors[item.index]" :key="field" class="flex items-start gap-1.5">
@@ -1228,12 +1234,12 @@
               <button @click="backFromPassengers"
                 class="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-2xl font-bold text-base hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition-all duration-300">
                 <span class="material-symbols-rounded text-[20px]" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_back</span>
-                ย้อนกลับ
+                {{ $t('ย้อนกลับ') }}
               </button>
               <button @click="goToSummary"
                 class="w-full sm:w-auto bg-accent text-white px-8 py-4 rounded-2xl font-bold text-base hover:bg-accent-mid active:scale-95 transition-all duration-300 flex items-center justify-center gap-2"
                 :class="{ 'opacity-60': attempted && !isPassengerValid }">
-                <span>ดูสรุปการจอง</span>
+                <span>{{ $t('ดูสรุปการจอง') }}</span>
                 <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 0,'wght' 400">arrow_forward</span>
               </button>
             </div>
@@ -1246,9 +1252,9 @@
                 <div class="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center">
                   <span class="material-symbols-rounded text-lg">fact_check</span>
                 </div>
-                <h2 class="text-2xl font-bold text-gray-900">ตรวจสอบความถูกต้อง</h2>
+                <h2 class="text-2xl font-bold text-gray-900">{{ $t('ตรวจสอบความถูกต้อง') }}</h2>
               </div>
-              <p class="text-gray-500">กรุณาตรวจสอบรายละเอียดการจองอีกครั้งก่อนทำการชำระเงิน</p>
+              <p class="text-gray-500">{{ $t('กรุณาตรวจสอบรายละเอียดการจองอีกครั้งก่อนทำการชำระเงิน') }}</p>
             </div>
 
             <CountdownTimer v-if="seatsStore.countdownSeconds > 0"
@@ -1260,32 +1266,32 @@
                 <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8">
                   <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
                     <span class="material-symbols-rounded text-accent">confirmation_number</span>
-                    รายละเอียดการจอง
+                    {{ $t('รายละเอียดการจอง') }}
                   </h3>
                   
                   <div class="space-y-4">
                     <div class="flex justify-between items-start py-3 border-b border-gray-50">
-                      <span class="text-gray-500 text-sm font-medium">ชื่อทริป</span>
+                      <span class="text-gray-500 text-sm font-medium">{{ $t('ชื่อทริป') }}</span>
                       <span class="text-gray-900 text-sm font-bold text-right max-w-[200px]">{{ schedule.trip?.title }}</span>
                     </div>
                     <div class="flex justify-between items-center py-3 border-b border-gray-50">
-                      <span class="text-gray-500 text-sm font-medium">วันเดินทาง</span>
+                      <span class="text-gray-500 text-sm font-medium">{{ $t('วันเดินทาง') }}</span>
                       <span class="text-gray-900 text-sm font-bold">{{ formatDate(schedule.departure_date) }}</span>
                     </div>
                     <!-- กันลูกค้าเข้าใจผิดว่าค่าอาหารรวมหมด ทั้งที่บางมื้อต้องจ่ายเอง -->
                     <div v-if="schedule.trip?.meals" class="flex justify-between items-start gap-4 py-3 border-b border-gray-50">
-                      <span class="text-gray-500 text-sm font-medium shrink-0">อาหาร</span>
+                      <span class="text-gray-500 text-sm font-medium shrink-0">{{ $t('อาหาร') }}</span>
                       <span class="text-gray-900 text-sm font-bold text-right">{{ schedule.trip.meals.summary }}</span>
                     </div>
                     <div v-if="selectedPickup" class="flex justify-between items-start py-3 border-b border-gray-50">
-                      <span class="text-gray-500 text-sm font-medium">จุดขึ้นรถ</span>
+                      <span class="text-gray-500 text-sm font-medium">{{ $t('จุดขึ้นรถ') }}</span>
                       <div class="text-right">
                         <p class="text-gray-900 text-sm font-bold">{{ selectedPickup.pickup_location }}</p>
                         <p class="text-[10px] text-accent font-bold uppercase tracking-wider">{{ selectedPickup.region_label }}</p>
                       </div>
                     </div>
                     <div v-if="hasSeatMap" class="flex justify-between items-center py-3">
-                      <span class="text-gray-500 text-sm font-medium">ที่นั่งที่เลือก</span>
+                      <span class="text-gray-500 text-sm font-medium">{{ $t('ที่นั่งที่เลือก') }}</span>
                       <span class="px-3 py-1 bg-accent-tint text-accent text-sm font-black rounded-lg border border-accent/15 italic tracking-widest">{{ seatsStore.selectedSeatIds.join(', ') }}</span>
                     </div>
                   </div>
@@ -1295,18 +1301,18 @@
                 <div class="bg-white border border-gray-100 rounded-[2rem] p-6">
                   <h3 class="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2">
                     <span class="material-symbols-rounded text-accent">local_offer</span>
-                    โค้ดส่วนลด / โปรโมชั่น
+                    {{ $t('โค้ดส่วนลด / โปรโมชั่น') }}
                   </h3>
                   
                   <div v-if="!promotionData" class="flex flex-col gap-2">
                     <div class="flex gap-2">
-                      <input v-model="promotionInput" type="text" placeholder="กรอกโค้ดส่วนลด (ถ้ามี)"
+                      <input v-model="promotionInput" type="text" :placeholder="$t('กรอกโค้ดส่วนลด (ถ้ามี)')"
                         class="min-w-0 flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all uppercase"
                         @keyup.enter="applyPromotion" />
                       <button @click="applyPromotion" :disabled="promotionLoading || !promotionInput.trim()"
                         class="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shrink-0">
                         <span v-if="promotionLoading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        <span>ใช้งาน</span>
+                        <span>{{ $t('ใช้งาน') }}</span>
                       </button>
                     </div>
                     <p v-if="promotionError" class="text-red-500 text-xs font-bold mt-1">{{ promotionError }}</p>
@@ -1316,9 +1322,9 @@
                     <div>
                       <div class="flex items-center gap-2 mb-1">
                         <span class="material-symbols-rounded text-accent text-[18px]">check_circle</span>
-                        <span class="font-bold text-accent-mid text-sm">โค้ด {{ promotionCode }} ถูกใช้งานแล้ว</span>
+                        <span class="font-bold text-accent-mid text-sm">{{ $t('โค้ด {promotionCode} ถูกใช้งานแล้ว', { promotionCode }) }}</span>
                       </div>
-                      <p class="text-xs text-accent font-medium">ได้รับส่วนลด ฿{{ discountAmount.toLocaleString() }}</p>
+                      <p class="text-xs text-accent font-medium">{{ $t('ได้รับส่วนลด ฿{toLocaleString}', { toLocaleString: discountAmount.toLocaleString() }) }}</p>
                     </div>
                     <button @click="removePromotion" class="text-gray-400 hover:text-red-500 transition-colors p-2">
                       <span class="material-symbols-rounded text-xl">close</span>
@@ -1334,24 +1340,24 @@
                 <div>
                   <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
                     <span class="material-symbols-rounded text-accent">payments</span>
-                    สรุปค่าใช้จ่าย
+                    {{ $t('สรุปค่าใช้จ่าย') }}
                   </h3>
 
                   <div class="space-y-3 mb-8">
                     <template v-if="!hasVariedPickupPrices">
                       <div class="flex justify-between text-sm">
-                        <span class="text-gray-500 font-medium">ราคาต่อที่นั่ง</span>
-                        <span class="font-bold text-gray-900">฿{{ Number(effectivePrice).toLocaleString() }}</span>
+                        <span class="text-gray-500 font-medium">{{ $t('ราคาต่อที่นั่ง') }}</span>
+                        <span class="font-bold text-gray-900">{{ $t('฿{Number}', { Number: Number(effectivePrice).toLocaleString() }) }}</span>
                       </div>
                       <div class="flex justify-between text-sm">
-                        <span class="text-gray-500 font-medium">จำนวนผู้เดินทาง</span>
-                        <span class="font-bold text-gray-900">{{ passengers.length }} คน</span>
+                        <span class="text-gray-500 font-medium">{{ $t('จำนวนผู้เดินทาง') }}</span>
+                        <span class="font-bold text-gray-900">{{ $t('{length} คน', { length: passengers.length }) }}</span>
                       </div>
                     </template>
                     <template v-else>
                       <div v-for="(p, i) in passengers" :key="i" class="flex justify-between text-sm">
-                        <span class="text-gray-500 font-medium">คนที่ {{ i + 1 }}{{ p.nickname ? ` (${p.nickname})` : '' }}</span>
-                        <span class="font-bold text-gray-900">฿{{ passengerTicketPrice(p).toLocaleString() }}</span>
+                        <span class="text-gray-500 font-medium">{{ $t('คนที่ {v}{v2}', { v: i + 1, v2: p.nickname ? ` (${p.nickname})` : '' }) }}</span>
+                        <span class="font-bold text-gray-900">{{ $t('฿{passengerTicketPrice}', { passengerTicketPrice: passengerTicketPrice(p).toLocaleString() }) }}</span>
                       </div>
                     </template>
                     <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
@@ -1361,7 +1367,7 @@
                         <span class="truncate">{{ addon.name }}</span>
                         <span class="shrink-0 text-amber-500 font-bold">×{{ addon.quantity }}</span>
                       </span>
-                      <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
+                      <span class="font-bold shrink-0">{{ $t('+฿{addonLineTotal}', { addonLineTotal: addonLineTotal(addon).toLocaleString() }) }}</span>
                     </div>
                     <div v-for="item in selectedRentalItems" :key="`rental-${item.index}`" class="flex justify-between items-center text-sm text-sky-700">
                       <span class="flex items-center gap-2 min-w-0">
@@ -1370,7 +1376,7 @@
                         <span class="truncate">{{ item.name }}</span>
                         <span class="shrink-0 text-sky-500 font-bold">×{{ item.quantity }}</span>
                       </span>
-                      <span class="font-bold shrink-0">+฿{{ rentalLineTotal(item).toLocaleString() }}</span>
+                      <span class="font-bold shrink-0">{{ $t('+฿{rentalLineTotal}', { rentalLineTotal: rentalLineTotal(item).toLocaleString() }) }}</span>
                     </div>
                     <div v-if="selectedVehicleOption && vehicleAdjustment !== 0" class="flex justify-between items-center text-sm text-accent">
                       <span class="font-bold flex items-center gap-2 min-w-0">
@@ -1378,25 +1384,25 @@
                         <span class="truncate">{{ selectedVehicleOption.label }}</span>
                         <span class="shrink-0 text-accent font-bold">×{{ seatCount }}</span>
                       </span>
-                      <span class="font-bold shrink-0">{{ vehicleAdjustment > 0 ? '+' : '-' }}฿{{ (Math.abs(vehicleAdjustment) * seatCount).toLocaleString() }}</span>
+                      <span class="font-bold shrink-0">{{ $t('{v}฿{v2}', { v: vehicleAdjustment > 0 ? '+' : '-', v2: (Math.abs(vehicleAdjustment) * seatCount).toLocaleString() }) }}</span>
                     </div>
                     <div v-if="promotionData" class="flex justify-between text-sm text-accent pt-2 border-t border-gray-100">
                       <span class="flex items-center gap-1 font-medium">
                         <span class="material-symbols-rounded text-[16px]">local_offer</span>
-                        ส่วนลด ({{ promotionCode }})
+                        {{ $t('ส่วนลด ({promotionCode})', { promotionCode }) }}
                       </span>
-                      <span class="font-bold">-฿{{ discountAmount.toLocaleString() }}</span>
+                      <span class="font-bold">{{ $t('-฿{toLocaleString}', { toLocaleString: discountAmount.toLocaleString() }) }}</span>
                     </div>
                   </div>
                 </div>
 
                 <div class="pt-6 border-t border-gray-100">
-                  <p class="text-sm font-bold text-gray-500 mb-1">ยอดรวมสุทธิ</p>
+                  <p class="text-sm font-bold text-gray-500 mb-1">{{ $t('ยอดรวมสุทธิ') }}</p>
                   <div class="flex items-baseline gap-1 text-accent">
-                    <span class="text-lg font-bold">฿</span>
+                    <span class="text-lg font-bold">{{ $t('฿') }}</span>
                     <span class="text-3xl font-extrabold font-anuphan tracking-tight">{{ totalAmount.toLocaleString() }}</span>
                   </div>
-                  <p class="mt-2 text-[11px] text-gray-400 font-medium">รวมประกันอุบัติเหตุระหว่างเดินทางแล้ว</p>
+                  <p class="mt-2 text-[11px] text-gray-400 font-medium">{{ $t('รวมประกันอุบัติเหตุระหว่างเดินทางแล้ว') }}</p>
                 </div>
               </div>
             </div>
@@ -1405,7 +1411,7 @@
             <div class="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 mb-8">
               <h3 class="font-bold text-gray-900 text-lg mb-6 flex items-center gap-3">
                 <span class="material-symbols-rounded text-accent">group</span>
-                รายชื่อผู้เดินทาง ({{ passengers.length }})
+                {{ $t('รายชื่อผู้เดินทาง ({length})', { length: passengers.length }) }}
               </h3>
               
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1415,10 +1421,10 @@
                     {{ i + 1 }}
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="font-bold text-gray-900 text-sm truncate">{{ p.title }}{{ p.name }} <span v-if="p.nickname" class="text-accent ml-1">({{ p.nickname }})</span></p>
+                    <p class="font-bold text-gray-900 text-sm truncate">{{ $isEnglish ? `${$t(p.title)} ` : p.title }}{{ p.name }} <span v-if="p.nickname" class="text-accent ml-1">({{ p.nickname }})</span></p>
                     <div class="flex flex-wrap gap-2 mt-1">
-                      <span v-if="hasSeatMap && seatsStore.selectedSeats[i]" class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">ที่นั่ง {{ seatsStore.selectedSeats[i].id }}</span>
-                      <span class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">กรุ๊ปเลือด {{ p.blood_group || '-' }}</span>
+                      <span v-if="hasSeatMap && seatsStore.selectedSeats[i]" class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">{{ $t('ที่นั่ง {v}', { v: seatsStore.selectedSeats[i].id }) }}</span>
+                      <span class="text-[10px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">{{ $t('กรุ๊ปเลือด {v}', { v: p.blood_group || '-' }) }}</span>
                       <span v-if="pickupPoints.length && p.pickup_point_id" class="text-[10px] bg-accent-tint border border-accent/15 text-accent px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                         <span class="material-symbols-rounded text-[11px]">location_on</span>
                         {{ pickupPoints.find(pt => pt.id === p.pickup_point_id)?.pickup_location || '-' }}
@@ -1433,14 +1439,14 @@
               <button @click="step = hasSeatMap ? (isTrekking ? 2 : 1) : (isTrekking ? 1 : 0)"
                 class="flex items-center justify-center gap-2 text-gray-500 hover:text-gray-900 px-8 py-4 rounded-2xl font-bold text-base transition-all">
                 <span class="material-symbols-rounded text-[20px]">arrow_back</span>
-                ย้อนกลับ
+                {{ $t('ย้อนกลับ') }}
               </button>
               <button @click="createBooking"
                 :disabled="bookingLoading"
                 class="flex-1 flex items-center justify-center gap-3 bg-accent text-white px-8 py-4 rounded-2xl font-extrabold text-lg hover:bg-accent-mid active:scale-[0.99] transition-all disabled:opacity-50">
                 <span v-if="bookingLoading" class="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                 <span v-else class="material-symbols-rounded text-[22px]">verified</span>
-                <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
+                <span>{{ bookingLoading ? $t('กำลังสร้างการจอง...') : $t('ยืนยันและชำระเงิน') }}</span>
               </button>
             </div>
             
@@ -1462,14 +1468,14 @@
           <div class="bg-white rounded-[2rem] p-6 border border-gray-100 overflow-hidden relative">
             <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-gray-900">
               <span class="material-symbols-rounded text-accent">receipt_long</span>
-              สรุปรายการจอง
+              {{ $t('สรุปรายการจอง') }}
             </h2>
 
             <!-- Selected seats (when on step 0/1 seatmap) -->
             <div v-if="hasSeatMap && seatsStore.hasSelectedSeats" class="mb-5 animate-in fade-in zoom-in-95 duration-300">
               <div class="flex justify-between items-center p-5 rounded-2xl bg-accent-tint border border-accent/15">
                 <div>
-                  <p class="text-[11px] font-bold text-accent uppercase tracking-wider mb-1 bg-accent/10 px-2 py-0.5 rounded-full inline-block">ที่นั่งที่เลือก</p>
+                  <p class="text-[11px] font-bold text-accent uppercase tracking-wider mb-1 bg-accent/10 px-2 py-0.5 rounded-full inline-block">{{ $t('ที่นั่งที่เลือก') }}</p>
                   <p class="text-2xl font-black text-accent-mid mt-1">{{ seatsStore.selectedSeatIds.join(', ') }}</p>
                 </div>
                 <div class="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-white">
@@ -1480,17 +1486,17 @@
 
             <!-- Selected region info -->
             <div v-if="selectedPickup" class="mb-6 p-4 rounded-3xl bg-gray-50 border border-gray-100">
-              <p class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.1em] mb-3">จุดขึ้นรถ</p>
+              <p class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.1em] mb-3">{{ $t('จุดขึ้นรถ') }}</p>
               <div class="flex items-start gap-3">
                 <span class="material-symbols-rounded text-accent text-xl">location_on</span>
                 <div>
                   <p class="text-sm font-bold text-gray-900 leading-tight">{{ selectedPickup.pickup_location }}</p>
-                  <p class="text-[11px] text-accent font-bold mt-1 bg-accent/10 px-2 py-0.5 rounded-full w-fit">ภูมิภาค: {{ selectedPickup.region_label }}</p>
+                  <p class="text-[11px] text-accent font-bold mt-1 bg-accent/10 px-2 py-0.5 rounded-full w-fit">{{ $t('ภูมิภาค: {region_label}', { region_label: selectedPickup.region_label }) }}</p>
                   
                   <a v-if="selectedPickup.map_url" :href="selectedPickup.map_url" target="_blank"
                     class="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-accent hover:text-accent-mid bg-white border border-gray-200 px-3 py-1.5 rounded-lg transition-all active:scale-95">
                     <span class="material-symbols-rounded text-[16px]">map</span>
-                    เปิด Google Maps
+                    {{ $t('เปิด Google Maps') }}
                   </a>
                 </div>
               </div>
@@ -1499,12 +1505,12 @@
             <!-- Price Breakdown -->
             <div class="space-y-4 mb-8 bg-gray-50 rounded-3xl p-5 border border-gray-100">
               <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-500 font-medium">ราคาต่อคน</span>
-                <span class="text-gray-900 font-bold">฿{{ Number(effectivePrice).toLocaleString() }}</span>
+                <span class="text-gray-500 font-medium">{{ $t('ราคาต่อคน') }}</span>
+                <span class="text-gray-900 font-bold">{{ $t('฿{Number}', { Number: Number(effectivePrice).toLocaleString() }) }}</span>
               </div>
               <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-500 font-medium">จำนวนผู้ร่วมเดินทาง</span>
-                <span class="text-gray-900 font-bold">{{ seatCount }} คน</span>
+                <span class="text-gray-500 font-medium">{{ $t('จำนวนผู้ร่วมเดินทาง') }}</span>
+                <span class="text-gray-900 font-bold">{{ $t('{seatCount} คน', { seatCount }) }}</span>
               </div>
               <!-- ส่วนต่างของประเภทรถรวมอยู่ในยอดสุทธิแล้ว ต้องโชว์ไม่งั้นตัวเลขบวกกันไม่ลงตัว -->
               <div v-if="selectedVehicleOption && vehicleAdjustment !== 0" class="flex justify-between items-center text-sm text-accent">
@@ -1513,7 +1519,7 @@
                   <span class="truncate">{{ selectedVehicleOption.label }}</span>
                   <span class="shrink-0 text-accent font-bold">×{{ seatCount }}</span>
                 </span>
-                <span class="font-bold shrink-0">{{ vehicleAdjustment > 0 ? '+' : '-' }}฿{{ (Math.abs(vehicleAdjustment) * seatCount).toLocaleString() }}</span>
+                <span class="font-bold shrink-0">{{ $t('{v}฿{v2}', { v: vehicleAdjustment > 0 ? '+' : '-', v2: (Math.abs(vehicleAdjustment) * seatCount).toLocaleString() }) }}</span>
               </div>
               <div v-for="addon in selectedAddonItems" :key="addon.index" class="flex justify-between items-center text-sm text-amber-700">
                 <span class="font-bold flex items-center gap-2 min-w-0">
@@ -1522,7 +1528,7 @@
                   <span class="truncate">{{ addon.name }}</span>
                   <span class="shrink-0 text-amber-500 font-bold">×{{ addon.quantity }}</span>
                 </span>
-                <span class="font-bold shrink-0">+฿{{ addonLineTotal(addon).toLocaleString() }}</span>
+                <span class="font-bold shrink-0">{{ $t('+฿{addonLineTotal}', { addonLineTotal: addonLineTotal(addon).toLocaleString() }) }}</span>
               </div>
               <div v-for="item in selectedRentalItems" :key="`rental-${item.index}`" class="flex justify-between items-center text-sm text-sky-700">
                 <span class="font-bold flex items-center gap-2 min-w-0">
@@ -1531,27 +1537,27 @@
                   <span class="truncate">{{ item.name }}</span>
                   <span class="shrink-0 text-sky-500 font-bold">×{{ item.quantity }}</span>
                 </span>
-                <span class="font-bold shrink-0">+฿{{ rentalLineTotal(item).toLocaleString() }}</span>
+                <span class="font-bold shrink-0">{{ $t('+฿{rentalLineTotal}', { rentalLineTotal: rentalLineTotal(item).toLocaleString() }) }}</span>
               </div>
 
               <div v-if="promotionData" class="flex justify-between items-center text-sm text-accent">
                 <span class="font-bold flex items-center gap-1">
                   <span class="material-symbols-rounded text-[16px]">local_offer</span>
-                  ส่วนลด
+                  {{ $t('ส่วนลด') }}
                 </span>
-                <span class="font-bold">-฿{{ discountAmount.toLocaleString() }}</span>
+                <span class="font-bold">{{ $t('-฿{toLocaleString}', { toLocaleString: discountAmount.toLocaleString() }) }}</span>
               </div>
               
               <div class="pt-5 border-t border-dashed border-gray-300">
                 <div class="flex justify-between items-end mb-1">
-                  <span class="text-sm font-bold text-gray-500 mb-1">ยอดรวมสุทธิ</span>
+                  <span class="text-sm font-bold text-gray-500 mb-1">{{ $t('ยอดรวมสุทธิ') }}</span>
                   <div class="text-right">
                     <span class="text-4xl font-extrabold text-accent font-anuphan tracking-tighter">
-                      <span class="text-2xl text-accent mr-0.5">฿</span>{{ totalAmount.toLocaleString() }}
+                      <span class="text-2xl text-accent mr-0.5">{{ $t('฿') }}</span>{{ totalAmount.toLocaleString() }}
                     </span>
                   </div>
                 </div>
-                <p class="text-[11px] text-gray-400 text-right font-medium">รวมประกันอุบัติเหตุระหว่างเดินทางแล้ว</p>
+                <p class="text-[11px] text-gray-400 text-right font-medium">{{ $t('รวมประกันอุบัติเหตุระหว่างเดินทางแล้ว') }}</p>
               </div>
             </div>
 
@@ -1559,18 +1565,18 @@
             <div v-if="step !== (isTrekking ? 3 : 2)" class="mb-8 rounded-3xl border border-accent/15 bg-accent-tint/60 p-5">
               <h3 class="mb-4 flex items-center gap-2 text-sm font-black text-accent-mid">
                 <span class="material-symbols-rounded text-[18px]">local_offer</span>
-                โค้ดส่วนลด / โปรโมชั่น
+                {{ $t('โค้ดส่วนลด / โปรโมชั่น') }}
               </h3>
 
               <div v-if="!promotionData" class="space-y-2">
                 <div class="flex gap-2">
-                  <input v-model="promotionInput" type="text" placeholder="กรอกโค้ดส่วนลด"
+                  <input v-model="promotionInput" type="text" :placeholder="$t('กรอกโค้ดส่วนลด')"
                     class="min-w-0 flex-1 rounded-xl border-2 border-white bg-white px-4 py-3 text-sm font-bold uppercase text-gray-900 outline-none transition-all placeholder:font-medium placeholder:text-gray-400 focus:border-accent focus:ring-4 focus:ring-accent/10"
                     @keyup.enter="applyPromotion" />
                   <button @click="applyPromotion" :disabled="promotionLoading || !promotionInput.trim()"
                     class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-black text-white transition-all hover:bg-accent-mid disabled:cursor-not-allowed disabled:opacity-50">
                     <span v-if="promotionLoading" class="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-                    <span>ใช้</span>
+                    <span>{{ $t('ใช้') }}</span>
                   </button>
                 </div>
                 <p v-if="promotionError" class="text-xs font-bold text-red-500">{{ promotionError }}</p>
@@ -1580,9 +1586,9 @@
                 <div class="min-w-0">
                   <div class="mb-1 flex items-center gap-2">
                     <span class="material-symbols-rounded text-[18px] text-accent">check_circle</span>
-                    <span class="truncate text-sm font-black text-accent-mid">ใช้โค้ด {{ promotionCode }} แล้ว</span>
+                    <span class="truncate text-sm font-black text-accent-mid">{{ $t('ใช้โค้ด {promotionCode} แล้ว', { promotionCode }) }}</span>
                   </div>
-                  <p class="text-xs font-bold text-accent">ส่วนลด ฿{{ discountAmount.toLocaleString() }}</p>
+                  <p class="text-xs font-bold text-accent">{{ $t('ส่วนลด ฿{toLocaleString}', { toLocaleString: discountAmount.toLocaleString() }) }}</p>
                 </div>
                 <button @click="removePromotion" class="shrink-0 rounded-full p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500">
                   <span class="material-symbols-rounded text-xl">close</span>
@@ -1599,7 +1605,7 @@
                 class="w-full bg-accent text-white py-4 rounded-2xl font-black text-lg hover:bg-accent-mid active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3 group">
                 <span v-if="lockingSeats" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                 <span v-else class="material-symbols-rounded transition-transform group-hover:scale-110">lock_outline</span>
-                <span>{{ lockingSeats ? 'กำลังตรวจสอบที่นั่ง...' : 'ไปกรอกข้อมูลผู้จอง' }}</span>
+                <span>{{ lockingSeats ? $t('กำลังตรวจสอบที่นั่ง...') : $t('ไปกรอกข้อมูลผู้จอง') }}</span>
               </button>
 
               <!-- Passenger info confirmed, go to summary step -->
@@ -1608,7 +1614,7 @@
                 class="w-full bg-accent text-white py-4 rounded-2xl font-black text-lg hover:bg-accent-mid active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-3"
                 :class="{ 'opacity-60': attempted && !isPassengerValid }">
                 <span class="material-symbols-rounded">fact_check</span>
-                <span>ดูสรุปการจอง</span>
+                <span>{{ $t('ดูสรุปการจอง') }}</span>
                 <span class="material-symbols-rounded">arrow_forward</span>
               </button>
 
@@ -1619,20 +1625,20 @@
                 class="w-full bg-accent text-white py-4 rounded-2xl font-black text-lg hover:bg-accent-mid active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
                 <span v-if="bookingLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                 <span v-else class="material-symbols-rounded">payment</span>
-                <span>{{ bookingLoading ? 'กำลังสร้างการจอง...' : 'ยืนยันและชำระเงิน' }}</span>
+                <span>{{ bookingLoading ? $t('กำลังสร้างการจอง...') : $t('ยืนยันและชำระเงิน') }}</span>
               </button>
             </div>
 
             <!-- Validation Feedback -->
             <div v-if="step === (isTrekking ? 1 : 0) && hasSeatMap && !seatsStore.hasSelectedSeats" class="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-100 text-[11px] text-amber-700 font-bold flex items-center gap-2">
               <span class="material-symbols-rounded text-base">info</span>
-              กรุณาเลือกที่นั่งในแผนผังเพื่อดำเนินการต่อ
+              {{ $t('กรุณาเลือกที่นั่งในแผนผังเพื่อดำเนินการต่อ') }}
             </div>
 
             <div class="mt-6 flex items-start justify-center gap-2 text-gray-400">
               <span class="material-symbols-rounded text-[16px] mt-px">info</span>
               <span class="text-[11px] font-medium leading-relaxed">
-                ยังไม่มีการตัดเงินในขั้นตอนนี้ · ขั้นถัดไปคือโอนผ่าน PromptPay แล้วแนบสลิป
+                {{ $t('ยังไม่มีการตัดเงินในขั้นตอนนี้ · ขั้นถัดไปคือโอนผ่าน PromptPay แล้วแนบสลิป') }}
               </span>
             </div>
           </div>
@@ -1643,10 +1649,10 @@
     <!-- Not found -->
     <div v-else class="flex flex-col items-center justify-center min-h-[50vh] text-gray-500">
       <span class="material-symbols-rounded text-[80px] mb-4 text-gray-300" style="font-variation-settings:'FILL' 0,'wght' 300">sentiment_dissatisfied</span>
-      <p class="text-lg font-bold text-gray-700 mb-1">ไม่พบข้อมูลรอบเดินทาง</p>
-      <p class="text-sm">อาจถูกยกเลิก หรือ ไม่มีในระบบ</p>
+      <p class="text-lg font-bold text-gray-700 mb-1">{{ $t('ไม่พบข้อมูลรอบเดินทาง') }}</p>
+      <p class="text-sm">{{ $t('อาจถูกยกเลิก หรือ ไม่มีในระบบ') }}</p>
       <router-link to="/trips" class="mt-6 bg-white border-2 border-gray-200 text-gray-700 px-6 py-3 rounded-2xl font-bold text-sm hover:bg-gray-50 transition-colors">
-        กลับไปหน้ากิจกรรม
+        {{ $t('กลับไปหน้ากิจกรรม') }}
       </router-link>
     </div>
     
@@ -1661,10 +1667,10 @@
             <div class="sm:hidden w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4"></div>
             <div class="flex items-start gap-3">
               <div class="flex-1 min-w-0">
-                <h3 id="traveller-picker-title" class="text-lg font-extrabold text-gray-900 leading-tight">สมุดผู้ร่วมเดินทาง</h3>
-                <p class="mt-1 text-sm text-gray-500 font-medium">เลือกคนที่เคยเดินทางด้วยกัน เพื่อกรอกเป็นผู้เดินทางคนที่ {{ travellerPickerIndex + 1 }}</p>
+                <h3 id="traveller-picker-title" class="text-lg font-extrabold text-gray-900 leading-tight">{{ $t('สมุดผู้ร่วมเดินทาง') }}</h3>
+                <p class="mt-1 text-sm text-gray-500 font-medium">{{ $t('เลือกคนที่เคยเดินทางด้วยกัน เพื่อกรอกเป็นผู้เดินทางคนที่ {v}', { v: travellerPickerIndex + 1 }) }}</p>
               </div>
-              <button @click="showTravellerPicker = false" class="w-9 h-9 -mt-1 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors active:scale-95 shrink-0" aria-label="ปิด">
+              <button @click="showTravellerPicker = false" class="w-9 h-9 -mt-1 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors active:scale-95 shrink-0" :aria-label="$t('ปิด')">
                 <span class="material-symbols-rounded text-gray-500 text-[21px]">close</span>
               </button>
             </div>
@@ -1677,9 +1683,9 @@
 
             <div v-else-if="!savedTravellers.length" class="py-10 text-center">
               <span class="material-symbols-rounded text-gray-300 text-5xl">contacts</span>
-              <p class="mt-3 font-bold text-gray-700">ยังไม่มีใครในสมุด</p>
+              <p class="mt-3 font-bold text-gray-700">{{ $t('ยังไม่มีใครในสมุด') }}</p>
               <p class="mt-1 text-sm text-gray-500 font-medium leading-relaxed">
-                หลังจองเสร็จ ระบบจะถามว่าจะเก็บผู้ร่วมเดินทางไว้ใช้รอบหน้าไหม<br />เก็บไว้แล้วครั้งต่อไปเลือกได้เลย ไม่ต้องกรอกใหม่
+                {{ $t('หลังจองเสร็จ ระบบจะถามว่าจะเก็บผู้ร่วมเดินทางไว้ใช้รอบหน้าไหม') }}<br />{{ $t('เก็บไว้แล้วครั้งต่อไปเลือกได้เลย ไม่ต้องกรอกใหม่') }}
               </p>
             </div>
 
@@ -1695,7 +1701,7 @@
                       {{ t.name }}<span v-if="t.nickname" class="text-gray-400 font-medium"> ({{ t.nickname }})</span>
                     </p>
                     <p class="text-xs text-gray-500 font-medium truncate">
-                      {{ t.phone || 'ไม่มีเบอร์โทร' }}<span v-if="t.times_used"> · เคยใช้ {{ t.times_used }} ครั้ง</span>
+                      {{ t.phone || $t('ไม่มีเบอร์โทร') }}<span v-if="t.times_used"> {{ $t('· เคยใช้ {times_used} ครั้ง', { times_used: t.times_used }) }}</span>
                     </p>
                   </div>
                   <span class="material-symbols-rounded text-gray-300 text-[20px] shrink-0">chevron_right</span>
@@ -1721,8 +1727,8 @@
             <div class="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mb-4">
               <span class="material-symbols-rounded text-4xl" style="font-variation-settings:'FILL' 1">security</span>
             </div>
-            <h3 class="text-2xl font-bold">รายละเอียดความคุ้มครองประกันภัย</h3>
-            <p class="text-white/80 text-sm mt-1">เพื่อความปลอดภัยและความอุ่นใจในการเดินทางไปกับเรา</p>
+            <h3 class="text-2xl font-bold">{{ $t('รายละเอียดความคุ้มครองประกันภัย') }}</h3>
+            <p class="text-white/80 text-sm mt-1">{{ $t('เพื่อความปลอดภัยและความอุ่นใจในการเดินทางไปกับเรา') }}</p>
           </div>
           <div class="p-8">
             <div class="space-y-6 max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-emerald-200">
@@ -1731,8 +1737,8 @@
                   <span class="material-symbols-rounded text-accent">health_and_safety</span>
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-bold text-gray-900 text-sm mb-1">การเสียชีวิตและทุพพลภาพ</h4>
-                  <p class="text-sm text-gray-600 leading-relaxed">การเสียชีวิต การสูญเสียอวัยวะ สายตา หรือทุพพลภาพถาวรสิ้นเชิงเนื่องจากอุบัติเหตุ <span class="font-bold text-accent">1,000,000 บาท</span></p>
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">{{ $t('การเสียชีวิตและทุพพลภาพ') }}</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">{{ $t('การเสียชีวิต การสูญเสียอวัยวะ สายตา หรือทุพพลภาพถาวรสิ้นเชิงเนื่องจากอุบัติเหตุ') }} <span class="font-bold text-accent">{{ $t('1,000,000 บาท') }}</span></p>
                 </div>
               </div>
               <div class="flex gap-4">
@@ -1740,8 +1746,8 @@
                   <span class="material-symbols-rounded text-accent">medical_services</span>
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-bold text-gray-900 text-sm mb-1">ค่ารักษาพยาบาลจากอุบัติเหตุ</h4>
-                  <p class="text-sm text-gray-600 leading-relaxed">การรักษาพยาบาลเนื่องจากการบาดเจ็บจากอุบัติเหตุ <span class="font-bold text-accent">500,000 บาท</span></p>
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">{{ $t('ค่ารักษาพยาบาลจากอุบัติเหตุ') }}</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">{{ $t('การรักษาพยาบาลเนื่องจากการบาดเจ็บจากอุบัติเหตุ') }} <span class="font-bold text-accent">{{ $t('500,000 บาท') }}</span></p>
                 </div>
               </div>
               <div class="flex gap-4">
@@ -1749,8 +1755,8 @@
                   <span class="material-symbols-rounded text-accent">gavel</span>
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-bold text-gray-900 text-sm mb-1">ความรับผิดชอบต่อบุคคลภายนอก</h4>
-                  <p class="text-sm text-gray-600 leading-relaxed">ความรับผิดชอบตามกฎหมายต่อบุคคลภายนอก <span class="font-bold text-accent">200,000 บาท</span></p>
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">{{ $t('ความรับผิดชอบต่อบุคคลภายนอก') }}</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">{{ $t('ความรับผิดชอบตามกฎหมายต่อบุคคลภายนอก') }} <span class="font-bold text-accent">{{ $t('200,000 บาท') }}</span></p>
                 </div>
               </div>
               <div class="flex gap-4">
@@ -1758,8 +1764,8 @@
                   <span class="material-symbols-rounded text-accent">restaurant</span>
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-bold text-gray-900 text-sm mb-1">ค่ารักษาอาหารเป็นพิษ</h4>
-                  <p class="text-sm text-gray-600 leading-relaxed">ค่ารักษาพยาบาลอันเกิดจากโรคอาหารเป็นพิษ <span class="font-bold text-accent">5,000 บาท</span></p>
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">{{ $t('ค่ารักษาอาหารเป็นพิษ') }}</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">{{ $t('ค่ารักษาพยาบาลอันเกิดจากโรคอาหารเป็นพิษ') }} <span class="font-bold text-accent">{{ $t('5,000 บาท') }}</span></p>
                 </div>
               </div>
               <div class="flex gap-4">
@@ -1767,8 +1773,8 @@
                   <span class="material-symbols-rounded text-accent">emergency_share</span>
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-bold text-gray-900 text-sm mb-1">การเคลื่อนย้ายฉุกเฉิน</h4>
-                  <p class="text-sm text-gray-600 leading-relaxed">การเคลื่อนย้ายเพื่อการรักษาพยาบาลฉุกเฉินหรือการเคลื่อนย้ายกลับประเทศเนื่องจากการบาดเจ็บจากอุบัติเหตุ <span class="font-bold text-accent">100,000 บาท</span></p>
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">{{ $t('การเคลื่อนย้ายฉุกเฉิน') }}</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">{{ $t('การเคลื่อนย้ายเพื่อการรักษาพยาบาลฉุกเฉินหรือการเคลื่อนย้ายกลับประเทศเนื่องจากการบาดเจ็บจากอุบัติเหตุ') }} <span class="font-bold text-accent">{{ $t('100,000 บาท') }}</span></p>
                 </div>
               </div>
               <div class="flex gap-4">
@@ -1776,14 +1782,14 @@
                   <span class="material-symbols-rounded text-accent">flight_takeoff</span>
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-bold text-gray-900 text-sm mb-1">การส่งศพหรืออัฐิกลับประเทศ</h4>
-                  <p class="text-sm text-gray-600 leading-relaxed">ค่าใช้จ่ายในการส่งศพหรืออัฐิกลับประเทศเนื่องจากการเสียชีวิตจากอุบัติเหตุ <span class="font-bold text-accent">100,000 บาท</span></p>
+                  <h4 class="font-bold text-gray-900 text-sm mb-1">{{ $t('การส่งศพหรืออัฐิกลับประเทศ') }}</h4>
+                  <p class="text-sm text-gray-600 leading-relaxed">{{ $t('ค่าใช้จ่ายในการส่งศพหรืออัฐิกลับประเทศเนื่องจากการเสียชีวิตจากอุบัติเหตุ') }} <span class="font-bold text-accent">{{ $t('100,000 บาท') }}</span></p>
                 </div>
               </div>
             </div>
             
             <button @click="showInsuranceModal = false" class="w-full bg-accent text-white font-bold py-4 rounded-2xl hover:bg-accent-mid active:scale-[0.98] transition-all mt-8">
-              รับทราบ
+              {{ $t('รับทราบ') }}
             </button>
           </div>
         </div>
@@ -1796,17 +1802,17 @@
         <!-- ในขั้นกรอกข้อมูล สิ่งที่คนอยากรู้คือเหลืออีกกี่ช่อง ไม่ใช่ยอดเงิน -->
         <button v-if="isPassengerStep && missingFieldCount > 0" type="button"
           @click="jumpToMissing" class="text-left shrink-0">
-          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ยังกรอกไม่ครบ</p>
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ $t('ยังกรอกไม่ครบ') }}</p>
           <p class="text-sm font-extrabold text-gray-900 flex items-center gap-1">
-            เหลือ {{ missingFieldCount }} ช่อง
+            {{ $t('เหลือ {missingFieldCount} ช่อง', { missingFieldCount }) }}
             <span class="material-symbols-rounded text-[16px] text-gray-400">arrow_downward</span>
           </p>
         </button>
         <!-- `window` ใช้ใน template ไม่ได้ (Vue ไม่เปิดให้) — เดิมกดตรงนี้แล้ว error -->
         <div v-else @click="scrollToTop" class="shrink-0 cursor-pointer">
-          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ยอดรวมสุทธิ</p>
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ $t('ยอดรวมสุทธิ') }}</p>
           <p class="text-xl font-extrabold text-accent font-anuphan tracking-tight">
-            <span class="text-sm mr-0.5">฿</span>{{ totalAmount.toLocaleString() }}
+            <span class="text-sm mr-0.5">{{ $t('฿') }}</span>{{ totalAmount.toLocaleString() }}
           </p>
         </div>
 
@@ -1814,7 +1820,7 @@
           @click="lockAndNext"
           :disabled="!seatsStore.hasSelectedSeats || lockingSeats"
           class="flex-1 bg-accent text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-accent-mid active:scale-95 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2">
-          <span>{{ lockingSeats ? 'ล็อคที่นั่ง...' : 'ไปกรอกข้อมูล' }}</span>
+          <span>{{ lockingSeats ? $t('ล็อคที่นั่ง...') : $t('ไปกรอกข้อมูล') }}</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
         </button>
 
@@ -1822,7 +1828,7 @@
           @click="goToSummary"
           class="flex-1 bg-accent text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-accent-mid active:scale-95 transition-all flex items-center justify-center gap-2"
           :class="{ 'opacity-60': attempted && !isPassengerValid }">
-          <span>ดูสรุปการจอง</span>
+          <span>{{ $t('ดูสรุปการจอง') }}</span>
           <span class="material-symbols-rounded text-lg">arrow_forward</span>
         </button>
 
@@ -1830,7 +1836,7 @@
           @click="createBooking"
           :disabled="bookingLoading"
           class="flex-1 bg-accent text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-accent-mid active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-          <span>{{ bookingLoading ? 'กำลังสร้าง...' : 'ชำระเงิน' }}</span>
+          <span>{{ bookingLoading ? $t('กำลังสร้าง...') : $t('ชำระเงิน') }}</span>
           <span class="material-symbols-rounded text-lg">payment</span>
         </button>
 
@@ -1856,6 +1862,8 @@
 </template>
 
 <script setup>
+import { $t, isEnglish, localePath } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
@@ -1877,7 +1885,8 @@ import { bookableSeats, joinTripAvailableSeats, joinTripFull, joinTripSeatLabel 
 import { toBangkokDate } from '../lib/bangkokDate';
 import { beginCheckout } from '../lib/analytics';
 import { storedPartnerRef } from '../lib/partnerRef';
-import { BOOKING_TERMS, termsVersion } from '../lib/policy';
+import { bookingTerms, termsVersion } from '../lib/policy';
+import { nationalityOptions } from '../lib/nationalities';
 
 const route = useRoute();
 const router = useRouter();
@@ -1974,14 +1983,17 @@ const seatSelectionDisabledReason = computed(() =>
   isJoinTrip.value ? '' : (seatsStore.seatMap?.seat_selection_disabled_reason || ''));
 const isDiving = computed(() => ['diving', 'snorkeling'].includes(schedule.value?.trip?.type));
 const isInternational = computed(() => schedule.value?.trip?.is_international === true);
+// หน้าไทยตั้งสัญชาติไทยไว้ก่อน หน้าอังกฤษให้เลือกเอง — คนที่อ่านหน้าอังกฤษส่วนใหญ่ไม่ใช่คนไทย
+// ตั้งไทยไว้ให้ก็เท่ากับบังคับให้กรอกเลขบัตรประชาชนที่เขาไม่มี
+const DEFAULT_NATIONALITY = isEnglish ? '' : 'TH';
 // เอกสารเดินทางที่ทริปนี้ถาม — passport | passport_or_border_pass | on_site
 // (backend เก่าที่ยังไม่ส่งค่านี้ = พาสปอร์ตเหมือนเดิม)
 const travelDocumentMode = computed(() => schedule.value?.trip?.travel_document_mode
   ?? (isInternational.value ? 'passport' : null));
 const collectsPassport = computed(() => ['passport', 'passport_or_border_pass'].includes(travelDocumentMode.value));
 const travelDocumentOptions = [
-  { value: 'passport', label: 'มีพาสปอร์ต', hint: 'อายุเหลือเกิน 6 เดือนนับจากวันเดินทาง' },
-  { value: 'border_pass', label: 'ไม่มี ให้ทีมงานทำ Border Pass', hint: 'ใช้เลขบัตรประชาชน ไม่ต้องกรอกเพิ่ม' },
+  { value: 'passport', label: $t('มีพาสปอร์ต'), hint: $t('อายุเหลือเกิน 6 เดือนนับจากวันเดินทาง') },
+  { value: 'border_pass', label: $t('ไม่มี ให้ทีมงานทำ Border Pass'), hint: $t('ใช้เลขบัตรประชาชน ไม่ต้องกรอกเพิ่ม') },
 ];
 // รอบที่บินไปไม่มีรถวิ่งรับเช่นกัน — การบินเป็นคุณสมบัติของ "รอบ" ไม่ใช่ของทริป
 // (ทริปในประเทศก็บินได้) จึงต้องเช็คแยกจาก is_international
@@ -2101,11 +2113,11 @@ function clearCustomPickup() {
 
 const steps = computed(() => {
   if (isTrekking.value) {
-    if (hasSeatMap.value) return ['เลือกจุดรับ', 'ผังที่นั่ง', 'ข้อมูลผู้เดินทาง', 'ชำระเงิน'];
-    return ['เลือกจุดรับ', 'ข้อมูลผู้เดินทาง', 'ชำระเงิน'];
+    if (hasSeatMap.value) return [$t('เลือกจุดรับ'), $t('ผังที่นั่ง'), $t('ข้อมูลผู้เดินทาง'), $t('ชำระเงิน')];
+    return [$t('เลือกจุดรับ'), $t('ข้อมูลผู้เดินทาง'), $t('ชำระเงิน')];
   }
-  if (hasSeatMap.value) return ['ผังที่นั่ง', 'ข้อมูลผู้เดินทาง', 'ชำระเงิน'];
-  return ['ข้อมูลผู้เดินทาง', 'ชำระเงิน'];
+  if (hasSeatMap.value) return [$t('ผังที่นั่ง'), $t('ข้อมูลผู้เดินทาง'), $t('ชำระเงิน')];
+  return [$t('ข้อมูลผู้เดินทาง'), $t('ชำระเงิน')];
 });
 
 // ระยะทางเส้นตรง (กม.) — ใช้แค่จัดอันดับว่าจุดรับไหนใกล้หมุดกว่ากัน
@@ -2200,7 +2212,7 @@ const rentalOptions = computed(() => {
 });
 
 const passengers = ref([{
-  title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
+  title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: DEFAULT_NATIONALITY, passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_relation: '', emergency_phone: '',
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null, pickup_point_id: null
 }]);
@@ -2272,12 +2284,12 @@ async function offerDraftRestore() {
   if (!draft) return;
 
   const { isConfirmed } = await Swal.fire({
-    title: 'กรอกต่อจากที่ค้างไว้ไหมครับ',
-    text: `พบข้อมูลที่กรอกค้างไว้ของทริปนี้ (${draft.data.passengers.length} คน) จะดึงกลับมาให้ไหมครับ ยกเว้นเลขบัตรประชาชนและเลขพาสปอร์ตที่ต้องกรอกใหม่`,
+    title: $t('กรอกต่อจากที่ค้างไว้ไหมครับ'),
+    text: $t('พบข้อมูลที่กรอกค้างไว้ของทริปนี้ ({length} คน) จะดึงกลับมาให้ไหมครับ ยกเว้นเลขบัตรประชาชนและเลขพาสปอร์ตที่ต้องกรอกใหม่', { length: draft.data.passengers.length }),
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'กรอกต่อ',
-    cancelButtonText: 'เริ่มใหม่',
+    confirmButtonText: $t('กรอกต่อ'),
+    cancelButtonText: $t('เริ่มใหม่'),
     customClass: {
       popup: 'swal-popup',
       confirmButton: 'swal-btn-confirm',
@@ -2294,7 +2306,7 @@ async function offerDraftRestore() {
     return;
   }
   applyFormData(draft.data);
-  toast.success('ดึงข้อมูลที่กรอกค้างไว้กลับมาแล้ว');
+  toast.success($t('ดึงข้อมูลที่กรอกค้างไว้กลับมาแล้ว'));
 }
 
 function restoreFormData() {
@@ -2361,7 +2373,7 @@ const isSummaryStep = computed(() => step.value === (isTrekking.value ? 3 : 2));
 
 // ปุ่มถัดไปของขั้นเลือกจุดรับ — ขั้นถัดไปคือผังที่นั่งก็ต่อเมื่อรอบนี้มีผังจริง
 // (เดิมดูจากว่ามีจุดรับไหม ทำให้รอบที่ไม่มีผังขึ้นว่า "ไปเลือกที่นั่ง")
-const regionNextLabel = computed(() => (hasSeatMap.value ? 'ไปเลือกที่นั่ง' : 'ไปกรอกข้อมูล'));
+const regionNextLabel = computed(() => (hasSeatMap.value ? $t('ไปเลือกที่นั่ง') : $t('ไปกรอกข้อมูล')));
 
 // ย้อนกลับจากขั้นกรอกข้อมูล — ขั้นแรกสุดอยู่แล้วก็ออกไปหน้าทริป
 // (เดิมตั้ง step = -1 ก่อน navigate ทำให้หน้าว่างวูบหนึ่ง)
@@ -2393,7 +2405,7 @@ watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
   while (passengers.value.length < n) {
     passengers.value.push({
-      title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: 'TH', passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
+      title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: DEFAULT_NATIONALITY, passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
       health_notes: '', emergency_contact: '', emergency_relation: '', emergency_phone: '',
       dive_cert_level: '', cert_number: '', weight: null, halal_food: null,
       pickup_point_id: selectedPickup.value?.id ?? null
@@ -2414,8 +2426,8 @@ function autoFillFromProfile(index) {
   
   if (isFemaleTrip && isMaleTitle) {
     swal.warning(
-      'ทริปสำหรับผู้หญิงเท่านั้น',
-      'ขออภัยครับ ทริปนี้จำกัดเฉพาะผู้หญิงเท่านั้น ระบบจะดึงข้อมูลส่วนอื่นๆ ยกเว้นคำนำหน้าชื่อครับ'
+      $t('ทริปสำหรับผู้หญิงเท่านั้น'),
+      $t('ขออภัยครับ ทริปนี้จำกัดเฉพาะผู้หญิงเท่านั้น ระบบจะดึงข้อมูลส่วนอื่นๆ ยกเว้นคำนำหน้าชื่อครับ')
     );
   }
 
@@ -2426,7 +2438,7 @@ function autoFillFromProfile(index) {
     nickname: user.nickname || '',
     id_card: user.id_card || '',
     name_en: user.name_en || '',
-    nationality: user.nationality || 'TH',
+    nationality: user.nationality || DEFAULT_NATIONALITY,
     passport_no: user.passport_no || '',
     passport_expires_at: user.passport_expires_at || '',
     birth_date: user.birth_date || '',
@@ -2442,7 +2454,7 @@ function autoFillFromProfile(index) {
   syncBirthParts(passengers.value[index]);
 
   if (!(isFemaleTrip && isMaleTitle)) {
-    toast.success('ดึงข้อมูลจากโปรไฟล์สำเร็จ');
+    toast.success($t('ดึงข้อมูลจากโปรไฟล์สำเร็จ'));
   }
 }
 
@@ -2460,22 +2472,17 @@ function copyFromFirst(index) {
     halal_food: first.halal_food,
     pickup_point_id: first.pickup_point_id ?? passengers.value[index].pickup_point_id,
   };
-  toast.success('คัดลอกข้อมูลที่ใช้ร่วมกันจากคนที่ 1 แล้ว');
+  toast.success($t('คัดลอกข้อมูลที่ใช้ร่วมกันจากคนที่ 1 แล้ว'));
 }
 
 // ── สมุดผู้ร่วมเดินทาง ────────────────────────────────────────────────
 const showTravellerPicker = ref(false);
 const travellerPickerIndex = ref(0);
-// ทะเบียนประเทศจาก backend — ใช้เป็นตัวเลือกสัญชาติในทริปต่างประเทศ
+// ตัวเลือกสัญชาติ — ทุกประเทศ ชื่อตามภาษาของหน้า (ทะเบียน /countries มีแค่ประเทศปลายทาง
+// ที่เราพาไป ลูกค้าต่างชาติจากประเทศอื่นจะหาสัญชาติตัวเองไม่เจอ) ดู lib/nationalities.js
 const countries = ref([]);
-async function loadCountries() {
-  try {
-    const res = await api.get('/countries');
-    countries.value = res.data.data || [];
-  } catch {
-    // เลือกสัญชาติอื่นไม่ได้ชั่วคราว — ค่าเริ่มต้น 'TH' ยังจองได้ตามปกติ
-    countries.value = [{ code: 'TH', name: 'ไทย', flag: '🇹🇭' }];
-  }
+function loadCountries() {
+  countries.value = nationalityOptions();
 }
 
 const savedTravellers = ref([]);
@@ -2492,7 +2499,7 @@ async function openTravellerPicker(index) {
     savedTravellers.value = res.data.data || [];
   } catch {
     savedTravellers.value = [];
-    toast.error('โหลดสมุดผู้ร่วมเดินทางไม่สำเร็จ');
+    toast.error($t('โหลดสมุดผู้ร่วมเดินทางไม่สำเร็จ'));
   } finally {
     savedTravellersLoading.value = false;
   }
@@ -2510,7 +2517,7 @@ function applySavedTraveller(traveller) {
     nickname: traveller.nickname || '',
     id_card: traveller.id_card || '',
     name_en: traveller.name_en || '',
-    nationality: traveller.nationality || 'TH',
+    nationality: traveller.nationality || DEFAULT_NATIONALITY,
     passport_no: traveller.passport_no || '',
     passport_expires_at: traveller.passport_expires_at || '',
     birth_date: traveller.birth_date || '',
@@ -2531,9 +2538,9 @@ function applySavedTraveller(traveller) {
   api.post(`/saved-travellers/${traveller.id}/used`).catch(() => {});
 
   if (!titleAllowed) {
-    toast.warning('ทริปนี้รับเฉพาะผู้หญิง กรุณาเลือกคำนำหน้าอีกครั้ง');
+    toast.warning($t('ทริปนี้รับเฉพาะผู้หญิง กรุณาเลือกคำนำหน้าอีกครั้ง'));
   } else {
-    toast.success(`กรอกข้อมูลของ ${traveller.nickname || traveller.name} แล้ว`);
+    toast.success($t('กรอกข้อมูลของ {v} แล้ว', { v: traveller.nickname || traveller.name }));
   }
 }
 
@@ -2547,7 +2554,7 @@ const todayDate = (() => {
 // Buddhist-era birth-date dropdowns. The selects edit birth_day/birth_month/
 // birth_year parts (year value stays C.E., displayed as พ.ศ. = +543), and
 // updateBirth() recombines them into the ISO YYYY-MM-DD that the backend wants.
-const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const thaiMonths = [$t('มกราคม'), $t('กุมภาพันธ์'), $t('มีนาคม'), $t('เมษายน'), $t('พฤษภาคม'), $t('มิถุนายน'), $t('กรกฎาคม'), $t('สิงหาคม'), $t('กันยายน'), $t('ตุลาคม'), $t('พฤศจิกายน'), $t('ธันวาคม')];
 const birthYears = (() => {
   const cur = new Date().getFullYear();
   const arr = [];
@@ -2601,8 +2608,8 @@ function isValidThaiId(value) {
 
 // ชื่อคนไทยไปทำประกัน ซึ่งรับเฉพาะชื่อไทยตามบัตร — ตรรกะเดียวกับ
 // App\Rules\ThaiName ฝั่ง backend (ข้อความต้องตรงกันด้วย)
-const THAI_NAME_NOT_THAI = 'กรุณากรอกชื่อ-นามสกุลเป็นภาษาไทยตามบัตรประชาชน (ใช้ส่งทำประกันการเดินทาง)';
-const THAI_NAME_NO_SURNAME = 'กรุณากรอกทั้งชื่อและนามสกุล เว้นวรรคระหว่างชื่อกับนามสกุล';
+const THAI_NAME_NOT_THAI = $t('กรุณากรอกชื่อ-นามสกุลเป็นภาษาไทยตามบัตรประชาชน (ใช้ส่งทำประกันการเดินทาง)');
+const THAI_NAME_NO_SURNAME = $t('กรุณากรอกทั้งชื่อและนามสกุล เว้นวรรคระหว่างชื่อกับนามสกุล');
 function thaiNameError(value) {
   const name = String(value || '').replace(/\s+/g, ' ').trim();
   if (!/^[\u0E00-\u0E7F .\-]+$/.test(name) || !/[\u0E01-\u0E2E]/.test(name)) return THAI_NAME_NOT_THAI;
@@ -2610,10 +2617,10 @@ function thaiNameError(value) {
   return '';
 }
 
-// คนไทยกรอกเบอร์/เลขบัตรแบบไทย ส่วนคนต่างชาติในทริปต่างประเทศใช้รูปแบบสากล
-// ทริปในประเทศถือว่าเป็นคนไทยทั้งหมดเสมอ — ฟอร์มไม่มีช่องสัญชาติให้เลือกด้วยซ้ำ
+// คนไทยกรอกเบอร์/เลขบัตรแบบไทย ส่วนคนต่างชาติใช้รูปแบบสากลและพาสปอร์ต — ทุกทริป
+// (ยังไม่ได้เลือกสัญชาติ = ยังไม่ใช่คนไทย ฟอร์มจะขอให้เลือกก่อน)
 function isThaiTraveller(p) {
-  return !isInternational.value || p.nationality === 'TH';
+  return p.nationality === 'TH';
 }
 
 // Border Pass ออกให้คนสัญชาติไทยเท่านั้น — ตรงกับ Trip::resolveTravelDocument
@@ -2623,6 +2630,8 @@ function canChooseBorderPass(p) {
 
 // คนนี้ต้องกรอกพาสปอร์ตไหม — ยังไม่ได้เลือกก็นับว่าต้อง (ฝั่ง backend ทำแบบเดียวกัน)
 function needsPassport(p) {
+  // คนต่างชาติในทริปในประเทศ: ประกันใช้ชื่ออังกฤษ + เลขพาสปอร์ต (ไม่ต้องมีวันหมดอายุ)
+  if (!isInternational.value && p.nationality && !isThaiTraveller(p)) return true;
   if (!collectsPassport.value) return false;
   return !(canChooseBorderPass(p) && p.travel_document === 'border_pass');
 }
@@ -2673,16 +2682,16 @@ function addDocFiles(i, key, event) {
   const current = isIdCard ? [] : [...docFiles(i, key)];
   for (const file of isIdCard ? picked.slice(-1) : picked) {
     if (current.length >= MAX_DOC_FILES) {
-      toast.error(`แนบได้สูงสุด ${MAX_DOC_FILES} ไฟล์ต่อเอกสารหนึ่งรายการ`);
+      toast.error($t('แนบได้สูงสุด {MAX_DOC_FILES} ไฟล์ต่อเอกสารหนึ่งรายการ', { MAX_DOC_FILES }));
       break;
     }
     if (file.size > MAX_DOC_MB * 1024 * 1024) {
-      toast.error(`"${file.name}" ใหญ่เกิน ${MAX_DOC_MB} MB`);
+      toast.error($t('"{name}" ใหญ่เกิน {MAX_DOC_MB} MB', { name: file.name, MAX_DOC_MB }));
       continue;
     }
     const isAllowed = file.type.startsWith('image/') || file.type === 'application/pdf';
     if (!isAllowed) {
-      toast.error(`"${file.name}" ไม่ใช่ไฟล์รูปภาพหรือ PDF`);
+      toast.error($t('"{name}" ไม่ใช่ไฟล์รูปภาพหรือ PDF', { name: file.name }));
       continue;
     }
     current.push(file);
@@ -2729,7 +2738,7 @@ async function uploadBookingDocuments(bookingRef, createdPassengers) {
   }
 
   if (failed > 0) {
-    toast.error(`แนบเอกสารไม่สำเร็จ ${failed} ไฟล์ — แนบใหม่ได้ที่หน้ารายละเอียดการจอง`);
+    toast.error($t('แนบเอกสารไม่สำเร็จ {failed} ไฟล์ — แนบใหม่ได้ที่หน้ารายละเอียดการจอง', { failed }));
   }
 }
 
@@ -2739,53 +2748,56 @@ async function uploadBookingDocuments(bookingRef, createdPassengers) {
 function computePassengerErrors(p, i) {
   const errors = {};
   const womenOnly = schedule.value?.trip?.is_women_only;
-  if (!p.title) errors.title = 'กรุณาเลือกคำนำหน้า';
-  else if (womenOnly && !['นาง', 'นางสาว'].includes(p.title)) errors.title = 'ทริปนี้สำหรับผู้หญิงเท่านั้น';
-  if (!hasText(p.name)) errors.name = 'กรุณากรอกชื่อ-นามสกุล';
+  if (!p.title) errors.title = $t('กรุณาเลือกคำนำหน้า');
+  else if (womenOnly && !['นาง', 'นางสาว'].includes(p.title)) errors.title = $t('ทริปนี้สำหรับผู้หญิงเท่านั้น');
+  if (!hasText(p.name)) errors.name = $t('กรุณากรอกชื่อ-นามสกุล');
   else if (isThaiTraveller(p)) {
     const nameError = thaiNameError(p.name);
     if (nameError) errors.name = nameError;
   }
-  if (!hasText(p.nickname)) errors.nickname = 'กรุณากรอกชื่อเล่น';
-  // ชาวต่างชาติที่ร่วมทริปต่างประเทศยืนยันตัวด้วยพาสปอร์ตแทนบัตรประชาชนไทย
+  if (!hasText(p.nickname)) errors.nickname = $t('กรุณากรอกชื่อเล่น');
+  if (!p.nationality) errors.nationality = $t('กรุณาเลือกสัญชาติ');
+  // ชาวต่างชาติยืนยันตัวด้วยพาสปอร์ตแทนบัตรประชาชนไทย
   const isThai = isThaiTraveller(p);
   if (isThai) {
-    if (!hasExactDigits(p.id_card, 13)) errors.id_card = 'กรุณากรอกเลขบัตรประชาชน 13 หลัก';
-    else if (!isValidThaiId(p.id_card)) errors.id_card = 'เลขบัตรประชาชนไม่ถูกต้อง ลองตรวจสอบอีกครั้งครับ';
+    if (!hasExactDigits(p.id_card, 13)) errors.id_card = $t('กรุณากรอกเลขบัตรประชาชน 13 หลัก');
+    else if (!isValidThaiId(p.id_card)) errors.id_card = $t('เลขบัตรประชาชนไม่ถูกต้อง ลองตรวจสอบอีกครั้งครับ');
   }
   if (canChooseBorderPass(p) && !p.travel_document) {
-    errors.travel_document = 'กรุณาเลือกว่ามีพาสปอร์ต หรือให้ทีมงานทำ Border Pass';
+    errors.travel_document = $t('กรุณาเลือกว่ามีพาสปอร์ต หรือให้ทีมงานทำ Border Pass');
   } else if (needsPassport(p)) {
-    if (!hasText(p.name_en)) errors.name_en = 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษตามพาสปอร์ต';
-    else if (!/^[A-Za-z\s.'-]+$/.test(p.name_en)) errors.name_en = 'กรอกได้เฉพาะตัวอักษรภาษาอังกฤษ';
-    if (!hasText(p.passport_no)) errors.passport_no = 'กรุณากรอกเลขที่พาสปอร์ต';
-    else if (!/^[A-Za-z0-9]{5,20}$/.test(p.passport_no)) errors.passport_no = 'เลขที่พาสปอร์ตไม่ถูกต้อง';
-    if (!hasText(p.passport_expires_at)) errors.passport_expires_at = 'กรุณาระบุวันหมดอายุพาสปอร์ต';
+    if (!hasText(p.name_en)) errors.name_en = $t('กรุณากรอกชื่อ-สกุลภาษาอังกฤษตามพาสปอร์ต');
+    else if (!/^[A-Za-z\s.'-]+$/.test(p.name_en)) errors.name_en = $t('กรอกได้เฉพาะตัวอักษรภาษาอังกฤษ');
+    if (!hasText(p.passport_no)) errors.passport_no = $t('กรุณากรอกเลขที่พาสปอร์ต');
+    else if (!/^[A-Za-z0-9]{5,20}$/.test(p.passport_no)) errors.passport_no = $t('เลขที่พาสปอร์ตไม่ถูกต้อง');
+    if (!collectsPassport.value) {
+      // ทริปในประเทศไม่ถามวันหมดอายุ
+    } else if (!hasText(p.passport_expires_at)) errors.passport_expires_at = $t('กรุณาระบุวันหมดอายุพาสปอร์ต');
     else if (minPassportExpiry.value && p.passport_expires_at < minPassportExpiry.value) {
-      errors.passport_expires_at = 'พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง';
+      errors.passport_expires_at = $t('พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง');
     }
   }
-  if (!hasText(p.birth_date)) errors.birth_date = 'กรุณาเลือกวัน/เดือน/ปีเกิด';
-  else if (p.birth_date >= todayDate) errors.birth_date = 'วัน/เดือน/ปีเกิดไม่ถูกต้อง';
+  if (!hasText(p.birth_date)) errors.birth_date = $t('กรุณาเลือกวัน/เดือน/ปีเกิด');
+  else if (p.birth_date >= todayDate) errors.birth_date = $t('วัน/เดือน/ปีเกิดไม่ถูกต้อง');
   if (isThai) {
-    if (!hasExactDigits(p.phone, 10)) errors.phone = 'กรุณากรอกเบอร์โทรศัพท์ 10 หลัก';
+    if (!hasExactDigits(p.phone, 10)) errors.phone = $t('กรุณากรอกเบอร์โทรศัพท์ 10 หลัก');
   } else if (!/^\+?[0-9][0-9 -]{7,19}$/.test(String(p.phone || ''))) {
-    errors.phone = 'กรุณากรอกเบอร์โทรศัพท์พร้อมรหัสประเทศ';
+    errors.phone = $t('กรุณากรอกเบอร์โทรศัพท์พร้อมรหัสประเทศ');
   }
-  if (bookingFor.value === 'friend' && i === 0 && !isValidEmail(p.email)) errors.email = 'กรุณากรอกอีเมลของเพื่อนให้ถูกต้อง';
-  if (!p.blood_group) errors.blood_group = 'กรุณาเลือกกรุ๊ปเลือด';
-  if (p.halal_food === null || p.halal_food === undefined) errors.halal_food = 'กรุณาเลือกตัวเลือกอาหารฮาลาล';
-  if (!hasText(p.emergency_contact)) errors.emergency_contact = 'กรุณากรอกผู้ติดต่อฉุกเฉิน';
-  if (!hasText(p.emergency_relation)) errors.emergency_relation = 'กรุณาเลือกว่าผู้ติดต่อเป็นอะไรกับผู้เดินทาง';
+  if (bookingFor.value === 'friend' && i === 0 && !isValidEmail(p.email)) errors.email = $t('กรุณากรอกอีเมลของเพื่อนให้ถูกต้อง');
+  if (!p.blood_group) errors.blood_group = $t('กรุณาเลือกกรุ๊ปเลือด');
+  if (p.halal_food === null || p.halal_food === undefined) errors.halal_food = $t('กรุณาเลือกตัวเลือกอาหารฮาลาล');
+  if (!hasText(p.emergency_contact)) errors.emergency_contact = $t('กรุณากรอกผู้ติดต่อฉุกเฉิน');
+  if (!hasText(p.emergency_relation)) errors.emergency_relation = $t('กรุณาเลือกว่าผู้ติดต่อเป็นอะไรกับผู้เดินทาง');
   if (isThai) {
-    if (!hasExactDigits(p.emergency_phone, 10)) errors.emergency_phone = 'กรุณากรอกเบอร์ฉุกเฉิน 10 หลัก';
+    if (!hasExactDigits(p.emergency_phone, 10)) errors.emergency_phone = $t('กรุณากรอกเบอร์ฉุกเฉิน 10 หลัก');
   } else if (!/^\+?[0-9][0-9 -]{7,19}$/.test(String(p.emergency_phone || ''))) {
-    errors.emergency_phone = 'กรุณากรอกเบอร์ฉุกเฉินพร้อมรหัสประเทศ';
+    errors.emergency_phone = $t('กรุณากรอกเบอร์ฉุกเฉินพร้อมรหัสประเทศ');
   }
-  if (!hasText(p.allergies)) errors.allergies = 'กรุณากรอกข้อมูลการแพ้อาหาร (หากไม่มีให้พิมพ์ "ไม่มี")';
-  if (!hasText(p.health_notes)) errors.health_notes = 'กรุณากรอกหมายเหตุสุขภาพ (หากไม่มีให้พิมพ์ "ไม่มี")';
+  if (!hasText(p.allergies)) errors.allergies = $t('กรุณากรอกข้อมูลการแพ้อาหาร (หากไม่มีให้พิมพ์ "ไม่มี")');
+  if (!hasText(p.health_notes)) errors.health_notes = $t('กรุณากรอกหมายเหตุสุขภาพ (หากไม่มีให้พิมพ์ "ไม่มี")');
   // เมื่อผู้ใช้ปักหมุดจุดรับเอง (customPickup) ถือว่าเลือกจุดรับแล้ว ไม่ต้องบังคับจุดที่กำหนดไว้
-  if (pickupPoints.value.length && !p.pickup_point_id && !customPickup.value) errors.pickup_point_id = 'กรุณาเลือกจุดขึ้นรถ';
+  if (pickupPoints.value.length && !p.pickup_point_id && !customPickup.value) errors.pickup_point_id = $t('กรุณาเลือกจุดขึ้นรถ');
   // เอกสารแนบไม่นับเป็นช่องที่ต้องกรอก — หลายคนยังไม่มีเอกสารในมือตอนจอง
   // จองก่อนแล้วตามมาแนบที่หน้ารายละเอียดการจองได้ ("บังคับ" = ต้องมีก่อนเดินทาง)
   return errors;
@@ -2848,7 +2860,7 @@ const addonLineTotal = (item) => item.price * (item.quantity ?? addonQty(item.in
 
 const addonsTotal = computed(() => selectedAddonItems.value.reduce((sum, item) => sum + addonLineTotal(item), 0));
 
-const addonPriceTypeLabel = (item) => item.price_type === 'per_person' ? 'ต่อคน' : 'ต่อชิ้น';
+const addonPriceTypeLabel = (item) => item.price_type === 'per_person' ? $t('ต่อคน') : $t('ต่อชิ้น');
 
 const selectedRentalItems = computed(() => rentalOptions.value
   .filter((item) => rentalQty(item.index) > 0)
@@ -2913,12 +2925,12 @@ async function applyPromotion() {
     if (res.data.valid) {
       promotionData.value = res.data.promotion;
       promotionCode.value = res.data.promotion.code;
-      toast.success('ใช้โค้ดส่วนลดสำเร็จ');
+      toast.success($t('ใช้โค้ดส่วนลดสำเร็จ'));
     }
   } catch (e) {
     promotionData.value = null;
     promotionCode.value = '';
-    promotionError.value = e.response?.data?.message || 'โค้ดส่วนลดไม่ถูกต้องหรือหมดอายุแล้ว';
+    promotionError.value = e.response?.data?.message || $t('โค้ดส่วนลดไม่ถูกต้องหรือหมดอายุแล้ว');
   } finally {
     promotionLoading.value = false;
   }
@@ -2932,7 +2944,7 @@ function removePromotion() {
 }
 
 function formatDate(d) {
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function selectRegion(pt) {
@@ -2948,7 +2960,7 @@ function confirmRegion() {
   // Move to seat map step (step 1) or passenger step (step 1) — step 0 is region
   if (!hasSeatMap.value) {
     seatsStore.startManualCountdown(
-      schedule.value?.trip?.title || 'กิจกรรม',
+      schedule.value?.trip?.title || $t('กิจกรรม'),
       route.params.scheduleId,
       selectedPickup.value?.region || preselectedRegion,
       passengerCount.value
@@ -2961,7 +2973,7 @@ function skipRegionStep() {
   selectedPickup.value = null;
   if (!hasSeatMap.value) {
     seatsStore.startManualCountdown(
-      schedule.value?.trip?.title || 'กิจกรรม',
+      schedule.value?.trip?.title || $t('กิจกรรม'),
       route.params.scheduleId,
       preselectedRegion,
       passengerCount.value
@@ -2976,7 +2988,7 @@ async function lockAndNext() {
   try {
     await seatsStore.lockSeats(route.params.scheduleId, seatsStore.selectedSeatIds);
     seatsStore.setActiveBookingInfo({
-      tripTitle: schedule.value?.trip?.title || 'กิจกรรม',
+      tripTitle: schedule.value?.trip?.title || $t('กิจกรรม'),
       scheduleId: route.params.scheduleId,
       region: preselectedRegion,
       step: isTrekking.value ? 2 : 1,
@@ -2985,9 +2997,9 @@ async function lockAndNext() {
     });
     passengerCount.value = seatsStore.selectedSeats.length;
     step.value = isTrekking.value ? 2 : 1;
-    toast.success(`ล็อคที่นั่ง ${seatsStore.selectedSeatIds.join(', ')} สำเร็จ`);
+    toast.success($t('ล็อคที่นั่ง {join} สำเร็จ', { join: seatsStore.selectedSeatIds.join(', ') }));
   } catch (e) {
-    seatError.value = e?.message || 'ไม่สามารถล็อคที่นั่งได้';
+    seatError.value = e?.message || $t('ไม่สามารถล็อคที่นั่งได้');
     toast.error(seatError.value);
   } finally {
     lockingSeats.value = false;
@@ -3013,7 +3025,7 @@ function goToSummary() {
     attempted.value = true;
     const idx = firstInvalidPassenger.value;
     const firstMsg = Object.values(passengerErrors.value[idx] || {})[0];
-    toast.error(`ผู้เดินทางคนที่ ${idx + 1}: ${firstMsg || 'กรุณากรอกข้อมูลให้ครบถ้วน'}`);
+    toast.error($t('ผู้เดินทางคนที่ {v}: {v2}', { v: idx + 1, v2: firstMsg || $t('กรุณากรอกข้อมูลให้ครบถ้วน') }));
     scrollToPassenger(idx);
     return;
   }
@@ -3027,12 +3039,12 @@ async function offerToSaveTravellers(bookingRef) {
   if (!authStore.isLoggedIn || passengers.value.length < 2) return;
 
   const { isConfirmed } = await Swal.fire({
-    title: 'เก็บผู้ร่วมเดินทางไว้ใช้รอบหน้าไหมครับ',
-    text: `ครั้งหน้าเลือกจากสมุดได้เลย ไม่ต้องกรอกใหม่ทั้ง ${passengers.value.length} คน`,
+    title: $t('เก็บผู้ร่วมเดินทางไว้ใช้รอบหน้าไหมครับ'),
+    text: $t('ครั้งหน้าเลือกจากสมุดได้เลย ไม่ต้องกรอกใหม่ทั้ง {length} คน', { length: passengers.value.length }),
     icon: 'question',
     showCancelButton: true,
-    confirmButtonText: 'เก็บไว้',
-    cancelButtonText: 'ไม่ต้อง',
+    confirmButtonText: $t('เก็บไว้'),
+    cancelButtonText: $t('ไม่ต้อง'),
     customClass: {
       popup: 'swal-popup',
       confirmButton: 'swal-btn-confirm',
@@ -3047,38 +3059,38 @@ async function offerToSaveTravellers(bookingRef) {
 
   try {
     const res = await api.post(`/bookings/${bookingRef}/save-travellers`);
-    toast.success(res.data.message || 'เก็บเข้าสมุดผู้ร่วมเดินทางแล้ว');
+    toast.success(res.data.message || $t('เก็บเข้าสมุดผู้ร่วมเดินทางแล้ว'));
   } catch {
-    toast.error('เก็บเข้าสมุดไม่สำเร็จ แต่การจองของคุณเรียบร้อยแล้วครับ');
+    toast.error($t('เก็บเข้าสมุดไม่สำเร็จ แต่การจองของคุณเรียบร้อยแล้วครับ'));
   }
 }
 
 async function createBooking() {
   const { isConfirmed } = await Swal.fire({
-    title: 'เงื่อนไขก่อนยืนยันการจอง',
+    title: $t('เงื่อนไขก่อนยืนยันการจอง'),
     html: `
       <div style="text-align:left; font-size:14px; color:#374151; line-height:1.7;">
-        <p style="font-weight:700; color:#0f766e; margin-bottom:10px; font-size:15px;">การสำรองที่นั่ง และการเปลี่ยนแปลง</p>
+        <p style="font-weight:700; color:#0f766e; margin-bottom:10px; font-size:15px;">${$t('การสำรองที่นั่ง และการเปลี่ยนแปลง')}</p>
         <ol style="padding-left:18px; margin:0 0 16px 0; display:flex; flex-direction:column; gap:8px;">
-          ${BOOKING_TERMS.map((rule, i) => `<li>${i + 1}. ${rule}</li>`).join('')}
+          ${bookingTerms().map((rule, i) => `<li>${i + 1}. ${rule}</li>`).join('')}
         </ol>
         <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px; color:#166534;">
-          <strong>สรุปการจอง:</strong> จำนวน ${passengers.value.length} ท่าน · ฿${totalAmount.value.toLocaleString()}
+          <strong>${$t('สรุปการจอง:')}</strong> ${$t('จำนวน {n} ท่าน', { n: passengers.value.length })} · ฿${totalAmount.value.toLocaleString()}
         </div>
         <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; user-select:none;">
           <input type="checkbox" id="swal-terms-checkbox" style="margin-top:3px; width:16px; height:16px; accent-color:#0f766e; cursor:pointer; flex-shrink:0;" />
-          <span>ข้าพเจ้าได้อ่านและ<strong>ยอมรับเงื่อนไข</strong>ข้างต้นทุกข้อแล้ว</span>
+          <span>${$t('ข้าพเจ้าได้อ่านและ<strong>ยอมรับเงื่อนไข</strong>ข้างต้นทุกข้อแล้ว')}</span>
         </label>
         <p style="margin:12px 0 0; font-size:12px; color:#6b7280;">
-          อ่านฉบับเต็มได้ที่ <a href="/terms" target="_blank" rel="noopener" style="color:#0f766e; font-weight:600;">เงื่อนไขการให้บริการ</a>${termsVersion() ? ` (ฉบับที่ ${termsVersion()})` : ''}
+          ${$t('อ่านฉบับเต็มได้ที่')} <a href="${localePath('/terms')}" target="_blank" rel="noopener" style="color:#0f766e; font-weight:600;">${$t('เงื่อนไขการให้บริการ')}</a>${termsVersion() ? $t(' (ฉบับที่ {termsVersion})', { termsVersion: termsVersion() }) : ''}${isEnglish ? '<br>This English translation is provided for convenience; the Thai version prevails.' : ''}
         </p>
       </div>
     `,
     icon: 'info',
     showCancelButton: true,
-    confirmButtonText: 'ยืนยันและชำระเงิน',
+    confirmButtonText: $t('ยืนยันและชำระเงิน'),
 
-    cancelButtonText: 'ยกเลิก',
+    cancelButtonText: $t('ยกเลิก'),
     customClass: {
       popup: 'swal-popup',
       confirmButton: 'swal-btn-confirm',
@@ -3091,7 +3103,7 @@ async function createBooking() {
     preConfirm: () => {
       const cb = document.getElementById('swal-terms-checkbox');
       if (!cb || !cb.checked) {
-        Swal.showValidationMessage('กรุณายอมรับเงื่อนไขก่อนดำเนินการต่อ');
+        Swal.showValidationMessage($t('กรุณายอมรับเงื่อนไขก่อนดำเนินการต่อ'));
         return false;
       }
       return true;
@@ -3129,9 +3141,9 @@ async function createBooking() {
         // digitsOnly ใช้ได้เฉพาะกับเบอร์ไทย — เบอร์ต่างประเทศมี + นำหน้าที่ตัดทิ้งไม่ได้
         id_card: isThaiTraveller(p) ? digitsOnly(p.id_card) : null,
         name_en: needsPassport(p) ? String(p.name_en || '').trim().toUpperCase() : null,
-        nationality: isInternational.value ? (p.nationality || 'TH') : 'TH',
+        nationality: p.nationality || 'TH',
         passport_no: needsPassport(p) ? String(p.passport_no || '').trim().toUpperCase() : null,
-        passport_expires_at: needsPassport(p) ? (p.passport_expires_at || null) : null,
+        passport_expires_at: collectsPassport.value && needsPassport(p) ? (p.passport_expires_at || null) : null,
         travel_document: canChooseBorderPass(p) ? (p.travel_document || null) : null,
         birth_date: p.birth_date || null,
         phone: isThaiTraveller(p) ? digitsOnly(p.phone) : String(p.phone || '').trim(),
@@ -3186,14 +3198,14 @@ async function createBooking() {
     const res = await bookingStore.createBooking(data);
     seatsStore.clearSelection();
     clearFormData();
-    toast.success('สร้างการจองสำเร็จ! กำลังไปยังหน้าชำระเงิน...');
+    toast.success($t('สร้างการจองสำเร็จ! กำลังไปยังหน้าชำระเงิน...'));
     // เอกสารแนบต้องมี booking_ref ก่อน จึงส่งตามหลังการจอง — ผู้เดินทางกลับมา
     // ตามลำดับเดียวกับที่ส่งไป จึงจับคู่กับไฟล์ด้วยลำดับได้
     await uploadBookingDocuments(res.data.booking_ref, res.data.passengers);
     await offerToSaveTravellers(res.data.booking_ref);
     router.push(`/payment/${res.data.booking_ref}`);
   } catch (e) {
-    bookingError.value = e?.response?.data?.message || 'ไม่สามารถสร้างการจองได้';
+    bookingError.value = e?.response?.data?.message || $t('ไม่สามารถสร้างการจองได้');
     toast.error(bookingError.value);
   } finally {
     bookingLoading.value = false;
@@ -3208,8 +3220,8 @@ function handleExpiry() {
   clearFormData({ keepDraft: true });
 
   swal.error(
-    'หมดเวลาการจองแล้ว!',
-    `เวลา ${minutes} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่`
+    $t('หมดเวลาการจองแล้ว!'),
+    $t('เวลา {minutes} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่', { minutes })
   ).then(() => {
     router.push('/trips');
   });
@@ -3231,8 +3243,8 @@ onMounted(async () => {
     });
     await seatsStore.fetchSeatMap(route.params.scheduleId, selectedVehicleOptionId.value);
 
-    // ตัวเลือกสัญชาติโหลดเฉพาะทริปต่างประเทศ — ทริปในประเทศไม่มีช่องนี้ให้กรอก
-    if (isInternational.value) loadCountries();
+    // ตัวเลือกสัญชาติ — ทุกทริป (ลูกค้าต่างชาติจองทริปในประเทศได้)
+    loadCountries();
 
     // จอยทริปที่โควตาเต็มแล้วเปิดโหมดจอยไม่ได้ — ปล่อยให้ลงเอยที่การจองปกติ
     // แล้วเจอปุ่ม "เต็มแล้ว" ดีกว่าให้กรอกฟอร์มจนจบแล้วโดนเซิร์ฟเวอร์ปฏิเสธ
@@ -3277,7 +3289,7 @@ onMounted(async () => {
     } else if (!hasSeatMap.value && !isTrekking.value) {
       // For non-seat-map, non-trekking trips (or Join Trip): start countdown immediately on page load
       seatsStore.startManualCountdown(
-        schedule.value?.trip?.title || 'กิจกรรม',
+        schedule.value?.trip?.title || $t('กิจกรรม'),
         route.params.scheduleId,
         isJoinTrip.value ? null : preselectedRegion,
         passengerCount.value

@@ -11,7 +11,7 @@
             <span class="material-symbols-rounded text-accent text-xl animate-pulse">map</span>
           </div>
         </div>
-        <p class="text-base font-black text-gray-400 tracking-wide animate-pulse uppercase">กำลังเตรียมข้อมูลการจอง...</p>
+        <p class="text-base font-black text-gray-400 tracking-wide animate-pulse uppercase">{{ $t('กำลังเตรียมข้อมูลการจอง...') }}</p>
       </div>
     </div>
 
@@ -46,15 +46,15 @@
               'text-red-700': booking.status === 'cancelled',
               'text-blue-700': booking.status === 'refunded',
             }">
-            {{ { confirmed: 'การจองเสร็จสมบูรณ์!', under_review: 'กำลังตรวจสอบการชำระเงิน', pending: 'รอการยืนยัน', cancelled: 'การจองถูกยกเลิก', refunded: 'คืนเงินเรียบร้อย' }[displayStatus] ?? booking.status }}
+            {{ { confirmed: $t('การจองเสร็จสมบูรณ์!'), under_review: $t('กำลังตรวจสอบการชำระเงิน'), pending: $t('รอการยืนยัน'), cancelled: $t('การจองถูกยกเลิก'), refunded: $t('คืนเงินเรียบร้อย') }[displayStatus] ?? booking.status }}
           </h1>
           <p class="text-gray-500 text-lg md:text-xl max-w-xl mx-auto font-bold leading-relaxed">
             {{ {
-              confirmed: 'ยินดีด้วย! เราได้รับการจองของคุณเรียบร้อยแล้ว เตรียมตัวออกไปลุยกันได้เลย',
-              under_review: 'เราได้รับสลิปของคุณแล้ว ทีมงานกำลังตรวจสอบยอดโอนและจะยืนยันการจองให้เร็วที่สุด ที่นั่งของคุณถูกกันไว้แล้ว',
-              pending: 'เราได้รับคำขอจองของคุณแล้ว กรุณาดำเนินการชำระเงินเพื่อยืนยันสิทธิ์',
-              cancelled: 'การจองนี้ถูกยกเลิกแล้ว หากคุณต้องการจองใหม่หรือมีข้อสงสัย โปรดติดต่อเรา',
-              refunded: 'ดำเนินการคืนเงินเสร็จสิ้น ยอดเงินจะกลับเข้าบัญชีของคุณภายในระยะเวลาที่กำหนด',
+              confirmed: $t('ยินดีด้วย! เราได้รับการจองของคุณเรียบร้อยแล้ว เตรียมตัวออกไปลุยกันได้เลย'),
+              under_review: $t('เราได้รับสลิปของคุณแล้ว ทีมงานกำลังตรวจสอบยอดโอนและจะยืนยันการจองให้เร็วที่สุด ที่นั่งของคุณถูกกันไว้แล้ว'),
+              pending: $t('เราได้รับคำขอจองของคุณแล้ว กรุณาดำเนินการชำระเงินเพื่อยืนยันสิทธิ์'),
+              cancelled: $t('การจองนี้ถูกยกเลิกแล้ว หากคุณต้องการจองใหม่หรือมีข้อสงสัย โปรดติดต่อเรา'),
+              refunded: $t('ดำเนินการคืนเงินเสร็จสิ้น ยอดเงินจะกลับเข้าบัญชีของคุณภายในระยะเวลาที่กำหนด'),
             }[displayStatus] ?? '' }}
           </p>
         </div>
@@ -83,7 +83,7 @@
                   <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                   <div class="absolute bottom-4 left-6">
                     <span class="text-[10px] font-black tracking-widest text-white bg-accent/80 backdrop-blur-md px-3 py-1.5 rounded-full mb-2 inline-block uppercase border border-white/20">
-                      สรุปการจอง
+                      {{ $t('สรุปการจอง') }}
                     </span>
                     <h2 class="text-xl md:text-2xl font-black text-white leading-tight">
                       {{ booking.schedule?.trip?.title }}
@@ -95,7 +95,7 @@
                   <!-- Meta Header: Ref & Status -->
                   <div class="flex flex-wrap items-center justify-between gap-4">
                     <div class="bg-gray-50 px-5 py-3 rounded-2xl border border-gray-100 flex flex-col">
-                      <span class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">รหัสการจอง</span>
+                      <span class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">{{ $t('รหัสการจอง') }}</span>
                       <span class="font-mono font-black text-accent-mid text-lg leading-none tracking-tight">{{ booking.booking_ref }}</span>
                     </div>
                     <div class="flex items-center gap-2 font-black px-4 py-2.5 rounded-xl border-2"
@@ -120,8 +120,8 @@
                           <span class="material-symbols-rounded text-accent text-[22px]">badge</span>
                         </div>
                         <div>
-                          <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">รายชื่อผู้ร่วมทริป</p>
-                          <p class="text-sm font-bold text-gray-500">คำนำหน้า / ชื่อ / นามสกุล</p>
+                          <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{{ $t('รายชื่อผู้ร่วมทริป') }}</p>
+                          <p class="text-sm font-bold text-gray-500">{{ $t('คำนำหน้า / ชื่อ / นามสกุล') }}</p>
                         </div>
                       </div>
                       <div class="grid grid-cols-1 gap-3">
@@ -133,15 +133,15 @@
                           <div class="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_0.8fr_1fr_1fr] gap-3 items-center">
                             <span class="w-7 h-7 rounded-full bg-accent text-white text-xs font-black flex items-center justify-center">{{ i + 1 }}</span>
                             <div>
-                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">คำนำหน้า</p>
+                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{{ $t('คำนำหน้า') }}</p>
                               <p class="font-black text-gray-900">{{ p.title || '-' }}</p>
                             </div>
                             <div>
-                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">ชื่อ</p>
+                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{{ $t('ชื่อ') }}</p>
                               <p class="font-black text-gray-900">{{ passengerNameParts(p).firstName }}</p>
                             </div>
                             <div class="col-span-2 sm:col-span-1">
-                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">นามสกุล</p>
+                              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">{{ $t('นามสกุล') }}</p>
                               <p class="font-black text-gray-900">{{ passengerNameParts(p).lastName }}</p>
                             </div>
                           </div>
@@ -158,7 +158,7 @@
                         <span class="material-symbols-rounded text-accent text-[24px]">calendar_today</span>
                       </div>
                       <div>
-                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">วันที่เดินทาง</p>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{{ $t('วันที่เดินทาง') }}</p>
                         <p class="font-black text-base text-gray-900 leading-tight">{{ formatDate(booking.schedule?.departure_date) }}</p>
                       </div>
                     </div>
@@ -168,8 +168,8 @@
                         <span class="material-symbols-rounded text-accent text-[24px]">payments</span>
                       </div>
                       <div>
-                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">ยอดรวมทั้งหมด</p>
-                        <p class="font-black text-xl text-accent leading-tight">฿{{ Number(booking.total_amount).toLocaleString() }}</p>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{{ $t('ยอดรวมทั้งหมด') }}</p>
+                        <p class="font-black text-xl text-accent leading-tight">{{ $t('฿{Number}', { Number: Number(booking.total_amount).toLocaleString() }) }}</p>
                       </div>
                     </div>
 
@@ -178,15 +178,15 @@
                         <span class="material-symbols-rounded text-accent text-[24px]">{{ booking.custom_pickup && !booking.pickup_point && !booking.pickup_region ? 'add_location_alt' : 'location_on' }}</span>
                       </div>
                       <div class="min-w-0">
-                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">จุดขึ้นรถ / จุดนัดพบ</p>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{{ $t('จุดขึ้นรถ / จุดนัดพบ') }}</p>
                         <p v-if="!hasVariedPassengerPickups" class="font-black text-base text-gray-900 truncate">{{ pickupLabel }}</p>
-                        <p v-else class="font-black text-base text-gray-900">หลายจุด (ดูรายชื่อด้านบน)</p>
+                        <p v-else class="font-black text-base text-gray-900">{{ $t('หลายจุด (ดูรายชื่อด้านบน)') }}</p>
                         <template v-if="isCustomPickup">
                           <p v-if="booking.custom_pickup.note" class="text-sm text-gray-500 font-medium mt-0.5 truncate">{{ booking.custom_pickup.note }}</p>
                           <a :href="`https://www.google.com/maps/search/?api=1&query=${booking.custom_pickup.lat},${booking.custom_pickup.lng}`"
                             target="_blank" rel="noopener"
                             class="inline-flex items-center gap-1 text-xs font-black text-accent mt-1 hover:text-accent-mid">
-                            <span class="material-symbols-rounded text-[16px]">map</span> ดูหมุดบนแผนที่
+                            <span class="material-symbols-rounded text-[16px]">map</span> {{ $t('ดูหมุดบนแผนที่') }}
                           </a>
                         </template>
                       </div>
@@ -197,7 +197,7 @@
                         <span class="material-symbols-rounded text-accent text-[24px]">{{ isFlightSchedule ? 'flight' : 'event_seat' }}</span>
                       </div>
                       <div>
-                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{{ isFlightSchedule ? 'ที่นั่งบนเครื่อง' : 'ตำแหน่งที่นั่ง' }}</p>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{{ isFlightSchedule ? $t('ที่นั่งบนเครื่อง') : $t('ตำแหน่งที่นั่ง') }}</p>
                         <p class="font-black text-base text-gray-900 leading-tight">{{ booking.seats.map(s => s.seat_id).join(', ') }}</p>
                       </div>
                     </div>
@@ -208,8 +208,8 @@
                         <span class="material-symbols-rounded text-sky-600 text-[24px]">flight</span>
                       </div>
                       <div>
-                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">ที่นั่งบนเครื่อง</p>
-                        <p class="font-bold text-sm text-gray-600 leading-tight">สายการบินเป็นผู้จัดที่นั่ง — ทีมงานจะแจ้งเลขที่นั่งให้ก่อนวันเดินทาง</p>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{{ $t('ที่นั่งบนเครื่อง') }}</p>
+                        <p class="font-bold text-sm text-gray-600 leading-tight">{{ $t('สายการบินเป็นผู้จัดที่นั่ง — ทีมงานจะแจ้งเลขที่นั่งให้ก่อนวันเดินทาง') }}</p>
                       </div>
                     </div>
 
@@ -218,8 +218,8 @@
                         <span class="material-symbols-rounded text-accent text-[24px]">group</span>
                       </div>
                       <div>
-                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">จำนวนผู้ร่วมทริป</p>
-                        <p class="font-black text-base text-gray-900 leading-tight">{{ booking.passengers?.length || 0 }} ท่าน</p>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{{ $t('จำนวนผู้ร่วมทริป') }}</p>
+                        <p class="font-black text-base text-gray-900 leading-tight">{{ $t('{v} ท่าน', { v: booking.passengers?.length || 0 }) }}</p>
                       </div>
                     </div>
 
@@ -229,7 +229,7 @@
                   <div v-if="booking.is_group && booking.group_name" class="p-5 bg-accent-tint/50 rounded-3xl border border-accent/15 flex items-start gap-4">
                     <span class="material-symbols-rounded text-accent mt-1">groups</span>
                     <div>
-                      <p class="text-[10px] font-black text-accent uppercase tracking-widest mb-1">จองเป็นกลุ่ม: {{ booking.group_name }}</p>
+                      <p class="text-[10px] font-black text-accent uppercase tracking-widest mb-1">{{ $t('จองเป็นกลุ่ม: {group_name}', { group_name: booking.group_name }) }}</p>
                       <p v-if="booking.group_notes" class="text-sm font-bold text-accent-mid italic">"{{ booking.group_notes }}"</p>
                     </div>
                   </div>
@@ -237,12 +237,12 @@
                   <div v-if="booking.selected_addons?.length" class="p-5 bg-amber-50/70 rounded-3xl border border-amber-100">
                     <div class="flex items-center gap-2 mb-3">
                       <span class="material-symbols-rounded text-amber-600">add_task</span>
-                      <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest">ตัวเลือกเสริม</p>
+                      <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest">{{ $t('ตัวเลือกเสริม') }}</p>
                     </div>
                     <div class="space-y-2">
                       <div v-for="(addon, idx) in booking.selected_addons" :key="idx" class="flex justify-between gap-3 text-sm">
                         <span class="font-bold text-gray-800">{{ addon.name }}</span>
-                        <span class="font-black text-amber-700">+฿{{ Number(addon.total_price || 0).toLocaleString() }}</span>
+                        <span class="font-black text-amber-700">{{ $t('+฿{Number}', { Number: Number(addon.total_price || 0).toLocaleString() }) }}</span>
                       </div>
                     </div>
                   </div>
@@ -250,7 +250,7 @@
                   <div v-if="booking.selected_rentals?.length" class="p-5 bg-sky-50/70 rounded-3xl border border-sky-100">
                     <div class="flex items-center gap-2 mb-3">
                       <span class="material-symbols-rounded text-sky-600">backpack</span>
-                      <p class="text-[10px] font-black text-sky-700 uppercase tracking-widest">อุปกรณ์เช่า</p>
+                      <p class="text-[10px] font-black text-sky-700 uppercase tracking-widest">{{ $t('อุปกรณ์เช่า') }}</p>
                     </div>
                     <div class="space-y-2">
                       <div v-for="(rental, idx) in booking.selected_rentals" :key="idx" class="flex justify-between gap-3 text-sm">
@@ -258,16 +258,16 @@
                           {{ rental.name }}
                           <span v-if="Number(rental.quantity) > 1" class="text-sky-600">×{{ rental.quantity }}</span>
                         </span>
-                        <span class="font-black text-sky-700">+฿{{ Number(rental.total_price || 0).toLocaleString() }}</span>
+                        <span class="font-black text-sky-700">{{ $t('+฿{Number}', { Number: Number(rental.total_price || 0).toLocaleString() }) }}</span>
                       </div>
                     </div>
-                    <p class="mt-3 text-[11px] font-bold text-sky-600">รับอุปกรณ์จากทีมงานในวันเดินทาง</p>
+                    <p class="mt-3 text-[11px] font-bold text-sky-600">{{ $t('รับอุปกรณ์จากทีมงานในวันเดินทาง') }}</p>
                   </div>
 
                   <!-- Footer: Paid Timestamp -->
                   <div v-if="booking.paid_at" class="pt-6 border-t border-gray-100 flex items-center gap-2 text-gray-400">
                     <span class="material-symbols-rounded text-base">check_circle</span>
-                    <span class="text-xs font-bold uppercase tracking-wider">ชำระเงินเรียบร้อยแล้วเมื่อ {{ formatDateTime(booking.paid_at) }}</span>
+                    <span class="text-xs font-bold uppercase tracking-wider">{{ $t('ชำระเงินเรียบร้อยแล้วเมื่อ {formatDateTime}', { formatDateTime: formatDateTime(booking.paid_at) }) }}</span>
                   </div>
 
                   <!-- แผนผ่อนชำระ — ใช้ component เดียวกับหน้าการจองของฉัน -->
@@ -291,8 +291,8 @@
                     <span class="material-symbols-rounded text-white text-[30px]" style="font-variation-settings:'FILL' 1">diversity_3</span>
                   </div>
                   <div>
-                    <p class="text-[10px] font-black tracking-[0.2em] text-accent-tint uppercase mb-1">ทีมงานดูแลทริปของคุณ</p>
-                    <h3 class="text-xl md:text-2xl font-black text-white leading-tight">พร้อมดูแลคุณตลอดการเดินทาง</h3>
+                    <p class="text-[10px] font-black tracking-[0.2em] text-accent-tint uppercase mb-1">{{ $t('ทีมงานดูแลทริปของคุณ') }}</p>
+                    <h3 class="text-xl md:text-2xl font-black text-white leading-tight">{{ $t('พร้อมดูแลคุณตลอดการเดินทาง') }}</h3>
                   </div>
                 </div>
               </div>
@@ -302,7 +302,7 @@
                 <div v-if="driver" class="relative rounded-3xl border border-accent/15 bg-accent-tint/70 p-5 md:p-6 overflow-hidden">
                   <span class="absolute top-5 right-5 text-[10px] font-black tracking-widest text-accent bg-accent/10 px-3 py-1.5 rounded-full uppercase flex items-center gap-1">
                     <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">directions_bus</span>
-                    คนขับรถ
+                    {{ $t('คนขับรถ') }}
                   </span>
                   <div class="flex items-start gap-4 md:gap-5">
                     <!-- Avatar -->
@@ -315,7 +315,7 @@
                     </div>
                     <div class="flex-1 min-w-0 pt-1">
                       <p class="text-lg md:text-xl font-black text-gray-900 leading-tight pr-16">{{ driver.name }}</p>
-                      <p class="text-xs font-bold text-accent mb-3">ผู้ขับขี่ประจำรถของคุณ</p>
+                      <p class="text-xs font-bold text-accent mb-3">{{ $t('ผู้ขับขี่ประจำรถของคุณ') }}</p>
 
                       <!-- Vehicle chips -->
                       <div v-if="driver.plate || driver.vehicleName || driver.color" class="flex flex-wrap gap-2 mb-4">
@@ -343,7 +343,7 @@
                 <div v-if="assignedStaff.length">
                   <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                     <span class="material-symbols-rounded text-[18px] text-accent">groups</span>
-                    เจ้าหน้าที่ประจำทริป · {{ assignedStaff.length }} ท่าน
+                    {{ $t('เจ้าหน้าที่ประจำทริป · {length} ท่าน', { length: assignedStaff.length }) }}
                   </p>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div v-for="s in assignedStaff" :key="s.id"
@@ -359,7 +359,7 @@
                       <div class="flex-1 min-w-0">
                         <p class="font-black text-gray-900 leading-tight truncate">{{ s.name }}</p>
                         <p class="text-xs font-bold text-gray-400 mb-2">
-                          <span v-if="s.nickname">({{ s.nickname }}) · </span>ทีมงานดูแลทริป
+                          <span v-if="s.nickname">({{ s.nickname }}) · </span>{{ $t('ทีมงานดูแลทริป') }}
                         </p>
                         <a v-if="s.phone" :href="`tel:${s.phone}`"
                           class="inline-flex items-center gap-1.5 text-xs font-black text-accent bg-accent-tint px-3 py-1.5 rounded-lg hover:bg-accent hover:text-white active:scale-95 transition-all border border-accent/15">
@@ -374,7 +374,7 @@
                 <!-- Reassurance footer -->
                 <div class="flex items-start gap-2.5 pt-1 text-gray-400">
                   <span class="material-symbols-rounded text-[18px] mt-0.5 text-accent">verified_user</span>
-                  <p class="text-xs font-bold leading-relaxed">ทีมงานทุกคนผ่านการอบรมและพร้อมดูแลความปลอดภัยของคุณ หากมีข้อสงสัยก่อนเดินทาง สามารถติดต่อได้โดยตรง</p>
+                  <p class="text-xs font-bold leading-relaxed">{{ $t('ทีมงานทุกคนผ่านการอบรมและพร้อมดูแลความปลอดภัยของคุณ หากมีข้อสงสัยก่อนเดินทาง สามารถติดต่อได้โดยตรง') }}</p>
                 </div>
               </div>
             </section>
@@ -394,10 +394,10 @@
                   <span class="material-symbols-rounded text-accent text-[32px]">support_agent</span>
                 </div>
                 <div class="flex-1">
-                  <h5 class="text-gray-900 font-black text-lg mb-1">มีปัญหาเกี่ยวกับการจอง?</h5>
-                  <p class="text-gray-400 font-bold text-xs mb-4">ทักหาทีมงานได้ พร้อมแจ้งรหัสการจอง {{ booking.booking_ref }}</p>
+                  <h5 class="text-gray-900 font-black text-lg mb-1">{{ $t('มีปัญหาเกี่ยวกับการจอง?') }}</h5>
+                  <p class="text-gray-400 font-bold text-xs mb-4">{{ $t('ทักหาทีมงานได้ พร้อมแจ้งรหัสการจอง {booking_ref}', { booking_ref: booking.booking_ref }) }}</p>
                   <router-link to="/contact" class="inline-flex items-center gap-2 text-accent font-black text-sm bg-accent-tint px-5 py-2.5 rounded-xl hover:bg-accent hover:text-white transition-all duration-300 border border-accent/15">
-                    ติดต่อฝ่ายบริการลูกค้า
+                    {{ $t('ติดต่อฝ่ายบริการลูกค้า') }}
                     <span class="material-symbols-rounded text-sm">arrow_forward</span>
                   </router-link>
                 </div>
@@ -412,8 +412,8 @@
             <section v-if="booking.qr_code && booking.status === 'confirmed'" class="bg-white rounded-[2.5rem] border-2 border-accent/10 p-8 md:p-10 flex flex-col items-center text-center relative overflow-hidden group">
               
               <div class="relative z-10 w-full mb-8">
-                <h3 class="text-2xl font-black text-gray-900 mb-2">ใช้ QR นี้สำหรับเช็คอิน</h3>
-                <p class="text-accent/70 font-bold text-sm tracking-wide">โปรดแสดงรหัสนี้แก่เจ้าหน้าที่เมื่อถึงจุดนัดหมาย</p>
+                <h3 class="text-2xl font-black text-gray-900 mb-2">{{ $t('ใช้ QR นี้สำหรับเช็คอิน') }}</h3>
+                <p class="text-accent/70 font-bold text-sm tracking-wide">{{ $t('โปรดแสดงรหัสนี้แก่เจ้าหน้าที่เมื่อถึงจุดนัดหมาย') }}</p>
               </div>
 
               <!-- QR Visual Container -->
@@ -425,7 +425,7 @@
                   <div class="w-20 h-20 bg-green-600 text-white rounded-full flex items-center justify-center mb-4 animate-bounce">
                     <span class="material-symbols-rounded text-[48px]">verified</span>
                   </div>
-                  <p class="font-black text-green-700 text-xl">เช็คอินเรียบร้อย</p>
+                  <p class="font-black text-green-700 text-xl">{{ $t('เช็คอินเรียบร้อย') }}</p>
                   <p v-if="booking.checked_in_at" class="text-green-600/60 font-bold text-xs mt-1">{{ formatDateTime(booking.checked_in_at) }}</p>
                 </div>
               </div>
@@ -439,12 +439,12 @@
               <button @click="saveQR"
                 class="w-full relative z-10 flex items-center justify-center gap-3 px-8 py-5 bg-accent text-white font-black text-lg rounded-[1.5rem] hover:bg-accent-mid hover:-translate-y-1 active:scale-95 transition-all duration-300 group/btn">
                 <span class="material-symbols-rounded text-[24px] group-hover/btn:animate-bounce">download</span>
-                <span>บันทึก QR Code สำหรับเช็คอิน</span>
+                <span>{{ $t('บันทึก QR Code สำหรับเช็คอิน') }}</span>
               </button>
               
               <p class="mt-6 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] relative z-10 flex items-center gap-2 justify-center">
                 <span class="material-symbols-rounded text-sm">info</span>
-                กรุณาเก็บ QR นี้ไว้เพื่อใช้ในวันเดินทาง
+                {{ $t('กรุณาเก็บ QR นี้ไว้เพื่อใช้ในวันเดินทาง') }}
               </p>
             </section>
 
@@ -452,20 +452,20 @@
             <section v-if="booking.status === 'confirmed'" class="bg-amber-50/50 rounded-[2rem] border border-amber-100 p-8 space-y-6">
               <h4 class="text-amber-800 font-black text-lg flex items-center gap-2.5">
                 <span class="material-symbols-rounded" style="font-variation-settings:'FILL' 1">bolt</span>
-                ขั้นตอนถัดไป
+                {{ $t('ขั้นตอนถัดไป') }}
               </h4>
               <div class="space-y-4">
                 <div class="flex items-start gap-4">
                   <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0">1</div>
-                  <p class="text-amber-900/80 font-bold text-sm leading-relaxed">บันทึกรูปภาพ QR Code ด้านบนลงในโทรศัพท์มือถือของคุณ</p>
+                  <p class="text-amber-900/80 font-bold text-sm leading-relaxed">{{ $t('บันทึกรูปภาพ QR Code ด้านบนลงในโทรศัพท์มือถือของคุณ') }}</p>
                 </div>
                 <div class="flex items-start gap-4">
                   <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0">2</div>
-                  <p class="text-amber-900/80 font-bold text-sm leading-relaxed">เดินทางไปถึงจุดนัดพบอย่างน้อย 15-30 นาทีก่อนเวลาออกเดินทาง</p>
+                  <p class="text-amber-900/80 font-bold text-sm leading-relaxed">{{ $t('เดินทางไปถึงจุดนัดพบอย่างน้อย 15-30 นาทีก่อนเวลาออกเดินทาง') }}</p>
                 </div>
                 <div class="flex items-start gap-4">
                   <div class="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center text-amber-900 font-black text-sm shrink-0">3</div>
-                  <p class="text-amber-900/80 font-bold text-sm leading-relaxed">แสดง QR Code ให้ทีมงานสแกนเพื่อยืนยันการเช็คอินขึ้นรถ</p>
+                  <p class="text-amber-900/80 font-bold text-sm leading-relaxed">{{ $t('แสดง QR Code ให้ทีมงานสแกนเพื่อยืนยันการเช็คอินขึ้นรถ') }}</p>
                 </div>
               </div>
             </section>
@@ -480,13 +480,13 @@
             <div class="flex flex-col gap-3 pt-4">
               <router-link to="/my-bookings"
                 class="w-full flex items-center justify-center gap-2 py-4 bg-white border-2 border-gray-100 text-gray-700 rounded-2xl font-black text-base hover:bg-gray-50 hover:border-gray-200 active:scale-95 transition-all duration-300">
-                <span>ดูประวัติการจองทั้งหมด</span>
+                <span>{{ $t('ดูประวัติการจองทั้งหมด') }}</span>
                 <span class="material-symbols-rounded text-[20px]">history</span>
               </router-link>
               <router-link to="/trips"
                 class="w-full flex items-center justify-center gap-2 py-4 text-accent font-black text-sm hover:bg-accent-tint rounded-2xl transition-all duration-300 underline underline-offset-4 decoration-accent/30">
                 <span class="material-symbols-rounded text-[20px]">explore</span>
-                <span>ค้นหากิจกรรมที่น่าสนใจเพิ่มเติม</span>
+                <span>{{ $t('ค้นหากิจกรรมที่น่าสนใจเพิ่มเติม') }}</span>
               </router-link>
             </div>
           </div>
@@ -504,17 +504,17 @@
           </span>
         </div>
         <template v-if="loadError === 'forbidden'">
-          <h3 class="text-gray-900 font-black text-2xl mb-2">การจองนี้ไม่ใช่ของบัญชีนี้</h3>
-          <p class="text-gray-400 font-bold text-sm mb-8 leading-relaxed">ลองสลับไปบัญชีที่ใช้จอง หรือให้เจ้าของการจองเชิญคุณเข้าร่วมเดินทาง</p>
+          <h3 class="text-gray-900 font-black text-2xl mb-2">{{ $t('การจองนี้ไม่ใช่ของบัญชีนี้') }}</h3>
+          <p class="text-gray-400 font-bold text-sm mb-8 leading-relaxed">{{ $t('ลองสลับไปบัญชีที่ใช้จอง หรือให้เจ้าของการจองเชิญคุณเข้าร่วมเดินทาง') }}</p>
           <router-link to="/my-bookings" class="w-full bg-accent text-white py-4 rounded-2xl font-black text-base hover:bg-accent-mid transition-all">
-            ดูการจองของฉัน
+            {{ $t('ดูการจองของฉัน') }}
           </router-link>
         </template>
         <template v-else>
-          <h3 class="text-gray-900 font-black text-2xl mb-2">ไม่พบข้อมูลการจอง</h3>
-          <p class="text-gray-400 font-bold text-sm mb-8 leading-relaxed">รหัสการจองอาจไม่ถูกต้อง หรือถูกลบออกจากระบบ กรุณาตรวจสอบอีกครั้ง</p>
+          <h3 class="text-gray-900 font-black text-2xl mb-2">{{ $t('ไม่พบข้อมูลการจอง') }}</h3>
+          <p class="text-gray-400 font-bold text-sm mb-8 leading-relaxed">{{ $t('รหัสการจองอาจไม่ถูกต้อง หรือถูกลบออกจากระบบ กรุณาตรวจสอบอีกครั้ง') }}</p>
           <router-link to="/trips" class="w-full bg-accent text-white py-4 rounded-2xl font-black text-base hover:bg-accent-mid transition-all">
-            กลับไปหน้าทริปทั้งหมด
+            {{ $t('กลับไปหน้าทริปทั้งหมด') }}
           </router-link>
         </template>
       </div>
@@ -524,6 +524,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
@@ -549,7 +551,7 @@ const displayStatus = computed(() => isUnderReview.value ? 'under_review' : book
 const isFlightSchedule = computed(() =>
   booking.value?.schedule?.transport_type === 'flight');
 
-const statusMap = { pending: 'รอชำระเงิน', under_review: 'กำลังตรวจสอบยอด', confirmed: 'ยืนยันแล้ว', cancelled: 'ยกเลิกแล้ว', refunded: 'คืนเงินแล้ว' };
+const statusMap = { pending: $t('รอชำระเงิน'), under_review: $t('กำลังตรวจสอบยอด'), confirmed: $t('ยืนยันแล้ว'), cancelled: $t('ยกเลิกแล้ว'), refunded: $t('คืนเงินแล้ว') };
 const statusLabel = computed(() => statusMap[displayStatus.value] || booking.value?.status);
 
 const pickupLabel = computed(() => {
@@ -620,13 +622,13 @@ function formatPhone(phone) {
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatDateTime(d) {
   if (!d) return '';
   // ตั้ง timeZone ไว้ชัด ๆ ไม่งั้นคนที่เปิดจากต่างประเทศจะเห็นเวลาของเครื่องตัวเอง
-  return new Date(d).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' });
+  return new Date(d).toLocaleString(DATE_LOCALE, { timeZone: 'Asia/Bangkok', dateStyle: 'medium', timeStyle: 'short' });
 }
 
 function passengerNameParts(passenger) {

@@ -223,6 +223,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import api from '../lib/axios';
@@ -255,7 +256,7 @@ const visitedRegions = computed(() => regions.value.filter(r => r.visited));
 
 function fmt(value) {
   const n = Number(value) || 0;
-  return n.toLocaleString('th-TH');
+  return n.toLocaleString(DATE_LOCALE);
 }
 
 function badgeProgress(badge) {

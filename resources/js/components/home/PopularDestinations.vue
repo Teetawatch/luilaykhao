@@ -5,8 +5,8 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <SectionTitle
         class="mb-10 md:mb-12"
-        title="ปลายทางยอดนิยม"
-        subtitle="จังหวัดที่มีทริปเปิดให้จองมากที่สุดตอนนี้"
+        :title="$t('ปลายทางยอดนิยม')"
+        :subtitle="$t('จังหวัดที่มีทริปเปิดให้จองมากที่สุดตอนนี้')"
       />
 
       <div class="dest-grid">
@@ -24,7 +24,7 @@
               <span class="block truncate font-bold text-white leading-tight" :class="i === 0 ? 'text-[26px] md:text-[32px]' : 'text-[19px] md:text-[21px]'">
                 {{ place.name }}
               </span>
-              <span class="mt-1 block text-[13px] font-medium text-white/85">{{ place.count }} ทริป · เริ่มต้น ฿{{ place.from }}</span>
+              <span class="mt-1 block text-[13px] font-medium text-white/85">{{ $t('{count} ทริป · เริ่มต้น ฿{from}', { count: place.count, from: place.from }) }}</span>
             </span>
             <span class="dest-go" aria-hidden="true">
               <span class="material-symbols-rounded icon-20">arrow_forward</span>
@@ -37,6 +37,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { computed } from 'vue';
 import SectionTitle from '../SectionTitle.vue';
 import { tripCardImage } from '../../lib/tripImage';
@@ -74,7 +75,7 @@ const places = computed(() => {
     .filter((p) => p.image)
     .sort((a, b) => b.count - a.count)
     .slice(0, fullRows(byName.size))
-    .map((p) => ({ ...p, from: Number.isFinite(p.min) ? p.min.toLocaleString('th-TH') : '-' }));
+    .map((p) => ({ ...p, from: Number.isFinite(p.min) ? p.min.toLocaleString(DATE_LOCALE) : '-' }));
 });
 </script>
 

@@ -13,12 +13,12 @@
         <span class="w-11 h-11 rounded-full bg-white border border-amber-200 flex items-center justify-center shrink-0">
           <span class="material-symbols-rounded text-amber-600">groups</span>
         </span>
-        <h2 class="text-lg font-bold text-[#1a1c1c]">ช่วยกันเปิดรอบนี้</h2>
+        <h2 class="text-lg font-bold text-[#1a1c1c]">{{ $t('ช่วยกันเปิดรอบนี้') }}</h2>
       </div>
       <span
         v-if="data.days_left > 0"
         class="shrink-0 px-3 py-1 rounded-full bg-white border border-amber-200 text-xs font-bold text-amber-700"
-      >เหลือ {{ data.days_left }} วัน</span>
+      >{{ $t('เหลือ {days_left} วัน', { days_left: data.days_left }) }}</span>
     </div>
 
     <p class="text-[14px] text-[#505E5E] leading-relaxed mb-5">{{ data.headline }}</p>
@@ -28,8 +28,8 @@
         <div class="h-full bg-amber-500 transition-all duration-500" :style="{ width: percent + '%' }"></div>
       </div>
       <div class="flex justify-between mt-2 text-xs font-bold text-amber-700">
-        <span>จองแล้ว {{ data.booked_seats }} ท่าน</span>
-        <span>ออกเดินทางที่ {{ data.guarantee_min_seats }} ท่าน</span>
+        <span>{{ $t('จองแล้ว {booked_seats} ท่าน', { booked_seats: data.booked_seats }) }}</span>
+        <span>{{ $t('ออกเดินทางที่ {guarantee_min_seats} ท่าน', { guarantee_min_seats: data.guarantee_min_seats }) }}</span>
       </div>
     </div>
 
@@ -39,25 +39,25 @@
         @click="share"
       >
         <span class="material-symbols-rounded text-[19px]">ios_share</span>
-        {{ data.seats_needed === 1 ? 'ชวนเพื่อนอีก 1 คน' : `ชวนเพื่อนอีก ${data.seats_needed} คน` }}
+        {{ data.seats_needed === 1 ? $t('ชวนเพื่อนอีก 1 คน') : $t('ชวนเพื่อนอีก {seats_needed} คน', { seats_needed: data.seats_needed }) }}
       </button>
       <button
         class="sm:w-auto bg-white text-amber-700 border border-amber-200 py-3 px-5 rounded-[14px] font-bold text-sm hover:bg-amber-50 transition-all flex items-center justify-center gap-2"
         @click="copyLink"
       >
         <span class="material-symbols-rounded text-[19px]">{{ copied ? 'check' : 'link' }}</span>
-        {{ copied ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์' }}
+        {{ copied ? $t('คัดลอกแล้ว') : $t('คัดลอกลิงก์') }}
       </button>
     </div>
 
     <p class="mt-4 text-[12.5px] text-amber-700/80 leading-relaxed">
-      ถ้าเพื่อนของคุณเป็นลูกค้าใหม่ ทั้งคุณและเพื่อนจะได้แต้มสะสมตามโปรแกรมแนะนำเพื่อน
-      และหากรอบนี้ไม่ได้ออกเดินทาง เราคืนเงินเต็มจำนวนครับ
+      {{ $t('ถ้าเพื่อนของคุณเป็นลูกค้าใหม่ ทั้งคุณและเพื่อนจะได้แต้มสะสมตามโปรแกรมแนะนำเพื่อน และหากรอบนี้ไม่ได้ออกเดินทาง เราคืนเงินเต็มจำนวนครับ') }}
     </p>
   </section>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, onMounted, ref } from 'vue';
 import api from '../lib/axios';
 
@@ -90,7 +90,7 @@ async function share() {
 
   if (navigator.share) {
     try {
-      await navigator.share({ text, title: 'ชวนเพื่อนมาเที่ยวด้วยกัน' });
+      await navigator.share({ text, title: $t('ชวนเพื่อนมาเที่ยวด้วยกัน') });
       return;
     } catch {
       // ผู้ใช้กดยกเลิก share sheet — ตกไปใช้การคัดลอกแทน

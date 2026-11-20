@@ -145,9 +145,9 @@ class TripResource extends JsonResource
             // และเปลี่ยนชื่อบนตั๋วไม่ได้ ต่างจากทริปในประเทศที่เลื่อนรอบได้จริง
             // ส่งมาที่คีย์เดิม เพื่อให้ทุกหน้าจอที่วาดนโยบายอยู่แล้วถูกต้องทันที
             // โดยไม่ต้องรอปล่อยแอปรุ่นใหม่
-            'cancellation_policy' => $this->isInternational()
+            'cancellation_policy' => self::translatedPolicy($this->isInternational()
                 ? config('payment.cancellation_policy_international')
-                : config('payment.cancellation_policy'),
+                : config('payment.cancellation_policy')),
             'itinerary' => $this->itinerary ?? [],
             'preparations' => $this->preparations ?? [],
             'faqs' => $this->faqs ?? [],
@@ -284,5 +284,30 @@ class TripResource extends JsonResource
             ->first();
 
         return $schedule?->departure_date?->toDateString();
+    }
+
+    /**
+     * ข้อความนโยบายยกเลิกใน config เป็นภาษาไทย — แปลตามภาษาของ request
+     * (X-App-Language) ผ่าน lang/en.json ตัวเลขและเปอร์เซ็นต์ผ่านไปตามเดิม
+     *
+     * @param  array<string, mixed>|null  $policy
+     * @return array<string, mixed>|null
+     */
+    private static function translatedPolicy(?array $policy): ?array
+    {
+        if (! $policy) {
+            return $policy;
+        }
+
+        $policy['tiers'] = array_map(fn (array $tier) => array_merge($tier, [
+            'range' => __($tier['range'] ?? ''),
+            'detail' => __($tier['detail'] ?? ''),
+        ]), $policy['tiers'] ?? []);
+
+        if (isset($policy['note'])) {
+            $policy['note'] = __($policy['note']);
+        }
+
+        return $policy;
     }
 }

@@ -3,7 +3,7 @@
   <section v-if="entries.length > 0" class="mb-8">
     <h2 class="text-lg font-black text-[#1a1c1c] mb-3 flex items-center gap-2" style="font-family:'DB Heavent','Anuphan',sans-serif;">
       <span class="material-symbols-rounded text-[var(--color-accent)]">hourglass_top</span>
-      คิวรอที่นั่งของฉัน
+      {{ $t('คิวรอที่นั่งของฉัน') }}
     </h2>
     <div class="grid gap-3 sm:grid-cols-2">
       <div
@@ -16,14 +16,14 @@
           :src="e.schedule.trip.cover_image || e.schedule.trip.thumbnail_image"
           class="w-14 h-14 rounded-xl object-cover shrink-0" />
         <div class="min-w-0 flex-1">
-          <p class="font-extrabold text-sm text-[#1a1c1c] truncate">{{ e.schedule?.trip?.title || 'ทริป' }}</p>
-          <p class="text-xs font-bold text-[#889696]">{{ formatDate(e.schedule?.departure_date) }} · {{ e.seat_count }} ที่นั่ง</p>
+          <p class="font-extrabold text-sm text-[#1a1c1c] truncate">{{ e.schedule?.trip?.title || $t('ทริป') }}</p>
+          <p class="text-xs font-bold text-[#889696]">{{ $t('{formatDate} · {seat_count} ที่นั่ง', { formatDate: formatDate(e.schedule?.departure_date), seat_count: e.seat_count }) }}</p>
           <div class="mt-1">
             <span v-if="e.status === 'offered'" class="text-xs font-black text-accent">
-              🎉 มีที่นั่งว่าง! <span v-if="countdowns[e.id]" class="tabular-nums">({{ countdowns[e.id] }})</span>
+              {{ $t('🎉 มีที่นั่งว่าง!') }} <span v-if="countdowns[e.id]" class="tabular-nums">({{ countdowns[e.id] }})</span>
             </span>
             <span v-else class="text-xs font-bold text-[var(--color-accent)]">
-              ลำดับในคิว {{ e.position ? `#${e.position}` : '—' }}
+              {{ $t('ลำดับในคิว {v}', { v: e.position ? `#${e.position}` : '—' }) }}
             </span>
           </div>
         </div>
@@ -32,15 +32,15 @@
             v-if="e.status === 'offered'"
             :to="`/booking/${e.schedule_id}`"
             class="text-center px-3 py-1.5 rounded-full bg-[var(--color-accent)] text-white text-xs font-extrabold hover:bg-[var(--color-accent-mid)] transition">
-            จองเลย
+            {{ $t('จองเลย') }}
           </router-link>
           <router-link
             :to="`/trips/${e.schedule?.trip?.slug}`"
             class="text-center px-3 py-1.5 rounded-full border border-[#E8EEEF] text-[#505E5E] text-xs font-bold hover:bg-[#F9FAFA] transition">
-            ดูทริป
+            {{ $t('ดูทริป') }}
           </router-link>
           <button @click="leave(e)" :disabled="busyId === e.id" class="text-[11px] font-bold text-gray-400 hover:text-red-500 transition">
-            ออกจากคิว
+            {{ $t('ออกจากคิว') }}
           </button>
         </div>
       </div>
@@ -49,6 +49,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import api from '../lib/axios';
 
@@ -59,7 +61,7 @@ let timer = null;
 
 function formatDate(d) {
   if (!d) return '-';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 async function load() {
@@ -79,7 +81,7 @@ async function leave(e) {
     await api.delete(`/schedules/${e.schedule_id}/waitlist`);
     entries.value = entries.value.filter(x => x.id !== e.id);
   } catch (err) {
-    alert(err?.response?.data?.message || 'ออกจากคิวไม่สำเร็จ');
+    alert(err?.response?.data?.message || $t('ออกจากคิวไม่สำเร็จ'));
   } finally {
     busyId.value = null;
   }

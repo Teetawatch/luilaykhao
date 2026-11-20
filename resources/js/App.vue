@@ -1,5 +1,6 @@
 <template>
   <div class="min-h-screen flex flex-col" v-if="!isAdminRoute">
+    <LanguageSuggestBar />
     <Navbar />
     <SaleCampaignBar />
 
@@ -23,8 +24,8 @@
             </div>
 
             <div class="flex-1 min-w-0">
-              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">รายการจองที่ค้างอยู่</p>
-              <p class="text-sm font-bold text-gray-900 truncate leading-tight">{{ seatsStore.activeBookingInfo?.tripTitle || 'กำลังทำรายการจอง...' }}</p>
+              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{{ $t('รายการจองที่ค้างอยู่') }}</p>
+              <p class="text-sm font-bold text-gray-900 truncate leading-tight">{{ seatsStore.activeBookingInfo?.tripTitle || $t('กำลังทำรายการจอง...') }}</p>
             </div>
 
             <!-- Countdown pill -->
@@ -45,14 +46,14 @@
                   @click="cancelCurrentBooking"
                   class="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-black text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all active:scale-95">
                   <span class="material-symbols-rounded text-[16px] md:text-[18px]">close</span>
-                  <span class="hidden md:inline">ยกเลิก</span>
+                  <span class="hidden md:inline">{{ $t('ยกเลิก') }}</span>
                </button>
 
               <!-- Go back to booking button (carry region so the session isn't treated as a mismatch) -->
               <router-link
                 :to="{ path: `/booking/${seatsStore.activeBookingInfo?.scheduleId}`, query: seatsStore.activeBookingInfo?.region ? { region: seatsStore.activeBookingInfo.region } : {} }"
                 class="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-xs font-black bg-gray-900 text-white hover:bg-black transition-all active:scale-95 shadow-lg shadow-gray-900/10">
-                <span class="hidden md:inline">ดำเนินการต่อ</span>
+                <span class="hidden md:inline">{{ $t('ดำเนินการต่อ') }}</span>
                 <span class="material-symbols-rounded text-[16px] md:text-[18px]">arrow_forward</span>
               </router-link>
             </div>
@@ -99,9 +100,9 @@
           <span v-else class="material-symbols-rounded text-[20px] text-red-400 flex items-center justify-center w-full h-full" style="font-variation-settings:'FILL' 1">favorite</span>
         </div>
         <div class="flex-1 min-w-0">
-          <p class="text-[12px] font-bold text-accent">เพิ่มเข้ารายการที่ชอบแล้ว</p>
-          <p class="text-[13px] font-bold text-gray-900 truncate">{{ wishlistStore.lastAdded.title || `ทริป #${wishlistStore.lastAdded.id}` }}</p>
-          <p v-if="wishlistStore.lastAddedAlertOn" class="text-[11px] font-semibold text-gray-500">จะแจ้งเตือนเมื่อเปิดรอบใหม่หรือราคาลด</p>
+          <p class="text-[12px] font-bold text-accent">{{ $t('เพิ่มเข้ารายการที่ชอบแล้ว') }}</p>
+          <p class="text-[13px] font-bold text-gray-900 truncate">{{ wishlistStore.lastAdded.title || $t('ทริป #{id}', { id: wishlistStore.lastAdded.id }) }}</p>
+          <p v-if="wishlistStore.lastAddedAlertOn" class="text-[11px] font-semibold text-gray-500">{{ $t('จะแจ้งเตือนเมื่อเปิดรอบใหม่หรือราคาลด') }}</p>
         </div>
         <span class="material-symbols-rounded text-[22px] text-red-500 shrink-0" style="font-variation-settings:'FILL' 1">favorite</span>
       </div>
@@ -125,6 +126,8 @@
 </template>
 
 <script setup>
+import { $t, absoluteUrl, isEnglish } from '@/i18n';
+import LanguageSuggestBar from './components/LanguageSuggestBar.vue';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Navbar from './components/Navbar.vue';
@@ -157,34 +160,34 @@ const wishlistStore = useWishlistStore();
 const swal = useSwal();
 
 useHead({
-  title: computed(() => route.meta.title || 'แพลตฟอร์มจองและจัดทริปเที่ยว ทั้งในไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว'),
-  titleTemplate: '%s | ลุยเลเขา Luilaykhao',
+  title: computed(() => $t(route.meta.title) || $t('แพลตฟอร์มจองและจัดทริปเที่ยว ทั้งในไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว')),
+  titleTemplate: $t('%s | ลุยเลเขา Luilaykhao'),
   link: [
-    { rel: 'canonical', href: computed(() => `${window.location.origin}${route.path}`) }
+    { rel: 'canonical', href: computed(() => absoluteUrl(route.path)) }
   ],
   meta: [
     // Primary SEO
-    { name: 'description', content: computed(() => withLicence(route.meta.description) || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติ จองง่าย ปลอดภัย') },
+    { name: 'description', content: computed(() => withLicence(route.meta.description) || $t('ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติ จองง่าย ปลอดภัย')) },
     { name: 'robots', content: computed(() => route.meta.robots || 'index, follow, max-image-preview:large, max-snippet:-1') },
 
     // Open Graph
-    { property: 'og:site_name', content: 'ลุยเลเขา Luilaykhao' },
+    { property: 'og:site_name', content: $t('ลุยเลเขา Luilaykhao') },
     { property: 'og:type', content: computed(() => route.meta.ogType || 'website') },
-    { property: 'og:locale', content: 'th_TH' },
-    { property: 'og:url', content: computed(() => `${window.location.origin}${route.path}`) },
-    { property: 'og:title', content: computed(() => (route.meta.title ? `${route.meta.title} | ลุยเลเขา` : 'ลุยเลเขา | จองและจัดทริปเที่ยวในไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้')) },
-    { property: 'og:description', content: computed(() => withLicence(route.meta.description) || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติ จองง่าย ปลอดภัย') },
+    { property: 'og:locale', content: isEnglish ? 'en_US' : 'th_TH' },
+    { property: 'og:url', content: computed(() => absoluteUrl(route.path)) },
+    { property: 'og:title', content: computed(() => (route.meta.title ? $t('{title} | ลุยเลเขา', { title: $t(route.meta.title) }) : $t('ลุยเลเขา | จองและจัดทริปเที่ยวในไทยและต่างประเทศ เดินป่า ดำน้ำตื้น เช่ารถตู้'))) },
+    { property: 'og:description', content: computed(() => withLicence(route.meta.description) || $t('ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ บริการเดินป่า ดำน้ำตื้น เช่ารถตู้นำเที่ยว ตอบโจทย์คนรักธรรมชาติ จองง่าย ปลอดภัย')) },
     { property: 'og:image', content: computed(() => `${window.location.origin}/images/logo.png?v=2`) },
     { property: 'og:image:width', content: '512' },
     { property: 'og:image:height', content: '512' },
-    { property: 'og:image:alt', content: 'ลุยเลเขา Luilaykhao - แพลตฟอร์มจองทริปท่องเที่ยวในไทยและต่างประเทศ' },
+    { property: 'og:image:alt', content: $t('ลุยเลเขา Luilaykhao - แพลตฟอร์มจองทริปท่องเที่ยวในไทยและต่างประเทศ') },
 
     // Twitter Card
     { name: 'twitter:card', content: 'summary_large_image' },
-    { name: 'twitter:title', content: computed(() => (route.meta.title ? `${route.meta.title} | ลุยเลเขา` : 'ลุยเลเขา | แพลตฟอร์มจองทริปเที่ยวในไทยและต่างประเทศ')) },
-    { name: 'twitter:description', content: computed(() => withLicence(route.meta.description) || 'ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ') },
+    { name: 'twitter:title', content: computed(() => (route.meta.title ? $t('{title} | ลุยเลเขา', { title: $t(route.meta.title) }) : $t('ลุยเลเขา | แพลตฟอร์มจองทริปเที่ยวในไทยและต่างประเทศ'))) },
+    { name: 'twitter:description', content: computed(() => withLicence(route.meta.description) || $t('ลุยเลเขา แพลตฟอร์มจองและจัดทริปเที่ยวทั่วประเทศไทยและต่างประเทศ')) },
     { name: 'twitter:image', content: computed(() => `${window.location.origin}/images/logo.png?v=2`) },
-    { name: 'twitter:image:alt', content: 'ลุยเลเขา Luilaykhao' }
+    { name: 'twitter:image:alt', content: $t('ลุยเลเขา Luilaykhao') }
   ]
 });
 
@@ -197,10 +200,10 @@ const formattedGlobal = computed(() => {
 
 async function cancelCurrentBooking() {
   const isConfirmed = await swal.confirm(
-    'ยกเลิกการจองนี้?',
-    'ที่นั่งที่คุณเลือกจะถูกปลดล็อค และข้อมูลที่กรอกไว้จะหายไป',
-    'ยืนยันยกเลิก',
-    'ไม่ ยกเลิก'
+    $t('ยกเลิกการจองนี้?'),
+    $t('ที่นั่งที่คุณเลือกจะถูกปลดล็อค และข้อมูลที่กรอกไว้จะหายไป'),
+    $t('ยืนยันยกเลิก'),
+    $t('ไม่ ยกเลิก')
   );
 
   if (!isConfirmed) return;
@@ -215,7 +218,7 @@ async function cancelCurrentBooking() {
     }
     
     seatsStore.clearSelection();
-    swal.success('ยกเลิกการจองแล้ว', 'คุณสามารถเลือกทริปและที่นั่งใหม่ได้ตามต้องการ');
+    swal.success($t('ยกเลิกการจองแล้ว'), $t('คุณสามารถเลือกทริปและที่นั่งใหม่ได้ตามต้องการ'));
     
     // Redirect if we are currently on booking/payment pages
     if (route.path.startsWith('/booking/') || route.path.startsWith('/payment/')) {
@@ -281,8 +284,8 @@ async function handleGlobalExpiry() {
   const minutes = seatsStore.bookingTotalMinutes;
   seatsStore.clearSelection();
   swal.error(
-    'หมดเวลาการจองแล้ว!',
-    `เวลา ${minutes} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่`
+    $t('หมดเวลาการจองแล้ว!'),
+    $t('เวลา {minutes} นาทีสำหรับการจองหมดลงแล้ว ที่นั่งที่ล็อคไว้ถูกปลดล็อคแล้ว กรุณาเริ่มต้นการจองใหม่', { minutes })
   ).then(() => {
     router.push('/trips');
   });

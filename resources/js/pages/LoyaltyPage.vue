@@ -278,6 +278,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
@@ -378,7 +379,7 @@ function isExpired(date) {
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 onMounted(loadData);

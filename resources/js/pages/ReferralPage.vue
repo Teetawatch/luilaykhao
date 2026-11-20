@@ -111,6 +111,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
@@ -125,7 +126,7 @@ const toast = ref('');
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function showToast(msg) {

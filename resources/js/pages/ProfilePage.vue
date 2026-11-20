@@ -578,6 +578,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
@@ -1018,7 +1019,7 @@ const providerName = computed(() => providerMap[auth.user?.social_provider]?.lab
 
 function formatJoinDate(iso) {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+  return new Date(iso).toLocaleDateString(DATE_LOCALE, { month: 'long', year: 'numeric' });
 }
 
 async function handleLogout() {

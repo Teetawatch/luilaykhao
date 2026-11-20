@@ -1,8 +1,8 @@
 <template>
   <div v-if="!seatMap || !seatMap.has_seat_map" class="text-center py-12">
     <span class="material-symbols-rounded text-5xl text-gray-200 mb-3 block" style="font-variation-settings:'FILL' 0,'wght' 200">airline_seat_recline_normal</span>
-    <p class="font-bold text-gray-400">ทริปนี้ไม่มีผังที่นั่ง</p>
-    <p class="text-sm text-gray-400 mt-1">ที่นั่งว่าง: {{ seatMap?.available_seats ?? 0 }} / {{ seatMap?.total_seats ?? 0 }}</p>
+    <p class="font-bold text-gray-400">{{ $t('ทริปนี้ไม่มีผังที่นั่ง') }}</p>
+    <p class="text-sm text-gray-400 mt-1">{{ $t('ที่นั่งว่าง: {v} / {v2}', { v: seatMap?.available_seats ?? 0, v2: seatMap?.total_seats ?? 0 }) }}</p>
   </div>
 
   <div v-else class="space-y-5">
@@ -10,26 +10,26 @@
     <div class="flex flex-wrap gap-x-5 gap-y-2 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100">
       <div class="flex items-center gap-1.5">
         <div class="w-5 h-5 rounded-lg border-2 bg-accent-tint border-accent/40"></div>
-        <span class="text-[11px] font-bold text-gray-500">ว่าง</span>
+        <span class="text-[11px] font-bold text-gray-500">{{ $t('ว่าง') }}</span>
       </div>
       <div v-if="!readonly" class="flex items-center gap-1.5">
         <div class="w-5 h-5 rounded-lg border-2" :class="isWomenOnly ? 'bg-[#db2777] border-[#db2777]' : 'bg-[var(--color-accent)] border-[var(--color-accent)]'"></div>
-        <span class="text-[11px] font-bold text-gray-500">กำลังเลือก</span>
+        <span class="text-[11px] font-bold text-gray-500">{{ $t('กำลังเลือก') }}</span>
       </div>
       <div class="flex items-center gap-1.5">
         <div class="w-5 h-5 rounded-lg bg-amber-50 border-2 border-amber-200"></div>
-        <span class="text-[11px] font-bold text-gray-500">มีคนกำลังจอง</span>
+        <span class="text-[11px] font-bold text-gray-500">{{ $t('มีคนกำลังจอง') }}</span>
       </div>
       <div class="flex items-center gap-1.5">
         <div class="w-5 h-5 rounded-lg bg-rose-50 border-2 border-rose-200 flex items-center justify-center">
           <span class="material-symbols-rounded text-rose-500" style="font-variation-settings:'FILL' 1,'wght' 500;font-size:12px">lock</span>
         </div>
-        <span class="text-[11px] font-bold text-gray-500">จองแล้ว</span>
+        <span class="text-[11px] font-bold text-gray-500">{{ $t('จองแล้ว') }}</span>
       </div>
       <div v-if="hasOwnSeats" class="flex items-center gap-1.5">
         <div class="w-5 h-5 rounded-lg border-2 border-dashed"
           :class="isWomenOnly ? 'bg-pink-50 border-[#db2777]' : 'bg-accent-tint border-[var(--color-accent)]'"></div>
-        <span class="text-[11px] font-bold text-gray-500">ที่นั่งของคุณ</span>
+        <span class="text-[11px] font-bold text-gray-500">{{ $t('ที่นั่งของคุณ') }}</span>
       </div>
     </div>
 
@@ -40,8 +40,8 @@
         :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'"
         style="font-variation-settings:'FILL' 1,'wght' 400">how_to_reg</span>
       <span class="text-[11px] font-bold leading-relaxed" :class="isWomenOnly ? 'text-[#9d174d]' : 'text-[#0f5132]'">
-        ที่นั่ง {{ ownSeatIds.join(', ') }} เป็นของคุณอยู่แล้ว
-        <template v-if="ownLockedSeatIds.length">— แตะเพื่อเลือกอีกครั้ง หรือปล่อยไว้แล้วเลือกที่นั่งอื่นได้เลย</template>
+        {{ $t('ที่นั่ง {join} เป็นของคุณอยู่แล้ว', { join: ownSeatIds.join(', ') }) }}
+        <template v-if="ownLockedSeatIds.length">{{ $t('— แตะเพื่อเลือกอีกครั้ง หรือปล่อยไว้แล้วเลือกที่นั่งอื่นได้เลย') }}</template>
       </span>
     </div>
 
@@ -51,7 +51,7 @@
       <span class="material-symbols-rounded text-[18px] shrink-0 mt-px" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'"
         style="font-variation-settings:'FILL' 1,'wght' 400">info</span>
       <span class="text-[11px] font-bold leading-relaxed" :class="isWomenOnly ? 'text-[#9d174d]' : 'text-[#0f5132]'">
-        การจองหลายท่าน คือต้องเลือกหลายที่นั่ง ตามจำนวนคน
+        {{ $t('การจองหลายท่าน คือต้องเลือกหลายที่นั่ง ตามจำนวนคน') }}
       </span>
     </div>
 
@@ -94,7 +94,7 @@
                   :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'"
                   style="font-variation-settings:'FILL' 1,'wght' 400">{{ layoutConfig.staff_icon }}</span>
               </div>
-              <span class="text-[10px] font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'">สตาฟ</span>
+              <span class="text-[10px] font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'">{{ $t('สตาฟ') }}</span>
             </div>
 
             <!-- Front passenger seat -->
@@ -142,7 +142,7 @@
             <div class="w-12 h-12 rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
               <span class="material-symbols-rounded text-xl text-gray-500" style="font-variation-settings:'FILL' 0,'wght' 300">{{ layoutConfig.driver_icon }}</span>
             </div>
-            <span class="text-[10px] font-bold text-gray-400">คนขับ</span>
+            <span class="text-[10px] font-bold text-gray-400">{{ $t('คนขับ') }}</span>
           </div>
           <div v-else class="w-12 shrink-0"></div>
         </div>
@@ -218,23 +218,24 @@
         <div class="w-2 h-2 rounded-full"
           :class="seatMap.available_seats === 0 ? 'bg-red-400' : seatMap.available_seats <= 3 ? 'bg-amber-400 animate-pulse' : 'bg-accent-light animate-pulse'"></div>
         <span class="text-xs font-bold text-gray-500">
-          ว่าง <span class="text-gray-800"
+          {{ $t('ว่าง') }} <span class="text-gray-800"
             :class="seatMap.available_seats === 0 ? 'text-red-500' : seatMap.available_seats <= 3 ? 'text-amber-600' : 'text-accent'">
             {{ seatMap.available_seats }}
-          </span> / {{ seatMap.total_seats }} ที่นั่ง
+          </span> {{ $t('/ {total_seats} ที่นั่ง', { total_seats: seatMap.total_seats }) }}
         </span>
       </div>
-      <span v-if="seatMap.available_seats === 0" class="text-[11px] font-black text-red-500">เต็มแล้ว</span>
-      <span v-else-if="seatMap.available_seats <= 3" class="text-[11px] font-black text-amber-600 animate-pulse">ใกล้เต็ม!</span>
-      <span v-else class="text-[11px] font-bold text-gray-400">เลือกที่นั่งได้เลย</span>
+      <span v-if="seatMap.available_seats === 0" class="text-[11px] font-black text-red-500">{{ $t('เต็มแล้ว') }}</span>
+      <span v-else-if="seatMap.available_seats <= 3" class="text-[11px] font-black text-amber-600 animate-pulse">{{ $t('ใกล้เต็ม!') }}</span>
+      <span v-else class="text-[11px] font-bold text-gray-400">{{ $t('เลือกที่นั่งได้เลย') }}</span>
     </div>
     <div v-else class="text-center text-sm text-gray-400">
-      ว่าง <span class="font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'">{{ seatMap.available_seats }}</span> / {{ seatMap.total_seats }} ที่นั่ง
+      {{ $t('ว่าง') }} <span class="font-bold" :class="isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]'">{{ seatMap.available_seats }}</span> {{ $t('/ {total_seats} ที่นั่ง', { total_seats: seatMap.total_seats }) }}
     </div>
   </div>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, h } from 'vue';
 import { useSeatsStore } from '../stores/seats';
 
@@ -255,8 +256,8 @@ const layoutConfig = computed(() => {
   return {
     front_seat: sm?.front_seat ?? null,
     last_row_center: sm?.last_row_center ?? [],
-    front_label: sm?.front_label || 'หน้ารถ',
-    rear_label: sm?.rear_label || 'ท้ายรถ (เก็บสัมภาระ)',
+    front_label: sm?.front_label || $t('หน้ารถ'),
+    rear_label: sm?.rear_label || $t('ท้ายรถ (เก็บสัมภาระ)'),
     driver_icon: sm?.driver_icon || 'directions_car',
     show_driver: sm?.show_driver !== false,
     staff_icon: sm?.staff_icon || 'support_agent',
@@ -432,8 +433,8 @@ function handleSeatClick(seat) {
 // คำกำกับใต้ที่นั่งเหลือไว้เฉพาะที่นั่งของตัวเอง — เขียน "จองแล้ว" ใต้ที่นั่ง
 // ทุกที่ที่คนอื่นจองไป คือคำเดิมสิบรอบบนหน้าจอเดียว สถานะที่เหลือใช้สีกับไอคอนมุมบอก
 function seatStatusLabel(seat) {
-  if (isOwnBooking(seat)) return { text: 'คุณจองแล้ว', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]' };
-  if (isOwnLock(seat)) return { text: 'ของคุณ', class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]' };
+  if (isOwnBooking(seat)) return { text: $t('คุณจองแล้ว'), class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]' };
+  if (isOwnLock(seat)) return { text: $t('ของคุณ'), class: props.isWomenOnly ? 'text-[#db2777]' : 'text-[var(--color-accent)]' };
   return null;
 }
 
@@ -452,12 +453,12 @@ function seatBadge(seat) {
 function seatTitle(seat) {
   if (props.readonly) return '';
   if (isOwnBooking(seat)) {
-    return seat.booking_ref ? `อยู่ในการจอง ${seat.booking_ref} ของคุณ` : 'อยู่ในการจองของคุณ';
+    return seat.booking_ref ? $t('อยู่ในการจอง {booking_ref} ของคุณ', { booking_ref: seat.booking_ref }) : $t('อยู่ในการจองของคุณ');
   }
-  if (seat?.status === 'booked') return 'จองแล้ว';
-  if (isOwnLock(seat)) return 'คุณล็อคที่นั่งนี้ไว้ — คลิกเพื่อเลือกอีกครั้ง';
-  if (seat?.status === 'locked') return 'มีผู้ใช้อื่นกำลังจอง...';
-  return 'คลิกเพื่อเลือก';
+  if (seat?.status === 'booked') return $t('จองแล้ว');
+  if (isOwnLock(seat)) return $t('คุณล็อคที่นั่งนี้ไว้ — คลิกเพื่อเลือกอีกครั้ง');
+  if (seat?.status === 'locked') return $t('มีผู้ใช้อื่นกำลังจอง...');
+  return $t('คลิกเพื่อเลือก');
 }
 
 // ─── Inline SeatButton ────────────────────────────────────────────

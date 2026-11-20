@@ -1,5 +1,6 @@
 import { ref, computed, onBeforeUnmount } from 'vue';
 import api from '../lib/axios';
+import { $t } from '../i18n/index.js';
 
 /** ถามถี่แค่ไหนตอนลูกค้ายังไม่ได้จ่าย / ตอนจ่ายแล้วและนั่งรออยู่หน้าจอ */
 const POLL_IDLE_MS = 3000;
@@ -198,7 +199,7 @@ export function useBeamCharge(onPaid) {
 
       return payment.value;
     } catch (e) {
-      error.value = e?.response?.data?.message || 'สร้างรายการชำระเงินไม่สำเร็จ กรุณาลองใหม่';
+      error.value = e?.response?.data?.message || $t('สร้างรายการชำระเงินไม่สำเร็จ กรุณาลองใหม่');
       return null;
     } finally {
       loading.value = false;

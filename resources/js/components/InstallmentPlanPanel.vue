@@ -5,11 +5,11 @@
     <div class="flex items-center justify-between gap-3">
       <h3 class="font-black text-gray-900 flex items-center gap-2">
         <span class="material-symbols-rounded text-amber-500 text-xl">calendar_month</span>
-        แผนผ่อนชำระ {{ total }} งวด
+        {{ $t('แผนผ่อนชำระ {total} งวด', { total }) }}
       </h3>
       <span class="text-[10px] font-black px-3 py-1 rounded-full whitespace-nowrap"
         :class="allPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'">
-        {{ paidCount }} / {{ total }} งวด
+        {{ $t('{paidCount} / {total} งวด', { paidCount, total }) }}
       </span>
     </div>
 
@@ -38,14 +38,14 @@
         </div>
         <div class="flex-1 min-w-0">
           <p class="text-sm font-black" :class="inst.status === 'paid' ? 'text-green-800' : 'text-gray-700'">
-            งวดที่ {{ inst.installment_no }} · ฿{{ Number(inst.amount).toLocaleString() }}
+            {{ $t('งวดที่ {installment_no} · ฿{Number}', { installment_no: inst.installment_no, Number: Number(inst.amount).toLocaleString() }) }}
           </p>
           <p class="text-xs font-bold" :class="inst.status === 'paid' ? 'text-green-600' : 'text-gray-400'">
             <template v-if="inst.status === 'paid'">
-              {{ inst.paid_at ? `ชำระแล้ว ${formatDate(inst.paid_at)}` : 'ชำระแล้ว' }}
+              {{ inst.paid_at ? $t('ชำระแล้ว {formatDate}', { formatDate: formatDate(inst.paid_at) }) : $t('ชำระแล้ว') }}
             </template>
             <template v-else>
-              กำหนดชำระ {{ formatDate(inst.due_date) }}
+              {{ $t('กำหนดชำระ {formatDate}', { formatDate: formatDate(inst.due_date) }) }}
             </template>
           </p>
         </div>
@@ -63,10 +63,10 @@
         </span>
         <div class="min-w-0">
           <p class="text-[11px] font-black uppercase tracking-wide" :class="overdue ? 'text-red-700' : 'text-amber-800'">
-            {{ overdue ? 'เลยกำหนดชำระแล้ว' : `งวดถัดไป: งวดที่ ${nextPending.installment_no}` }}
+            {{ overdue ? $t('เลยกำหนดชำระแล้ว') : $t('งวดถัดไป: งวดที่ {installment_no}', { installment_no: nextPending.installment_no }) }}
           </p>
           <p class="text-[10px] font-bold" :class="overdue ? 'text-red-600' : 'text-amber-700'">
-            กำหนด {{ formatDate(nextPending.due_date) }}
+            {{ $t('กำหนด {formatDate}', { formatDate: formatDate(nextPending.due_date) }) }}
             <span v-if="!overdue"> · {{ dueLabel }}</span>
           </p>
         </div>
@@ -75,18 +75,20 @@
         class="px-4 py-2 rounded-xl text-xs font-black text-white transition-all active:scale-95 flex items-center gap-1.5 shrink-0"
         :class="overdue ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'">
         <span class="material-symbols-rounded text-[14px]">payments</span>
-        ชำระงวด
+        {{ $t('ชำระงวด') }}
       </router-link>
     </div>
 
     <div v-else class="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
       <span class="material-symbols-rounded text-green-600 text-lg" style="font-variation-settings:'FILL' 1">verified</span>
-      <span class="text-xs font-black text-green-700">ชำระครบทุกงวดเรียบร้อยแล้ว</span>
+      <span class="text-xs font-black text-green-700">{{ $t('ชำระครบทุกงวดเรียบร้อยแล้ว') }}</span>
     </div>
   </div>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { computed } from 'vue';
 import { daysUntil } from '../lib/bangkokDate';
 
@@ -112,9 +114,9 @@ const dueSoon = computed(() => daysToDue.value !== null && daysToDue.value >= 0 
 const dueLabel = computed(() => {
   const days = daysToDue.value;
   if (days === null) return '';
-  if (days === 0) return 'วันนี้';
-  if (days === 1) return 'พรุ่งนี้';
-  return `อีก ${days} วัน`;
+  if (days === 0) return $t('วันนี้');
+  if (days === 1) return $t('พรุ่งนี้');
+  return $t('อีก {days} วัน', { days });
 });
 
 function isNext(inst) {
@@ -123,6 +125,6 @@ function isNext(inst) {
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 </script>

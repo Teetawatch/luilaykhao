@@ -6,8 +6,8 @@
         <span class="material-symbols-rounded text-[22px]">hourglass_top</span>
       </div>
       <div>
-        <p class="font-extrabold text-[var(--color-text-dark)] text-base leading-tight">รอบนี้เต็มแล้ว</p>
-        <p class="text-xs font-bold text-[var(--color-text-muted)]">เข้าคิวรอ — เราจะแจ้งทันทีที่มีที่นั่งว่าง</p>
+        <p class="font-extrabold text-[var(--color-text-dark)] text-base leading-tight">{{ $t('รอบนี้เต็มแล้ว') }}</p>
+        <p class="text-xs font-bold text-[var(--color-text-muted)]">{{ $t('เข้าคิวรอ — เราจะแจ้งทันทีที่มีที่นั่งว่าง') }}</p>
       </div>
     </div>
 
@@ -19,7 +19,7 @@
       <!-- ยังไม่อยู่ในคิว -->
       <div v-if="!entry || entry.status === 'left'">
         <div class="flex items-center gap-2 mb-3">
-          <label class="text-xs font-bold text-[var(--color-text-muted)]">จำนวนที่นั่ง</label>
+          <label class="text-xs font-bold text-[var(--color-text-muted)]">{{ $t('จำนวนที่นั่ง') }}</label>
           <select v-model.number="seatCount" class="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-bold bg-white">
             <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
           </select>
@@ -28,7 +28,7 @@
           @click="join"
           :disabled="submitting"
           class="w-full py-3 rounded-full bg-[var(--color-accent)] text-white font-extrabold text-base hover:brightness-95 transition disabled:opacity-50">
-          {{ submitting ? 'กำลังเข้าคิว...' : 'เข้าคิวรอที่นั่ง' }}
+          {{ submitting ? $t('กำลังเข้าคิว...') : $t('เข้าคิวรอที่นั่ง') }}
         </button>
       </div>
 
@@ -37,32 +37,32 @@
         <div class="p-3 rounded-xl bg-accent-tint border border-accent/25">
           <p class="text-sm font-black text-accent flex items-center gap-1.5">
             <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">celebration</span>
-            มีที่นั่งว่างสำหรับคุณแล้ว!
+            {{ $t('มีที่นั่งว่างสำหรับคุณแล้ว!') }}
           </p>
           <p v-if="countdown" class="text-xs font-bold text-accent mt-1">
-            รีบจองภายใน <span class="tabular-nums">{{ countdown }}</span> ก่อนสิทธิ์หมดอายุ
+            {{ $t('รีบจองภายใน') }} <span class="tabular-nums">{{ countdown }}</span> {{ $t('ก่อนสิทธิ์หมดอายุ') }}
           </p>
         </div>
         <router-link
           :to="`/booking/${scheduleId}`"
           class="block text-center py-3 rounded-full bg-[var(--color-accent)] text-white font-extrabold text-base hover:bg-[var(--color-accent-mid)] transition">
-          จองที่นั่งเลย
+          {{ $t('จองที่นั่งเลย') }}
         </router-link>
         <button @click="leave" :disabled="submitting" class="w-full text-xs font-bold text-gray-400 hover:text-red-500 transition">
-          ออกจากคิว
+          {{ $t('ออกจากคิว') }}
         </button>
       </div>
 
       <!-- อยู่ในคิว รอที่นั่ง -->
       <div v-else class="space-y-3">
         <div class="flex items-center justify-between p-3 rounded-xl bg-white border border-gray-100">
-          <span class="text-sm font-bold text-[var(--color-text-muted)]">ลำดับในคิว</span>
+          <span class="text-sm font-bold text-[var(--color-text-muted)]">{{ $t('ลำดับในคิว') }}</span>
           <span class="text-2xl font-black text-[var(--color-accent)]">
             {{ entry.position ? `#${entry.position}` : '—' }}
           </span>
         </div>
         <button @click="leave" :disabled="submitting" class="w-full py-2.5 rounded-full border border-red-200 text-red-600 font-bold text-sm hover:bg-red-50 transition">
-          ออกจากคิว
+          {{ $t('ออกจากคิว') }}
         </button>
       </div>
     </template>
@@ -70,6 +70,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import api from '../lib/axios';
 import { useAuthStore } from '../stores/auth';
@@ -114,7 +115,7 @@ async function join() {
     entry.value = res.data.data;
     startCountdown();
   } catch (e) {
-    alert(e?.response?.data?.message || 'เข้าคิวไม่สำเร็จ');
+    alert(e?.response?.data?.message || $t('เข้าคิวไม่สำเร็จ'));
   } finally {
     submitting.value = false;
   }
@@ -127,7 +128,7 @@ async function leave() {
     entry.value = null;
     stopCountdown();
   } catch (e) {
-    alert(e?.response?.data?.message || 'ออกจากคิวไม่สำเร็จ');
+    alert(e?.response?.data?.message || $t('ออกจากคิวไม่สำเร็จ'));
   } finally {
     submitting.value = false;
   }

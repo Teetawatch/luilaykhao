@@ -14,10 +14,10 @@
               </div>
               <div class="flex-1 min-w-0">
                 <h3 class="text-lg font-extrabold text-white leading-tight">{{ headline }}</h3>
-                <p class="text-[12px] text-white/70 leading-snug mt-0.5">เผื่อคุณกำลังมองรอบเดินทางอยู่</p>
+                <p class="text-[12px] text-white/70 leading-snug mt-0.5">{{ $t('เผื่อคุณกำลังมองรอบเดินทางอยู่') }}</p>
               </div>
             </div>
-            <button @click="close" aria-label="ปิด"
+            <button @click="close" :aria-label="$t('ปิด')"
               class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors">
               <span class="material-symbols-rounded text-[18px]">close</span>
             </button>
@@ -41,7 +41,7 @@
                   <template v-if="item.kind === 'flash'">
                     <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-black">
                       <span class="material-symbols-rounded text-[12px]">bolt</span>
-                      ลด {{ item.flash.discount_percent }}%
+                      {{ $t('ลด {discount_percent}%', { discount_percent: item.flash.discount_percent }) }}
                     </span>
                     <span v-if="countdowns[item.trip.id]"
                       class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[10px] font-black font-anuphan tabular-nums">
@@ -60,9 +60,9 @@
               </div>
               <div class="text-right shrink-0">
                 <p v-if="item.kind === 'flash' && originalPrice(item.trip)"
-                  class="text-[10px] text-gray-400 line-through leading-none">฿{{ formatPrice(originalPrice(item.trip)) }}</p>
+                  class="text-[10px] text-gray-400 line-through leading-none">{{ $t('฿{formatPrice}', { formatPrice: formatPrice(originalPrice(item.trip)) }) }}</p>
                 <p class="text-sm font-black" :class="item.kind === 'flash' ? 'text-red-600' : 'text-[var(--color-accent)]'">
-                  ฿{{ formatPrice(item.trip.min_price) }}
+                  {{ $t('฿{formatPrice}', { formatPrice: formatPrice(item.trip.min_price) }) }}
                 </p>
               </div>
             </router-link>
@@ -72,12 +72,12 @@
           <div class="px-4 pb-4 pt-1">
             <router-link to="/trips" @click="goBook"
               class="flex items-center justify-center gap-2 w-full bg-[var(--color-accent)] text-white py-3 rounded-full text-sm font-extrabold hover:bg-[var(--color-accent-mid)] transition-colors">
-              ดูทริปทั้งหมด
+              {{ $t('ดูทริปทั้งหมด') }}
               <span class="material-symbols-rounded text-[18px]">arrow_forward</span>
             </router-link>
             <button @click="dontShowToday"
               class="block w-full text-center text-[11px] text-gray-400 hover:text-gray-600 font-bold mt-2 transition-colors">
-              ไม่ต้องแสดงอีก
+              {{ $t('ไม่ต้องแสดงอีก') }}
             </button>
           </div>
         </div>
@@ -87,6 +87,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, reactive, watch, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useTripsStore } from '../stores/trips';
@@ -117,7 +119,7 @@ const countdowns = reactive({}); // trip.id -> "1:23:45"
 let showTimer = null;
 let tickTimer = null;
 
-const headline = computed(() => title.value || 'รอบเหล่านี้ใกล้เต็มแล้ว');
+const headline = computed(() => title.value || $t('รอบเหล่านี้ใกล้เต็มแล้ว'));
 
 const scarcityLabel = tripScarcityLabel;
 const scarcityLevel = tripScarcityLevel;
@@ -146,7 +148,7 @@ function pageViews() {
 }
 
 function formatPrice(n) {
-  return Number(n || 0).toLocaleString('th-TH');
+  return Number(n || 0).toLocaleString(DATE_LOCALE);
 }
 
 // The soonest-ending live flash-sale block among the trip's rounds.
@@ -167,7 +169,7 @@ function formatRemaining(ms) {
   if (ms <= 0) return null;
   const total = Math.floor(ms / 1000);
   const d = Math.floor(total / 86400);
-  if (d >= 1) return `อีก ${d} วัน`;
+  if (d >= 1) return $t('อีก {d} วัน', { d });
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;

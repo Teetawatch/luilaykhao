@@ -8,6 +8,8 @@
  * แอดมินแก้ได้ที่ /admin/settings แล้วมีผลทันทีที่โหลดหน้าถัดไป ไม่ต้อง deploy
  */
 
+import { isEnglish } from '../i18n/index.js';
+
 /** ค่าสำรองเมื่ออ่าน meta ไม่ได้ (เช่น หน้าที่เรนเดอร์นอก shell ปกติ) */
 const FALLBACK = {
   phone: '062-612-6006',
@@ -65,7 +67,23 @@ export function supportEmailHref() {
  * แย้งกันสองหน้าถัดมา อ่านแล้วเชื่ออะไรไม่ได้สักอย่าง
  */
 export function supportHours() {
-  return readMeta('llk:support-hours') || FALLBACK.hours;
+  const hours = readMeta('llk:support-hours') || FALLBACK.hours;
+
+  return isEnglish ? englishHours(hours) : hours;
+}
+
+/**
+ * แอดมินกรอกเวลาทำการเป็นภาษาไทยที่ /admin/settings — หน้าอังกฤษจึงแกะเวลาออกมา
+ * เขียนใหม่ ("ทุกวัน 09:00 - 20:00 น." → "daily 09:00–20:00") แกะไม่ได้ก็ใช้ตามที่กรอก
+ */
+function englishHours(hours) {
+  const match = hours.match(/(\d{1,2})[:.](\d{2})\s*[-–—ถึง]+\s*(\d{1,2})[:.](\d{2})/);
+  if (!match) return hours;
+
+  const time = (h, m) => `${h.padStart(2, '0')}:${m}`;
+  const range = `${time(match[1], match[2])}–${time(match[3], match[4])}`;
+
+  return /ทุกวัน/.test(hours) || !/[\u0E00-\u0E7F]/.test(hours.replace(/น\.|ถึง/g, '')) ? `daily ${range}` : range;
 }
 
 /**

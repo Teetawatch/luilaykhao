@@ -90,6 +90,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { defineComponent, h, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import Swal from 'sweetalert2';
@@ -106,7 +107,7 @@ const BookingLines = defineComponent({
     return () => h('div', [
       h('p', { class: 'font-extrabold text-[var(--color-text-dark)]' }, `${props.b.guest_name} · ${props.b.guests} คน`),
       h('p', { class: 'text-[14px] text-[var(--color-text-mid)]' }, `${props.b.room_name} × ${props.b.units} · ${short(props.b.check_in)} – ${short(props.b.check_out)} (${props.b.nights} คืน)`),
-      h('p', { class: 'text-[14px] font-bold text-[var(--color-accent)]' }, `คุณได้รับ ฿${Number(props.b.host_amount).toLocaleString('th-TH')}`),
+      h('p', { class: 'text-[14px] font-bold text-[var(--color-accent)]' }, `คุณได้รับ ฿${Number(props.b.host_amount).toLocaleString(DATE_LOCALE)}`),
       props.b.note ? h('p', { class: 'mt-1 rounded-xl bg-[var(--color-sand)] p-2 text-[13px]' }, `ถึงคุณ: ${props.b.note}`) : null,
     ]);
   },
@@ -130,7 +131,7 @@ const busy = ref(false);
 const replies = reactive({});
 
 function money(n) {
-  return Math.round(Number(n || 0)).toLocaleString('th-TH');
+  return Math.round(Number(n || 0)).toLocaleString(DATE_LOCALE);
 }
 
 async function load() {

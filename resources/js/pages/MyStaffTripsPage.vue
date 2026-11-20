@@ -86,6 +86,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import api from '../lib/axios';
@@ -103,7 +104,7 @@ const isStaff = computed(() => {
 
 const formatDate = (date) => {
   if (!date) return '-';
-  return new Date(date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(date).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 const statusLabel = (status) => {

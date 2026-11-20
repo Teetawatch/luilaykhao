@@ -137,6 +137,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../lib/axios';
@@ -159,7 +160,7 @@ const totalElevation = computed(() => tracks.value.reduce((sum, t) => sum + (Num
 
 function fmt(value) {
   const n = Number(value) || 0;
-  return Number.isInteger(n) ? n.toLocaleString('th-TH') : n.toFixed(1);
+  return Number.isInteger(n) ? n.toLocaleString(DATE_LOCALE) : n.toFixed(1);
 }
 
 function duration(seconds) {

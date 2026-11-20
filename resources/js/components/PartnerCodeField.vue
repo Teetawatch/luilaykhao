@@ -3,22 +3,22 @@
     <div v-if="partner" class="flex items-center justify-between gap-3 rounded-xl border border-violet-100 bg-violet-50 px-4 py-3">
       <div class="flex min-w-0 items-center gap-2 text-sm">
         <span class="material-symbols-rounded text-[18px] text-violet-600">handshake</span>
-        <span class="truncate font-bold text-violet-900">แนะนำโดย {{ partner.display_name }}</span>
+        <span class="truncate font-bold text-violet-900">{{ $t('แนะนำโดย {display_name}', { display_name: partner.display_name }) }}</span>
       </div>
-      <button type="button" class="shrink-0 text-xs font-bold text-gray-400 hover:text-red-500" @click="remove">เอาออก</button>
+      <button type="button" class="shrink-0 text-xs font-bold text-gray-400 hover:text-red-500" @click="remove">{{ $t('เอาออก') }}</button>
     </div>
 
     <button v-else-if="!open" type="button" class="text-xs font-bold text-gray-500 underline-offset-2 hover:text-accent hover:underline" @click="open = true">
-      มีรหัสผู้แนะนำ/พาร์ทเนอร์?
+      {{ $t('มีรหัสผู้แนะนำ/พาร์ทเนอร์?') }}
     </button>
 
     <div v-else class="space-y-1">
       <div class="flex gap-2">
-        <input v-model="input" type="text" maxlength="20" placeholder="รหัสผู้แนะนำ"
+        <input v-model="input" type="text" maxlength="20" :placeholder="$t('รหัสผู้แนะนำ')"
           class="min-w-0 flex-1 rounded-xl border-2 border-gray-200 px-4 py-2.5 text-sm font-bold uppercase text-gray-900 outline-none focus:border-accent"
           @keyup.enter="check" />
         <button type="button" :disabled="loading || !input.trim()" class="shrink-0 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50" @click="check">
-          ตรวจสอบ
+          {{ $t('ตรวจสอบ') }}
         </button>
       </div>
       <p v-if="error" class="text-xs font-bold text-red-500">{{ error }}</p>
@@ -27,6 +27,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { onMounted, ref } from 'vue';
 import api from '../lib/axios';
 import { forgetPartnerCode, rememberPartnerCode, storedPartnerRef } from '../lib/partnerRef';
@@ -52,13 +53,13 @@ async function check() {
   try {
     const found = await lookup(input.value.trim());
     if (!found) {
-      error.value = 'ไม่พบรหัสนี้ ลองตรวจตัวสะกดอีกครั้ง';
+      error.value = $t('ไม่พบรหัสนี้ ลองตรวจตัวสะกดอีกครั้ง');
       return;
     }
     rememberPartnerCode(found.code, 'code');
     partner.value = found;
   } catch {
-    error.value = 'ตรวจสอบรหัสไม่สำเร็จ ลองใหม่อีกครั้ง';
+    error.value = $t('ตรวจสอบรหัสไม่สำเร็จ ลองใหม่อีกครั้ง');
   } finally {
     loading.value = false;
   }

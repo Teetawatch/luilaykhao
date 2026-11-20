@@ -74,6 +74,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { onMounted, reactive, ref, watch } from 'vue';
 import api from '../lib/axios';
 import { useToast } from '../lib/toast';
@@ -151,7 +152,7 @@ function formatDateTime(iso) {
   if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '-';
-  return d.toLocaleString('th-TH', {
+  return d.toLocaleString(DATE_LOCALE, {
     timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit',
   });
 }

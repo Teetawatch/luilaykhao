@@ -86,6 +86,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useHead } from '@unhead/vue';
@@ -113,9 +114,9 @@ const departureText = computed(() => {
   if (!raw) return '';
   const date = new Date(raw.replace(' ', 'T'));
   if (Number.isNaN(date.getTime())) return '';
-  const day = date.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  const day = date.toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
   if (!preview.value?.departs_at) return day;
-  const time = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  const time = date.toLocaleTimeString(DATE_LOCALE, { hour: '2-digit', minute: '2-digit' });
   return `${day} ${time} น.`;
 });
 

@@ -1,4 +1,5 @@
 import Swal from 'sweetalert2';
+import { $t } from '../i18n/index.js';
 
 const base = Swal.mixin({
   customClass: {
@@ -13,7 +14,7 @@ const base = Swal.mixin({
 });
 
 export function useSwal() {
-  function confirm({ title = 'ยืนยันการดำเนินการ?', text = '', icon = 'question', confirmText = 'ยืนยัน', cancelText = 'ยกเลิก', ...options } = {}) {
+  function confirm({ title = $t('ยืนยันการดำเนินการ?'), text = '', icon = 'question', confirmText = $t('ยืนยัน'), cancelText = $t('ยกเลิก'), ...options } = {}) {
     return base.fire({
       title,
       text,
@@ -25,20 +26,20 @@ export function useSwal() {
     });
   }
 
-  function alert({ title = '', text = '', icon = 'info', confirmText = 'ตกลง' } = {}) {
+  function alert({ title = '', text = '', icon = 'info', confirmText = $t('ตกลง') } = {}) {
     return base.fire({ title, text, icon, confirmButtonText: confirmText });
   }
 
-  function success(title = 'สำเร็จ!', text = '') {
-    return base.fire({ title, text, icon: 'success', confirmButtonText: 'ตกลง' });
+  function success(title = $t('สำเร็จ!'), text = '') {
+    return base.fire({ title, text, icon: 'success', confirmButtonText: $t('ตกลง') });
   }
 
-  function error(title = 'เกิดข้อผิดพลาด', text = '') {
-    return base.fire({ title, text, icon: 'error', confirmButtonText: 'ตกลง' });
+  function error(title = $t('เกิดข้อผิดพลาด'), text = '') {
+    return base.fire({ title, text, icon: 'error', confirmButtonText: $t('ตกลง') });
   }
 
-  function warning(title = 'คำเตือน', text = '') {
-    return base.fire({ title, text, icon: 'warning', confirmButtonText: 'ตกลง' });
+  function warning(title = $t('คำเตือน'), text = '') {
+    return base.fire({ title, text, icon: 'warning', confirmButtonText: $t('ตกลง') });
   }
 
   return { confirm, alert, success, error, warning };

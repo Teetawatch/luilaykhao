@@ -140,6 +140,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { computed, onMounted, ref } from 'vue';
 import api from '../lib/axios';
@@ -169,12 +170,12 @@ const page = ref(1);
 const hasMore = ref(false);
 const rowsLoading = ref(false);
 
-const money = (n) => Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+const money = (n) => Number(n || 0).toLocaleString(DATE_LOCALE, { maximumFractionDigits: 2 });
 
 function thaiDate(d) {
   if (!d) return '';
   const date = new Date(`${d}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? d : date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+  return Number.isNaN(date.getTime()) ? d : date.toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: '2-digit' });
 }
 
 const statusLabel = (c) => (c.type === 'clawback'

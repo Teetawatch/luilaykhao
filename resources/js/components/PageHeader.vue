@@ -5,8 +5,8 @@
        `container` ต้องตรงกับกล่องเนื้อหาของหน้านั้น หัวกับเนื้อหาจะได้ชิดซ้ายแนวเดียวกัน -->
   <section class="page-header bg-white border-b border-[var(--color-sand-dark)]">
     <div class="mx-auto" :class="[container, flush ? 'pt-6 md:pt-8' : 'py-6 md:py-9']">
-      <nav aria-label="เส้นทางนำทาง" class="mb-3 flex flex-wrap items-center gap-1 text-[13px] font-medium text-[var(--color-text-muted)]">
-        <router-link to="/" class="hover:text-[var(--color-accent)] transition-colors">หน้าแรก</router-link>
+      <nav :aria-label="$t('เส้นทางนำทาง')" class="mb-3 flex flex-wrap items-center gap-1 text-[13px] font-medium text-[var(--color-text-muted)]">
+        <router-link to="/" class="hover:text-[var(--color-accent)] transition-colors">{{ $t('หน้าแรก') }}</router-link>
         <template v-for="crumb in crumbs" :key="crumb.label">
           <span class="material-symbols-rounded icon-16 opacity-60" aria-hidden="true">chevron_right</span>
           <router-link :to="crumb.to" class="hover:text-[var(--color-accent)] transition-colors">{{ crumb.label }}</router-link>

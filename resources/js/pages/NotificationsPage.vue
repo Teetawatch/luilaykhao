@@ -75,6 +75,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
@@ -155,7 +156,7 @@ function timeAgo(dateStr) {
   if (h < 24) return `${h} ชั่วโมงที่แล้ว`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d} วันที่แล้ว`;
-  return new Date(dateStr).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  return new Date(dateStr).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short' });
 }
 
 onMounted(loadNotifications);

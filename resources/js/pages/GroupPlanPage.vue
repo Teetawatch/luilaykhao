@@ -304,6 +304,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../lib/axios';
@@ -390,7 +391,7 @@ const expiryLabel = computed(() => {
 });
 
 function money(value) {
-  return `฿${Math.round(Number(value) || 0).toLocaleString('th-TH')}`;
+  return `฿${Math.round(Number(value) || 0).toLocaleString(DATE_LOCALE)}`;
 }
 
 function initial(name) {

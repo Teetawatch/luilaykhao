@@ -9,15 +9,16 @@
         {{ campaign.badge_label }}
       </span>
       <p class="text-sm font-bold">
-        {{ campaign.tagline || `${campaign.discount_label} ทุกทริปทั้งเว็บ` }}
+        {{ campaign.tagline || $t('{discount_label} ทุกทริปทั้งเว็บ', { discount_label: campaign.discount_label }) }}
       </p>
-      <span class="text-xs font-bold opacity-90">เหลืออีก</span>
+      <span class="text-xs font-bold opacity-90">{{ $t('เหลืออีก') }}</span>
       <span class="px-2.5 py-1 rounded-lg bg-black/20 text-sm font-black tabular-nums">{{ remaining }}</span>
     </div>
   </div>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '../lib/axios';
 
@@ -28,12 +29,12 @@ let ticker = null;
 const remaining = computed(() => {
   if (!campaign.value?.ends_at) return '';
   const diff = new Date(campaign.value.ends_at).getTime() - now.value;
-  if (diff <= 0) return 'หมดเวลา';
+  if (diff <= 0) return $t('หมดเวลา');
   const s = Math.floor(diff / 1000);
   const pad = (n) => String(n).padStart(2, '0');
   const days = Math.floor(s / 86400);
   const clock = `${pad(Math.floor((s % 86400) / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
-  return days > 0 ? `${days} วัน ${clock}` : clock;
+  return days > 0 ? $t('{days} วัน {clock}', { days, clock }) : clock;
 });
 
 onMounted(async () => {

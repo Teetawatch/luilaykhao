@@ -278,6 +278,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import QRCode from 'qrcode';
@@ -371,7 +372,7 @@ function getDaysUntil(dateStr) {
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 // ปุ่มอยู่ข้าง "เลขที่บัญชี" — เดิมคัดลอกเลขพร้อมเพย์ไปแทน ลูกค้าวางในแอปธนาคารแล้วได้คนละเลข

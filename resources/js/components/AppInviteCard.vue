@@ -14,9 +14,9 @@
         <span class="material-symbols-rounded text-[26px]">forum</span>
       </span>
       <div class="min-w-0">
-        <h3 class="text-gray-900 font-black text-lg leading-snug">เพื่อนร่วมทริปรอบนี้คุยกันอยู่ในแอป</h3>
+        <h3 class="text-gray-900 font-black text-lg leading-snug">{{ $t('เพื่อนร่วมทริปรอบนี้คุยกันอยู่ในแอป') }}</h3>
         <p class="text-gray-500 font-bold text-sm leading-relaxed mt-1.5">
-          ทุกรอบเดินทางมีห้องแชทของตัวเอง ไว้ถามทีมงานและนัดแนะกับเพื่อนร่วมทาง
+          {{ $t('ทุกรอบเดินทางมีห้องแชทของตัวเอง ไว้ถามทีมงานและนัดแนะกับเพื่อนร่วมทาง') }}
         </p>
       </div>
     </div>
@@ -42,6 +42,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { appStoreUrl, playStoreUrl } from '../lib/appLinks';
@@ -52,9 +53,9 @@ const appStore = appStoreUrl();
 const playStore = playStoreUrl();
 
 const features = [
-  { icon: 'badge', text: 'ชื่อและเบอร์ทีมงาน กดโทรได้เลย' },
-  { icon: 'qr_code_2', text: 'QR เช็คอิน ให้ทีมงานสแกนหน้างาน' },
-  { icon: 'near_me', text: 'ติดตามรถแบบเรียลไทม์วันเดินทาง' },
+  { icon: 'badge', text: $t('ชื่อและเบอร์ทีมงาน กดโทรได้เลย') },
+  { icon: 'qr_code_2', text: $t('QR เช็คอิน ให้ทีมงานสแกนหน้างาน') },
+  { icon: 'near_me', text: $t('ติดตามรถแบบเรียลไทม์วันเดินทาง') },
 ];
 
 /**

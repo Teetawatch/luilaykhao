@@ -5,7 +5,7 @@
     <div v-if="loading" class="flex items-center justify-center min-h-[70vh]">
       <div class="flex flex-col items-center gap-5">
         <div class="w-16 h-16 border-4 border-gray-200 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-        <span class="text-[var(--color-text-dark)] font-bold text-lg tracking-wide">กำลังเตรียมข้อมูลทริป...</span>
+        <span class="text-[var(--color-text-dark)] font-bold text-lg tracking-wide">{{ $t('กำลังเตรียมข้อมูลทริป...') }}</span>
       </div>
     </div><div v-else-if="trip" class="animate-fade-in">
       <!-- Hero Section -->
@@ -31,10 +31,10 @@
 
         <!-- Top bar: breadcrumb + actions -->
         <div class="relative z-10 mx-auto flex w-full max-w-screen-2xl items-center gap-4 px-5 pt-6 md:px-12 lg:px-16">
-          <nav aria-label="เส้นทางนำทาง" class="flex min-w-0 items-center gap-1 text-[13px] font-semibold text-white/75">
-            <router-link to="/" class="shrink-0 transition-colors hover:text-white">หน้าแรก</router-link>
+          <nav :aria-label="$t('เส้นทางนำทาง')" class="flex min-w-0 items-center gap-1 text-[13px] font-semibold text-white/75">
+            <router-link to="/" class="shrink-0 transition-colors hover:text-white">{{ $t('หน้าแรก') }}</router-link>
             <span class="material-symbols-rounded shrink-0 text-[16px] opacity-50">chevron_right</span>
-            <router-link to="/trips" class="shrink-0 transition-colors hover:text-white">กิจกรรม</router-link>
+            <router-link to="/trips" class="shrink-0 transition-colors hover:text-white">{{ $t('กิจกรรม') }}</router-link>
             <span class="material-symbols-rounded shrink-0 text-[16px] opacity-50">chevron_right</span>
             <span class="truncate text-white" :title="trip.title">{{ trip.title }}</span>
           </nav>
@@ -45,12 +45,12 @@
               class="hero-action"
               :class="{ 'is-favorite': wishlistStore.isFavorite(trip.id) }"
               :aria-pressed="wishlistStore.isFavorite(trip.id)"
-              :title="wishlistStore.isFavorite(trip.id) ? 'นำออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'"
+              :title="wishlistStore.isFavorite(trip.id) ? $t('นำออกจากรายการโปรด') : $t('เพิ่มในรายการโปรด')"
               @click="wishlistStore.toggleFavorite(trip)"
             >
               <span class="material-symbols-rounded text-[21px]">favorite</span>
             </button>
-            <button type="button" class="hero-action" :title="shareCopied ? 'คัดลอกลิงก์แล้ว' : 'แชร์ทริปนี้'" @click="shareTrip">
+            <button type="button" class="hero-action" :title="shareCopied ? $t('คัดลอกลิงก์แล้ว') : $t('แชร์ทริปนี้')" @click="shareTrip">
               <span class="material-symbols-rounded text-[21px]">{{ shareCopied ? 'check' : 'ios_share' }}</span>
             </button>
           </div>
@@ -67,15 +67,15 @@
               </span>
               <span v-if="hasRating" class="hero-chip">
                 <span class="material-symbols-rounded text-[16px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
-                {{ Number(trip.rating || 0).toFixed(1) }} ({{ trip.review_count }} รีวิว)
+                {{ $t('{Number} ({review_count} รีวิว)', { Number: Number(trip.rating || 0).toFixed(1), review_count: trip.review_count }) }}
               </span>
               <span v-if="trip.booked_passengers_count > 0" class="hero-chip">
                 <span class="material-symbols-rounded text-[17px]">group</span>
-                {{ trip.booked_passengers_count }} คนจองแล้ว
+                {{ $t('{booked_passengers_count} คนจองแล้ว', { booked_passengers_count: trip.booked_passengers_count }) }}
               </span>
               <span v-if="trip.is_women_only" class="hero-chip hero-chip--pink">
                 <span class="material-symbols-rounded text-[17px]">female</span>
-                ทริปสำหรับผู้หญิงเท่านั้น
+                {{ $t('ทริปสำหรับผู้หญิงเท่านั้น') }}
               </span>
             </div>
 
@@ -89,7 +89,7 @@
               </span>
               <span class="hidden h-4 w-px bg-white/25 sm:block"></span>
               <span class="flex items-center gap-1.5">
-                <span class="material-symbols-rounded text-[19px]">schedule</span>{{ trip.duration_days }} วัน
+                <span class="material-symbols-rounded text-[19px]">schedule</span>{{ $t('{duration_days} วัน', { duration_days: trip.duration_days }) }}
               </span>
               <template v-if="trip.meals">
                 <span class="hidden h-4 w-px bg-white/25 sm:block"></span>
@@ -104,7 +104,7 @@
               <template v-if="trip.views_count > 0">
                 <span class="hidden h-4 w-px bg-white/25 sm:block"></span>
                 <span class="flex items-center gap-1.5">
-                  <span class="material-symbols-rounded text-[19px]">visibility</span>{{ Number(trip.views_count).toLocaleString() }} ผู้ชม
+                  <span class="material-symbols-rounded text-[19px]">visibility</span>{{ $t('{Number} ผู้ชม', { Number: Number(trip.views_count).toLocaleString() }) }}
                 </span>
               </template>
             </div>
@@ -115,11 +115,11 @@
         <div class="relative z-10 hidden border-t border-white/15 bg-black/30 backdrop-blur-xl md:block">
           <div class="mx-auto flex w-full max-w-screen-2xl items-center gap-6 px-12 py-4 lg:px-16">
             <div>
-              <p class="text-[11px] font-bold uppercase tracking-wider text-white/60">เริ่มต้น / ท่าน</p>
+              <p class="text-[11px] font-bold uppercase tracking-wider text-white/60">{{ $t('เริ่มต้น / ท่าน') }}</p>
               <div class="mt-0.5 flex items-baseline gap-2">
-                <span class="text-2xl font-black tracking-tight text-white lg:text-[28px]">฿{{ displayPrice.toLocaleString() }}</span>
+                <span class="text-2xl font-black tracking-tight text-white lg:text-[28px]">{{ $t('฿{toLocaleString}', { toLocaleString: displayPrice.toLocaleString() }) }}</span>
                 <span v-if="hasVisibleDiscount" class="text-[15px] font-bold text-white/45 line-through decoration-2">
-                  ฿{{ originalDisplayPrice.toLocaleString() }}
+                  {{ $t('฿{toLocaleString}', { toLocaleString: originalDisplayPrice.toLocaleString() }) }}
                 </span>
               </div>
             </div>
@@ -127,7 +127,7 @@
             <template v-if="nextSchedule">
               <span class="h-10 w-px bg-white/20"></span>
               <div>
-                <p class="text-[11px] font-bold uppercase tracking-wider text-white/60">รอบถัดไป</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-white/60">{{ $t('รอบถัดไป') }}</p>
                 <p class="mt-0.5 flex items-center gap-1.5 text-[15px] font-bold text-white">
                   <span class="material-symbols-rounded text-[18px]">event</span>
                   {{ formatDate(nextSchedule.departure_date) }}
@@ -137,7 +137,7 @@
 
             <button type="button" class="hero-cta ml-auto" @click="scrollToBooking">
               <span class="material-symbols-rounded text-[20px]">event_available</span>
-              เลือกวันเดินทาง
+              {{ $t('เลือกวันเดินทาง') }}
             </button>
           </div>
         </div>
@@ -146,7 +146,7 @@
       <!-- In-page section nav (editorial jump bar, scroll-spy) -->
       <div class="page-nav sticky top-16 z-40 border-b border-gray-100 bg-white/85 supports-[backdrop-filter]:backdrop-blur-xl">
         <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8">
-          <nav ref="pageNavEl" class="relative flex gap-1 overflow-x-auto no-scrollbar" aria-label="ส่วนต่าง ๆ ของหน้า">
+          <nav ref="pageNavEl" class="relative flex gap-1 overflow-x-auto no-scrollbar" :aria-label="$t('ส่วนต่าง ๆ ของหน้า')">
             <button
               v-for="s in pageSections"
               :key="s.id"
@@ -181,15 +181,15 @@
               <div class="gallery-bar">
                 <div class="gallery-counts">
                   <span v-if="galleryPhotoCount" class="gallery-count">
-                    <span class="material-symbols-rounded">photo_camera</span>{{ galleryPhotoCount }} ภาพ
+                    <span class="material-symbols-rounded">photo_camera</span>{{ $t('{galleryPhotoCount} ภาพ', { galleryPhotoCount }) }}
                   </span>
                   <span v-if="galleryVideoCount" class="gallery-count">
-                    <span class="material-symbols-rounded">play_circle</span>{{ galleryVideoCount }} วิดีโอ
+                    <span class="material-symbols-rounded">play_circle</span>{{ $t('{galleryVideoCount} วิดีโอ', { galleryVideoCount }) }}
                   </span>
                 </div>
                 <button type="button" class="gallery-all" @click="openGallery(0)">
                   <span class="material-symbols-rounded">grid_view</span>
-                  ดูทั้งหมด
+                  {{ $t('ดูทั้งหมด') }}
                 </button>
               </div>
 
@@ -199,7 +199,7 @@
                   :key="item.url"
                   type="button"
                   class="media-tile"
-                  :aria-label="`เปิดดู${item.type === 'video' ? 'วิดีโอ' : 'ภาพ'}ของ${trip.title}`"
+                  :aria-label="$t('เปิดดู{v}ของ{title}', { v: item.type === 'video' ? $t('วิดีโอ') : $t('ภาพ'), title: trip.title })"
                   @click="openGallery(idx)"
                   @mouseenter="previewVideo($event, true)"
                   @mouseleave="previewVideo($event, false)"
@@ -207,7 +207,7 @@
                   <img
                     v-if="item.type === 'image'"
                     :src="item.url"
-                    :alt="`${trip.title} ภาพที่ ${idx + 1}`"
+                    :alt="$t('{title} ภาพที่ {v}', { title: trip.title, v: idx + 1 })"
                     loading="lazy"
                     decoding="async"
                   />
@@ -248,9 +248,9 @@
             <section v-if="trip.is_women_only" class="flex items-start gap-3.5 bg-pink-50 px-6 py-5 rounded-[1.5rem] border border-pink-100">
               <span class="material-symbols-rounded text-[22px] text-pink-600 shrink-0 mt-px" style="font-variation-settings:'FILL' 1">female</span>
               <div>
-                <p class="font-extrabold text-pink-800 leading-snug">ทริปนี้รับเฉพาะผู้ร่วมทริปผู้หญิง</p>
+                <p class="font-extrabold text-pink-800 leading-snug">{{ $t('ทริปนี้รับเฉพาะผู้ร่วมทริปผู้หญิง') }}</p>
                 <p class="text-sm font-medium text-pink-700/80 mt-1 leading-relaxed">
-                  ทุกที่นั่งในรอบนี้สงวนไว้สำหรับผู้หญิง หากมีเงื่อนไขอื่นของทริป ผู้จัดจะระบุไว้ในหัวข้อด้านล่าง
+                  {{ $t('ทุกที่นั่งในรอบนี้สงวนไว้สำหรับผู้หญิง หากมีเงื่อนไขอื่นของทริป ผู้จัดจะระบุไว้ในหัวข้อด้านล่าง') }}
                 </p>
               </div>
             </section>
@@ -258,8 +258,8 @@
             <section id="overview" v-reveal class="description-section scroll-mt-32 bg-white p-6 md:p-12 rounded-[2rem] border border-gray-100">
               <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
                 <header class="ed-head">
-                  <span class="ed-kicker">ภาพรวม</span>
-                  <h2 class="ed-title">เกี่ยวกับทริปนี้</h2>
+                  <span class="ed-kicker">{{ $t('ภาพรวม') }}</span>
+                  <h2 class="ed-title">{{ $t('เกี่ยวกับทริปนี้') }}</h2>
                 </header>
                 <!-- ย้ายมาจาก section ไฮไลต์ ซึ่งตอนนี้ซ่อนได้เมื่อทริปไม่มีข้อมูลไฮไลต์ -->
                 <button
@@ -267,7 +267,7 @@
                   class="flex items-center gap-2 text-sm font-black text-[var(--color-accent)] bg-white px-5 py-2.5 rounded-full border border-[var(--color-accent)]/20 hover:bg-[var(--color-accent)] hover:text-white transition-all active:scale-95 group"
                 >
                   <span class="material-symbols-rounded text-xl transition-transform group-hover:rotate-12">calendar_month</span>
-                  เช็ครอบที่ยังว่าง
+                  {{ $t('เช็ครอบที่ยังว่าง') }}
                 </button>
               </div>
               <p
@@ -280,13 +280,13 @@
                 class="mt-3 inline-flex items-center gap-1 text-[14px] font-extrabold text-[var(--color-accent)] hover:text-[var(--color-accent-mid)]"
                 @click="descriptionExpanded = !descriptionExpanded"
               >
-                {{ descriptionExpanded ? 'ย่อลง' : 'อ่านต่อ' }}
+                {{ descriptionExpanded ? $t('ย่อลง') : $t('อ่านต่อ') }}
                 <span class="material-symbols-rounded text-[18px] transition-transform" :class="{ 'rotate-180': descriptionExpanded }">expand_more</span>
               </button>
 
               <!-- ข้อมูลเส้นทางแบบตัวเลข — คนที่จริงจังกับการเดินป่าดูอันนี้ ไม่ได้ดูคำโฆษณา -->
               <div v-if="routeFacts.length" class="mt-10 pt-8 border-t border-gray-100">
-                <h3 class="text-[13px] font-bold text-[var(--color-text-muted)] mb-5">ข้อมูลเส้นทาง</h3>
+                <h3 class="text-[13px] font-bold text-[var(--color-text-muted)] mb-5">{{ $t('ข้อมูลเส้นทาง') }}</h3>
                 <dl class="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
                   <div v-for="fact in routeFacts" :key="fact.label">
                     <dt class="flex items-center gap-1.5 text-[12px] font-bold text-[var(--color-text-muted)] mb-1.5">
@@ -304,13 +304,13 @@
                 <div v-if="climbComparison" class="mt-7 pt-6 border-t border-gray-100 flex items-start gap-3">
                   <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)] shrink-0">stairs</span>
                   <p class="text-[14px] font-semibold leading-relaxed text-[var(--color-text-mid)]">
-                    ไต่ขึ้นรวมพอ ๆ กับเดินขึ้นบันไดตึก
-                    <span class="font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ climbComparison.floors.toLocaleString() }} ชั้น</span>
+                    {{ $t('ไต่ขึ้นรวมพอ ๆ กับเดินขึ้นบันไดตึก') }}
+                    <span class="font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ $t('{toLocaleString} ชั้น', { toLocaleString: climbComparison.floors.toLocaleString() }) }}</span>
                     <template v-if="climbComparison.baiyokeLaps">
-                      หรือขึ้นตึกใบหยก 2 ประมาณ
-                      <span class="font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ climbComparison.baiyokeLaps }} รอบ</span>
+                      {{ $t('หรือขึ้นตึกใบหยก 2 ประมาณ') }}
+                      <span class="font-extrabold text-[var(--color-text-dark)] tabular-nums">{{ $t('{baiyokeLaps} รอบ', { baiyokeLaps: climbComparison.baiyokeLaps }) }}</span>
                     </template>
-                    <span class="block text-[12px] text-[var(--color-text-muted)] mt-0.5">กระจายตลอดทั้งทริป ไม่ได้ขึ้นรวดเดียว</span>
+                    <span class="block text-[12px] text-[var(--color-text-muted)] mt-0.5">{{ $t('กระจายตลอดทั้งทริป ไม่ได้ขึ้นรวดเดียว') }}</span>
                   </p>
                 </div>
               </div>
@@ -323,12 +323,12 @@
             <section v-if="itinerarySectors.length > 0" class="itinerary-section scroll-mt-32" id="itinerary">
               <div class="flex items-end justify-between gap-4 mb-8 flex-wrap">
                 <header class="ed-head">
-                  <span class="ed-kicker">กำหนดการ</span>
-                  <h2 class="ed-title">แผนการเดินทาง</h2>
+                  <span class="ed-kicker">{{ $t('กำหนดการ') }}</span>
+                  <h2 class="ed-title">{{ $t('แผนการเดินทาง') }}</h2>
                 </header>
                 <div class="flex items-center gap-2 shrink-0">
                   <span class="inline-flex items-center gap-1.5 text-[13px] font-black text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-3.5 py-1.5 rounded-full">
-                    <span class="material-symbols-rounded text-[16px]">event</span>{{ totalTripDays }} วัน
+                    <span class="material-symbols-rounded text-[16px]">event</span>{{ $t('{totalTripDays} วัน', { totalTripDays }) }}
                   </span>
                   <button
                     v-if="allDayKeys.length > 1"
@@ -337,7 +337,7 @@
                     @click="toggleAllDays"
                   >
                     <span class="material-symbols-rounded text-[16px]">{{ allDaysOpen ? 'unfold_less' : 'unfold_more' }}</span>
-                    {{ allDaysOpen ? 'ย่อทั้งหมด' : 'เปิดทั้งหมด' }}
+                    {{ allDaysOpen ? $t('ย่อทั้งหมด') : $t('เปิดทั้งหมด') }}
                   </button>
                 </div>
               </div>
@@ -354,7 +354,7 @@
                     :class="activeSector === sIdx ? 'bg-[var(--color-accent)] text-white' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'"
                   >
                     <span class="material-symbols-rounded text-lg" v-if="activeSector === sIdx">location_on</span>
-                    {{ sector.sector || `ช่วงที่ ${sIdx + 1}` }}
+                    {{ sector.sector || $t('ช่วงที่ {v}', { v: sIdx + 1 }) }}
                   </button>
                 </div>
               </div>
@@ -371,7 +371,7 @@
                       <span class="material-symbols-rounded text-2xl">map</span>
                     </div>
                     <div>
-                      <p class="text-[11px] font-black text-[var(--color-accent)] tracking-wide mb-0.5">ส่วนที่ {{ sIdx + 1 }}</p>
+                      <p class="text-[11px] font-black text-[var(--color-accent)] tracking-wide mb-0.5">{{ $t('ส่วนที่ {v}', { v: sIdx + 1 }) }}</p>
                       <h3 class="text-lg md:text-xl font-black text-[var(--color-text-dark)] leading-snug">{{ sector.sector }}</h3>
                     </div>
                   </div>
@@ -398,11 +398,11 @@
                           : 'bg-white text-[var(--color-text-dark)] border border-gray-200 hover:border-[var(--color-accent)]/50'"
                       >
                         <template v-if="isEveDay(item)">
-                          <span class="text-[9px] md:text-[11px] font-bold leading-none opacity-75">คืนก่อน</span>
+                          <span class="text-[9px] md:text-[11px] font-bold leading-none opacity-75">{{ $t('คืนก่อน') }}</span>
                           <span class="material-symbols-rounded eve-icon leading-none mt-0.5 md:mt-1">bedtime</span>
                         </template>
                         <template v-else>
-                          <span class="text-[9px] md:text-[11px] font-bold leading-none opacity-75">วันที่</span>
+                          <span class="text-[9px] md:text-[11px] font-bold leading-none opacity-75">{{ $t('วันที่') }}</span>
                           <span class="text-base md:text-2xl font-black leading-none mt-0.5 md:mt-1">{{ item.day }}</span>
                         </template>
                       </div>
@@ -420,7 +420,7 @@
                           :aria-controls="`day-${sIdx}-${idx}`"
                         >
                           <div class="min-w-0">
-                            <p v-if="isEveDay(item)" class="text-[12px] font-black text-[var(--color-accent)] mb-0.5">คืนก่อนวันเดินทาง</p>
+                            <p v-if="isEveDay(item)" class="text-[12px] font-black text-[var(--color-accent)] mb-0.5">{{ $t('คืนก่อนวันเดินทาง') }}</p>
                             <h4 class="text-base md:text-lg font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)] transition-colors leading-snug">{{ item.title }}</h4>
                             <p v-if="!openDays.includes(sIdx + '-' + idx) && daySummary(item)" class="text-sm text-[var(--color-text-muted)] font-medium mt-1 line-clamp-1">
                               {{ daySummary(item) }}
@@ -452,7 +452,7 @@
                                     :key="imgIdx"
                                     type="button"
                                     class="itin-stop-photo"
-                                    :aria-label="`ดูรูป ${stop.title} ภาพที่ ${imgIdx + 1}`"
+                                    :aria-label="$t('ดูรูป {title} ภาพที่ {v}', { title: stop.title, v: imgIdx + 1 })"
                                     @click="openReviewImage(stop.images, imgIdx)"
                                   >
                                     <img :src="url" :alt="stop.title" loading="lazy" />
@@ -487,8 +487,8 @@
             <!-- Preparations Section -->
             <section v-if="trip.preparations && trip.preparations.length > 0" id="prepare" class="preparations-section scroll-mt-32">
               <header class="ed-head mb-8">
-                <span class="ed-kicker">ก่อนออกเดินทาง</span>
-                <h2 class="ed-title">สิ่งที่ต้องเตรียม</h2>
+                <span class="ed-kicker">{{ $t('ก่อนออกเดินทาง') }}</span>
+                <h2 class="ed-title">{{ $t('สิ่งที่ต้องเตรียม') }}</h2>
               </header>
 
               <div v-reveal.stagger class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -505,8 +505,8 @@
             <!-- Highlights -->
             <section v-if="highlights.length" id="highlights" v-reveal class="scroll-mt-32">
               <header class="ed-head mb-8">
-                <span class="ed-kicker">ไฮไลต์</span>
-                <h2 class="ed-title">จุดเด่นของทริป</h2>
+                <span class="ed-kicker">{{ $t('ไฮไลต์') }}</span>
+                <h2 class="ed-title">{{ $t('จุดเด่นของทริป') }}</h2>
               </header>
 
               <!-- Image-led editorial feature when a gallery photo is available -->
@@ -558,8 +558,8 @@
             -->
             <section v-if="trip.meals" id="meals" v-reveal class="scroll-mt-32">
               <header class="ed-head mb-8">
-                <span class="ed-kicker">อาหารระหว่างทริป</span>
-                <h2 class="ed-title">มื้ออาหาร</h2>
+                <span class="ed-kicker">{{ $t('อาหารระหว่างทริป') }}</span>
+                <h2 class="ed-title">{{ $t('มื้ออาหาร') }}</h2>
               </header>
 
               <div class="meal-card rounded-[2rem] border border-gray-100 bg-white overflow-hidden">
@@ -567,11 +567,11 @@
                   <span class="meal-summary-icon material-symbols-rounded">restaurant</span>
                   <div class="min-w-0">
                     <p class="meal-summary-text">{{ trip.meals.summary }}</p>
-                    <p v-if="trip.meals.self_count > 0" class="meal-summary-hint">มื้อที่ "จ่ายเอง" มีแวะให้ แต่ค่าอาหารไม่รวมในราคาทริป</p>
+                    <p v-if="trip.meals.self_count > 0" class="meal-summary-hint">{{ $t('มื้อที่ "จ่ายเอง" มีแวะให้ แต่ค่าอาหารไม่รวมในราคาทริป') }}</p>
                   </div>
                 </div>
 
-                <div class="meal-table" role="table" :aria-label="`มื้ออาหาร ${trip.meals.summary}`">
+                <div class="meal-table" role="table" :aria-label="$t('มื้ออาหาร {summary}', { summary: trip.meals.summary })">
                   <div class="meal-row meal-row--head" role="row">
                     <span role="columnheader"></span>
                     <span v-for="meal in mealColumns" :key="meal.key" role="columnheader">{{ meal.label }}</span>
@@ -582,7 +582,7 @@
                       <span class="meal-cell-meal">{{ meal.label }}</span>
                       <span class="meal-cell-status">
                         <span class="meal-cell-icon material-symbols-rounded">{{ mealIcon(meal.status) }}</span>
-                        {{ meal.status === 'none' ? 'ไม่มี' : meal.status_label }}
+                        {{ meal.status === 'none' ? $t('ไม่มี') : meal.status_label }}
                       </span>
                       <span v-if="meal.note" class="meal-cell-note">{{ meal.note }}</span>
                     </div>
@@ -599,15 +599,15 @@
             <!-- Inclusions / Exclusions -->
             <section id="included" v-reveal class="scroll-mt-32">
               <header class="ed-head mb-8">
-                <span class="ed-kicker">รายละเอียดราคา</span>
-                <h2 class="ed-title">สิ่งที่รวมและไม่รวม</h2>
+                <span class="ed-kicker">{{ $t('รายละเอียดราคา') }}</span>
+                <h2 class="ed-title">{{ $t('สิ่งที่รวมและไม่รวม') }}</h2>
               </header>
 
               <div class="grid grid-cols-1 md:grid-cols-2 rounded-[2rem] border border-gray-100 bg-white overflow-hidden">
                 <div class="p-7 md:p-9 md:border-r border-gray-100">
                   <h4 class="text-lg font-black mb-6 flex items-center gap-2.5 text-[var(--color-accent)]">
                     <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 1">check_circle</span>
-                    รวมในราคาแล้ว
+                    {{ $t('รวมในราคาแล้ว') }}
                   </h4>
                   <ul class="space-y-3.5 text-[15px] md:text-base font-medium text-[var(--color-text-dark)]">
                     <li v-for="(item, i) in trip.inclusions" :key="i" class="flex items-start gap-3">
@@ -615,12 +615,12 @@
                       <span>{{ item }}</span>
                     </li>
                   </ul>
-                  <p v-if="!trip.inclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่รวมในทริป</p>
+                  <p v-if="!trip.inclusions?.length" class="text-sm text-gray-400 italic">{{ $t('ไม่ได้ระบุสิ่งที่รวมในทริป') }}</p>
                 </div>
                 <div class="p-7 md:p-9 border-t md:border-t-0 border-gray-100 bg-gray-50/40">
                   <h4 class="text-lg font-black mb-6 flex items-center gap-2.5 text-gray-400">
                     <span class="material-symbols-rounded text-[22px]" style="font-variation-settings:'FILL' 1">cancel</span>
-                    ไม่รวมในราคา
+                    {{ $t('ไม่รวมในราคา') }}
                   </h4>
                   <ul class="space-y-3.5 text-[15px] md:text-base font-medium text-[var(--color-text-mid)]">
                     <li v-for="(item, i) in trip.exclusions" :key="i" class="flex items-start gap-3">
@@ -628,7 +628,7 @@
                       <span>{{ item }}</span>
                     </li>
                   </ul>
-                  <p v-if="!trip.exclusions?.length" class="text-sm text-gray-400 italic">ไม่ได้ระบุสิ่งที่ไม่รวมในทริป</p>
+                  <p v-if="!trip.exclusions?.length" class="text-sm text-gray-400 italic">{{ $t('ไม่ได้ระบุสิ่งที่ไม่รวมในทริป') }}</p>
                 </div>
               </div>
             </section>
@@ -640,11 +640,11 @@
             -->
             <section v-if="trip.is_international" v-reveal class="bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-2">
-                <span class="ed-kicker">ก่อนตัดสินใจ</span>
-                <h2 class="ed-title">เอกสารและข้อควรรู้</h2>
+                <span class="ed-kicker">{{ $t('ก่อนตัดสินใจ') }}</span>
+                <h2 class="ed-title">{{ $t('เอกสารและข้อควรรู้') }}</h2>
               </header>
               <p class="text-[var(--color-text-muted)] font-medium mb-8">
-                {{ trip.country_label ? `${trip.country_label} · ` : '' }}สำหรับผู้ถือพาสปอร์ตไทย
+                {{ $t('{v}สำหรับผู้ถือพาสปอร์ตไทย', { v: trip.country_label ? `${trip.country_label} · ` : '' }) }}
               </p>
 
               <div class="space-y-3">
@@ -652,7 +652,7 @@
                   <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)] shrink-0 mt-0.5">approval</span>
                   <div class="min-w-0">
                     <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
-                      {{ trip.visa.label }}<template v-if="trip.visa.days"> · พำนักได้ {{ trip.visa.days }} วัน</template>
+                      {{ trip.visa.label }}<template v-if="trip.visa.days"> {{ $t('· พำนักได้ {days} วัน', { days: trip.visa.days }) }}</template>
                     </p>
                     <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">{{ trip.visa.note }}</p>
                   </div>
@@ -664,26 +664,26 @@
                     <!-- "ไม่มีพาสปอร์ตไปได้ไหม" เป็นคำถามแรกของทริปลาว/กัมพูชาทางบก -->
                     <template v-if="trip.travel_document_mode === 'passport_or_border_pass'">
                       <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
-                        ใช้พาสปอร์ต หรือ Border Pass ก็ได้
+                        {{ $t('ใช้พาสปอร์ต หรือ Border Pass ก็ได้') }}
                       </p>
                       <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
-                        ไม่มีพาสปอร์ตก็ไปได้ เลือก "ให้ทีมงานทำ Border Pass" ตอนจอง ทีมงานยื่นทำให้จากเลขบัตรประชาชน
+                        {{ $t('ไม่มีพาสปอร์ตก็ไปได้ เลือก "ให้ทีมงานทำ Border Pass" ตอนจอง ทีมงานยื่นทำให้จากเลขบัตรประชาชน') }}
                       </p>
                     </template>
                     <template v-else-if="trip.travel_document_mode === 'on_site'">
                       <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
-                        นำเอกสารเดินทางฉบับจริงมาในวันเดินทาง
+                        {{ $t('นำเอกสารเดินทางฉบับจริงมาในวันเดินทาง') }}
                       </p>
                       <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
-                        ไม่ต้องกรอกเลขพาสปอร์ตตอนจอง ทีมงานตรวจฉบับจริงหน้างาน
+                        {{ $t('ไม่ต้องกรอกเลขพาสปอร์ตตอนจอง ทีมงานตรวจฉบับจริงหน้างาน') }}
                       </p>
                     </template>
                     <template v-else>
                       <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
-                        พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง
+                        {{ $t('พาสปอร์ตต้องเหลืออายุอย่างน้อย 6 เดือนนับจากวันเดินทาง') }}
                       </p>
                       <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
-                        กรอกเลขพาสปอร์ตตอนจอง หรือกรอกเพิ่มทีหลังจากลิงก์ที่เราส่งให้ทางอีเมลได้
+                        {{ $t('กรอกเลขพาสปอร์ตตอนจอง หรือกรอกเพิ่มทีหลังจากลิงก์ที่เราส่งให้ทางอีเมลได้') }}
                       </p>
                     </template>
                   </div>
@@ -693,10 +693,10 @@
                   <span class="material-symbols-rounded text-[22px] text-[var(--color-accent)] shrink-0 mt-0.5">health_and_safety</span>
                   <div class="min-w-0">
                     <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
-                      ประกันการเดินทางต่างประเทศ
+                      {{ $t('ประกันการเดินทางต่างประเทศ') }}
                     </p>
                     <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
-                      ดูรายการ "สิ่งที่รวมในทริป" ว่ารอบนี้รวมประกันให้แล้วหรือยัง ถ้ายังไม่รวม แนะนำให้ทำก่อนเดินทาง
+                      {{ $t('ดูรายการ "สิ่งที่รวมในทริป" ว่ารอบนี้รวมประกันให้แล้วหรือยัง ถ้ายังไม่รวม แนะนำให้ทำก่อนเดินทาง') }}
                     </p>
                   </div>
                 </div>
@@ -708,10 +708,10 @@
                   <span class="material-symbols-rounded text-[22px] text-[#C8963E] shrink-0 mt-0.5">emergency</span>
                   <div class="min-w-0">
                     <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">
-                      เบอร์ฉุกเฉินที่ปลายทาง
+                      {{ $t('เบอร์ฉุกเฉินที่ปลายทาง') }}
                     </p>
                     <p class="text-sm font-medium text-[var(--color-text-muted)] mt-0.5">
-                      191 และ 1669 ใช้ที่นั่นไม่ได้ — {{ emergencyNumbers.map((n) => `${n.label} ${n.number}`).join(' · ') }}
+                      {{ $t('191 และ 1669 ใช้ที่นั่นไม่ได้ — {map}', { map: emergencyNumbers.map((n) => `${n.label} ${n.number}`).join(' · ') }) }}
                     </p>
                   </div>
                 </div>
@@ -719,22 +719,22 @@
 
               <p v-if="trip.visa?.disclaimer" class="flex items-start gap-2 text-sm font-medium text-[var(--color-text-muted)] mt-6 pt-6 border-t border-gray-100">
                 <span class="material-symbols-rounded text-[18px] text-[var(--color-accent)] shrink-0 mt-0.5">info</span>
-                {{ trip.visa.disclaimer }}<template v-if="visaCheckedAtLabel"> (ข้อมูลอัปเดต {{ visaCheckedAtLabel }})</template>
+                {{ trip.visa.disclaimer }}<template v-if="visaCheckedAtLabel"> {{ $t('(ข้อมูลอัปเดต {visaCheckedAtLabel})', { visaCheckedAtLabel }) }}</template>
               </p>
             </section>
 
             <!-- Cancellation / refund policy -->
             <section v-if="trip.cancellation_policy" v-reveal class="cancellation-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-2">
-                <span class="ed-kicker">ความยืดหยุ่น</span>
-                <h2 class="ed-title">นโยบายการยกเลิกและคืนเงิน</h2>
+                <span class="ed-kicker">{{ $t('ความยืดหยุ่น') }}</span>
+                <h2 class="ed-title">{{ $t('นโยบายการยกเลิกและคืนเงิน') }}</h2>
               </header>
               <p class="text-[var(--color-text-muted)] font-medium mb-8">
                 <template v-if="trip.is_international">
-                  ทริปต่างประเทศมีเงื่อนไขต่างจากทริปในประเทศ เพราะตั๋วเครื่องบินออกเป็นชื่อผู้เดินทางและคืนเงินไม่ได้
+                  {{ $t('ทริปต่างประเทศมีเงื่อนไขต่างจากทริปในประเทศ เพราะตั๋วเครื่องบินออกเป็นชื่อผู้เดินทางและคืนเงินไม่ได้') }}
                 </template>
                 <template v-else>
-                  เปลี่ยนแผนได้อย่างสบายใจ — เงื่อนไขการคืนเงินคำนวณจากจำนวนวันก่อนออกเดินทาง
+                  {{ $t('เปลี่ยนแผนได้อย่างสบายใจ — เงื่อนไขการคืนเงินคำนวณจากจำนวนวันก่อนออกเดินทาง') }}
                 </template>
               </p>
 
@@ -754,7 +754,7 @@
                       : 'bg-gray-300 text-white'"
                   >
                     <span class="text-lg">{{ tier.percent }}%</span>
-                    <span class="text-[9px] font-bold tracking-wide mt-0.5">คืนเงิน</span>
+                    <span class="text-[9px] font-bold tracking-wide mt-0.5">{{ $t('คืนเงิน') }}</span>
                   </div>
                   <div class="min-w-0">
                     <p class="font-extrabold text-[var(--color-text-dark)] text-base md:text-lg leading-tight">{{ tier.range }}</p>
@@ -772,8 +772,8 @@
             <!-- FAQ -->
             <section v-if="trip.faqs && trip.faqs.length" v-reveal class="faq-section bg-white p-8 md:p-12 rounded-[2rem] border border-gray-100">
               <header class="ed-head mb-6">
-                <span class="ed-kicker">คำถามที่พบบ่อย</span>
-                <h2 class="ed-title">เรื่องที่คนถามบ่อยก่อนไป</h2>
+                <span class="ed-kicker">{{ $t('คำถามที่พบบ่อย') }}</span>
+                <h2 class="ed-title">{{ $t('เรื่องที่คนถามบ่อยก่อนไป') }}</h2>
               </header>
               <div class="divide-y divide-gray-100">
                 <div v-for="(faq, i) in trip.faqs" :key="i">
@@ -817,23 +817,23 @@
                       <span v-if="campaignInfo.badge_label" class="px-2 py-0.5 rounded-md bg-white/20 text-[11px] font-black">
                         {{ campaignInfo.badge_label }}
                       </span>
-                      {{ campaignInfo.discount_label }} ทุกทริป
+                      {{ $t('{discount_label} ทุกทริป', { discount_label: campaignInfo.discount_label }) }}
                     </div>
                     <div v-if="campaignInfo.ends_at" class="text-[12px] font-bold tabular-nums opacity-90">
-                      ถึงอีก {{ flashCountdown(campaignInfo.ends_at) }}
+                      {{ $t('ถึงอีก {flashCountdown}', { flashCountdown: flashCountdown(campaignInfo.ends_at) }) }}
                     </div>
                   </div>
                 </div>
                 <div v-if="flashSchedule" class="mb-4 px-3.5 py-2.5 rounded-[1rem] bg-[var(--color-sand)] border border-gray-200">
                   <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-1.5 text-[13px] font-extrabold text-[var(--color-text-dark)]">
-                      ราคาลดช่วงนี้
+                      {{ $t('ราคาลดช่วงนี้') }}
                       <span v-if="flashSchedule.flash_sale.discount_percent > 0" class="text-[var(--color-text-muted)] font-bold">
                         -{{ flashSchedule.flash_sale.discount_percent }}%
                       </span>
                     </div>
                     <div v-if="flashSchedule.flash_sale.ends_at" class="text-[12px] font-bold tabular-nums text-[var(--color-text-muted)]">
-                      ถึงอีก {{ flashCountdown(flashSchedule.flash_sale.ends_at) }}
+                      {{ $t('ถึงอีก {flashCountdown}', { flashCountdown: flashCountdown(flashSchedule.flash_sale.ends_at) }) }}
                     </div>
                   </div>
                 </div>
@@ -842,58 +842,58 @@
                   <span v-if="hasRating" class="inline-flex items-center gap-1.5 text-[13px] font-black text-[var(--color-text-dark)]">
                     <span class="material-symbols-rounded text-[18px] text-[#FFB020]" style="font-variation-settings:'FILL' 1">star</span>
                     {{ Number(trip.rating).toFixed(1) }}
-                    <span class="text-[var(--color-text-muted)] font-bold">({{ trip.review_count }} รีวิว)</span>
+                    <span class="text-[var(--color-text-muted)] font-bold">{{ $t('({review_count} รีวิว)', { review_count: trip.review_count }) }}</span>
                   </span>
                   <span v-if="hasRating && trip.booked_passengers_count > 0" class="w-1 h-1 rounded-full bg-gray-300"></span>
                   <span v-if="trip.booked_passengers_count > 0" class="inline-flex items-center gap-1.5 text-[13px] font-bold text-[var(--color-text-muted)]">
                     <span class="material-symbols-rounded text-[17px]">group</span>
-                    จองแล้ว {{ trip.booked_passengers_count }} คน
+                    {{ $t('จองแล้ว {booked_passengers_count} คน', { booked_passengers_count: trip.booked_passengers_count }) }}
                   </span>
                 </div>
 
                 <!-- Starting price -->
-                <p class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest mb-1">เริ่มต้น / ท่าน</p>
+                <p class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest mb-1">{{ $t('เริ่มต้น / ท่าน') }}</p>
                 <div class="flex items-end gap-2 mb-2">
-                  <span class="text-4xl md:text-5xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
+                  <span class="text-4xl md:text-5xl font-black text-[var(--color-primary)] tracking-tight">{{ $t('฿{toLocaleString}', { toLocaleString: displayPrice.toLocaleString() }) }}</span>
                   <span v-if="hasVisibleDiscount" class="text-gray-400 text-xl pb-1.5 font-bold line-through decoration-2">
-                    ฿{{ originalDisplayPrice.toLocaleString() }}
+                    {{ $t('฿{toLocaleString}', { toLocaleString: originalDisplayPrice.toLocaleString() }) }}
                   </span>
-                  <span class="text-[var(--color-text-muted)] text-base pb-1.5 font-bold">/ ท่าน</span>
+                  <span class="text-[var(--color-text-muted)] text-base pb-1.5 font-bold">{{ $t('/ ท่าน') }}</span>
                 </div>
 
                 <!-- ผ่อนชำระ: ยอดต่องวดที่ต่ำที่สุดเท่าที่รอบนี้ผ่อนได้จริง -->
                 <div v-if="installmentPlan" class="mb-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-accent-tint)] border border-[var(--color-accent)]/20">
                   <span class="material-symbols-rounded text-[var(--color-accent)]" style="font-size:18px;">credit_card</span>
                   <span class="text-[13px] font-black text-[var(--color-accent)]">
-                    ผ่อน 0% ได้ {{ installmentPlan.count }} งวด · งวดละ ฿{{ installmentPlan.perInstallment.toLocaleString() }}
+                    {{ $t('ผ่อน 0% ได้ {count} งวด · งวดละ ฿{toLocaleString}', { count: installmentPlan.count, toLocaleString: installmentPlan.perInstallment.toLocaleString() }) }}
                   </span>
                 </div>
 
                 <p v-if="isTrekking && regionOptions.length" class="text-sm font-medium text-gray-400 mb-8">
-                  * ราคาขึ้นอยู่กับภูมิภาคที่ขึ้นรถ
+                  {{ $t('* ราคาขึ้นอยู่กับภูมิภาคที่ขึ้นรถ') }}
                 </p>
                 <div v-else class="mb-8"></div>
 
                 <div class="mb-8 p-4 rounded-[1.25rem] bg-[var(--color-sand)] border border-gray-100">
-                  <p class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest mb-3">ขั้นตอนการจอง</p>
+                  <p class="text-[11px] font-black text-[var(--color-text-muted)] uppercase tracking-widest mb-3">{{ $t('ขั้นตอนการจอง') }}</p>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-bold">
                     <div class="px-3 py-2 rounded-lg border"
                       :class="!isTrekking || selectedRegion
                         ? 'bg-[var(--color-accent-tint)] border-[var(--color-accent)]/20 text-[var(--color-accent)]'
                         : 'bg-white border-gray-200 text-[var(--color-text-muted)]'">
-                      1) {{ isTrekking ? 'เลือกภูมิภาค' : 'เลือกวันเดินทาง' }}
+                      1) {{ isTrekking ? $t('เลือกภูมิภาค') : $t('เลือกวันเดินทาง') }}
                     </div>
                     <div class="px-3 py-2 rounded-lg border"
                       :class="selectedSchedule
                         ? 'bg-[var(--color-accent-tint)] border-[var(--color-accent)]/20 text-[var(--color-accent)]'
                         : 'bg-white border-gray-200 text-[var(--color-text-muted)]'">
-                      2) เลือกรอบเดินทาง
+                      {{ $t('2) เลือกรอบเดินทาง') }}
                     </div>
                     <div class="px-3 py-2 rounded-lg border"
                       :class="selectedSchedule && (!isTrekking || selectedPickup || (isJoinTrip && selectedSchedule?.join_trip_enabled))
                         ? 'bg-[var(--color-accent-tint)] border-[var(--color-accent)]/20 text-[var(--color-accent)]'
                         : 'bg-white border-gray-200 text-[var(--color-text-muted)]'">
-                      3) ดำเนินการจอง
+                      {{ $t('3) ดำเนินการจอง') }}
                     </div>
                   </div>
                 </div>
@@ -904,22 +904,22 @@
                 <div v-if="isTrekking" class="mb-8">
                   <label class="flex items-center gap-2 text-sm font-extrabold text-[var(--color-text-dark)] uppercase tracking-wider mb-4">
                     <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">location_on</span>
-                    เลือกภูมิภาคที่จะขึ้นรถ
+                    {{ $t('เลือกภูมิภาคที่จะขึ้นรถ') }}
                   </label>
 
                   <div v-if="schedulesLoading" class="py-8 text-center bg-[var(--color-sand)] rounded-[1.5rem]">
                     <div class="w-8 h-8 border-4 border-gray-200 border-t-[var(--color-accent)] rounded-full animate-spin mx-auto mb-3"></div>
-                    <p class="text-[var(--color-text-dark)] font-bold text-sm">กำลังค้นหารอบเดินทาง...</p>
+                    <p class="text-[var(--color-text-dark)] font-bold text-sm">{{ $t('กำลังค้นหารอบเดินทาง...') }}</p>
                   </div>
 
                   <div v-else-if="schedules.length === 0" class="bg-[var(--color-sand)] rounded-[1.5rem] p-6 text-center border border-gray-100">
                     <span class="material-symbols-rounded text-gray-400 text-4xl mb-3 block">event_busy</span>
-                    <p class="text-[var(--color-text-dark)] font-bold text-base">ยังไม่มีรอบเดินทางที่เปิดจอง</p>
-                    <p class="text-gray-500 font-medium text-sm mt-1">กรุณาตรวจสอบอีกครั้งในภายหลัง</p>
+                    <p class="text-[var(--color-text-dark)] font-bold text-base">{{ $t('ยังไม่มีรอบเดินทางที่เปิดจอง') }}</p>
+                    <p class="text-gray-500 font-medium text-sm mt-1">{{ $t('กรุณาตรวจสอบอีกครั้งในภายหลัง') }}</p>
                   </div>
 
                   <div v-else-if="regionOptions.length === 0" class="bg-[var(--color-sand)] rounded-[1.5rem] p-4 text-center border border-gray-100 text-sm font-bold text-[var(--color-text-dark)]">
-                    <span class="material-symbols-rounded mr-1 align-middle text-[var(--color-accent)]">info</span> จุดรับผู้โดยสารจะแจ้งให้ทราบอีกครั้ง
+                    <span class="material-symbols-rounded mr-1 align-middle text-[var(--color-accent)]">info</span> {{ $t('จุดรับผู้โดยสารจะแจ้งให้ทราบอีกครั้ง') }}
                   </div>
 
                   <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -936,21 +936,21 @@
                         <span class="font-black text-sm text-[var(--color-text-dark)] leading-tight">{{ r.region_label }}</span>
                         <span v-if="selectedRegion === r.region" class="material-symbols-rounded text-[var(--color-accent)] text-[18px]" style="font-variation-settings:'FILL' 1">check_circle</span>
                       </div>
-                      <p class="text-[11px] font-black text-[var(--color-accent)]">เริ่ม ฿{{ r.min_price.toLocaleString() }}</p>
-                      <p class="text-[10px] text-gray-400 font-bold mt-0.5">{{ r.schedule_count }} รอบที่ว่าง</p>
+                      <p class="text-[11px] font-black text-[var(--color-accent)]">{{ $t('เริ่ม ฿{toLocaleString}', { toLocaleString: r.min_price.toLocaleString() }) }}</p>
+                      <p class="text-[10px] text-gray-400 font-bold mt-0.5">{{ $t('{schedule_count} รอบที่ว่าง', { schedule_count: r.schedule_count }) }}</p>
                     </button>
                   </div>
 
                   <div v-if="selectedRegion" class="mt-4 p-3 rounded-xl bg-[var(--color-accent-tint)] border border-[var(--color-accent)]/20 flex items-center justify-between gap-3">
                     <p class="text-xs font-bold text-[var(--color-accent)] flex items-center gap-1.5">
                       <span class="material-symbols-rounded text-[16px]">check_circle</span>
-                      เลือกแล้ว: {{ regionOptions.find(r => r.region === selectedRegion)?.region_label || selectedRegion }}
+                      {{ $t('เลือกแล้ว: {find}', { find: regionOptions.find(r => r.region === selectedRegion)?.region_label || selectedRegion }) }}
                     </p>
                     <button
                       @click="selectRegion(null)"
                       class="text-[11px] font-black text-[var(--color-accent)] hover:text-[var(--color-accent-mid)] transition-colors"
                     >
-                      เปลี่ยนภูมิภาค
+                      {{ $t('เปลี่ยนภูมิภาค') }}
                     </button>
                   </div>
                 </div>
@@ -974,22 +974,22 @@
                         </label>
                       </div>
                       <p class="text-sm font-bold text-[var(--color-text-muted)] mt-1 leading-relaxed">
-                        เลือกเดินทางเอง ไม่ต้องเลือกที่นั่งบนผัง จะได้ QR Code สำหรับเช็คอินหลังทีมงานยืนยันการชำระเงิน
+                        {{ $t('เลือกเดินทางเอง ไม่ต้องเลือกที่นั่งบนผัง จะได้ QR Code สำหรับเช็คอินหลังทีมงานยืนยันการชำระเงิน') }}
                       </p>
                       <div class="mt-3 flex items-center gap-2 flex-wrap">
-                        <span class="text-[11px] font-black uppercase text-gray-400">ราคา:</span>
-                        <span class="text-xl font-black text-accent">฿{{ Number(selectedSchedule.join_trip_price || selectedSchedule.price || trip.price_per_person).toLocaleString() }}</span>
+                        <span class="text-[11px] font-black uppercase text-gray-400">{{ $t('ราคา:') }}</span>
+                        <span class="text-xl font-black text-accent">{{ $t('฿{Number}', { Number: Number(selectedSchedule.join_trip_price || selectedSchedule.price || trip.price_per_person).toLocaleString() }) }}</span>
                         <span v-if="joinTripSeats(selectedSchedule) !== null"
                           class="text-xs font-black px-2.5 py-1 rounded-full"
                           :class="joinTripFull(selectedSchedule) ? 'bg-red-50 text-red-600' : 'bg-accent/10 text-accent'">
                           {{ joinTripSeatLabel(selectedSchedule) }}
                         </span>
                         <span v-else class="text-xs font-bold text-gray-400">
-                          จอยแล้ว {{ Number(selectedSchedule.join_trip_booked_seats || 0) }} ท่าน
+                          {{ $t('จอยแล้ว {Number} ท่าน', { Number: Number(selectedSchedule.join_trip_booked_seats || 0) }) }}
                         </span>
                       </div>
                       <p v-if="joinTripFull(selectedSchedule)" class="mt-2 text-xs font-bold text-red-600">
-                        โควตาจอยทริปรอบนี้เต็มแล้ว กรุณาเลือกรอบอื่น
+                        {{ $t('โควตาจอยทริปรอบนี้เต็มแล้ว กรุณาเลือกรอบอื่น') }}
                       </p>
                     </div>
                   </div>
@@ -999,18 +999,18 @@
                 <div v-if="!isTrekking" class="mb-8">
                   <label class="flex items-center gap-2 text-sm font-extrabold text-[var(--color-text-dark)] uppercase tracking-wider mb-4">
                     <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">calendar_month</span>
-                    เลือกวันเดินทาง
+                    {{ $t('เลือกวันเดินทาง') }}
                   </label>
 
                   <div v-if="schedulesLoading" class="py-8 text-center bg-[var(--color-sand)] rounded-[1.5rem]">
                     <div class="w-8 h-8 border-4 border-gray-200 border-t-[var(--color-accent)] rounded-full animate-spin mx-auto mb-3"></div>
-                    <p class="text-[var(--color-text-dark)] font-bold text-sm">กำลังค้นหารอบเดินทาง...</p>
+                    <p class="text-[var(--color-text-dark)] font-bold text-sm">{{ $t('กำลังค้นหารอบเดินทาง...') }}</p>
                   </div>
 
                   <div v-else-if="schedules.length === 0" class="bg-[var(--color-sand)] rounded-[1.5rem] p-6 text-center border border-gray-100">
                     <span class="material-symbols-rounded text-gray-400 text-4xl mb-3 block">event_busy</span>
-                    <p class="text-[var(--color-text-dark)] font-bold text-base">ยังไม่มีรอบเดินทางที่เปิดจอง</p>
-                    <p class="text-gray-500 font-medium text-sm mt-1">กรุณาตรวจสอบอีกครั้งในภายหลัง</p>
+                    <p class="text-[var(--color-text-dark)] font-bold text-base">{{ $t('ยังไม่มีรอบเดินทางที่เปิดจอง') }}</p>
+                    <p class="text-gray-500 font-medium text-sm mt-1">{{ $t('กรุณาตรวจสอบอีกครั้งในภายหลัง') }}</p>
                   </div>
 
                   <ScheduleCalendar
@@ -1026,12 +1026,12 @@
                 <div v-if="isTrekking && selectedRegion" class="mb-8 animate-fade-in">
                   <label class="flex items-center gap-2 text-sm font-extrabold text-[var(--color-text-dark)] uppercase tracking-wider mb-4">
                     <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">calendar_month</span>
-                    เลือกวันเดินทาง
+                    {{ $t('เลือกวันเดินทาง') }}
                   </label>
 
                   <div v-if="schedulesForRegion.length === 0" class="bg-[var(--color-sand)] rounded-[1.5rem] p-5 text-center border border-gray-100">
                     <span class="material-symbols-rounded text-gray-400 text-3xl mb-2 block">event_busy</span>
-                    <p class="text-[var(--color-text-dark)] font-bold text-sm">ยังไม่มีรอบสำหรับภูมิภาคนี้</p>
+                    <p class="text-[var(--color-text-dark)] font-bold text-sm">{{ $t('ยังไม่มีรอบสำหรับภูมิภาคนี้') }}</p>
                   </div>
 
                   <ScheduleCalendar
@@ -1053,19 +1053,19 @@
                       <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px]">location_on</span>
                       {{ selectedPickup.region_label }}
                     </span>
-                    <span class="text-base">฿{{ Number(selectedPickup.price).toLocaleString() }}</span>
+                    <span class="text-base">{{ $t('฿{Number}', { Number: Number(selectedPickup.price).toLocaleString() }) }}</span>
                   </div>
                   <div v-else class="flex justify-between items-center text-sm font-bold text-[var(--color-text-dark)]">
                     <span class="flex items-center gap-2">
                       <span class="material-symbols-rounded text-gray-400 text-[18px]">sell</span>
-                      ราคาต่อท่าน
+                      {{ $t('ราคาต่อท่าน') }}
                     </span>
-                    <span class="text-base">฿{{ Number(selectedSchedule.price ?? trip.price_per_person).toLocaleString() }}</span>
+                    <span class="text-base">{{ $t('฿{Number}', { Number: Number(selectedSchedule.price ?? trip.price_per_person).toLocaleString() }) }}</span>
                   </div>
                   <hr class="border-gray-200" />
                   <div class="flex justify-between items-center text-base font-black">
-                    <span class="text-[var(--color-text-dark)]">ราคาสุทธิ / ท่าน</span>
-                    <span class="text-[var(--color-primary)] text-2xl">฿{{ displayPrice.toLocaleString() }}</span>
+                    <span class="text-[var(--color-text-dark)]">{{ $t('ราคาสุทธิ / ท่าน') }}</span>
+                    <span class="text-[var(--color-primary)] text-2xl">{{ $t('฿{toLocaleString}', { toLocaleString: displayPrice.toLocaleString() }) }}</span>
                   </div>
                 </div>
 
@@ -1084,10 +1084,10 @@
                     <span class="material-symbols-rounded text-[var(--color-text-muted)] text-[18px] mt-0.5">calendar_month</span>
                     <div>
                       <p class="text-sm font-extrabold text-[var(--color-text-dark)] leading-tight">
-                        เดือน{{ selectedScheduleMonthName }}ที่ผ่านมา ที่นี่เป็นแบบนี้
+                        {{ $t('เดือน{selectedScheduleMonthName}ที่ผ่านมา ที่นี่เป็นแบบนี้', { selectedScheduleMonthName }) }}
                       </p>
                       <p class="text-xs font-medium text-[var(--color-text-muted)] mt-0.5">
-                        รูปจากคนที่ไปรอบเดือนเดียวกัน ไม่ได้ผ่านการคัดของทีมงาน
+                        {{ $t('รูปจากคนที่ไปรอบเดือนเดียวกัน ไม่ได้ผ่านการคัดของทีมงาน') }}
                       </p>
                     </div>
                   </div>
@@ -1121,15 +1121,15 @@
                     }"
                     class="book-cta"
                   >
-                    ดำเนินการจองทริป{{ isJoinTrip ? ' (Enjoy Trip)' : '' }}
+                    {{ $t('ดำเนินการจองทริป{v}', { v: isJoinTrip ? ' (Enjoy Trip)' : '' }) }}
                   </router-link>
                   <button v-else disabled
                     class="w-full py-4 rounded-full font-extrabold text-lg bg-gray-100 text-gray-400 cursor-not-allowed text-center border border-gray-200">
-                    {{ selectedSchedule?.is_charter ? 'รอบเดินทางนี้เป็นรอบเหมา' : (!isScheduleBookable(selectedSchedule)) ? 'รอบเดินทางนี้เต็มแล้ว' : joinTripFull(selectedSchedule) && !hasAvailableSeats(selectedSchedule) ? 'จอยทริปรอบนี้เต็มแล้ว' : selectedSchedule?.join_trip_enabled && !hasAvailableSeats(selectedSchedule) && !isJoinTrip ? 'กรุณาเปิด Enjoy Trip' : !selectedRegion && isTrekking ? 'กรุณาเลือกภูมิภาค' : !selectedPickup && isTrekking ? 'กรุณาเลือกจุดขึ้นรถ' : 'กรุณาเลือกวันเดินทาง' }}
+                    {{ selectedSchedule?.is_charter ? $t('รอบเดินทางนี้เป็นรอบเหมา') : (!isScheduleBookable(selectedSchedule)) ? $t('รอบเดินทางนี้เต็มแล้ว') : joinTripFull(selectedSchedule) && !hasAvailableSeats(selectedSchedule) ? $t('จอยทริปรอบนี้เต็มแล้ว') : selectedSchedule?.join_trip_enabled && !hasAvailableSeats(selectedSchedule) && !isJoinTrip ? $t('กรุณาเปิด Enjoy Trip') : !selectedRegion && isTrekking ? $t('กรุณาเลือกภูมิภาค') : !selectedPickup && isTrekking ? $t('กรุณาเลือกจุดขึ้นรถ') : $t('กรุณาเลือกวันเดินทาง') }}
                   </button>
                   <p class="text-xs font-medium text-[var(--color-text-muted)] mt-4 text-center flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[16px]">verified_user</span>
-                    สามารถปรับเปลี่ยนวันหรือเปลี่ยนผู้เข้าใช้สิทธิ์แทนได้ โดยไม่มีค่าใช้จ่าย หากแจ้งล่วงหน้าภายใน 45 วัน
+                    {{ $t('สามารถปรับเปลี่ยนวันหรือเปลี่ยนผู้เข้าใช้สิทธิ์แทนได้ โดยไม่มีค่าใช้จ่าย หากแจ้งล่วงหน้าภายใน 45 วัน') }}
                   </p>
 
                   <!-- คิวรอที่นั่ง — เฉพาะรอบที่เต็มจริง (ไม่ใช่รอบเหมา/Enjoy Trip) -->
@@ -1146,7 +1146,7 @@
                     class="mt-4" />
                 </div>
                 <div v-else class="text-center py-4 bg-gray-50 rounded-[1.25rem] border border-dashed border-gray-300">
-                  <p class="text-sm font-bold text-gray-500">{{ isTrekking ? (selectedRegion ? 'โปรดเลือกวันเดินทาง' : 'โปรดเลือกภูมิภาคก่อน') : 'โปรดเลือกวันเดินทางเพื่อจอง' }}</p>
+                  <p class="text-sm font-bold text-gray-500">{{ isTrekking ? (selectedRegion ? $t('โปรดเลือกวันเดินทาง') : $t('โปรดเลือกภูมิภาคก่อน')) : $t('โปรดเลือกวันเดินทางเพื่อจอง') }}</p>
                 </div>
 
                 <!--
@@ -1158,11 +1158,11 @@
                 <div class="mt-6 pt-6 border-t border-gray-100 space-y-2.5">
                   <div class="flex items-start gap-2.5">
                     <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)] mt-px">qr_code_2</span>
-                    <span class="text-[12px] font-bold text-[var(--color-text-mid)] leading-snug">จ่ายด้วย PromptPay แล้วอัปโหลดสลิป</span>
+                    <span class="text-[12px] font-bold text-[var(--color-text-mid)] leading-snug">{{ $t('จ่ายด้วย PromptPay แล้วอัปโหลดสลิป') }}</span>
                   </div>
                   <div class="flex items-start gap-2.5">
                     <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)] mt-px">fact_check</span>
-                    <span class="text-[12px] font-bold text-[var(--color-text-mid)] leading-snug">ที่นั่งยืนยันหลังทีมงานตรวจสลิป ไม่ใช่ทันทีที่กดจอง</span>
+                    <span class="text-[12px] font-bold text-[var(--color-text-mid)] leading-snug">{{ $t('ที่นั่งยืนยันหลังทีมงานตรวจสลิป ไม่ใช่ทันทีที่กดจอง') }}</span>
                   </div>
                   <button
                     type="button"
@@ -1171,7 +1171,7 @@
                   >
                     <span class="material-symbols-rounded text-[18px] text-[var(--color-text-muted)] mt-px">policy</span>
                     <span class="text-[12px] font-bold text-[var(--color-text-mid)] leading-snug group-hover:text-[var(--color-accent)] transition-colors">
-                      อ่านสิ่งที่รวม/ไม่รวม และเงื่อนไขการยกเลิกก่อนจอง
+                      {{ $t('อ่านสิ่งที่รวม/ไม่รวม และเงื่อนไขการยกเลิกก่อนจอง') }}
                     </span>
                   </button>
                 </div>
@@ -1186,10 +1186,10 @@
                   <span class="material-symbols-rounded text-[22px] text-[var(--color-text-muted)] shrink-0">event_seat</span>
                   <div class="min-w-0">
                     <p class="text-sm font-extrabold text-[var(--color-text-dark)] leading-snug">
-                      รอบ {{ formatDate(urgentSchedule.departure_date) }} เหลือ {{ urgentSchedule.available_seats }} ที่นั่ง
+                      {{ $t('รอบ {formatDate} เหลือ {available_seats} ที่นั่ง', { formatDate: formatDate(urgentSchedule.departure_date), available_seats: urgentSchedule.available_seats }) }}
                     </p>
                     <p class="text-xs font-medium text-[var(--color-text-muted)] mt-0.5">
-                      ถ้าเต็มก่อน เข้าคิวรอที่นั่งได้ ไม่ต้องจ่ายล่วงหน้า
+                      {{ $t('ถ้าเต็มก่อน เข้าคิวรอที่นั่งได้ ไม่ต้องจ่ายล่วงหน้า') }}
                     </p>
                   </div>
                 </div>
@@ -1197,14 +1197,14 @@
 
               <!-- Quick Info Card -->
               <div class="bg-white rounded-[1.5rem] p-6 md:p-8 border border-gray-100 space-y-5">
-                <h4 class="font-extrabold text-[var(--color-text-dark)] text-lg mb-2">ข้อมูลเบื้องต้น</h4>
+                <h4 class="font-extrabold text-[var(--color-text-dark)] text-lg mb-2">{{ $t('ข้อมูลเบื้องต้น') }}</h4>
                 <div class="flex items-center gap-4 text-base">
                   <div class="w-10 h-10 rounded-xl bg-[var(--color-sand)] flex items-center justify-center shrink-0">
                     <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">schedule</span>
                   </div>
                   <div>
-                    <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">ระยะเวลา</p>
-                    <p class="font-extrabold text-[var(--color-text-dark)]">{{ trip.duration_days }} วัน</p>
+                    <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">{{ $t('ระยะเวลา') }}</p>
+                    <p class="font-extrabold text-[var(--color-text-dark)]">{{ $t('{duration_days} วัน', { duration_days: trip.duration_days }) }}</p>
                   </div>
                 </div>
                 <div v-if="trip.meals" class="flex items-center gap-4 text-base">
@@ -1212,7 +1212,7 @@
                     <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">restaurant</span>
                   </div>
                   <div>
-                    <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">อาหาร</p>
+                    <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">{{ $t('อาหาร') }}</p>
                     <p class="font-extrabold text-[var(--color-text-dark)]">{{ trip.meals.summary }}</p>
                   </div>
                 </div>
@@ -1221,7 +1221,7 @@
                     <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">terrain</span>
                   </div>
                   <div>
-                    <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">ระดับความยาก</p>
+                    <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">{{ $t('ระดับความยาก') }}</p>
                     <p class="font-extrabold text-[var(--color-text-dark)]">{{ diffLabel }}</p>
                   </div>
                 </div>
@@ -1230,8 +1230,8 @@
                     <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">group</span>
                   </div>
                   <div>
-                    <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">รับสูงสุด</p>
-                    <p class="font-extrabold text-[var(--color-text-dark)]">{{ trip.max_participants }} ท่าน / รอบ</p>
+                    <p class="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-0.5">{{ $t('รับสูงสุด') }}</p>
+                    <p class="font-extrabold text-[var(--color-text-dark)]">{{ $t('{max_participants} ท่าน / รอบ', { max_participants: trip.max_participants }) }}</p>
                   </div>
                 </div>
               </div>
@@ -1249,8 +1249,8 @@
           <div class="flex items-center justify-between mb-10">
             <div class="min-w-0">
               <header class="ed-head mb-3">
-                <span class="ed-kicker">เสียงจากผู้ร่วมทริป</span>
-                <h2 class="ed-title">รีวิวจากคนที่ไปรอบก่อน</h2>
+                <span class="ed-kicker">{{ $t('เสียงจากผู้ร่วมทริป') }}</span>
+                <h2 class="ed-title">{{ $t('รีวิวจากคนที่ไปรอบก่อน') }}</h2>
               </header>
               <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <div class="flex text-[#FFB020]">
@@ -1260,7 +1260,7 @@
                   </span>
                 </div>
                 <span class="font-extrabold text-[var(--color-text-dark)] text-xl">{{ Number(trip.rating || 0).toFixed(1) }}</span>
-                <span class="text-[var(--color-text-muted)] font-medium text-base">จาก {{ trip.review_count || 0 }} ความคิดเห็น</span>
+                <span class="text-[var(--color-text-muted)] font-medium text-base">{{ $t('จาก {v} ความคิดเห็น', { v: trip.review_count || 0 }) }}</span>
               </div>
             </div>
           </div>
@@ -1274,8 +1274,8 @@
             <div class="flex items-center gap-3.5 mb-6">
               <span class="sec-icon"><span class="material-symbols-rounded">photo_library</span></span>
               <div>
-                <p class="font-extrabold text-[var(--color-text-dark)] text-lg leading-tight mb-0.5">อัลบั้มภาพจากผู้ร่วมทริป</p>
-                <p class="text-sm font-medium text-[var(--color-text-muted)]">{{ albumTotal }} ภาพจากรีวิวจริง</p>
+                <p class="font-extrabold text-[var(--color-text-dark)] text-lg leading-tight mb-0.5">{{ $t('อัลบั้มภาพจากผู้ร่วมทริป') }}</p>
+                <p class="text-sm font-medium text-[var(--color-text-muted)]">{{ $t('{albumTotal} ภาพจากรีวิวจริง', { albumTotal }) }}</p>
               </div>
             </div>
 
@@ -1305,8 +1305,8 @@
               >
                 <span v-if="albumLoadingMore" class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
                 <span v-else class="material-symbols-rounded text-[18px]">expand_more</span>
-                <span v-if="albumLoadingMore">กำลังโหลด...</span>
-                <span v-else>ดูภาพเพิ่มเติม ({{ albumTotal - displayedAlbumPhotos.length }} ภาพ)</span>
+                <span v-if="albumLoadingMore">{{ $t('กำลังโหลด...') }}</span>
+                <span v-else>{{ $t('ดูภาพเพิ่มเติม ({v} ภาพ)', { v: albumTotal - displayedAlbumPhotos.length }) }}</span>
               </button>
             </div>
           </div>
@@ -1371,7 +1371,7 @@
                   </div>
                   <p class="text-xs font-black text-[var(--color-accent)] uppercase tracking-widest mb-2 flex items-center gap-1.5">
                     <span class="material-symbols-rounded text-[14px]" style="font-variation-settings:'FILL' 1">verified</span>
-                    การตอบกลับจากผู้ดูแล
+                    {{ $t('การตอบกลับจากผู้ดูแล') }}
                   </p>
                   <p class="text-sm font-bold text-[var(--color-text-dark)] leading-relaxed">
                     {{ review.admin_reply }}
@@ -1389,11 +1389,11 @@
               >
                 <span v-if="reviewsLoadingMore" class="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
                 <span v-else class="material-symbols-rounded text-[20px]">expand_more</span>
-                <span v-if="reviewsLoadingMore">กำลังโหลด...</span>
+                <span v-if="reviewsLoadingMore">{{ $t('กำลังโหลด...') }}</span>
                 <span v-else-if="trip.review_count > displayedReviews.length">
-                  ดูรีวิวเพิ่มเติม ({{ trip.review_count - displayedReviews.length }} รายการ)
+                  {{ $t('ดูรีวิวเพิ่มเติม ({v} รายการ)', { v: trip.review_count - displayedReviews.length }) }}
                 </span>
-                <span v-else>ดูรีวิวเพิ่มเติม</span>
+                <span v-else>{{ $t('ดูรีวิวเพิ่มเติม') }}</span>
               </button>
             </div>
           </div>
@@ -1402,8 +1402,8 @@
             <div class="w-16 h-16 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-4">
               <span class="material-symbols-rounded text-gray-300 text-3xl">rate_review</span>
             </div>
-            <p class="text-[var(--color-text-muted)] font-extrabold text-lg mb-1">ยังไม่มีการรีวิวสำหรับทริปนี้</p>
-            <p class="text-[var(--color-text-muted)] text-sm font-medium">ร่วมแชร์ประสบการณ์การเดินทางของคุณได้ หลังจากจบทริป</p>
+            <p class="text-[var(--color-text-muted)] font-extrabold text-lg mb-1">{{ $t('ยังไม่มีการรีวิวสำหรับทริปนี้') }}</p>
+            <p class="text-[var(--color-text-muted)] text-sm font-medium">{{ $t('ร่วมแชร์ประสบการณ์การเดินทางของคุณได้ หลังจากจบทริป') }}</p>
           </div>
         </section>
 
@@ -1412,13 +1412,13 @@
           <div class="flex items-end justify-between gap-4 mb-8">
             <div>
               <header class="ed-head mb-2">
-                <span class="ed-kicker">ที่พักชุมชน</span>
-                <h2 class="ed-title">พักใกล้ ๆ คืนก่อนหรือหลังทริป</h2>
+                <span class="ed-kicker">{{ $t('ที่พักชุมชน') }}</span>
+                <h2 class="ed-title">{{ $t('พักใกล้ ๆ คืนก่อนหรือหลังทริป') }}</h2>
               </header>
-              <p class="text-[var(--color-text-muted)] font-medium">โฮมสเตย์และที่พักของคนในพื้นที่ใกล้จุดเริ่มทริป</p>
+              <p class="text-[var(--color-text-muted)] font-medium">{{ $t('โฮมสเตย์และที่พักของคนในพื้นที่ใกล้จุดเริ่มทริป') }}</p>
             </div>
             <router-link :to="{ path: '/stays', query: { trip: trip.slug } }" class="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[var(--color-accent)] font-bold hover:gap-2.5 transition-all">
-              ดูทั้งหมด
+              {{ $t('ดูทั้งหมด') }}
               <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
             </router-link>
           </div>
@@ -1429,7 +1429,7 @@
                 <p class="truncate font-extrabold text-[var(--color-text-dark)] group-hover:text-[var(--color-accent)]">{{ s.name }}</p>
                 <p v-if="s.distance_note" class="text-[13px] font-semibold text-[var(--color-text-muted)]">{{ s.distance_note }}</p>
                 <p v-if="s.community_name" class="mt-1 truncate text-[12px] font-bold text-[var(--color-accent)]">{{ s.community_name }}</p>
-                <p v-if="s.price_from !== null" class="text-[14px] font-black text-[var(--color-text-dark)]">เริ่ม ฿{{ Math.round(s.price_from).toLocaleString('th-TH') }}/คืน</p>
+                <p v-if="s.price_from !== null" class="text-[14px] font-black text-[var(--color-text-dark)]">{{ $t('เริ่ม ฿{round}/คืน', { round: Math.round(s.price_from).toLocaleString($dateLocale) }) }}</p>
               </div>
             </router-link>
           </div>
@@ -1440,13 +1440,13 @@
           <div class="flex items-end justify-between gap-4 mb-8">
             <div>
               <header class="ed-head mb-2">
-                <span class="ed-kicker">ทริปใกล้เคียง</span>
-                <h2 class="ed-title">เส้นทางแนวเดียวกัน</h2>
+                <span class="ed-kicker">{{ $t('ทริปใกล้เคียง') }}</span>
+                <h2 class="ed-title">{{ $t('เส้นทางแนวเดียวกัน') }}</h2>
               </header>
-              <p class="text-[var(--color-text-muted)] font-medium">ประเภทเดียวกันหรือปลายทางอยู่ใกล้กัน</p>
+              <p class="text-[var(--color-text-muted)] font-medium">{{ $t('ประเภทเดียวกันหรือปลายทางอยู่ใกล้กัน') }}</p>
             </div>
             <router-link to="/trips" class="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[var(--color-accent)] font-bold hover:gap-2.5 transition-all">
-              ดูทั้งหมด
+              {{ $t('ดูทั้งหมด') }}
               <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
             </router-link>
           </div>
@@ -1462,16 +1462,16 @@
         <div class="flex items-center gap-3">
           <div class="min-w-0 flex-1">
             <p class="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider leading-none mb-1">
-              {{ selectedSchedule ? 'ราคาสุทธิ / ท่าน' : 'เริ่มต้น / ท่าน' }}
+              {{ selectedSchedule ? $t('ราคาสุทธิ / ท่าน') : $t('เริ่มต้น / ท่าน') }}
             </p>
             <div class="flex items-baseline gap-1.5">
-              <span class="text-xl font-black text-[var(--color-primary)] tracking-tight">฿{{ displayPrice.toLocaleString() }}</span>
+              <span class="text-xl font-black text-[var(--color-primary)] tracking-tight">{{ $t('฿{toLocaleString}', { toLocaleString: displayPrice.toLocaleString() }) }}</span>
               <span v-if="hasVisibleDiscount" class="text-gray-400 text-sm font-bold line-through decoration-2">
-                ฿{{ originalDisplayPrice.toLocaleString() }}
+                {{ $t('฿{toLocaleString}', { toLocaleString: originalDisplayPrice.toLocaleString() }) }}
               </span>
             </div>
             <p v-if="installmentPlan" class="mt-0.5 text-[11px] font-black text-[var(--color-accent)] truncate">
-              ผ่อน 0% {{ installmentPlan.count }} งวด · งวดละ ฿{{ installmentPlan.perInstallment.toLocaleString() }}
+              {{ $t('ผ่อน 0% {count} งวด · งวดละ ฿{toLocaleString}', { count: installmentPlan.count, toLocaleString: installmentPlan.perInstallment.toLocaleString() }) }}
             </p>
           </div>
           <router-link
@@ -1480,14 +1480,14 @@
             class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-accent)] text-white px-6 py-3.5 rounded-full font-extrabold text-base active:scale-95 transition-transform"
           >
             <span class="material-symbols-rounded text-[20px]">event_available</span>
-            จองเลย
+            {{ $t('จองเลย') }}
           </router-link>
           <button
             v-else
             @click="scrollToBooking"
             class="shrink-0 inline-flex items-center gap-1.5 bg-[var(--color-accent)] text-white px-6 py-3.5 rounded-full font-extrabold text-base active:scale-95 transition-transform"
           >
-            {{ selectedSchedule ? 'เลือกให้ครบ' : 'เลือกวันเดินทาง' }}
+            {{ selectedSchedule ? $t('เลือกให้ครบ') : $t('เลือกวันเดินทาง') }}
             <span class="material-symbols-rounded text-[20px]">arrow_upward</span>
           </button>
         </div>
@@ -1497,11 +1497,11 @@
       <div class="w-24 h-24 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-6">
         <span class="material-symbols-rounded text-gray-300 text-5xl">explore_off</span>
       </div>
-      <h3 class="text-[var(--color-text-dark)] text-2xl font-extrabold mb-3">ไม่พบข้อมูลทริป</h3>
-      <p class="text-[var(--color-text-muted)] text-base font-medium mb-8">ทริปที่คุณค้นหาอาจถูกลบหรือไม่มีอยู่ในระบบ</p>
+      <h3 class="text-[var(--color-text-dark)] text-2xl font-extrabold mb-3">{{ $t('ไม่พบข้อมูลทริป') }}</h3>
+      <p class="text-[var(--color-text-muted)] text-base font-medium mb-8">{{ $t('ทริปที่คุณค้นหาอาจถูกลบหรือไม่มีอยู่ในระบบ') }}</p>
       <router-link to="/trips" class="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-8 py-3.5 rounded-full text-base font-extrabold hover:bg-[var(--color-accent-mid)] transition-all duration-300 hover:-translate-y-1">
         <span class="material-symbols-rounded text-[20px]">arrow_back</span>
-        กลับไปหน้ากิจกรรมทั้งหมด
+        {{ $t('กลับไปหน้ากิจกรรมทั้งหมด') }}
       </router-link>
     </div>
 
@@ -1535,10 +1535,10 @@
                   <span class="material-symbols-rounded text-amber-600 text-[20px]" style="font-variation-settings:'FILL' 1">info</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <h3 id="must-know-title" class="text-lg sm:text-xl font-extrabold text-[var(--color-text-dark)] leading-tight">ข้อควรรู้ก่อนจองทริปนี้</h3>
-                  <p class="mt-1 text-sm text-[var(--color-text-muted)] font-medium leading-relaxed">อ่านรายละเอียดสั้น ๆ ด้านล่างก่อนเลือกวันเดินทางครับ</p>
+                  <h3 id="must-know-title" class="text-lg sm:text-xl font-extrabold text-[var(--color-text-dark)] leading-tight">{{ $t('ข้อควรรู้ก่อนจองทริปนี้') }}</h3>
+                  <p class="mt-1 text-sm text-[var(--color-text-muted)] font-medium leading-relaxed">{{ $t('อ่านรายละเอียดสั้น ๆ ด้านล่างก่อนเลือกวันเดินทางครับ') }}</p>
                 </div>
-                <button @click="closeMustKnow" class="w-9 h-9 -mt-1 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors active:scale-95 shrink-0" aria-label="ปิดหน้าต่างข้อควรรู้">
+                <button @click="closeMustKnow" class="w-9 h-9 -mt-1 -mr-1 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors active:scale-95 shrink-0" :aria-label="$t('ปิดหน้าต่างข้อควรรู้')">
                   <span class="material-symbols-rounded text-gray-500 text-[21px]">close</span>
                 </button>
               </div>
@@ -1549,27 +1549,27 @@
               <!-- Optional add-ons -->
               <section v-if="mustKnowItems.length" class="space-y-3">
                 <div class="flex items-center justify-between gap-3">
-                  <h4 class="text-[13px] font-bold text-[var(--color-text-muted)]">รายการเสริมที่เลือกเพิ่มได้</h4>
-                  <span class="text-xs font-bold text-gray-400 shrink-0">{{ mustKnowItems.length }} รายการ</span>
+                  <h4 class="text-[13px] font-bold text-[var(--color-text-muted)]">{{ $t('รายการเสริมที่เลือกเพิ่มได้') }}</h4>
+                  <span class="text-xs font-bold text-gray-400 shrink-0">{{ $t('{length} รายการ', { length: mustKnowItems.length }) }}</span>
                 </div>
 
                 <ul class="rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden">
                   <li v-for="(item, idx) in mustKnowItems" :key="idx" class="flex items-center gap-4 px-4 py-3.5">
                     <div class="min-w-0 flex-1">
                       <p class="font-bold text-gray-900 text-sm leading-snug break-words">{{ item.name }}</p>
-                      <p class="mt-0.5 text-xs text-[var(--color-text-muted)] font-medium">คิดราคา{{ item.priceTypeLabel }}</p>
+                      <p class="mt-0.5 text-xs text-[var(--color-text-muted)] font-medium">{{ $t('คิดราคา{priceTypeLabel}', { priceTypeLabel: item.priceTypeLabel }) }}</p>
                     </div>
                     <p class="font-extrabold text-gray-900 text-sm shrink-0 tabular-nums">{{ item.priceLabel }}</p>
                   </li>
                 </ul>
                 <p class="text-xs text-[var(--color-text-muted)] font-medium leading-relaxed">
-                  รายการเสริมเป็นตัวเลือก ไม่บังคับ เลือกได้อีกครั้งในขั้นตอนการจอง
+                  {{ $t('รายการเสริมเป็นตัวเลือก ไม่บังคับ เลือกได้อีกครั้งในขั้นตอนการจอง') }}
                 </p>
               </section>
 
               <!-- Notes / Remarks -->
               <section v-if="mustKnowRemarks" class="space-y-2">
-                <h4 class="text-[13px] font-bold text-[var(--color-text-muted)]">หมายเหตุเพิ่มเติม</h4>
+                <h4 class="text-[13px] font-bold text-[var(--color-text-muted)]">{{ $t('หมายเหตุเพิ่มเติม') }}</h4>
                 <div class="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3.5">
                   <p class="text-sm text-gray-800 leading-relaxed font-medium whitespace-pre-line break-words">{{ mustKnowRemarks }}</p>
                 </div>
@@ -1579,7 +1579,7 @@
             <!-- Footer -->
             <footer class="shrink-0 px-5 py-4 sm:px-7 border-t border-gray-100 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <button @click="closeMustKnow" class="w-full bg-[var(--color-accent)] text-white font-extrabold py-3.5 rounded-xl hover:bg-[var(--color-accent-mid)] active:scale-[0.99] transition-all text-sm sm:text-base">
-                เข้าใจแล้ว ดูวันเดินทาง
+                {{ $t('เข้าใจแล้ว ดูวันเดินทาง') }}
               </button>
             </footer>
           </div>
@@ -1631,7 +1631,7 @@
                   v-if="activeMedia?.type === 'image'"
                   :key="`img-${activeGalleryIndex}`"
                   :src="activeMedia.url"
-                  :alt="`${trip.title} ภาพที่ ${activeGalleryIndex + 1}`"
+                  :alt="$t('{title} ภาพที่ {v}', { title: trip.title, v: activeGalleryIndex + 1 })"
                   class="max-w-full max-h-full object-contain rounded-2xl"
                 />
                 <video
@@ -1653,7 +1653,7 @@
                   <p class="font-black text-2xl md:text-3xl mb-1 tracking-tight">{{ trip.title }}</p>
                   <p class="text-white/50 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs flex items-center gap-2">
                     <span class="material-symbols-rounded text-sm">{{ activeMedia?.type === 'video' ? 'movie' : 'photo_camera' }}</span>
-                    {{ activeMedia?.type === 'video' ? 'วิดีโอ' : 'ภาพ' }}ที่ {{ activeGalleryIndex + 1 }} จาก {{ galleryMedia.length }}
+                    {{ $t('{v}ที่ {v2} จาก {length}', { v: activeMedia?.type === 'video' ? $t('วิดีโอ') : $t('ภาพ'), v2: activeGalleryIndex + 1, length: galleryMedia.length }) }}
                   </p>
                 </div>
 
@@ -1707,7 +1707,7 @@
                 <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center border border-white/20">
                   <span class="material-symbols-rounded text-3xl">calendar_month</span>
                 </div>
-                <h3 class="text-2xl font-black tracking-tight">เช็ครอบการเดินทาง</h3>
+                <h3 class="text-2xl font-black tracking-tight">{{ $t('เช็ครอบการเดินทาง') }}</h3>
               </div>
               <p class="text-white/80 font-bold flex items-center gap-2 text-sm md:text-base">
                 <span class="material-symbols-rounded text-sm">info</span>
@@ -1719,14 +1719,14 @@
             <div class="p-4 md:p-8 overflow-y-auto custom-scrollbar bg-gray-50/50 flex-grow">
               <!-- Region Tabs for Trekking Trips -->
               <div v-if="isTrekking && regionOptions.length > 0" class="mb-6">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">เลือกภาค/ภูมิภาคที่ต้องการเดินทาง</p>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">{{ $t('เลือกภาค/ภูมิภาคที่ต้องการเดินทาง') }}</p>
                 <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                   <button 
                     @click="selectedModalRegion = null"
                     class="px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all border"
                     :class="!selectedModalRegion ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'"
                   >
-                    ทุกภาค
+                    {{ $t('ทุกภาค') }}
                   </button>
                   <button 
                     v-for="reg in regionOptions" 
@@ -1747,7 +1747,7 @@
                   :class="{'opacity-60': !isScheduleBookable(s)}">
                   <div class="flex items-center gap-4">
                     <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[var(--color-sand)] flex flex-col items-center justify-center shrink-0 border border-gray-100">
-                      <span class="text-[9px] font-black uppercase text-[var(--color-text-muted)] leading-none mb-1">{{ new Date(s.departure_date).toLocaleDateString('th-TH', {month: 'short'}) }}</span>
+                      <span class="text-[9px] font-black uppercase text-[var(--color-text-muted)] leading-none mb-1">{{ new Date(s.departure_date).toLocaleDateString($dateLocale, {month: 'short'}) }}</span>
                       <span class="text-xl font-black text-[var(--color-text-dark)] leading-none">{{ new Date(s.departure_date).getDate() }}</span>
                     </div>
                     <div>
@@ -1769,8 +1769,8 @@
                           {{ joinTripSeatLabel(s) }}
                         </span>
                         <span class="w-1 h-1 rounded-full bg-gray-300"></span>
-                        <span class="text-xs md:text-sm font-black" :class="s.flash_sale?.active || s.campaign ? 'text-[#EA580C]' : 'text-[var(--color-text-dark)]'">฿{{ Number(s.price || trip.price_per_person).toLocaleString() }}</span>
-                        <span v-if="Number(s.original_price) > Number(s.price)" class="text-[11px] font-bold text-gray-400 line-through">฿{{ Number(s.original_price).toLocaleString() }}</span>
+                        <span class="text-xs md:text-sm font-black" :class="s.flash_sale?.active || s.campaign ? 'text-[#EA580C]' : 'text-[var(--color-text-dark)]'">{{ $t('฿{Number}', { Number: Number(s.price || trip.price_per_person).toLocaleString() }) }}</span>
+                        <span v-if="Number(s.original_price) > Number(s.price)" class="text-[11px] font-bold text-gray-400 line-through">{{ $t('฿{Number}', { Number: Number(s.original_price).toLocaleString() }) }}</span>
                         <span v-if="s.flash_sale?.active" class="inline-flex items-center gap-0.5 text-[9px] font-black bg-[#FFF7ED] text-[#EA580C] border border-[#FED7AA] px-1.5 py-0.5 rounded-md uppercase">
                           <span class="material-symbols-rounded" style="font-size:11px;">bolt</span> Flash
                         </span>
@@ -1791,10 +1791,10 @@
                     @click="showAvailabilityModal = false"
                     class="bg-[var(--color-accent)] hover:bg-[var(--color-accent-mid)] text-white px-6 py-2.5 rounded-xl text-sm font-black transition-all hover:-translate-y-0.5 text-center active:scale-95"
                   >
-                    จองรอบนี้
+                    {{ $t('จองรอบนี้') }}
                   </router-link>
                   <div v-else class="px-6 py-2.5 rounded-xl text-sm font-black bg-gray-100 text-gray-400 border border-gray-200 text-center">
-                    จองเต็มแล้ว
+                    {{ $t('จองเต็มแล้ว') }}
                   </div>
                 </div>
               </div>
@@ -1803,15 +1803,15 @@
                 <div class="w-20 h-20 bg-[var(--color-sand)] rounded-full flex items-center justify-center mx-auto mb-4">
                   <span class="material-symbols-rounded text-gray-300 text-5xl">event_busy</span>
                 </div>
-                <p class="text-[var(--color-text-muted)] font-extrabold text-lg">ยังไม่มีรอบการเดินทางที่เปิดจอง</p>
-                <p class="text-gray-400 text-sm font-medium mt-1">กรุณาติดตามอัปเดตรอบเดินทางใหม่เร็วๆ นี้</p>
+                <p class="text-[var(--color-text-muted)] font-extrabold text-lg">{{ $t('ยังไม่มีรอบการเดินทางที่เปิดจอง') }}</p>
+                <p class="text-gray-400 text-sm font-medium mt-1">{{ $t('กรุณาติดตามอัปเดตรอบเดินทางใหม่เร็วๆ นี้') }}</p>
               </div>
             </div>
             
             <!-- Footer -->
             <div class="p-5 md:p-6 bg-white border-t border-gray-100 text-center shrink-0">
                <p class="text-[10px] md:text-xs font-bold text-[var(--color-text-muted)] leading-relaxed uppercase tracking-widest">
-                  * หมายเหตุ: จำนวนที่นั่งอาจมีการเปลี่ยนแปลงแบบเรียลไทม์ตามการชำระเงินของลูกค้าท่านอื่น
+                  {{ $t('* หมายเหตุ: จำนวนที่นั่งอาจมีการเปลี่ยนแปลงแบบเรียลไทม์ตามการชำระเงินของลูกค้าท่านอื่น') }}
                </p>
             </div>
           </div>
@@ -1862,7 +1862,7 @@
                   <div class="min-w-0">
                     <div class="flex items-center gap-2 mb-1">
                       <span class="material-symbols-rounded text-[var(--color-accent)] text-[18px]" style="font-variation-settings:'FILL' 1">airline_seat_recline_normal</span>
-                      <h3 class="font-black text-[var(--color-text-dark)] text-base">ผังที่นั่งรถ</h3>
+                      <h3 class="font-black text-[var(--color-text-dark)] text-base">{{ $t('ผังที่นั่งรถ') }}</h3>
                     </div>
                     <p v-if="seatMapPreviewSchedule" class="text-xs font-bold text-[var(--color-text-muted)] flex items-center gap-1.5">
                       <span class="material-symbols-rounded text-[13px]">calendar_today</span>
@@ -1884,10 +1884,10 @@
                 <!-- Available seats bar -->
                 <div v-if="seatMapPreviewData && !seatMapPreviewLoading" class="mt-4 p-3.5 rounded-2xl bg-[var(--color-sand)] border border-gray-100">
                   <div class="flex items-center justify-between mb-2.5">
-                    <span class="text-xs font-bold text-[var(--color-text-muted)]">ที่นั่งว่าง</span>
+                    <span class="text-xs font-bold text-[var(--color-text-muted)]">{{ $t('ที่นั่งว่าง') }}</span>
                     <span class="text-sm font-black" :class="seatMapPreviewData.available_seats === 0 ? 'text-red-500' : seatMapPreviewData.available_seats <= 3 ? 'text-amber-500' : 'text-[var(--color-accent)]'">
                       {{ seatMapPreviewData.available_seats }}
-                      <span class="text-xs font-bold text-[var(--color-text-muted)]"> / {{ seatMapPreviewData.total_seats }} ที่นั่ง</span>
+                      <span class="text-xs font-bold text-[var(--color-text-muted)]"> {{ $t('/ {total_seats} ที่นั่ง', { total_seats: seatMapPreviewData.total_seats }) }}</span>
                     </span>
                   </div>
                   <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -1898,9 +1898,9 @@
                     ></div>
                   </div>
                   <div class="flex justify-between mt-1.5">
-                    <span class="text-[10px] font-bold text-gray-400">จองแล้ว {{ seatMapPreviewData.booked_seats }} ที่</span>
-                    <span v-if="seatMapPreviewData.available_seats === 0" class="text-[10px] font-black text-red-500">เต็มแล้ว</span>
-                    <span v-else-if="seatMapPreviewData.available_seats <= 3" class="text-[10px] font-black text-amber-500">ใกล้เต็มแล้ว!</span>
+                    <span class="text-[10px] font-bold text-gray-400">{{ $t('จองแล้ว {booked_seats} ที่', { booked_seats: seatMapPreviewData.booked_seats }) }}</span>
+                    <span v-if="seatMapPreviewData.available_seats === 0" class="text-[10px] font-black text-red-500">{{ $t('เต็มแล้ว') }}</span>
+                    <span v-else-if="seatMapPreviewData.available_seats <= 3" class="text-[10px] font-black text-amber-500">{{ $t('ใกล้เต็มแล้ว!') }}</span>
                   </div>
                 </div>
               </div>
@@ -1913,7 +1913,7 @@
                 <!-- Loading -->
                 <div v-if="seatMapPreviewLoading" class="py-16 flex flex-col items-center gap-4">
                   <div class="w-10 h-10 border-4 border-gray-100 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-                  <p class="text-sm font-bold text-[var(--color-text-muted)]">กำลังโหลดผังที่นั่ง...</p>
+                  <p class="text-sm font-bold text-[var(--color-text-muted)]">{{ $t('กำลังโหลดผังที่นั่ง...') }}</p>
                 </div>
 
                 <!-- Seat map -->
@@ -1927,7 +1927,7 @@
                 <!-- Error / no seat map -->
                 <div v-else class="py-16 flex flex-col items-center gap-3 text-center">
                   <span class="material-symbols-rounded text-5xl text-gray-200" style="font-variation-settings:'FILL' 0,'wght' 200">airline_seat_recline_normal</span>
-                  <p class="text-sm font-bold text-gray-400">ไม่มีข้อมูลผังที่นั่ง</p>
+                  <p class="text-sm font-bold text-gray-400">{{ $t('ไม่มีข้อมูลผังที่นั่ง') }}</p>
                 </div>
               </div>
 
@@ -1940,12 +1940,12 @@
                   class="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-mid)] text-white font-black text-sm transition-all active:scale-95"
                 >
                   <span class="material-symbols-rounded text-[18px]">shopping_bag</span>
-                  จองรอบนี้
+                  {{ $t('จองรอบนี้') }}
                 </router-link>
                 <div v-else-if="seatMapPreviewSchedule" class="text-center py-2">
-                  <span class="text-sm font-black text-gray-400">รอบนี้เต็มแล้ว</span>
+                  <span class="text-sm font-black text-gray-400">{{ $t('รอบนี้เต็มแล้ว') }}</span>
                 </div>
-                <p class="text-[10px] font-bold text-gray-400 text-center mt-2">ผังแสดงสถานะแบบเรียลไทม์ · การเลือกที่นั่งจะทำได้ตอนจอง</p>
+                <p class="text-[10px] font-bold text-gray-400 text-center mt-2">{{ $t('ผังแสดงสถานะแบบเรียลไทม์ · การเลือกที่นั่งจะทำได้ตอนจอง') }}</p>
               </div>
             </div>
           </Transition>
@@ -2003,7 +2003,7 @@
               <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 px-4">
                 <p class="text-white/50 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs flex items-center gap-2">
                   <span class="material-symbols-rounded text-sm">photo_camera</span>
-                  ภาพที่ {{ reviewImageModalIndex + 1 }} จาก {{ reviewImageModalImages.length }}
+                  {{ $t('ภาพที่ {v} จาก {length}', { v: reviewImageModalIndex + 1, length: reviewImageModalImages.length }) }}
                 </p>
 
                 <!-- Thumbnails (only if multiple images) -->
@@ -2028,6 +2028,8 @@
 </template>
 
 <script setup>
+import { $t, absoluteUrl } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
@@ -2087,31 +2089,31 @@ const visaCheckedAtLabel = computed(() => {
 });
 
 useHead({
-  title: computed(() => trip.value ? `${trip.value.title} - ทริป${trip.value.type === 'trekking' ? 'เดินป่า' : trip.value.type === 'snorkeling' ? 'ดำน้ำตื้น' : 'เช่ารถตู้'}` : 'รายละเอียดทริป'),
+  title: computed(() => trip.value ? $t('{title} - ทริป{v}', { title: trip.value.title, v: trip.value.type === 'trekking' ? $t('เดินป่า') : trip.value.type === 'snorkeling' ? $t('ดำน้ำตื้น') : $t('เช่ารถตู้') }) : $t('รายละเอียดทริป')),
   link: [
-    { rel: 'canonical', href: computed(() => `${window.location.origin}/trips/${route.params.slug}`) }
+    { rel: 'canonical', href: computed(() => absoluteUrl(`/trips/${route.params.slug}`)) }
   ],
   meta: [
     // SEO Meta
     { name: 'description', content: computed(() => {
       if (!trip.value) return '';
       const desc = trip.value.description || '';
-      const location = trip.value.location ? ` สถานที่: ${trip.value.location}` : '';
-      const price = trip.value.price_per_person ? ` ราคาเริ่มต้น ฿${Number(trip.value.price_per_person).toLocaleString()}` : '';
+      const location = trip.value.location ? $t(' สถานที่: {location}', { location: trip.value.location }) : '';
+      const price = trip.value.price_per_person ? $t(' ราคาเริ่มต้น ฿{Number}', { Number: Number(trip.value.price_per_person).toLocaleString() }) : '';
       const truncated = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
-      return `${trip.value.title} - ลุยเลเขา${location}${price} ${truncated}`;
+      return $t('{title} - ลุยเลเขา{location}{price} {truncated}', { title: trip.value.title, location, price, truncated });
     })},
     { name: 'robots', content: 'index, follow, max-image-preview:large' },
 
     // Open Graph
     { property: 'og:type', content: 'product' },
-    { property: 'og:site_name', content: 'ลุยเลเขา Luilaykhao' },
+    { property: 'og:site_name', content: $t('ลุยเลเขา Luilaykhao') },
     { property: 'og:locale', content: 'th_TH' },
-    { property: 'og:url', content: computed(() => `${window.location.origin}/trips/${route.params.slug}`) },
-    { property: 'og:title', content: computed(() => trip.value ? `${trip.value.title} | ลุยเลเขา` : '') },
+    { property: 'og:url', content: computed(() => absoluteUrl(`/trips/${route.params.slug}`)) },
+    { property: 'og:title', content: computed(() => trip.value ? $t('{title} | ลุยเลเขา', { title: trip.value.title }) : '') },
     { property: 'og:description', content: computed(() => trip.value ? (trip.value.description || '').substring(0, 200) : '') },
     { property: 'og:image', content: computed(() => trip.value?.cover_image ? (trip.value.cover_image.startsWith('http') ? trip.value.cover_image : `${window.location.origin}${trip.value.cover_image}`) : `${window.location.origin}/images/logo.png?v=2`) },
-    { property: 'og:image:alt', content: computed(() => trip.value ? `${trip.value.title} - ลุยเลเขา` : '') },
+    { property: 'og:image:alt', content: computed(() => trip.value ? $t('{title} - ลุยเลเขา', { title: trip.value.title }) : '') },
     { property: 'og:image:width', content: '1200' },
     { property: 'og:image:height', content: '630' },
     { property: 'product:price:amount', content: computed(() => trip.value?.price_per_person?.toString() || '') },
@@ -2119,10 +2121,10 @@ useHead({
 
     // Twitter Card
     { name: 'twitter:card', content: 'summary_large_image' },
-    { name: 'twitter:title', content: computed(() => trip.value ? `${trip.value.title} | ลุยเลเขา` : '') },
+    { name: 'twitter:title', content: computed(() => trip.value ? $t('{title} | ลุยเลเขา', { title: trip.value.title }) : '') },
     { name: 'twitter:description', content: computed(() => trip.value ? (trip.value.description || '').substring(0, 200) : '') },
     { name: 'twitter:image', content: computed(() => trip.value?.cover_image ? (trip.value.cover_image.startsWith('http') ? trip.value.cover_image : `${window.location.origin}${trip.value.cover_image}`) : `${window.location.origin}/images/logo.png?v=2`) },
-    { name: 'twitter:image:alt', content: computed(() => trip.value ? trip.value.title : 'ลุยเลเขา') }
+    { name: 'twitter:image:alt', content: computed(() => trip.value ? trip.value.title : $t('ลุยเลเขา')) }
   ],
   // JSON-LD Structured Data for Trip (Product + TouristTrip)
   script: [
@@ -2137,12 +2139,12 @@ useHead({
           '@type': 'TouristTrip',
           name: t.title,
           description: t.description || '',
-          url: `${window.location.origin}/trips/${route.params.slug}`,
+          url: absoluteUrl(`/trips/${route.params.slug}`),
           image: imageUrl,
-          touristType: t.type === 'trekking' ? 'เดินป่า' : t.type === 'snorkeling' ? 'ดำน้ำตื้น' : 'เช่ารถตู้นำเที่ยว',
+          touristType: t.type === 'trekking' ? $t('เดินป่า') : t.type === 'snorkeling' ? $t('ดำน้ำตื้น') : $t('เช่ารถตู้นำเที่ยว'),
           provider: {
             '@type': 'TravelAgency',
-            name: 'ลุยเลเขา Luilaykhao',
+            name: $t('ลุยเลเขา Luilaykhao'),
             url: window.location.origin,
             telephone: '+66-62-612-6006'
           },
@@ -2151,7 +2153,7 @@ useHead({
             price: t.price_per_person,
             priceCurrency: 'THB',
             availability: 'https://schema.org/InStock',
-            url: `${window.location.origin}/trips/${route.params.slug}`,
+            url: absoluteUrl(`/trips/${route.params.slug}`),
             validFrom: new Date().toISOString().split('T')[0]
           }
         };
@@ -2339,8 +2341,8 @@ const mustKnowItems = computed(() => {
         name,
         price,
         priceType,
-        priceTypeLabel: priceType === 'per_person' ? 'ต่อคน' : 'ครั้งเดียว',
-        priceLabel: `฿${price.toLocaleString('th-TH')}`,
+        priceTypeLabel: priceType === 'per_person' ? $t('ต่อคน') : $t('ครั้งเดียว'),
+        priceLabel: $t('฿{toLocaleString}', { toLocaleString: price.toLocaleString(DATE_LOCALE) }),
       };
     })
     .filter((item) => item.name);
@@ -2360,7 +2362,7 @@ const itinerarySectors = computed(() => {
   
   // Transform old format to new format (flat array of items)
   return [{
-    sector: 'กำหนดการเดินทาง',
+    sector: $t('กำหนดการเดินทาง'),
     items: raw
   }];
 });
@@ -2401,7 +2403,7 @@ const groupedPickupPointsByRegion = computed(() => {
 
   allPickupPoints.value.forEach((pt) => {
     const regionKey = pt.region || 'other';
-    const regionLabel = pt.region_label || 'อื่นๆ';
+    const regionLabel = pt.region_label || $t('อื่นๆ');
     const price = Number(pt.price || 0);
 
     if (!grouped.has(regionKey)) {
@@ -2436,7 +2438,7 @@ const regionOptions = computed(() => {
     const countedRegions = new Set();
     (s.pickup_points || []).forEach(pt => {
       const region = pt.region || 'other';
-      const regionLabel = pt.region_label || 'อื่นๆ';
+      const regionLabel = pt.region_label || $t('อื่นๆ');
       const price = Number(pt.price || 0);
       // ราคาก่อนลดของจุดเดียวกัน — ใช้ขีดฆ่าเมื่อมีแคมเปญวันพิเศษ
       const originalPrice = Number(pt.original_price ?? pt.price ?? 0);
@@ -2481,12 +2483,12 @@ const pickupForSelection = computed(() => {
 });
 
 const typeMap = {
-  trekking:   { label: 'เดินป่า',    class: 'bg-[var(--color-accent)]' },
-  diving:     { label: 'ดำน้ำ',      class: 'bg-[#1A5F8A]' },
-  snorkeling: { label: 'ดำน้ำตื้น', class: 'bg-[#3B9DD4]' },
-  climbing:   { label: 'รถตู้',      class: 'bg-[#C8963E]' },
+  trekking:   { label: $t('เดินป่า'),    class: 'bg-[var(--color-accent)]' },
+  diving:     { label: $t('ดำน้ำ'),      class: 'bg-[#1A5F8A]' },
+  snorkeling: { label: $t('ดำน้ำตื้น'), class: 'bg-[#3B9DD4]' },
+  climbing:   { label: $t('รถตู้'),      class: 'bg-[#C8963E]' },
 };
-const diffMap = { easy: 'ระดับเริ่มต้น', medium: 'ระดับปานกลาง', hard: 'ระดับท้าทาย' };
+const diffMap = { easy: $t('ระดับเริ่มต้น'), medium: $t('ระดับปานกลาง'), hard: $t('ระดับท้าทาย') };
 
 const typeLabel = ref('');
 const typeBadgeClass = ref('');
@@ -2511,9 +2513,9 @@ const routeFacts = computed(() => {
   if (distance > 0) {
     facts.push({
       icon: 'footprint',
-      label: 'ระยะทางเดิน',
+      label: $t('ระยะทางเดิน'),
       value: distance.toLocaleString(undefined, { maximumFractionDigits: 1 }),
-      unit: 'กม.',
+      unit: $t('กม.'),
     });
   }
 
@@ -2521,24 +2523,24 @@ const routeFacts = computed(() => {
   if (elevation > 0) {
     facts.push({
       icon: 'landscape',
-      label: 'ความสูงสะสม',
+      label: $t('ความสูงสะสม'),
       value: elevation.toLocaleString(),
-      unit: 'ม.',
+      unit: $t('ม.'),
     });
   }
 
   if (t.duration_days) {
     facts.push({
       icon: 'schedule',
-      label: 'ระยะเวลา',
+      label: $t('ระยะเวลา'),
       value: t.duration_days,
-      unit: 'วัน',
-      note: distance > 0 ? `เฉลี่ย ${(distance / t.duration_days).toFixed(1)} กม./วัน` : '',
+      unit: $t('วัน'),
+      note: distance > 0 ? $t('เฉลี่ย {v} กม./วัน', { v: (distance / t.duration_days).toFixed(1) }) : '',
     });
   }
 
   if (diffLabel.value) {
-    facts.push({ icon: 'terrain', label: 'ระดับความยาก', value: diffLabel.value, unit: '' });
+    facts.push({ icon: 'terrain', label: $t('ระดับความยาก'), value: diffLabel.value, unit: '' });
   }
 
   // ต้องมีตัวเลขเส้นทางจริงอย่างน้อยหนึ่งอย่าง ไม่งั้นบล็อกนี้ก็ไม่ต่างจากข้อมูลทั่วไป
@@ -2687,9 +2689,9 @@ async function shareTrip() {
 // ─── มื้ออาหาร ──
 // ลำดับคอลัมน์ต้องตรงกับ TripMealPlan::MEALS
 const mealColumns = [
-  { key: 'breakfast', label: 'เช้า' },
-  { key: 'lunch', label: 'กลางวัน' },
-  { key: 'dinner', label: 'เย็น' },
+  { key: 'breakfast', label: $t('เช้า') },
+  { key: 'lunch', label: $t('กลางวัน') },
+  { key: 'dinner', label: $t('เย็น') },
 ];
 
 function mealIcon(status) {
@@ -2705,13 +2707,13 @@ let pageNavObserver = null;
 // Only surface links whose section actually renders.
 const pageSections = computed(() => {
   // Order must follow DOM order so the scroll-spy highlight reads intuitively.
-  const out = [{ id: 'overview', label: 'ภาพรวม' }];
-  if (itinerarySectors.value.length > 0) out.push({ id: 'itinerary', label: 'กำหนดการ' });
-  if (trip.value?.preparations?.length) out.push({ id: 'prepare', label: 'เตรียมตัว' });
-  if (highlights.value.length) out.push({ id: 'highlights', label: 'จุดเด่น' });
-  if (trip.value?.meals) out.push({ id: 'meals', label: 'อาหาร' });
-  if (trip.value?.inclusions?.length || trip.value?.exclusions?.length) out.push({ id: 'included', label: 'ราคารวม' });
-  out.push({ id: 'reviews', label: 'รีวิว' });
+  const out = [{ id: 'overview', label: $t('ภาพรวม') }];
+  if (itinerarySectors.value.length > 0) out.push({ id: 'itinerary', label: $t('กำหนดการ') });
+  if (trip.value?.preparations?.length) out.push({ id: 'prepare', label: $t('เตรียมตัว') });
+  if (highlights.value.length) out.push({ id: 'highlights', label: $t('จุดเด่น') });
+  if (trip.value?.meals) out.push({ id: 'meals', label: $t('อาหาร') });
+  if (trip.value?.inclusions?.length || trip.value?.exclusions?.length) out.push({ id: 'included', label: $t('ราคารวม') });
+  out.push({ id: 'reviews', label: $t('รีวิว') });
   return out;
 });
 
@@ -3166,12 +3168,12 @@ async function calculateDistances() {
   try {
     const pos = await new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('เบราว์เซอร์ไม่รองรับ Geolocation'));
+        reject(new Error($t('เบราว์เซอร์ไม่รองรับ Geolocation')));
         return;
       }
       navigator.geolocation.getCurrentPosition(
         (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-        (err) => reject(new Error('ไม่สามารถเข้าถึงตำแหน่งของคุณได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง')),
+        (err) => reject(new Error($t('ไม่สามารถเข้าถึงตำแหน่งของคุณได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง'))),
         { enableHighAccuracy: true, timeout: 10000 }
       );
     });
@@ -3181,7 +3183,7 @@ async function calculateDistances() {
     });
     distanceData.value = res.data.data || [];
   } catch (e) {
-    alert(e.message || 'ไม่สามารถคำนวณระยะทางได้');
+    alert(e.message || $t('ไม่สามารถคำนวณระยะทางได้'));
   } finally {
     distanceLoading.value = false;
   }

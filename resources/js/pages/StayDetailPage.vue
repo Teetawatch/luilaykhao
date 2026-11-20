@@ -239,6 +239,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../lib/axios';
@@ -296,7 +297,7 @@ const unitOptions = computed(() => {
 });
 
 function money(n) {
-  return Math.round(Number(n || 0)).toLocaleString('th-TH');
+  return Math.round(Number(n || 0)).toLocaleString(DATE_LOCALE);
 }
 
 async function onDates() {

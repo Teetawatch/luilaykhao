@@ -31,6 +31,13 @@ class SeoMeta
         'van' => 'เช่ารถตู้นำเที่ยว',
     ];
 
+    /** หัวเรื่องหน้าทริปบน /en */
+    private const TRIP_TYPE_LABELS_EN = [
+        'trekking' => 'Hiking trip',
+        'snorkeling' => 'Snorkelling trip',
+        'van' => 'Van tour',
+    ];
+
     /**
      * @return array{
      *     title: string, og_title: string, description: string, robots: string,
@@ -86,7 +93,9 @@ class SeoMeta
         }
 
         $typeLabel = self::TRIP_TYPE_LABELS[$trip->type] ?? 'ท่องเที่ยว';
-        $title = $trip->title.' - ทริป'.$typeLabel;
+        $title = SiteLocale::isEnglish()
+            ? $trip->title.' - '.(self::TRIP_TYPE_LABELS_EN[$trip->type] ?? 'Trip')
+            : $trip->title.' - ทริป'.$typeLabel;
         $image = MediaDisk::url($trip->cover_image) ?: self::fallbackImage();
         $canonical = url($path);
 
@@ -366,15 +375,18 @@ class SeoMeta
     private static function assemble(array $parts): array
     {
         $default = config('seo.default');
-        $title = $parts['title'] ?? $default['title'];
+        // หน้า /en: ข้อความ SEO ใน config เป็นภาษาไทยชุดเดียวกับ router ของ SPA
+        // จึงแปลด้วยคำแปลชุดเดียวกับหน้าเว็บ (ชื่อทริปจากฐานข้อมูลไม่มีคำแปล ผ่านไปตามเดิม)
+        $title = SiteLocale::text($parts['title'] ?? $default['title']);
+        $english = SiteLocale::isEnglish();
 
         return [
-            'title' => $title.config('seo.title_suffix'),
-            'og_title' => $title.config('seo.og_title_suffix'),
+            'title' => $title.($english ? ' | Luilaykhao' : config('seo.title_suffix')),
+            'og_title' => $title.($english ? ' | Luilaykhao' : config('seo.og_title_suffix')),
             // `:licence` ถูกแทนตอน request ไม่ใช่ตอนอ่าน config เพราะ config
             // ถูก cache ไว้ (config:cache) การอ่านฐานข้อมูลตรงนั้นจะแช่ค่าเก่าไว้
             // จนกว่าจะ deploy ใหม่ ซึ่งคือปัญหาเดิมที่หน้าตั้งค่าตั้งใจแก้
-            'description' => self::withLicence($parts['description'] ?: $default['description']),
+            'description' => self::withLicence(SiteLocale::text($parts['description'] ?: $default['description'])),
             'robots' => $parts['robots'] ?? $default['robots'],
             'canonical' => $parts['canonical'],
             'image' => $parts['image'],
@@ -387,6 +399,16 @@ class SeoMeta
 
     private static function tripDescription(Trip $trip): string
     {
+        if (SiteLocale::isEnglish()) {
+            $location = $trip->location ? ' Location: '.$trip->location.'.' : '';
+            $price = $trip->price_per_person
+                ? ' From ฿'.number_format((float) $trip->price_per_person).'.'
+                : '';
+
+            return trim($trip->title.' - Luilaykhao.'.$location.$price.' '
+                .Str::limit(strip_tags((string) $trip->description), 120));
+        }
+
         $location = $trip->location ? ' สถานที่: '.$trip->location : '';
         $price = $trip->price_per_person
             ? ' ราคาเริ่มต้น ฿'.number_format((float) $trip->price_per_person)

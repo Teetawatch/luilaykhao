@@ -3,14 +3,14 @@
     <button v-if="activeCount" type="button" @click="$emit('clear')"
       class="mb-6 w-full inline-flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--color-text-muted)] hover:text-red-500 transition-colors cursor-pointer">
       <span class="material-symbols-rounded text-[16px]">restart_alt</span>
-      ล้างตัวกรองทั้งหมด ({{ activeCount }})
+      {{ $t('ล้างตัวกรองทั้งหมด ({activeCount})', { activeCount }) }}
     </button>
 
     <!-- หมวดหมู่มาจาก API ถ้ายังโหลดไม่เสร็จหรือไม่มีเลย อย่าโชว์หัวข้อลอย ๆ -->
     <section v-if="categories.length" class="mb-7">
       <h3 class="text-sm font-extrabold text-[var(--color-text-dark)] mb-3.5 flex items-center gap-2">
         <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">category</span>
-        หมวดหมู่กิจกรรม
+        {{ $t('หมวดหมู่กิจกรรม') }}
       </h3>
       <div class="flex flex-wrap gap-2">
         <button v-for="cat in categories" :key="cat.value" type="button"
@@ -25,7 +25,7 @@
     <section class="mb-7">
       <h3 class="text-sm font-extrabold text-[var(--color-text-dark)] mb-3.5 flex items-center gap-2">
         <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">schedule</span>
-        ระยะเวลา
+        {{ $t('ระยะเวลา') }}
       </h3>
       <div class="flex flex-wrap gap-2">
         <button v-for="dur in durations" :key="dur.key" type="button"
@@ -41,7 +41,7 @@
     <section v-if="type === 'trekking'">
       <h3 class="text-sm font-extrabold text-[var(--color-text-dark)] mb-3.5 flex items-center gap-2">
         <span class="material-symbols-rounded text-[var(--color-accent)] text-[20px]">terrain</span>
-        ระดับความยาก
+        {{ $t('ระดับความยาก') }}
       </h3>
       <div class="flex flex-wrap gap-2">
         <button v-for="diff in difficulties" :key="diff.value" type="button"

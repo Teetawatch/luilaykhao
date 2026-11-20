@@ -12,7 +12,7 @@
       <div class="flex-1 min-w-0">
         <p class="text-xs font-bold uppercase tracking-wider mb-0.5"
           :class="isUrgent ? 'text-red-500' : isWarning ? 'text-amber-600' : 'text-accent'">
-          {{ isUrgent ? 'เวลาใกล้หมดแล้ว!' : 'เวลาที่เหลือในการจอง' }}
+          {{ isUrgent ? $t('เวลาใกล้หมดแล้ว!') : $t('เวลาที่เหลือในการจอง') }}
         </p>
         <p class="text-xl font-extrabold font-anuphan tracking-tight"
           :class="isUrgent ? 'text-red-700' : isWarning ? 'text-amber-700' : 'text-accent'">
@@ -22,11 +22,11 @@
       <div class="text-right shrink-0">
         <p class="text-xs font-medium"
           :class="isUrgent ? 'text-red-400' : isWarning ? 'text-amber-500' : 'text-accent'">
-          ที่นั่งจะถูกปลดล็อค
+          {{ $t('ที่นั่งจะถูกปลดล็อค') }}
         </p>
         <p class="text-xs font-bold"
           :class="isUrgent ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-accent'">
-          หากไม่ทำรายการ
+          {{ $t('หากไม่ทำรายการ') }}
         </p>
       </div>
     </div>
@@ -45,8 +45,8 @@
       <span class="material-symbols-rounded text-[20px] text-red-600" style="font-variation-settings:'FILL' 1,'wght' 400">timer_off</span>
     </div>
     <div>
-      <p class="text-sm font-bold text-red-700">หมดเวลาแล้ว!</p>
-      <p class="text-xs text-red-500 font-medium">กรุณาเริ่มการจองใหม่</p>
+      <p class="text-sm font-bold text-red-700">{{ $t('หมดเวลาแล้ว!') }}</p>
+      <p class="text-xs text-red-500 font-medium">{{ $t('กรุณาเริ่มการจองใหม่') }}</p>
     </div>
   </div>
 </template>

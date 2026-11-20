@@ -3,14 +3,14 @@
   <div v-if="loading" class="flex items-center justify-center min-h-[60vh]">
     <div class="flex flex-col items-center gap-4">
       <div class="w-12 h-12 rounded-full border-4 border-[#b4eae9] border-t-[var(--color-accent)] animate-spin"></div>
-      <p class="text-[#6e7979] font-['DB Heavent', 'Anuphan']">กำลังโหลด...</p>
+      <p class="text-[#6e7979] font-['DB Heavent', 'Anuphan']">{{ $t('กำลังโหลด...') }}</p>
     </div>
   </div>
 
   <!-- No booking -->
   <div v-else-if="!booking" class="flex flex-col items-center justify-center min-h-[60vh] text-[#6e7979] font-['DB Heavent', 'Anuphan']">
     <span class="material-symbols-rounded text-6xl mb-4 text-[#bdc9c8]">sentiment_dissatisfied</span>
-    <p class="text-lg">ไม่พบข้อมูลการจอง</p>
+    <p class="text-lg">{{ $t('ไม่พบข้อมูลการจอง') }}</p>
   </div>
 
   <!-- Main Content -->
@@ -20,17 +20,17 @@
       <div class="flex items-center w-full max-w-2xl">
         <div class="flex flex-col items-center flex-1">
           <div class="w-10 h-10 rounded-full bg-[#b4eae9] text-[#376b6a] flex items-center justify-center mb-2 font-bold text-sm">1</div>
-          <span class="text-xs font-medium text-[#6e7979]">เลือกทริป</span>
+          <span class="text-xs font-medium text-[#6e7979]">{{ $t('เลือกทริป') }}</span>
         </div>
         <div class="h-[2px] flex-1 bg-[#b4eae9]"></div>
         <div class="flex flex-col items-center flex-1">
           <div class="w-10 h-10 rounded-full bg-[#b4eae9] text-[#376b6a] flex items-center justify-center mb-2 font-bold text-sm">2</div>
-          <span class="text-xs font-medium text-[#6e7979]">รายละเอียด</span>
+          <span class="text-xs font-medium text-[#6e7979]">{{ $t('รายละเอียด') }}</span>
         </div>
         <div class="h-[2px] flex-1 bg-[#b4eae9] overflow-hidden"><div class="h-full bg-[var(--color-accent)] pay-line"></div></div>
         <div class="flex flex-col items-center flex-1">
           <div class="w-10 h-10 rounded-full bg-[var(--color-accent)] text-white flex items-center justify-center mb-2 font-bold text-sm ring-4 ring-[#93f2f2]/40 pay-current">3</div>
-          <span class="text-xs font-bold text-[var(--color-accent)]">ชำระเงิน</span>
+          <span class="text-xs font-bold text-[var(--color-accent)]">{{ $t('ชำระเงิน') }}</span>
         </div>
       </div>
     </div>
@@ -42,9 +42,9 @@
           <span class="material-symbols-rounded text-[var(--color-accent)] text-2xl">event_seat</span>
         </div>
         <div>
-          <h3 class="text-[#004b4b] font-bold text-base md:text-lg">ทีมงานกันที่นั่งไว้ให้คุณแล้ว</h3>
+          <h3 class="text-[#004b4b] font-bold text-base md:text-lg">{{ $t('ทีมงานกันที่นั่งไว้ให้คุณแล้ว') }}</h3>
           <p class="text-[var(--color-accent)] text-sm">
-            ชำระเงินได้ถึง {{ holdUntilLabel }} ยังไม่ต้องรีบครับ ถ้าต้องการเวลาเพิ่มทักทีมงานได้เลย
+            {{ $t('ชำระเงินได้ถึง {holdUntilLabel} ยังไม่ต้องรีบครับ ถ้าต้องการเวลาเพิ่มทักทีมงานได้เลย', { holdUntilLabel }) }}
           </p>
         </div>
       </div>
@@ -58,8 +58,8 @@
             <span class="material-symbols-rounded text-red-600 text-2xl animate-pulse">crisis_alert</span>
           </div>
           <div>
-            <h3 class="text-red-900 font-bold text-base md:text-lg">กรุณาชำระเงินเพื่อยืนยันสิทธิ์</h3>
-            <p class="text-red-700 text-sm">เราจะสำรองที่นั่งให้คุณเป็นเวลา {{ paymentWindowMinutes }} นาที มิฉะนั้นรายการจะถูกยกเลิกโดยอัตโนมัติ</p>
+            <h3 class="text-red-900 font-bold text-base md:text-lg">{{ $t('กรุณาชำระเงินเพื่อยืนยันสิทธิ์') }}</h3>
+            <p class="text-red-700 text-sm">{{ $t('เราจะสำรองที่นั่งให้คุณเป็นเวลา {paymentWindowMinutes} นาที มิฉะนั้นรายการจะถูกยกเลิกโดยอัตโนมัติ', { paymentWindowMinutes }) }}</p>
           </div>
         </div>
         <div class="bg-white px-6 py-3 rounded-2xl border border-red-200">
@@ -78,7 +78,7 @@
         <div class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100 pay-rise" style="--d: 120ms">
            <h2 class="text-xl font-bold mb-8 text-gray-900 flex items-center gap-2">
             <span class="material-symbols-rounded text-accent">checklist</span>
-            ขั้นตอนการชำระเงิน
+            {{ $t('ขั้นตอนการชำระเงิน') }}
           </h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
             <!-- Connector lines (Desktop) -->
@@ -86,18 +86,18 @@
             
             <div class="relative flex flex-col items-center text-center gap-3">
               <div class="w-14 h-14 rounded-2xl bg-accent-tint text-accent flex items-center justify-center font-black text-xl border-2 border-accent/15 z-10">1</div>
-              <p class="font-bold text-gray-900">สแกน QR เพื่อชำระเงิน</p>
-              <p class="text-xs text-gray-500 leading-relaxed px-2">เปิดแอปธนาคารแล้วสแกน QR Code ด้านล่าง</p>
+              <p class="font-bold text-gray-900">{{ $t('สแกน QR เพื่อชำระเงิน') }}</p>
+              <p class="text-xs text-gray-500 leading-relaxed px-2">{{ $t('เปิดแอปธนาคารแล้วสแกน QR Code ด้านล่าง') }}</p>
             </div>
             <div class="relative flex flex-col items-center text-center gap-3">
               <div class="w-14 h-14 rounded-2xl bg-accent-tint text-accent flex items-center justify-center font-black text-xl border-2 border-accent/15 z-10">2</div>
-              <p class="font-bold text-gray-900">อัปโหลดสลิป</p>
-              <p class="text-xs text-gray-500 leading-relaxed px-2">แนบหลักฐานการโอนเงินเพื่อตรวจสอบความถูกต้อง</p>
+              <p class="font-bold text-gray-900">{{ $t('อัปโหลดสลิป') }}</p>
+              <p class="text-xs text-gray-500 leading-relaxed px-2">{{ $t('แนบหลักฐานการโอนเงินเพื่อตรวจสอบความถูกต้อง') }}</p>
             </div>
             <div class="relative flex flex-col items-center text-center gap-3">
               <div class="w-14 h-14 rounded-2xl bg-accent-tint text-accent flex items-center justify-center font-black text-xl border-2 border-accent/15 z-10">3</div>
-              <p class="font-bold text-gray-900">กดยืนยันการชำระเงิน</p>
-              <p class="text-xs text-gray-500 leading-relaxed px-2">เสร็จสิ้น! รอเจ้าหน้าที่ตรวจสอบใน 10 นาที</p>
+              <p class="font-bold text-gray-900">{{ $t('กดยืนยันการชำระเงิน') }}</p>
+              <p class="text-xs text-gray-500 leading-relaxed px-2">{{ $t('เสร็จสิ้น! รอเจ้าหน้าที่ตรวจสอบใน 10 นาที') }}</p>
             </div>
           </div>
         </div>
@@ -107,37 +107,37 @@
         <section v-if="installmentAvailable || installmentNotAvailable || depositAvailable" class="bg-white rounded-3xl px-5 pt-5 pb-1 sm:px-8 sm:pt-7 border border-gray-100 pay-rise" style="--d: 180ms">
           <h2 class="pay-section-title">
             <span class="pay-section-icon"><span class="material-symbols-rounded icon-20" style="font-variation-settings:'FILL' 1">credit_card</span></span>
-            รูปแบบการชำระ
+            {{ $t('รูปแบบการชำระ') }}
           </h2>
 
-          <div class="divide-y divide-gray-100" role="radiogroup" aria-label="รูปแบบการชำระ">
-            <PayMethodRow icon="payments" title="ชำระเต็มจำนวน"
-              :subtitle="`ยอดชำระ ฿${money(booking.total_amount)} · จบในครั้งเดียว ยืนยันที่นั่งทันที`"
+          <div class="divide-y divide-gray-100" role="radiogroup" :aria-label="$t('รูปแบบการชำระ')">
+            <PayMethodRow icon="payments" :title="$t('ชำระเต็มจำนวน')"
+              :subtitle="$t('ยอดชำระ ฿{money} · จบในครั้งเดียว ยืนยันที่นั่งทันที', { money: money(booking.total_amount) })"
               :selected="paymentType === 'full'" @select="paymentType = 'full'" />
 
             <PayMethodRow v-if="depositAvailable" icon="savings"
-              :title="`จ่ายมัดจำ ฿${money(depositAmount)}`"
-              :subtitle="`ส่วนที่เหลือ ฿${money(balanceAmount)} · ภายใน ${balanceDueDateText}`"
+              :title="$t('จ่ายมัดจำ ฿{money}', { money: money(depositAmount) })"
+              :subtitle="$t('ส่วนที่เหลือ ฿{money} · ภายใน {balanceDueDateText}', { money: money(balanceAmount), balanceDueDateText })"
               :selected="paymentType === 'deposit'" @select="paymentType = 'deposit'">
               <div class="space-y-3">
                 <!-- สรุปยอดมัดจำ -->
                 <div class="rounded-2xl bg-gray-50 p-4 space-y-2.5">
                   <div class="flex items-center justify-between gap-3 text-sm">
-                    <span class="flex items-center gap-2.5 text-gray-500 font-medium"><span class="pay-step">1</span>ยอดรวมทั้งหมด</span>
-                    <span class="font-bold text-gray-900 tabular-nums">฿{{ money(booking.total_amount) }}</span>
+                    <span class="flex items-center gap-2.5 text-gray-500 font-medium"><span class="pay-step">1</span>{{ $t('ยอดรวมทั้งหมด') }}</span>
+                    <span class="font-bold text-gray-900 tabular-nums">{{ $t('฿{money}', { money: money(booking.total_amount) }) }}</span>
                   </div>
                   <div class="flex items-center justify-between gap-3 text-sm">
-                    <span class="flex items-center gap-2.5 text-gray-900 font-bold"><span class="pay-step is-now">2</span>มัดจำ ชำระตอนนี้</span>
-                    <span class="text-base font-black text-accent tabular-nums">฿{{ money(depositAmount) }}</span>
+                    <span class="flex items-center gap-2.5 text-gray-900 font-bold"><span class="pay-step is-now">2</span>{{ $t('มัดจำ ชำระตอนนี้') }}</span>
+                    <span class="text-base font-black text-accent tabular-nums">{{ $t('฿{money}', { money: money(depositAmount) }) }}</span>
                   </div>
                   <div class="flex items-center justify-between gap-3 text-sm">
-                    <span class="flex items-center gap-2.5 text-gray-500 font-medium"><span class="pay-step is-later">3</span>ส่วนที่เหลือ ภายใน {{ balanceDueDateText }}</span>
-                    <span class="font-bold text-amber-700 tabular-nums">฿{{ money(balanceAmount) }}</span>
+                    <span class="flex items-center gap-2.5 text-gray-500 font-medium"><span class="pay-step is-later">3</span>{{ $t('ส่วนที่เหลือ ภายใน {balanceDueDateText}', { balanceDueDateText }) }}</span>
+                    <span class="font-bold text-amber-700 tabular-nums">{{ $t('฿{money}', { money: money(balanceAmount) }) }}</span>
                   </div>
                   <p v-if="depositPercentText" class="pl-[34px] text-[12px] font-semibold text-accent">{{ depositPercentText }}</p>
                   <p class="flex items-start gap-2 pt-1 text-[12px] text-gray-500 font-medium leading-relaxed">
                     <span class="material-symbols-rounded icon-16 text-gray-400 shrink-0 mt-px">notifications_active</span>
-                    เราจะส่ง SMS + อีเมล แจ้งเตือนล่วงหน้า 5 วัน, 2 วัน และวันครบกำหนด
+                    {{ $t('เราจะส่ง SMS + อีเมล แจ้งเตือนล่วงหน้า 5 วัน, 2 วัน และวันครบกำหนด') }}
                   </p>
                 </div>
 
@@ -145,15 +145,13 @@
                 <div class="rounded-2xl border border-red-200 bg-red-50/60 p-4 flex gap-3">
                   <span class="material-symbols-rounded icon-22 text-red-600 shrink-0" style="font-variation-settings:'FILL' 1">gavel</span>
                   <div class="text-[13px] text-red-800 leading-relaxed">
-                    <p class="font-black text-red-900 mb-1">เงื่อนไขสำคัญ</p>
+                    <p class="font-black text-red-900 mb-1">{{ $t('เงื่อนไขสำคัญ') }}</p>
                     <p>
-                      กรณีขอยกเลิกการเดินทางเอง ทางทริปขอสงวนสิทธิ์ <strong class="text-red-900">ไม่คืนเงินมัดจำ</strong>
-                      เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้า
-                      เลื่อนวันเดินทางได้ {{ POLICY.postponeTimes }} ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย {{ POLICY.postponeNoticeDays }} วัน
-                      (<router-link to="/terms" class="font-bold underline">เงื่อนไขฉบับเต็ม</router-link>)
+                      {{ $t('กรณีขอยกเลิกการเดินทางเอง ทางทริปขอสงวนสิทธิ์') }} <strong class="text-red-900">{{ $t('ไม่คืนเงินมัดจำ') }}</strong>
+                      {{ $t('เนื่องจากมีการนำไปสำรองจ่ายค่าอุทยานและยานพาหนะล่วงหน้า เลื่อนวันเดินทางได้ {postponeTimes} ครั้ง โดยแจ้งล่วงหน้าอย่างน้อย {postponeNoticeDays} วัน (', { postponeTimes: POLICY.postponeTimes, postponeNoticeDays: POLICY.postponeNoticeDays }) }}<router-link to="/terms" class="font-bold underline">{{ $t('เงื่อนไขฉบับเต็ม') }}</router-link>)
                     </p>
                     <p class="mt-2">
-                      ต้องชำระยอดส่วนที่เหลือ <strong class="text-red-900">ก่อนเดินทาง {{ POLICY.balanceDueDays }} วัน</strong> (ภายในวันที่ <strong>{{ balanceDueDateText }}</strong>) มิฉะนั้นถือว่าสละสิทธิ์การเดินทาง
+                      {{ $t('ต้องชำระยอดส่วนที่เหลือ') }} <strong class="text-red-900">{{ $t('ก่อนเดินทาง {balanceDueDays} วัน', { balanceDueDays: POLICY.balanceDueDays }) }}</strong> {{ $t('(ภายในวันที่') }} <strong>{{ balanceDueDateText }}</strong>{{ $t(') มิฉะนั้นถือว่าสละสิทธิ์การเดินทาง') }}
                     </p>
                   </div>
                 </div>
@@ -161,23 +159,23 @@
             </PayMethodRow>
 
             <!-- ผ่อนไม่ทันก่อนเดินทาง — ยังโชว์แถวไว้ (จาง) พร้อมเหตุผล -->
-            <PayMethodRow v-if="installmentNotAvailable" icon="calendar_month" title="ผ่อนชำระ"
+            <PayMethodRow v-if="installmentNotAvailable" icon="calendar_month" :title="$t('ผ่อนชำระ')"
               :subtitle="installmentWarningMessage" :available="false">
               <template #below>
                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-bold text-gray-500">
-                  <span class="material-symbols-rounded icon-14">event_busy</span>ไม่พร้อมใช้
+                  <span class="material-symbols-rounded icon-14">event_busy</span>{{ $t('ไม่พร้อมใช้') }}
                 </span>
               </template>
             </PayMethodRow>
 
             <PayMethodRow v-else-if="installmentAvailable" icon="calendar_month"
-              :title="`ผ่อนชำระ ${selectedInstallmentCount} งวด`"
-              :subtitle="`งวดละ ฿${money(perInstallment)}${installmentFinalDueDate ? ` · ปิดยอด ${formatDate(installmentFinalDueDate)}` : ''} · ไม่มีดอกเบี้ย`"
+              :title="$t('ผ่อนชำระ {selectedInstallmentCount} งวด', { selectedInstallmentCount })"
+              :subtitle="$t('งวดละ ฿{money}{v} · ไม่มีดอกเบี้ย', { money: money(perInstallment), v: installmentFinalDueDate ? $t(' · ปิดยอด {formatDate}', { formatDate: formatDate(installmentFinalDueDate) }) : '' })"
               :selected="paymentType === 'installment'" @select="paymentType = 'installment'">
               <div class="space-y-4">
                 <!-- เลือกจำนวนงวด — การ์ด "3 × ฿1,200" เห็นยอดต่องวดของทุกตัวเลือกพร้อมกัน -->
                 <div v-if="installmentOptions.length > 1">
-                  <p class="mb-2 text-[13px] font-semibold text-gray-500">แบ่งเป็นกี่งวด</p>
+                  <p class="mb-2 text-[13px] font-semibold text-gray-500">{{ $t('แบ่งเป็นกี่งวด') }}</p>
                   <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     <button v-for="opt in installmentOptions" :key="opt.count" type="button"
                       @click="selectedInstallmentCount = opt.count"
@@ -188,10 +186,10 @@
                       :aria-pressed="selectedInstallmentCount === opt.count">
                       <span class="block text-base font-black tabular-nums whitespace-nowrap"
                         :class="selectedInstallmentCount === opt.count ? 'text-accent' : 'text-gray-900'">
-                        {{ opt.count }} × ฿{{ money(opt.per_amount) }}
+                        {{ $t('{count} × ฿{money}', { count: opt.count, money: money(opt.per_amount) }) }}
                       </span>
                       <span v-if="opt.due_dates?.length" class="block mt-0.5 text-[12px] text-gray-500 font-medium truncate">
-                        ปิดยอด {{ thaiShort(opt.due_dates[opt.due_dates.length - 1]) }}
+                        {{ $t('ปิดยอด {thaiShort}', { thaiShort: thaiShort(opt.due_dates[opt.due_dates.length - 1]) }) }}
                       </span>
                     </button>
                   </div>
@@ -202,25 +200,25 @@
                   <li v-for="inst in installmentSchedule" :key="inst.no" class="flex items-center gap-3 px-4 py-3">
                     <span class="pay-step" :class="inst.no === 1 ? 'is-now' : ''">{{ inst.no }}</span>
                     <span class="flex-1 min-w-0">
-                      <span class="block text-sm font-bold text-gray-900">งวดที่ {{ inst.no }}</span>
+                      <span class="block text-sm font-bold text-gray-900">{{ $t('งวดที่ {no}', { no: inst.no }) }}</span>
                       <span class="block text-[12px] text-gray-500 font-medium">{{ inst.dueDate ? formatDate(inst.dueDate) : '-' }}</span>
                     </span>
                     <span class="text-right">
-                      <span class="block text-sm font-black tabular-nums" :class="inst.no === 1 ? 'text-accent' : 'text-gray-900'">฿{{ money(inst.amount) }}</span>
-                      <span class="block text-[11px] font-bold" :class="inst.no === 1 ? 'text-accent' : 'text-gray-400'">{{ inst.no === 1 ? 'ชำระตอนนี้' : 'รอชำระ' }}</span>
+                      <span class="block text-sm font-black tabular-nums" :class="inst.no === 1 ? 'text-accent' : 'text-gray-900'">{{ $t('฿{money}', { money: money(inst.amount) }) }}</span>
+                      <span class="block text-[11px] font-bold" :class="inst.no === 1 ? 'text-accent' : 'text-gray-400'">{{ inst.no === 1 ? $t('ชำระตอนนี้') : $t('รอชำระ') }}</span>
                     </span>
                   </li>
                 </ol>
 
                 <p class="flex items-start gap-2 text-[12px] text-gray-500 font-medium leading-relaxed">
                   <span class="material-symbols-rounded icon-16 text-gray-400 shrink-0 mt-px">auto_awesome</span>
-                  {{ installmentWarningMessage }} · ยอดรวมคงเดิม ไม่มีดอกเบี้ย
+                  {{ $t('{installmentWarningMessage} · ยอดรวมคงเดิม ไม่มีดอกเบี้ย', { installmentWarningMessage }) }}
                 </p>
 
                 <div class="rounded-2xl border border-red-200 bg-red-50/60 p-4 flex gap-3">
                   <span class="material-symbols-rounded icon-22 text-red-600 shrink-0">priority_high</span>
                   <p class="text-[13px] text-red-800 leading-relaxed">
-                    <strong class="text-red-900">เงื่อนไขการยกเลิก:</strong> หากไม่ชำระตามตารางภายในวันครบกำหนด ลุยเลเขาขอสงวนสิทธิ์ยกเลิกทริปและไม่คืนเงินทุกกรณี เพื่อความมั่นใจของเพื่อนร่วมทริปท่านอื่น
+                    <strong class="text-red-900">{{ $t('เงื่อนไขการยกเลิก:') }}</strong> {{ $t('หากไม่ชำระตามตารางภายในวันครบกำหนด ลุยเลเขาขอสงวนสิทธิ์ยกเลิกทริปและไม่คืนเงินทุกกรณี เพื่อความมั่นใจของเพื่อนร่วมทริปท่านอื่น') }}
                   </p>
                 </div>
               </div>
@@ -235,12 +233,12 @@
         <section class="bg-white rounded-3xl px-5 pt-5 pb-1 sm:px-8 sm:pt-7 border border-gray-100 pay-rise" style="--d: 240ms">
           <h2 class="pay-section-title">
             <span class="pay-section-icon"><span class="material-symbols-rounded icon-20" style="font-variation-settings:'FILL' 1">account_balance_wallet</span></span>
-            ช่องทางชำระเงิน
+            {{ $t('ช่องทางชำระเงิน') }}
           </h2>
 
-          <div class="divide-y divide-gray-100" role="radiogroup" aria-label="ช่องทางชำระเงิน">
+          <div class="divide-y divide-gray-100" role="radiogroup" :aria-label="$t('ช่องทางชำระเงิน')">
             <PayMethodRow badge="thaiqr.png" title="QR PromptPay"
-              :subtitle="useBeam ? 'จ่ายแล้วระบบยืนยันที่นั่งให้อัตโนมัติ ไม่ต้องแนบสลิปและไม่ต้องรอเจ้าหน้าที่ตรวจ' : 'สแกนจ่ายผ่านแอปธนาคารหรือ e-Wallet ได้ทันที'"
+              :subtitle="useBeam ? $t('จ่ายแล้วระบบยืนยันที่นั่งให้อัตโนมัติ ไม่ต้องแนบสลิปและไม่ต้องรอเจ้าหน้าที่ตรวจ') : $t('สแกนจ่ายผ่านแอปธนาคารหรือ e-Wallet ได้ทันที')"
               :selected="paymentMethod === 'promptpay'" @select="paymentMethod = 'promptpay'">
               <div class="flex flex-col items-center gap-4 rounded-3xl bg-gray-50 px-4 py-6 sm:py-8">
                 <!-- QR จากเกตเวย์ — เงินเข้าแล้วรู้ทันที ไม่ต้องให้ใครมาตรวจสลิป -->
@@ -249,13 +247,13 @@
                   <div v-if="beamFailed" class="w-full max-w-sm">
                     <div class="rounded-3xl border border-red-100 bg-white p-7 text-center">
                       <span class="material-symbols-rounded text-red-500 text-4xl">credit_card_off</span>
-                      <p class="mt-3 text-base font-black text-gray-900">การชำระเงินไม่สำเร็จ</p>
+                      <p class="mt-3 text-base font-black text-gray-900">{{ $t('การชำระเงินไม่สำเร็จ') }}</p>
                       <p class="mt-1.5 text-xs text-gray-500 font-medium leading-relaxed">
-                        ธนาคารแจ้งว่ารายการนี้ไม่ผ่าน ยังไม่มีการตัดเงิน · สร้างรายการใหม่แล้วลองอีกครั้งได้เลย
+                        {{ $t('ธนาคารแจ้งว่ารายการนี้ไม่ผ่าน ยังไม่มีการตัดเงิน · สร้างรายการใหม่แล้วลองอีกครั้งได้เลย') }}
                       </p>
                       <button @click="createBeamCharge('QR_PROMPT_PAY')"
                         class="mt-5 px-5 py-2.5 bg-accent text-white text-xs font-black rounded-2xl hover:bg-accent-mid active:scale-95 transition-all">
-                        สร้าง QR ใหม่
+                        {{ $t('สร้าง QR ใหม่') }}
                       </button>
                     </div>
                   </div>
@@ -269,7 +267,7 @@
                       <template #actions>
                         <button @click="resumeBeamWaiting"
                           class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4">
-                          ยังไม่ได้จ่าย · กลับไปสแกน QR
+                          {{ $t('ยังไม่ได้จ่าย · กลับไปสแกน QR') }}
                         </button>
                       </template>
                     </PaymentSettlingPanel>
@@ -277,7 +275,7 @@
 
                   <template v-else>
                     <div class="relative p-2 bg-white rounded-3xl border border-gray-100 overflow-hidden w-full max-w-[280px] aspect-square flex items-center justify-center">
-                      <img v-if="beamQrSrc && !beamExpired" :key="`qr-${beamPayment?.payment_id}`" :src="beamQrSrc" alt="QR พร้อมเพย์"
+                      <img v-if="beamQrSrc && !beamExpired" :key="`qr-${beamPayment?.payment_id}`" :src="beamQrSrc" :alt="$t('QR พร้อมเพย์')"
                         class="block rounded-2xl w-full h-auto mx-auto pay-qr" />
                       <span v-if="beamQrSrc && !beamExpired" :key="`scan-${beamPayment?.payment_id}`" class="pay-scan" aria-hidden="true"></span>
 
@@ -288,22 +286,22 @@
                       <!-- QR หมดอายุก่อนที่นั่งจะถูกคืน ลูกค้าจึงยังกดออกใบใหม่ได้ -->
                       <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-3xl px-6 text-center">
                         <span class="material-symbols-rounded text-4xl text-gray-300">qr_code_2</span>
-                        <p class="text-sm font-bold text-gray-900">QR หมดอายุแล้ว</p>
+                        <p class="text-sm font-bold text-gray-900">{{ $t('QR หมดอายุแล้ว') }}</p>
                         <button @click="createBeamCharge('QR_PROMPT_PAY')"
                           class="px-5 py-2.5 bg-accent text-white text-xs font-black rounded-2xl hover:bg-accent-mid active:scale-95 transition-all">
-                          สร้าง QR ใหม่
+                          {{ $t('สร้าง QR ใหม่') }}
                         </button>
                       </div>
                     </div>
 
                     <div class="flex items-center justify-between gap-3 w-full max-w-xs bg-white px-4 py-3 rounded-2xl border border-gray-100">
                       <div>
-                        <p class="text-[11px] font-bold text-gray-500">ยอดที่ต้องชำระ</p>
-                        <p class="text-lg font-black text-accent tabular-nums leading-tight">฿{{ money(currentPayAmount) }}</p>
+                        <p class="text-[11px] font-bold text-gray-500">{{ $t('ยอดที่ต้องชำระ') }}</p>
+                        <p class="text-lg font-black text-accent tabular-nums leading-tight">{{ $t('฿{money}', { money: money(currentPayAmount) }) }}</p>
                       </div>
                       <p v-if="beamPayment && !beamExpired" class="flex items-center gap-1.5 text-xs font-bold text-gray-700">
                         <span class="w-2 h-2 rounded-full bg-accent-light animate-pulse"></span>
-                        รอชำระ · <span class="tabular-nums">{{ beamCountdownText }}</span>
+                        {{ $t('รอชำระ ·') }} <span class="tabular-nums">{{ beamCountdownText }}</span>
                       </p>
                     </div>
 
@@ -332,52 +330,52 @@
                   <div class="w-full max-w-xs bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100">
                     <div class="flex items-center justify-between gap-3 px-4 py-3">
                       <div>
-                        <p class="text-[11px] font-bold text-gray-500">ยอดที่ต้องชำระ</p>
-                        <p class="text-lg font-black text-accent tabular-nums leading-tight">฿{{ money(currentPayAmount) }}</p>
+                        <p class="text-[11px] font-bold text-gray-500">{{ $t('ยอดที่ต้องชำระ') }}</p>
+                        <p class="text-lg font-black text-accent tabular-nums leading-tight">{{ $t('฿{money}', { money: money(currentPayAmount) }) }}</p>
                       </div>
                       <button @click="copyAmount"
                         class="flex items-center gap-1 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-xl active:scale-95 transition-all">
-                        <span class="material-symbols-rounded icon-16">content_copy</span>คัดลอก
+                        <span class="material-symbols-rounded icon-16">content_copy</span>{{ $t('คัดลอก') }}
                       </button>
                     </div>
                     <div class="flex items-center justify-between gap-3 px-4 py-3">
                       <div>
-                        <p class="text-[11px] font-bold text-gray-500">พร้อมเพย์ / e-Wallet</p>
+                        <p class="text-[11px] font-bold text-gray-500">{{ $t('พร้อมเพย์ / e-Wallet') }}</p>
                         <p class="text-sm font-bold text-gray-900 tabular-nums">004-99923936-2071</p>
                       </div>
                       <button @click="copyAccount"
                         class="flex items-center gap-1 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-xl active:scale-95 transition-all">
-                        <span class="material-symbols-rounded icon-16">content_copy</span>คัดลอก
+                        <span class="material-symbols-rounded icon-16">content_copy</span>{{ $t('คัดลอก') }}
                       </button>
                     </div>
                   </div>
 
                   <button v-if="qrGenerated" @click="saveQR"
                     class="w-full max-w-xs flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-200 text-accent text-sm font-black rounded-2xl hover:border-accent active:scale-[0.98] transition-all">
-                    <span class="material-symbols-rounded icon-18">download</span> บันทึก QR Code
+                    <span class="material-symbols-rounded icon-18">download</span> {{ $t('บันทึก QR Code') }}
                   </button>
                 </template>
               </div>
             </PayMethodRow>
 
             <!-- โอนเข้าบัญชีแล้วแนบสลิป — โหมดเกตเวย์ไม่มีแถวนี้ (แอปธนาคารอยู่ท้ายรายการแทน) -->
-            <PayMethodRow v-if="!useBeam" badge="kbank" title="โอนผ่านบัญชีธนาคาร"
-              subtitle="กสิกรไทย · โอนแล้วแนบสลิปผ่านทางหน้านี้"
+            <PayMethodRow v-if="!useBeam" badge="kbank" :title="$t('โอนผ่านบัญชีธนาคาร')"
+              :subtitle="$t('กสิกรไทย · โอนแล้วแนบสลิปผ่านทางหน้านี้')"
               :selected="paymentMethod === 'mobile_banking'" @select="paymentMethod = 'mobile_banking'">
               <div class="rounded-3xl bg-gray-50 p-4 sm:p-5 space-y-2.5">
                 <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100">
-                  <span class="text-xs font-bold text-gray-500">ธนาคาร</span>
-                  <span class="text-sm font-bold text-gray-900">กสิกรไทย (KBANK)</span>
+                  <span class="text-xs font-bold text-gray-500">{{ $t('ธนาคาร') }}</span>
+                  <span class="text-sm font-bold text-gray-900">{{ $t('กสิกรไทย (KBANK)') }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100">
-                  <span class="text-xs font-bold text-gray-500">ชื่อบัญชี</span>
-                  <span class="text-sm font-bold text-gray-900">ลุยเลเขา</span>
+                  <span class="text-xs font-bold text-gray-500">{{ $t('ชื่อบัญชี') }}</span>
+                  <span class="text-sm font-bold text-gray-900">{{ $t('ลุยเลเขา') }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-3 px-4 py-3 bg-white rounded-2xl border border-gray-100">
-                  <span class="text-xs font-bold text-gray-500">เลขที่บัญชี</span>
+                  <span class="text-xs font-bold text-gray-500">{{ $t('เลขที่บัญชี') }}</span>
                   <span class="flex items-center gap-2">
                     <span class="text-base font-black text-gray-900 tracking-wider tabular-nums">230-1-39095-8</span>
-                    <button @click="copyBankAccount" aria-label="คัดลอกเลขบัญชี"
+                    <button @click="copyBankAccount" :aria-label="$t('คัดลอกเลขบัญชี')"
                       class="p-1.5 rounded-lg bg-accent-tint text-accent hover:bg-accent/10 transition-colors active:scale-90">
                       <span class="material-symbols-rounded icon-18">content_copy</span>
                     </button>
@@ -385,7 +383,7 @@
                 </div>
                 <p class="flex items-start gap-2 pt-1 text-[12px] text-gray-600 font-medium leading-relaxed">
                   <span class="material-symbols-rounded icon-16 text-amber-500 shrink-0 mt-px">info</span>
-                  <span>โอนยอด <strong class="text-gray-900">฿{{ money(currentPayAmount) }}</strong> ให้ครบถ้วน แล้วอัปโหลดสลิปด้านล่าง ระบบจะตรวจยอดและยืนยันให้อัตโนมัติ</span>
+                  <span>{{ $t('โอนยอด') }} <strong class="text-gray-900">{{ $t('฿{money}', { money: money(currentPayAmount) }) }}</strong> {{ $t('ให้ครบถ้วน แล้วอัปโหลดสลิปด้านล่าง ระบบจะตรวจยอดและยืนยันให้อัตโนมัติ') }}</span>
                 </p>
               </div>
             </PayMethodRow>
@@ -406,17 +404,17 @@
                 class="w-full flex items-center gap-1.5 py-4 text-left group">
                 <img v-for="app in bankApps" :key="app.type" :src="`/images/pay/${app.badge}.svg`" :alt="app.label"
                   class="h-[22px] w-[34px]" width="34" height="22" />
-                <span class="flex-1 text-right text-sm font-bold text-gray-900 group-hover:text-accent transition-colors">เปิดแอปธนาคารโดยตรง</span>
+                <span class="flex-1 text-right text-sm font-bold text-gray-900 group-hover:text-accent transition-colors">{{ $t('เปิดแอปธนาคารโดยตรง') }}</span>
                 <span class="material-symbols-rounded icon-22 text-gray-400 transition-transform duration-200" :class="showBankApps ? 'rotate-90' : ''">chevron_right</span>
               </button>
               <div v-if="showBankApps" class="divide-y divide-gray-100 border-t border-gray-100 pay-swap">
                 <PayMethodRow v-for="app in bankApps" :key="app.type" trail="chevron"
-                  :badge="app.badge" :title="app.label" :subtitle="`ธนาคาร${app.bank}`"
+                  :badge="app.badge" :title="app.label" :subtitle="$t('ธนาคาร{bank}', { bank: app.bank })"
                   :disabled="beamLoading" :busy="beamLoading && pendingBankApp === app.type"
                   @select="openBankApp(app.type)" />
                 <p class="flex items-start gap-2 py-4 text-[12px] text-gray-500 font-medium leading-relaxed">
                   <span class="material-symbols-rounded icon-16 text-gray-400 shrink-0 mt-px">info</span>
-                  ระบบจะพาไปที่แอปธนาคารพร้อมยอด ฿{{ money(currentPayAmount) }} จ่ายเสร็จแล้วกลับมาหน้านี้ได้เลย ที่นั่งจะถูกยืนยันให้อัตโนมัติ
+                  {{ $t('ระบบจะพาไปที่แอปธนาคารพร้อมยอด ฿{money} จ่ายเสร็จแล้วกลับมาหน้านี้ได้เลย ที่นั่งจะถูกยืนยันให้อัตโนมัติ', { money: money(currentPayAmount) }) }}
                 </p>
               </div>
             </div>
@@ -425,17 +423,17 @@
           <!-- Divider -->
           <div v-if="!useBeam" class="flex items-center gap-4 mt-6 mb-8">
             <div class="flex-1 h-[2px] bg-gray-50"></div>
-            <span class="text-[11px] text-gray-400 font-black uppercase tracking-[0.2em]">หลักฐานการโอนเงิน</span>
+            <span class="text-[11px] text-gray-400 font-black uppercase tracking-[0.2em]">{{ $t('หลักฐานการโอนเงิน') }}</span>
             <div class="flex-1 h-[2px] bg-gray-50"></div>
           </div>
 
           <!-- Slip Upload — โหมดเกตเวย์ไม่ต้องใช้ เงินเข้าแล้วระบบรู้เอง -->
           <div v-if="!useBeam" class="space-y-6 pb-5 sm:pb-7">
             <div class="flex items-center justify-between">
-               <label class="block text-sm font-black text-gray-900">อัปโหลดสลิปการโอนเงินที่นี่ <span class="text-red-500 font-normal">*</span></label>
+               <label class="block text-sm font-black text-gray-900">{{ $t('อัปโหลดสลิปการโอนเงินที่นี่') }} <span class="text-red-500 font-normal">*</span></label>
                <span v-if="slipFile" class="text-xs font-bold text-accent flex items-center gap-1">
                  <span class="material-symbols-rounded text-base">check_circle</span>
-                 เลือกไฟล์แล้ว
+                 {{ $t('เลือกไฟล์แล้ว') }}
                </span>
             </div>
 
@@ -455,9 +453,9 @@
                   <span class="material-symbols-rounded text-4xl">cloud_upload</span>
                 </div>
                 <div class="text-center space-y-1">
-                  <p class="text-base font-black text-gray-900">ลากไฟล์มาวาง หรือคลิกเพื่ออัปโหลด</p>
+                  <p class="text-base font-black text-gray-900">{{ $t('ลากไฟล์มาวาง หรือคลิกเพื่ออัปโหลด') }}</p>
                   <!-- เซิร์ฟเวอร์รับเฉพาะรูป (กฎ image, max:5120) — เดิมเขียนว่ารับ PDF ด้วย -->
-                  <p class="text-[11px] text-gray-400 font-bold uppercase tracking-widest">ไฟล์รูป JPG, PNG ขนาดไม่เกิน 5MB</p>
+                  <p class="text-[11px] text-gray-400 font-bold uppercase tracking-widest">{{ $t('ไฟล์รูป JPG, PNG ขนาดไม่เกิน 5MB') }}</p>
                 </div>
               </template>
 
@@ -465,7 +463,7 @@
                  <div class="relative w-full max-h-[400px] group/preview">
                     <img :src="slipPreview" alt="slip" class="w-full h-full object-contain rounded-[2rem] bg-gray-100 pay-swap" />
                     <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity rounded-[2rem] flex items-center justify-center">
-                       <p class="text-white font-bold text-sm bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30">คลิกเพื่อเปลี่ยนรูป</p>
+                       <p class="text-white font-bold text-sm bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30">{{ $t('คลิกเพื่อเปลี่ยนรูป') }}</p>
                     </div>
                     <button @click.stop="removeSlip"
                       class="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-md text-red-600 rounded-full flex items-center justify-center hover:bg-red-600 hover:text-white transition-all z-20">
@@ -474,7 +472,7 @@
                     <!-- Success indicator -->
                     <div class="absolute bottom-4 left-4 bg-accent text-white px-4 py-2 rounded-full text-xs font-black flex items-center gap-2 pay-pop" style="--d: 200ms">
                        <span class="material-symbols-rounded text-[18px]">check_circle</span>
-                       อัปโหลดสำเร็จ
+                       {{ $t('อัปโหลดสำเร็จ') }}
                     </div>
                  </div>
               </template>
@@ -495,25 +493,25 @@
               <template v-if="scanningSlip">
                 <span class="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin shrink-0 mt-0.5"></span>
                 <div>
-                  <p class="text-sm font-black text-gray-900">กำลังตรวจสอบสลิปและยอดเงิน...</p>
-                  <p class="text-xs text-gray-500 font-medium mt-0.5">ระบบกำลังอ่านสลิปให้อัตโนมัติ รอสักครู่</p>
+                  <p class="text-sm font-black text-gray-900">{{ $t('กำลังตรวจสอบสลิปและยอดเงิน...') }}</p>
+                  <p class="text-xs text-gray-500 font-medium mt-0.5">{{ $t('ระบบกำลังอ่านสลิปให้อัตโนมัติ รอสักครู่') }}</p>
                 </div>
               </template>
               <template v-else-if="slipAmountMatched">
                 <span class="material-symbols-rounded text-accent shrink-0" style="font-variation-settings:'FILL' 1">verified</span>
                 <div>
-                  <p class="text-sm font-black text-accent-mid">ยอดเงินถูกต้อง — กำลังยืนยันอัตโนมัติ</p>
-                  <p class="text-xs text-accent font-medium mt-0.5">ไม่ต้องกดยืนยัน ระบบดำเนินการให้เรียบร้อย</p>
+                  <p class="text-sm font-black text-accent-mid">{{ $t('ยอดเงินถูกต้อง — กำลังยืนยันอัตโนมัติ') }}</p>
+                  <p class="text-xs text-accent font-medium mt-0.5">{{ $t('ไม่ต้องกดยืนยัน ระบบดำเนินการให้เรียบร้อย') }}</p>
                 </div>
               </template>
               <template v-else-if="slipChecked">
                 <span class="material-symbols-rounded text-amber-500 shrink-0" style="font-variation-settings:'FILL' 1">info</span>
                 <div>
                   <p class="text-sm font-black text-amber-900">
-                    <template v-if="slipDetectedAmount !== null">ยอดในสลิป (฿{{ slipDetectedAmount.toLocaleString() }}) ไม่ตรงกับยอดที่ต้องชำระ</template>
-                    <template v-else>ตรวจยอดจากสลิปอัตโนมัติไม่สำเร็จ</template>
+                    <template v-if="slipDetectedAmount !== null">{{ $t('ยอดในสลิป (฿{toLocaleString}) ไม่ตรงกับยอดที่ต้องชำระ', { toLocaleString: slipDetectedAmount.toLocaleString() }) }}</template>
+                    <template v-else>{{ $t('ตรวจยอดจากสลิปอัตโนมัติไม่สำเร็จ') }}</template>
                   </p>
-                  <p class="text-xs text-amber-700 font-medium mt-0.5">กดปุ่มยืนยันด้านล่างเพื่อส่งให้เจ้าหน้าที่ตรวจสอบและยืนยันการจอง</p>
+                  <p class="text-xs text-amber-700 font-medium mt-0.5">{{ $t('กดปุ่มยืนยันด้านล่างเพื่อส่งให้เจ้าหน้าที่ตรวจสอบและยืนยันการจอง') }}</p>
                 </div>
               </template>
             </div>
@@ -527,8 +525,8 @@
                <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">verified</span>
              </div>
              <div>
-                <p class="text-sm font-bold text-gray-900">การชำระเงินที่ตรวจสอบได้</p>
-                <p class="text-xs text-gray-500">เชื่อมต่อแบบเข้ารหัส และออกใบเสร็จอิเล็กทรอนิกส์ทุกครั้ง</p>
+                <p class="text-sm font-bold text-gray-900">{{ $t('การชำระเงินที่ตรวจสอบได้') }}</p>
+                <p class="text-xs text-gray-500">{{ $t('เชื่อมต่อแบบเข้ารหัส และออกใบเสร็จอิเล็กทรอนิกส์ทุกครั้ง') }}</p>
              </div>
            </div>
            <div class="flex items-center gap-4 p-6 bg-white rounded-3xl border border-gray-100">
@@ -536,9 +534,9 @@
                <span class="material-symbols-rounded text-2xl" style="font-variation-settings:'FILL' 1">support_agent</span>
              </div>
              <div>
-                <p class="text-sm font-bold text-gray-900">ทีมงานพร้อมช่วยเหลือ</p>
+                <p class="text-sm font-bold text-gray-900">{{ $t('ทีมงานพร้อมช่วยเหลือ') }}</p>
                 <p class="text-xs text-gray-500">
-                  สอบถามโทร <a :href="supportPhoneHref()" class="font-semibold text-accent">{{ supportPhone() }}</a> ({{ supportHours() }})
+                  {{ $t('สอบถามโทร') }} <a :href="supportPhoneHref()" class="font-semibold text-accent">{{ supportPhone() }}</a> ({{ supportHours() }})
                 </p>
              </div>
            </div>
@@ -574,14 +572,14 @@
                   </div>
                   <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1.5 rounded-xl border border-white/10">
                     <span class="material-symbols-rounded text-[14px]">group</span>
-                    {{ booking.passengers?.length || 0 }} ท่าน
+                    {{ $t('{v} ท่าน', { v: booking.passengers?.length || 0 }) }}
                   </div>
                </div>
             </div>
           </div>
 
           <div class="p-8">
-            <h2 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6">รายละเอียดการจอง</h2>
+            <h2 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6">{{ $t('รายละเอียดการจอง') }}</h2>
 
             <div class="space-y-4 mb-8">
                <div v-if="booking.seats?.length" class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100 pay-rise">
@@ -589,7 +587,7 @@
                     <span class="material-symbols-rounded text-xl">airline_seat_recline_extra</span>
                  </div>
                  <div>
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">หมายเลขที่นั่ง</p>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{{ $t('หมายเลขที่นั่ง') }}</p>
                     <p class="text-sm font-bold text-gray-900">{{ booking.seats.map(s => s.seat_id).join(', ') }}</p>
                  </div>
                </div>
@@ -599,9 +597,9 @@
                     <span class="material-symbols-rounded text-xl">location_on</span>
                  </div>
                  <div>
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">จุดรับเดินทาง</p>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{{ $t('จุดรับเดินทาง') }}</p>
                     <p class="text-sm font-black text-gray-900 leading-tight">
-                      {{ booking.pickup_point?.pickup_location || 'ยังไม่ได้ระบุจุดรับ' }}
+                      {{ booking.pickup_point?.pickup_location || $t('ยังไม่ได้ระบุจุดรับ') }}
                     </p>
                     <p v-if="booking.pickup_point?.region_label || booking.pickup_region" class="text-[11px] font-bold text-amber-600 mt-0.5">
                       {{ booking.pickup_point?.region_label || formatRegion(booking.pickup_region) }}
@@ -612,12 +610,12 @@
                <div v-if="booking.selected_addons?.length" class="p-4 bg-amber-50/70 rounded-2xl border border-amber-100 pay-rise">
                  <div class="flex items-center gap-2 mb-3">
                    <span class="material-symbols-rounded text-amber-600 text-xl">add_task</span>
-                   <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest leading-none">ตัวเลือกเสริม</p>
+                   <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest leading-none">{{ $t('ตัวเลือกเสริม') }}</p>
                  </div>
                  <div class="space-y-2">
                    <div v-for="(addon, idx) in booking.selected_addons" :key="idx" class="flex justify-between gap-3 text-sm">
                      <span class="font-bold text-gray-800">{{ addon.name }}</span>
-                     <span class="font-black text-amber-700">+฿{{ Number(addon.total_price || 0).toLocaleString() }}</span>
+                     <span class="font-black text-amber-700">{{ $t('+฿{Number}', { Number: Number(addon.total_price || 0).toLocaleString() }) }}</span>
                    </div>
                  </div>
                </div>
@@ -625,7 +623,7 @@
                <div v-if="booking.selected_rentals?.length" class="p-4 bg-sky-50/70 rounded-2xl border border-sky-100 pay-rise">
                  <div class="flex items-center gap-2 mb-3">
                    <span class="material-symbols-rounded text-sky-600 text-xl">backpack</span>
-                   <p class="text-[10px] font-black text-sky-700 uppercase tracking-widest leading-none">อุปกรณ์เช่า</p>
+                   <p class="text-[10px] font-black text-sky-700 uppercase tracking-widest leading-none">{{ $t('อุปกรณ์เช่า') }}</p>
                  </div>
                  <div class="space-y-2">
                    <div v-for="(rental, idx) in booking.selected_rentals" :key="idx" class="flex justify-between gap-3 text-sm">
@@ -633,7 +631,7 @@
                        {{ rental.name }}
                        <span v-if="Number(rental.quantity) > 1" class="text-sky-600">×{{ rental.quantity }}</span>
                      </span>
-                     <span class="font-black text-sky-700">+฿{{ Number(rental.total_price || 0).toLocaleString() }}</span>
+                     <span class="font-black text-sky-700">{{ $t('+฿{Number}', { Number: Number(rental.total_price || 0).toLocaleString() }) }}</span>
                    </div>
                  </div>
                </div>
@@ -642,34 +640,34 @@
             <!-- Price Summary -->
             <div class="space-y-3 pt-6 border-t border-gray-100 mb-8">
                <div class="flex justify-between items-center text-sm">
-                  <span class="font-bold text-gray-500">ยอดรวมทั้งหมด</span>
-                  <span class="font-bold text-gray-900">฿{{ Number(booking.total_amount).toLocaleString() }}</span>
+                  <span class="font-bold text-gray-500">{{ $t('ยอดรวมทั้งหมด') }}</span>
+                  <span class="font-bold text-gray-900">{{ $t('฿{Number}', { Number: Number(booking.total_amount).toLocaleString() }) }}</span>
                </div>
                
                <template v-if="paymentType === 'installment'">
                  <div class="flex justify-between items-end bg-amber-50 rounded-2xl p-4 border border-amber-100">
-                    <span class="text-xs font-bold text-amber-700">ชำระงวดแรกตอนนี้</span>
+                    <span class="text-xs font-bold text-amber-700">{{ $t('ชำระงวดแรกตอนนี้') }}</span>
                     <div class="text-right">
-                       <span class="text-2xl font-black text-amber-600 leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
-                       <p class="text-[10px] font-bold text-amber-500 leading-none mt-1">จากทั้งหมด {{ selectedInstallmentCount }} งวด</p>
+                       <span class="text-2xl font-black text-amber-600 leading-none tabular-nums">{{ $t('฿{toLocaleString}', { toLocaleString: payNowShown.toLocaleString() }) }}</span>
+                       <p class="text-[10px] font-bold text-amber-500 leading-none mt-1">{{ $t('จากทั้งหมด {selectedInstallmentCount} งวด', { selectedInstallmentCount }) }}</p>
                     </div>
                  </div>
                </template>
 
                <template v-else-if="paymentType === 'deposit'">
                  <div class="flex justify-between items-end bg-accent-tint rounded-2xl p-4 border border-accent/25">
-                    <span class="text-xs font-bold text-accent">ชำระมัดจำตอนนี้</span>
+                    <span class="text-xs font-bold text-accent">{{ $t('ชำระมัดจำตอนนี้') }}</span>
                     <div class="text-right">
-                       <span class="text-2xl font-black text-accent leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
-                       <p class="text-[10px] font-bold text-accent leading-none mt-1">ส่วนที่เหลือ ฿{{ balanceAmount.toLocaleString() }}</p>
+                       <span class="text-2xl font-black text-accent leading-none tabular-nums">{{ $t('฿{toLocaleString}', { toLocaleString: payNowShown.toLocaleString() }) }}</span>
+                       <p class="text-[10px] font-bold text-accent leading-none mt-1">{{ $t('ส่วนที่เหลือ ฿{toLocaleString}', { toLocaleString: balanceAmount.toLocaleString() }) }}</p>
                     </div>
                  </div>
                </template>
 
                <template v-else>
                  <div class="flex justify-between items-end bg-accent-tint rounded-2xl p-5 border border-accent/15">
-                    <span class="text-sm font-black text-accent-mid uppercase tracking-tight">ยอดชำระสุทธิ</span>
-                    <span class="text-3xl font-black text-accent leading-none tabular-nums">฿{{ payNowShown.toLocaleString() }}</span>
+                    <span class="text-sm font-black text-accent-mid uppercase tracking-tight">{{ $t('ยอดชำระสุทธิ') }}</span>
+                    <span class="text-3xl font-black text-accent leading-none tabular-nums">{{ $t('฿{toLocaleString}', { toLocaleString: payNowShown.toLocaleString() }) }}</span>
                  </div>
                </template>
             </div>
@@ -683,12 +681,12 @@
                 <div v-else class="w-2.5 h-2.5 rounded-full bg-accent-light animate-pulse mt-1.5 shrink-0"></div>
                 <div class="space-y-1">
                   <p class="text-sm font-black text-accent-mid">
-                    {{ beamSettling ? 'กำลังตรวจสอบการชำระเงิน' : 'สแกน QR หรือเลือกช่องทางอื่น แล้วรอสักครู่' }}
+                    {{ beamSettling ? $t('กำลังตรวจสอบการชำระเงิน') : $t('สแกน QR หรือเลือกช่องทางอื่น แล้วรอสักครู่') }}
                   </p>
                   <p class="text-xs text-accent-mid/80 font-medium leading-relaxed">
                     {{ beamSettling
-                      ? 'ระบบกำลังรอผลจากธนาคาร อย่าปิดหน้านี้และไม่ต้องจ่ายซ้ำ ที่นั่งจะถูกยืนยันให้เองทันทีที่เงินเข้า'
-                      : 'ระบบจะยืนยันที่นั่งให้อัตโนมัติทันทีที่เงินเข้า ไม่ต้องแนบสลิปและไม่ต้องรอเจ้าหน้าที่ตรวจ' }}
+                      ? $t('ระบบกำลังรอผลจากธนาคาร อย่าปิดหน้านี้และไม่ต้องจ่ายซ้ำ ที่นั่งจะถูกยืนยันให้เองทันทีที่เงินเข้า')
+                      : $t('ระบบจะยืนยันที่นั่งให้อัตโนมัติทันทีที่เงินเข้า ไม่ต้องแนบสลิปและไม่ต้องรอเจ้าหน้าที่ตรวจ') }}
                   </p>
                 </div>
               </div>
@@ -710,20 +708,20 @@
                 <!-- Loading State overlay -->
                 <div v-if="paying || scanningSlip" class="absolute inset-0 bg-inherit flex items-center justify-center gap-3 z-10 text-sm">
                    <div class="w-6 h-6 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                   <span v-if="scanningSlip" class="text-white/90">กำลังตรวจสอบสลิป...</span>
+                   <span v-if="scanningSlip" class="text-white/90">{{ $t('กำลังตรวจสอบสลิป...') }}</span>
                 </div>
 
                 <div class="flex items-center gap-2.5 transition-transform group-hover:scale-105" :class="paying || scanningSlip ? 'opacity-0' : 'opacity-100'">
                   <span class="material-symbols-rounded text-xl" style="font-variation-settings:'FILL' 1">verified_user</span>
-                  <span>ยืนยันและส่งหลักฐานการชำระเงิน</span>
+                  <span>{{ $t('ยืนยันและส่งหลักฐานการชำระเงิน') }}</span>
                 </div>
                 <div class="text-[10px] opacity-70 tracking-widest uppercase font-bold" :class="paying || scanningSlip ? 'opacity-0' : 'opacity-70'">
-                   เข้ารหัส SSL ที่ปลอดภัย
+                   {{ $t('เข้ารหัส SSL ที่ปลอดภัย') }}
                 </div>
               </button>
               
               <button v-if="!slipFile" @click="slipInputRef?.click()" class="w-full text-center text-xs font-bold text-amber-600 hover:text-amber-700 underline underline-offset-4 animate-bounce">
-                 ⚠ กรุณาอัปโหลดสลิปเพื่อดำเนินการต่อ
+                 {{ $t('⚠ กรุณาอัปโหลดสลิปเพื่อดำเนินการต่อ') }}
               </button>
             </div>
 
@@ -743,8 +741,8 @@
                   </div>
                   <p class="text-xs text-gray-500 font-medium">
                     {{ useBeam
-                      ? 'ระบบยืนยันการจองให้อัตโนมัติภายในไม่กี่วินาทีหลังเงินเข้า'
-                      : 'เจ้าหน้าที่จะตรวจสอบยอดโอนและยืนยันการจอง ภายใน 10-15 นาที' }}
+                      ? $t('ระบบยืนยันการจองให้อัตโนมัติภายในไม่กี่วินาทีหลังเงินเข้า')
+                      : $t('เจ้าหน้าที่จะตรวจสอบยอดโอนและยืนยันการจอง ภายใน 10-15 นาที') }}
                   </p>
                </div>
             </div>
@@ -764,12 +762,12 @@
             <div v-if="useBeam" class="w-full py-4 rounded-2xl bg-accent-tint border border-accent/15 flex items-center justify-center gap-2 text-sm">
               <template v-if="beamSettling">
                 <div class="w-4 h-4 rounded-full border-2 border-accent/25 border-t-accent animate-spin"></div>
-                <span class="font-black text-accent-mid">กำลังตรวจสอบการชำระเงิน</span>
+                <span class="font-black text-accent-mid">{{ $t('กำลังตรวจสอบการชำระเงิน') }}</span>
                 <span class="text-xs font-bold text-accent tabular-nums">{{ beamSettlingSeconds }}s</span>
               </template>
               <template v-else>
                 <div class="w-2 h-2 rounded-full bg-accent-light animate-pulse"></div>
-                <span class="font-black text-accent-mid">รอชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
+                <span class="font-black text-accent-mid">{{ $t('รอชำระ ฿{toLocaleString}', { toLocaleString: currentPayAmount.toLocaleString() }) }}</span>
                 <span v-if="beamPayment && !beamExpired" class="text-xs font-bold text-accent tabular-nums">{{ beamCountdownText }}</span>
               </template>
             </div>
@@ -779,14 +777,14 @@
             <button v-else-if="!slipFile" @click="slipInputRef?.click()"
               class="w-full py-4 rounded-2xl bg-accent text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm">
               <span class="material-symbols-rounded text-lg">upload_file</span>
-              <span>แนบสลิปการโอน ฿{{ currentPayAmount.toLocaleString() }}</span>
+              <span>{{ $t('แนบสลิปการโอน ฿{toLocaleString}', { toLocaleString: currentPayAmount.toLocaleString() }) }}</span>
             </button>
 
             <button v-else @click="processPayment"
               :disabled="paying || scanningSlip"
               class="w-full py-4 rounded-2xl bg-accent text-white font-black flex items-center justify-center gap-2 active:scale-95 transition-all text-sm disabled:bg-gray-100 disabled:text-gray-400">
               <template v-if="!paying && !scanningSlip">
-                <span>ยืนยันการชำระ ฿{{ currentPayAmount.toLocaleString() }}</span>
+                <span>{{ $t('ยืนยันการชำระ ฿{toLocaleString}', { toLocaleString: currentPayAmount.toLocaleString() }) }}</span>
                 <span class="material-symbols-rounded text-lg">arrow_forward</span>
               </template>
               <div v-else class="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
@@ -796,6 +794,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import QRCode from 'qrcode';
 import { useRoute, useRouter } from 'vue-router';
@@ -840,7 +840,7 @@ const holdUntilLabel = computed(() => {
   const holdUntil = booking.value?.hold_until ? new Date(booking.value.hold_until) : null;
   if (!holdUntil || Number.isNaN(holdUntil.getTime())) return '';
 
-  return `${thaiShort(holdUntil)} ${holdUntil.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+  return $t('{thaiShort} {toLocaleTimeString} น.', { thaiShort: thaiShort(holdUntil), toLocaleTimeString: holdUntil.toLocaleTimeString(DATE_LOCALE, { hour: '2-digit', minute: '2-digit' }) });
 });
 
 const paymentDeadline = computed(() => {
@@ -917,12 +917,12 @@ const MAX_SLIP_BYTES = 5 * 1024 * 1024;
 function setFile(file) {
   if (!file) return;
   if (!file.type?.startsWith('image/')) {
-    slipError.value = 'กรุณาแนบสลิปเป็นไฟล์รูปภาพ (JPG หรือ PNG)';
+    slipError.value = $t('กรุณาแนบสลิปเป็นไฟล์รูปภาพ (JPG หรือ PNG)');
     if (slipInputRef.value) slipInputRef.value.value = '';
     return;
   }
   if (file.size > MAX_SLIP_BYTES) {
-    slipError.value = 'ไฟล์สลิปใหญ่เกิน 5MB กรุณาแคปหน้าจอสลิปจากแอปธนาคารแล้วแนบใหม่';
+    slipError.value = $t('ไฟล์สลิปใหญ่เกิน 5MB กรุณาแคปหน้าจอสลิปจากแอปธนาคารแล้วแนบใหม่');
     if (slipInputRef.value) slipInputRef.value.value = '';
     return;
   }
@@ -976,20 +976,20 @@ async function scanSlipOcr(file) {
 function copyAmount() {
   const amount = currentPayAmount.value;
   navigator.clipboard.writeText(amount.toString());
-  swal.success('คัดลอกยอดเงินแล้ว', `฿${amount.toLocaleString()}`);
+  swal.success($t('คัดลอกยอดเงินแล้ว'), $t('฿{toLocaleString}', { toLocaleString: amount.toLocaleString() }));
 }
 
 function copyBankAccount() {
   navigator.clipboard.writeText('2301390958');
-  swal.success('คัดลอกเลขบัญชีแล้ว', 'กสิกรไทย 230-1-39095-8');
+  swal.success($t('คัดลอกเลขบัญชีแล้ว'), $t('กสิกรไทย 230-1-39095-8'));
 }
 
 // ยอดเงินบาท — เต็มบาทไม่มีทศนิยม มีสตางค์โชว์ไม่เกินสองตำแหน่ง (แบบเดียวกับแอป)
-const money = (n) => Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+const money = (n) => Number(n || 0).toLocaleString(DATE_LOCALE, { maximumFractionDigits: 2 });
 
 function copyAccount() {
   navigator.clipboard.writeText('004999239362071');
-  swal.success('คัดลอกเลข e-Wallet แล้ว', '004-99923936-2071');
+  swal.success($t('คัดลอกเลข e-Wallet แล้ว'), '004-99923936-2071');
 }
 
 // Transfer datetime
@@ -1011,10 +1011,10 @@ const useBeam = computed(() => gateway.value.provider === 'beam');
 // แอปธนาคารที่เปิดรับ — กรองด้วยรายการที่เซิร์ฟเวอร์บอกมา ไม่ hardcode
 // badge = ป้ายใน public/images/pay (สัญลักษณ์ธนาคารจาก omise/banks-logo ชุดเดียวกับแอป)
 const ALL_BANK_APPS = [
-  { type: 'KPLUS', label: 'K PLUS', bank: 'กสิกรไทย', badge: 'kbank' },
-  { type: 'SCB_EASY', label: 'SCB EASY', bank: 'ไทยพาณิชย์', badge: 'scb' },
-  { type: 'KRUNGSRI_APP', label: 'Krungsri', bank: 'กรุงศรีอยุธยา', badge: 'bay' },
-  { type: 'BANGKOK_BANK_APP', label: 'Bualuang', bank: 'กรุงเทพ', badge: 'bbl' },
+  { type: 'KPLUS', label: 'K PLUS', bank: $t('กสิกรไทย'), badge: 'kbank' },
+  { type: 'SCB_EASY', label: 'SCB EASY', bank: $t('ไทยพาณิชย์'), badge: 'scb' },
+  { type: 'KRUNGSRI_APP', label: 'Krungsri', bank: $t('กรุงศรีอยุธยา'), badge: 'bay' },
+  { type: 'BANGKOK_BANK_APP', label: 'Bualuang', bank: $t('กรุงเทพ'), badge: 'bbl' },
 ];
 
 // แถบ "เปิดแอปธนาคารโดยตรง" กางอยู่ไหม + แอปที่เพิ่งกด (ให้วงหมุนขึ้นตรงแถวนั้น)
@@ -1080,7 +1080,7 @@ const balanceAmount = computed(() => Number(quote.value?.deposit?.balance || 0))
 const balanceDueDateText = computed(() => {
   const due = quote.value?.deposit?.balance_due_at;
   if (!due) return '-';
-  return new Date(due).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(due).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 });
 const depositTierDiscountPercent = computed(() =>
   Number(quote.value?.deposit?.tier_discount_percent || 0)
@@ -1088,9 +1088,9 @@ const depositTierDiscountPercent = computed(() =>
 const depositPercentText = computed(() => {
   const pct = quote.value?.deposit?.percent_of_total;
   if (!pct) return '';
-  const base = `ประมาณ ${pct}% ของยอดรวม`;
+  const base = $t('ประมาณ {pct}% ของยอดรวม', { pct });
   return depositTierDiscountPercent.value > 0
-    ? `${base} · ลดให้แล้ว ${depositTierDiscountPercent.value}% ตามระดับสมาชิก`
+    ? $t('{base} · ลดให้แล้ว {value}% ตามระดับสมาชิก', { base, value: depositTierDiscountPercent.value })
     : base;
 });
 
@@ -1135,10 +1135,10 @@ const installmentWarningMessage = computed(() => {
   const days = daysUntilTrip.value;
   const lead = installmentLeadDays.value;
   if (installmentNotAvailable.value) {
-    return `ทริปนี้ออกเดินทางในอีก ${days} วัน และยอดผ่อนต้องปิดก่อนเดินทาง ${lead} วัน จึงเหลือเวลาไม่พอแบ่งงวดครับ`;
+    return $t('ทริปนี้ออกเดินทางในอีก {days} วัน และยอดผ่อนต้องปิดก่อนเดินทาง {lead} วัน จึงเหลือเวลาไม่พอแบ่งงวดครับ', { days, lead });
   }
   if (!installmentAvailable.value) return '';
-  return `ระบบแบ่งงวดให้อัตโนมัติจากเวลาที่เหลือ — ผ่อนได้สูงสุด ${maxInstallmentCount.value} งวด งวดสุดท้ายครบกำหนด ${formatDate(installmentFinalDueDate.value)}`;
+  return $t('ระบบแบ่งงวดให้อัตโนมัติจากเวลาที่เหลือ — ผ่อนได้สูงสุด {value} งวด งวดสุดท้ายครบกำหนด {formatDate}', { value: maxInstallmentCount.value, formatDate: formatDate(installmentFinalDueDate.value) });
 });
 const selectedInstallmentOption = computed(() =>
   (installmentQuote.value?.options || []).find(
@@ -1391,19 +1391,19 @@ function removeSlip() {
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatRegion(slug) {
   if (!slug) return '';
   const map = {
-    bangkok: 'กรุงเทพฯ',
-    central: 'ภาคกลาง',
-    north: 'ภาคเหนือ',
-    northeast: 'ภาคอีสาน',
-    east: 'ภาคตะวันออก',
-    west: 'ภาคตะวันตก',
-    south: 'ภาคใต้'
+    bangkok: $t('กรุงเทพฯ'),
+    central: $t('ภาคกลาง'),
+    north: $t('ภาคเหนือ'),
+    northeast: $t('ภาคอีสาน'),
+    east: $t('ภาคตะวันออก'),
+    west: $t('ภาคตะวันตก'),
+    south: $t('ภาคใต้')
   };
   return map[slug] || slug;
 }
@@ -1420,7 +1420,7 @@ function initPaymentCountdown() {
   const createdAtMs = booking.value.created_at ? new Date(booking.value.created_at).getTime() : Date.now();
 
   seatsStore.setActiveBookingInfo({
-    tripTitle: booking.value.schedule?.trip?.title || 'กิจกรรม',
+    tripTitle: booking.value.schedule?.trip?.title || $t('กิจกรรม'),
     scheduleId: booking.value.schedule_id ?? booking.value.schedule?.id,
     bookingRef: booking.value.booking_ref,
     step: 'payment',
@@ -1447,7 +1447,7 @@ async function handlePaymentExpiry() {
     if (booking.value?.booking_ref && booking.value?.status === 'pending') {
       await bookingStore.cancelBooking(
         booking.value.booking_ref,
-        `หมดเวลาชำระเงินเกิน ${paymentWindowMinutes.value} นาที ระบบยกเลิกการจองอัตโนมัติ`
+        $t('หมดเวลาชำระเงินเกิน {value} นาที ระบบยกเลิกการจองอัตโนมัติ', { value: paymentWindowMinutes.value })
       );
       booking.value.status = 'cancelled';
     }
@@ -1458,8 +1458,8 @@ async function handlePaymentExpiry() {
   }
 
   await swal.error(
-    'หมดเวลาชำระเงินแล้ว',
-    `ครบกำหนด ${paymentWindowMinutes.value} นาที ระบบได้ยกเลิกการจองและคืนที่นั่งเรียบร้อยแล้ว กรุณาทำรายการใหม่อีกครั้ง`
+    $t('หมดเวลาชำระเงินแล้ว'),
+    $t('ครบกำหนด {value} นาที ระบบได้ยกเลิกการจองและคืนที่นั่งเรียบร้อยแล้ว กรุณาทำรายการใหม่อีกครั้ง', { value: paymentWindowMinutes.value })
   );
   router.push('/trips');
 }
@@ -1469,17 +1469,17 @@ async function processPayment() {
   // เช็คเฉพาะรายการที่ยังมีเส้นตายอยู่จริง — สลิปที่ถูกตีกลับไม่มีนาฬิกาแล้ว
   // แต่ยังต้องส่งใหม่ได้ ไม่ใช่โดนบล็อกว่า "หมดเวลา"
   if (paymentDeadline.value && seatsStore.countdownSeconds <= 0) {
-    paymentError.value = 'หมดเวลาชำระเงินแล้ว ระบบได้ยกเลิกการจองอัตโนมัติ';
+    paymentError.value = $t('หมดเวลาชำระเงินแล้ว ระบบได้ยกเลิกการจองอัตโนมัติ');
     return;
   }
 
   if (booking.value?.status !== 'pending') {
-    paymentError.value = 'สถานะการจองนี้ไม่สามารถชำระเงินได้';
+    paymentError.value = $t('สถานะการจองนี้ไม่สามารถชำระเงินได้');
     return;
   }
 
   if (!slipFile.value) {
-    paymentError.value = 'กรุณาอัปโหลดสลิปการโอนเงินก่อนกดชำระ';
+    paymentError.value = $t('กรุณาอัปโหลดสลิปการโอนเงินก่อนกดชำระ');
     return;
   }
   paying.value = true;
@@ -1502,7 +1502,7 @@ async function processPayment() {
     seatsStore.clearSelection();
     router.push(`/confirmation/${booking.value.booking_ref}`);
   } catch (e) {
-    paymentError.value = e?.response?.data?.message || 'การชำระเงินล้มเหลว กรุณาลองใหม่';
+    paymentError.value = e?.response?.data?.message || $t('การชำระเงินล้มเหลว กรุณาลองใหม่');
   } finally {
     paying.value = false;
   }

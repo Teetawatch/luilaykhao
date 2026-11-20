@@ -23,13 +23,15 @@
           class="h-[22px] w-[34px]" width="34" height="22" loading="lazy" />
       </span>
       <span v-if="!row.available" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-[11px] font-bold text-gray-500">
-        <span class="material-symbols-rounded icon-14">lock</span>ยังไม่ถึงขั้นต่ำ
+        <span class="material-symbols-rounded icon-14">lock</span>{{ $t('ยังไม่ถึงขั้นต่ำ') }}
       </span>
     </template>
   </PayMethodRow>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { computed, ref, watch } from 'vue';
 import PayMethodRow from './PayMethodRow.vue';
 
@@ -52,7 +54,7 @@ const BRAND_NAMES = {
   alipay: 'Alipay',
 };
 
-const money = (n) => Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+const money = (n) => Number(n || 0).toLocaleString(DATE_LOCALE, { maximumFractionDigits: 2 });
 
 const canInstall = computed(() => props.installmentMin > 0 && props.amount >= props.installmentMin);
 
@@ -66,8 +68,8 @@ const rows = computed(() => [
   {
     key: 'card',
     icon: 'credit_card',
-    title: 'บัตรเครดิต / เดบิต',
-    caption: 'กรอกข้อมูลบัตรบนหน้าของ Beam โดยตรง เราไม่เห็นและไม่เก็บเลขบัตรของคุณ',
+    title: $t('บัตรเครดิต / เดบิต'),
+    caption: $t('กรอกข้อมูลบัตรบนหน้าของ Beam โดยตรง เราไม่เห็นและไม่เก็บเลขบัตรของคุณ'),
     brands: ['visa', 'mastercard'],
     available: true,
   },
@@ -76,19 +78,19 @@ const rows = computed(() => [
     key: 'wallet-pay',
     icon: 'contactless',
     title: 'Apple Pay · Google Pay',
-    caption: 'ไม่ต้องกรอกเลขบัตร ขึ้นตามเบราว์เซอร์ที่ใช้',
+    caption: $t('ไม่ต้องกรอกเลขบัตร ขึ้นตามเบราว์เซอร์ที่ใช้'),
     brands: ['applepay', 'googlepay'],
     available: true,
   },
   {
     key: 'installment',
     icon: 'calendar_month',
-    title: 'ผ่อนชำระรายเดือน',
+    title: $t('ผ่อนชำระรายเดือน'),
     caption: canInstall.value
-      ? 'กับบัตรเครดิตที่ร่วมรายการ เลือกจำนวนงวดบนหน้าชำระเงิน'
+      ? $t('กับบัตรเครดิตที่ร่วมรายการ เลือกจำนวนงวดบนหน้าชำระเงิน')
       : props.installmentMin > 0
-        ? `ผ่อนบัตรได้เมื่อยอดตั้งแต่ ฿${money(props.installmentMin)} ขึ้นไป`
-        : 'ยังไม่เปิดให้ผ่อนบัตร',
+        ? $t('ผ่อนบัตรได้เมื่อยอดตั้งแต่ ฿{money} ขึ้นไป', { money: money(props.installmentMin) })
+        : $t('ยังไม่เปิดให้ผ่อนบัตร'),
     brands: [],
     available: canInstall.value,
   },

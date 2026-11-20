@@ -35,6 +35,7 @@ use App\Support\CalendarShell;
 use App\Support\MediaDisk;
 use App\Support\PageTrip;
 use App\Support\SeoMeta;
+use App\Support\SiteLocale;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
@@ -445,14 +446,22 @@ Route::get('/storage/{path}', function (string $path) {
 // (App\Support\TripShell). The trip is resolved here and handed to both halves
 // so the <head> and the body cost one query between them, not two.
 Route::get('/{any?}', function (?string $any = null) {
-    $path = $any ?? '/';
+    // หน้าอังกฤษอยู่ใต้ /en/… — shell เดียวกัน แต่ <head> เป็นภาษาอังกฤษ และหาหน้า
+    // (ทริป ปฏิทิน) จาก path ที่ตัด /en ออกแล้ว ดู App\Support\SiteLocale
+    $locale = SiteLocale::fromPath($any ?? '/');
+    app()->setLocale($locale);
+    $path = SiteLocale::strip($any ?? '/');
     $trip = PageTrip::forPath($path);
     // ปฏิทินทริปก็เป็นหน้าที่ body ไม่เหมือนหน้าอื่นเช่นกัน และเนื้อหาของมันเปลี่ยน
     // ทุกเดือน จึงประกอบที่นี่ครั้งเดียวแล้วส่งให้ทั้ง <head> และ body ใช้ร่วมกัน
     $calendar = $trip ? null : CalendarShell::forPath($path);
 
+    $seo = SeoMeta::for($path, $trip, $calendar);
+    $seo['canonical'] = SiteLocale::url($path);
+
     return view('app', array_filter([
-        'seo' => SeoMeta::for($path, $trip, $calendar),
+        'seo' => $seo,
+        'alternates' => SiteLocale::alternates($path),
         // Absent rather than null: the shell switches on @isset.
         'shellTrip' => $trip,
         'shellCalendar' => $calendar,

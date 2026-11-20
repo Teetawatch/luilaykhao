@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL, CLIENT_HEADERS } from './apiBase';
+import { localePath, stripLocale } from '../i18n/index.js';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -27,8 +28,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !error.config.url.includes('/auth/login')) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      if (stripLocale(window.location.pathname) !== '/login') {
+        window.location.href = localePath('/login');
       }
     }
     return Promise.reject(error);

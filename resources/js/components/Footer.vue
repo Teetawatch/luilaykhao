@@ -4,8 +4,8 @@
     <div class="border-b border-white/10">
       <div class="max-w-7xl mx-auto px-6 lg:px-8 py-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <p class="text-xl md:text-2xl font-bold text-white">สอบถามข้อมูลและจองทริป</p>
-          <p class="mt-1 text-[15px] text-white/65">{{ supportHours() }} · ตอบทุกคำถามก่อนตัดสินใจ</p>
+          <p class="text-xl md:text-2xl font-bold text-white">{{ $t('สอบถามข้อมูลและจองทริป') }}</p>
+          <p class="mt-1 text-[15px] text-white/65">{{ $t('{supportHours} · ตอบทุกคำถามก่อนตัดสินใจ', { supportHours: supportHours() }) }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
           <a :href="supportPhoneHref()" class="footer-cta footer-cta--light">
@@ -14,7 +14,7 @@
           </a>
           <a :href="supportLineUrl()" target="_blank" rel="noopener" class="footer-cta footer-cta--line">
             <i class="fa-brands fa-line" aria-hidden="true"></i>
-            ติดต่อเราผ่านไลน์
+            {{ $t('ติดต่อเราผ่านไลน์') }}
           </a>
         </div>
       </div>
@@ -26,15 +26,15 @@
         <div class="lg:col-span-4">
           <router-link to="/" class="inline-flex items-center gap-3">
             <span class="w-16 h-16 rounded-2xl bg-white flex items-center justify-center p-1.5">
-              <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-full h-full object-contain" />
+              <img src="/images/logo.png?v=2" :alt="$t('ลุยเลเขา')" class="w-full h-full object-contain" />
             </span>
             <span class="flex flex-col leading-none">
-              <span class="text-2xl font-extrabold text-white">ลุยเลเขา</span>
+              <span class="text-2xl font-extrabold text-white">{{ $t('ลุยเลเขา') }}</span>
               <span class="mt-1.5 text-[13px] font-semibold text-white/60">Trip &amp; Travel</span>
             </span>
           </router-link>
           <p class="mt-5 text-[15px] leading-relaxed max-w-sm">
-            บริษัทนำเที่ยวเดินป่า ดำน้ำ และรถตู้รับส่ง บอกระยะทาง ความสูงสะสม จุดรับ และเวลาออกของทุกรอบไว้ล่วงหน้า
+            {{ $t('บริษัทนำเที่ยวเดินป่า ดำน้ำ และรถตู้รับส่ง บอกระยะทาง ความสูงสะสม จุดรับ และเวลาออกของทุกรอบไว้ล่วงหน้า') }}
           </p>
           <div class="mt-6 flex items-center gap-2.5">
             <a
@@ -56,9 +56,9 @@
 
         <!-- ทริปของเรา -->
         <div class="lg:col-span-2">
-          <h4 class="footer-heading">ทริปของเรา</h4>
+          <h4 class="footer-heading">{{ $t('ทริปของเรา') }}</h4>
           <ul class="footer-list">
-            <li><router-link to="/trips">ทริปทั้งหมด</router-link></li>
+            <li><router-link to="/trips">{{ $t('ทริปทั้งหมด') }}</router-link></li>
             <template v-if="categories.length">
               <li v-for="cat in categories" :key="cat.id">
                 <router-link :to="`/trips?type=${cat.slug}`">{{ cat.name }}</router-link>
@@ -67,31 +67,31 @@
             <template v-else-if="loading">
               <li v-for="i in 3" :key="i"><span class="block h-4 w-20 rounded bg-white/10 animate-pulse"></span></li>
             </template>
-            <li><router-link to="/calendar">ปฏิทินทริป</router-link></li>
-            <li><router-link to="/stays">ที่พักชุมชน</router-link></li>
+            <li><router-link to="/calendar">{{ $t('ปฏิทินทริป') }}</router-link></li>
+            <li><router-link to="/stays">{{ $t('ที่พักชุมชน') }}</router-link></li>
           </ul>
         </div>
 
         <!-- ข้อมูลและบริการ -->
         <div class="lg:col-span-3">
-          <h4 class="footer-heading">ข้อมูลและบริการ</h4>
+          <h4 class="footer-heading">{{ $t('ข้อมูลและบริการ') }}</h4>
           <ul class="footer-list sm:columns-2 lg:columns-1 xl:columns-2 gap-6">
-            <li><router-link to="/about">เกี่ยวกับเรา</router-link></li>
-            <li><router-link to="/how-to-book">วิธีการจอง</router-link></li>
-            <li><router-link to="/faq">คำถามที่พบบ่อย</router-link></li>
-            <li><router-link to="/reviews">รีวิวลูกค้า</router-link></li>
-            <li><router-link to="/gallery">รูปจากลูกค้า</router-link></li>
-            <li><a href="/blog">บทความ</a></li>
-            <li><router-link to="/places">สถานที่ธรรมชาติ</router-link></li>
-            <li><router-link to="/seasons">เดือนไหนไปไหนดี</router-link></li>
-            <li><router-link to="/checklist">เช็คลิสต์ของที่ต้องเตรียม</router-link></li>
-            <li><router-link to="/problem">แจ้งปัญหาการใช้งาน</router-link></li>
+            <li><router-link to="/about">{{ $t('เกี่ยวกับเรา') }}</router-link></li>
+            <li><router-link to="/how-to-book">{{ $t('วิธีการจอง') }}</router-link></li>
+            <li><router-link to="/faq">{{ $t('คำถามที่พบบ่อย') }}</router-link></li>
+            <li><router-link to="/reviews">{{ $t('รีวิวลูกค้า') }}</router-link></li>
+            <li><router-link to="/gallery">{{ $t('รูปจากลูกค้า') }}</router-link></li>
+            <li><a href="/blog">{{ $t('บทความ') }}</a></li>
+            <li><router-link to="/places">{{ $t('สถานที่ธรรมชาติ') }}</router-link></li>
+            <li><router-link to="/seasons">{{ $t('เดือนไหนไปไหนดี') }}</router-link></li>
+            <li><router-link to="/checklist">{{ $t('เช็คลิสต์ของที่ต้องเตรียม') }}</router-link></li>
+            <li><router-link to="/problem">{{ $t('แจ้งปัญหาการใช้งาน') }}</router-link></li>
           </ul>
         </div>
 
         <!-- ติดต่อเรา + แอป -->
         <div class="lg:col-span-3">
-          <h4 class="footer-heading">ติดต่อเรา</h4>
+          <h4 class="footer-heading">{{ $t('ติดต่อเรา') }}</h4>
           <ul class="space-y-3 text-[15px]">
             <li class="flex items-start gap-2.5">
               <span class="material-symbols-rounded icon-20 text-[var(--color-accent-light)] mt-0.5">call</span>
@@ -111,13 +111,13 @@
             </li>
           </ul>
 
-          <p class="mt-7 text-[14px] font-semibold text-white">ดาวน์โหลดแอปลุยเลเขา</p>
+          <p class="mt-7 text-[14px] font-semibold text-white">{{ $t('ดาวน์โหลดแอปลุยเลเขา') }}</p>
           <div class="mt-3 flex items-center gap-2">
-            <a href="https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th" target="_blank" rel="noopener" aria-label="ดาวน์โหลดบน App Store" class="store-badge">
+            <a href="https://apps.apple.com/th/app/luilaykhao/id6770391928?l=th" target="_blank" rel="noopener" :aria-label="$t('ดาวน์โหลดบน App Store')" class="store-badge">
               <i class="fa-brands fa-apple" aria-hidden="true"></i>
               <span class="flex flex-col leading-none"><span class="text-[10px] opacity-75">Download on the</span><span class="text-[15px] font-bold">App Store</span></span>
             </a>
-            <a href="https://play.google.com/store/apps/details?id=com.luilaykhao.app&hl=th" target="_blank" rel="noopener" aria-label="ดาวน์โหลดบน Google Play" class="store-badge">
+            <a href="https://play.google.com/store/apps/details?id=com.luilaykhao.app&hl=th" target="_blank" rel="noopener" :aria-label="$t('ดาวน์โหลดบน Google Play')" class="store-badge">
               <i class="fa-brands fa-google-play" aria-hidden="true"></i>
               <span class="flex flex-col leading-none"><span class="text-[10px] opacity-75">GET IT ON</span><span class="text-[15px] font-bold">Google Play</span></span>
             </a>
@@ -133,12 +133,12 @@
         </span>
         <div class="text-[14px] leading-relaxed space-y-1">
           <p class="font-semibold text-white">
-            ใบอนุญาตประกอบธุรกิจนำเที่ยวเลขที่ {{ licence }}
+            {{ $t('ใบอนุญาตประกอบธุรกิจนำเที่ยวเลขที่ {licence}', { licence }) }}
             <a v-if="licenceImage" :href="licenceImage" target="_blank" rel="noopener"
-              class="font-medium text-[var(--color-accent-light)] hover:underline ml-1">ดูใบอนุญาต</a>
+              class="font-medium text-[var(--color-accent-light)] hover:underline ml-1">{{ $t('ดูใบอนุญาต') }}</a>
           </p>
-          <p>ได้รับอนุญาตให้นำเที่ยวได้ทั้งในประเทศและต่างประเทศ โดยกรมการท่องเที่ยว กระทรวงการท่องเที่ยวและกีฬา</p>
-          <p v-if="operator">ผู้ประกอบการ: {{ operator }}</p>
+          <p>{{ $t('ได้รับอนุญาตให้นำเที่ยวได้ทั้งในประเทศและต่างประเทศ โดยกรมการท่องเที่ยว กระทรวงการท่องเที่ยวและกีฬา') }}</p>
+          <p v-if="operator">{{ $t('ผู้ประกอบการ: {operator}', { operator }) }}</p>
         </div>
       </div>
     </div>
@@ -146,11 +146,11 @@
     <!-- Bottom Bar -->
     <div class="bg-black/20">
       <div class="max-w-7xl mx-auto px-6 lg:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-3 text-[13.5px] text-white/60">
-        <p>&copy; {{ new Date().getFullYear() }} ลุยเลเขา. สงวนลิขสิทธิ์</p>
+        <p>{{ $t('© {v} ลุยเลเขา. สงวนลิขสิทธิ์', { v: new Date().getFullYear() }) }}</p>
         <div class="flex flex-wrap justify-center gap-x-5 gap-y-1.5">
-          <router-link to="/terms" class="hover:text-white transition-colors">เงื่อนไขการให้บริการ</router-link>
-          <router-link to="/privacy" class="hover:text-white transition-colors">นโยบายความเป็นส่วนตัว</router-link>
-          <router-link to="/contact" class="hover:text-white transition-colors">ติดต่อเรา</router-link>
+          <router-link to="/terms" class="hover:text-white transition-colors">{{ $t('เงื่อนไขการให้บริการ') }}</router-link>
+          <router-link to="/privacy" class="hover:text-white transition-colors">{{ $t('นโยบายความเป็นส่วนตัว') }}</router-link>
+          <router-link to="/contact" class="hover:text-white transition-colors">{{ $t('ติดต่อเรา') }}</router-link>
         </div>
       </div>
     </div>

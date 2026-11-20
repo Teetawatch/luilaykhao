@@ -5,15 +5,15 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <SectionTitle
         class="mb-8"
-        title="แพ็กเกจทริปของเรา"
-        subtitle="เลือกตามประเภทที่ชอบ ทุกทริปบอกระยะทาง ความยาก และรอบถัดไปไว้ให้ดูก่อนจอง"
+        :title="$t('แพ็กเกจทริปของเรา')"
+        :subtitle="$t('เลือกตามประเภทที่ชอบ ทุกทริปบอกระยะทาง ความยาก และรอบถัดไปไว้ให้ดูก่อนจอง')"
       />
 
       <div
         v-if="tabs.length > 1"
         class="showcase-tabs mb-8 md:mb-10"
         role="tablist"
-        aria-label="ประเภททริป"
+        :aria-label="$t('ประเภททริป')"
       >
         <button
           v-for="tab in tabs"
@@ -50,6 +50,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, ref } from 'vue';
 import SectionTitle from '../SectionTitle.vue';
 import PackageCard from '../PackageCard.vue';
@@ -71,7 +72,7 @@ const tabs = computed(() => {
     .filter((c) => counts[c.slug])
     .map((c) => ({ key: c.slug, label: c.name, icon: c.icon || 'explore', count: counts[c.slug] }));
 
-  return [{ key: 'all', label: 'ทั้งหมด', icon: 'apps', count: props.trips.length }, ...catTabs];
+  return [{ key: 'all', label: $t('ทั้งหมด'), icon: 'apps', count: props.trips.length }, ...catTabs];
 });
 
 const visibleTrips = computed(() => {
@@ -82,7 +83,7 @@ const visibleTrips = computed(() => {
 const activeTab = computed(() => tabs.value.find((t) => t.key === active.value));
 
 const moreLink = computed(() => (active.value === 'all' ? '/trips' : { path: '/trips', query: { type: active.value } }));
-const moreLabel = computed(() => (active.value === 'all' ? 'ดูทริปทั้งหมด' : `ดูทริป${activeTab.value?.label || ''}ทั้งหมด`));
+const moreLabel = computed(() => (active.value === 'all' ? $t('ดูทริปทั้งหมด') : $t('ดูทริป{v}ทั้งหมด', { v: activeTab.value?.label || '' })));
 </script>
 
 <style scoped>

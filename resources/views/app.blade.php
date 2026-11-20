@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th" dir="ltr">
+<html lang="{{ \App\Support\SiteLocale::current() }}" dir="ltr">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
@@ -15,7 +15,7 @@
     <meta name="author" content="ลุยเลเขา Luilaykhao">
     <meta name="robots" content="{{ $seo['robots'] }}">
     <meta name="google-site-verification" content="6E_H_ur05qV8VIU5BXFa3-4sCSv-C9nQGDcMceZLVc8" />
-    <meta name="language" content="Thai">
+    <meta name="language" content="{{ \App\Support\SiteLocale::isEnglish() ? 'English' : 'Thai' }}">
     <meta name="rating" content="general">
     <meta name="geo.region" content="TH">
     <meta name="geo.placename" content="Thailand">
@@ -53,7 +53,7 @@
          ทุกครั้งที่รีเฟรชจะเห็นรูปสำรองชุดเก่าวาบหนึ่งก่อนแล้วค่อยเป็นรูปจริง --}}
     @php($heroImageUrls = \App\Models\HeroSlide::publicImageUrls())
     <meta name="llk:hero-images" content="{{ json_encode($heroImageUrls, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}">
-    @if (request()->is('/') && ($heroImageUrls[0] ?? null))
+    @if ((request()->is('/') || request()->is('en')) && ($heroImageUrls[0] ?? null))
         <link rel="preload" as="image" href="{{ $heroImageUrls[0] }}" fetchpriority="high">
     @endif
 
@@ -64,9 +64,11 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ $seo['canonical'] }}">
 
-    <!-- Language Alternatives -->
-    <link rel="alternate" hreflang="th" href="{{ url('/') }}">
-    <link rel="alternate" hreflang="x-default" href="{{ url('/') }}">
+    {{-- หน้านี้ในแต่ละภาษา (ไทย = URL เดิม, อังกฤษ = /en/…) — Google ใช้เลือกหน้าที่ตรง
+         ภาษาของคนค้น และไม่นับสองภาษาเป็นหน้าซ้ำกัน ดู App\Support\SiteLocale --}}
+    @foreach($alternates ?? ['th' => url('/'), 'x-default' => url('/')] as $hreflang => $href)
+    <link rel="alternate" hreflang="{{ $hreflang }}" href="{{ $href }}">
+    @endforeach
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="{{ $seo['type'] }}">
@@ -78,7 +80,8 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="{{ $seo['image_alt'] }}">
-    <meta property="og:locale" content="th_TH">
+    <meta property="og:locale" content="{{ \App\Support\SiteLocale::isEnglish() ? 'en_US' : 'th_TH' }}">
+    <meta property="og:locale:alternate" content="{{ \App\Support\SiteLocale::isEnglish() ? 'th_TH' : 'en_US' }}">
     @foreach($seo['extra'] as $property => $content)
     <meta property="{{ $property }}" content="{{ $content }}">
     @endforeach
@@ -116,7 +119,7 @@
             "contactType": "customer service",
             "areaServed": "TH",
             "serviceArea": { "@@type": "Place", "name": "Worldwide" },
-            "availableLanguage": ["Thai"]
+            "availableLanguage": ["Thai", "English"]
         },
         @if(\App\Support\SiteSettings::operatorName())
         "legalName": "{{ \App\Support\SiteSettings::operatorName() }}",

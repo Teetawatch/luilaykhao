@@ -8,8 +8,8 @@
       :class="isScrolled ? 'lg:h-0 lg:opacity-0' : 'lg:h-[4.75rem]'"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 lg:h-[4.75rem] flex items-center gap-4 xl:gap-8">
-        <router-link to="/" class="flex items-center shrink-0 rounded-xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
-          <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-11 h-11 lg:w-14 lg:h-14 object-contain" />
+        <router-link to="/" class="flex items-center shrink-0 rounded-xl focus-ring" :aria-label="$t('ลุยเลเขา หน้าแรก')">
+          <img src="/images/logo.png?v=2" :alt="$t('ลุยเลเขา')" class="w-11 h-11 lg:w-14 lg:h-14 object-contain" />
         </router-link>
 
         <!-- ช่องค้นหาทริป (เดสก์ท็อป) -->
@@ -18,23 +18,24 @@
           <input
             v-model="searchQuery"
             type="search"
-            aria-label="ค้นหาทริป"
-            placeholder="ค้นหาทริป ชื่อดอย จังหวัด หรือกิจกรรม…"
+            :aria-label="$t('ค้นหาทริป')"
+            :placeholder="$t('ค้นหาทริป ชื่อดอย จังหวัด หรือกิจกรรม…')"
             class="min-w-0 flex-1 bg-transparent text-[15px] font-medium text-text-dark placeholder:text-text-muted outline-none"
           />
-          <button type="submit" class="brand-search-btn">ค้นหา</button>
+          <button type="submit" class="brand-search-btn">{{ $t('ค้นหา') }}</button>
         </form>
 
         <!-- ติดต่อ (เดสก์ท็อป) -->
         <div class="hidden lg:flex items-center gap-3 shrink-0">
-          <a :href="supportLineUrl()" target="_blank" rel="noopener" class="line-pill focus-ring" aria-label="แชทกับเราทาง LINE">
+          <LanguageSwitch />
+          <a :href="supportLineUrl()" target="_blank" rel="noopener" class="line-pill focus-ring" :aria-label="$t('แชทกับเราทาง LINE')">
             <i class="fa-brands fa-line" aria-hidden="true"></i>
-            <span class="hidden xl:inline">แชท LINE</span>
+            <span class="hidden xl:inline">{{ $t('แชท LINE') }}</span>
           </a>
-          <a :href="supportPhoneHref()" class="call-card focus-ring" :aria-label="`โทรหาเรา ${supportPhone()}`">
+          <a :href="supportPhoneHref()" class="call-card focus-ring" :aria-label="$t('โทรหาเรา {supportPhone}', { supportPhone: supportPhone() })">
             <span class="call-card-ico"><span class="material-symbols-rounded icon-16 filled-icon">call</span></span>
             <span class="flex flex-col leading-none">
-              <span class="text-[10.5px] font-semibold text-text-muted">โทรจองทริป · {{ supportHours() }}</span>
+              <span class="text-[10.5px] font-semibold text-text-muted">{{ $t('โทรจองทริป · {supportHours}', { supportHours: supportHours() }) }}</span>
               <span class="mt-0.5 text-[15px] font-bold tracking-tight text-text-dark tabular-nums">{{ supportPhone() }}</span>
             </span>
           </a>
@@ -43,12 +44,12 @@
         <!-- Mobile Actions -->
         <div class="lg:hidden flex items-center gap-0.5 ml-auto">
           <template v-if="auth.isLoggedIn">
-            <router-link to="/notifications" class="icon-btn w-10 h-10" aria-label="การแจ้งเตือน">
+            <router-link to="/notifications" class="icon-btn w-10 h-10" :aria-label="$t('การแจ้งเตือน')">
               <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
               <span v-if="unreadNotifications > 0" class="badge">{{ unreadNotifications }}</span>
             </router-link>
 
-            <button type="button" class="icon-btn w-10 h-10" aria-label="รายการโปรด" @click.stop="openWishlistSheet">
+            <button type="button" class="icon-btn w-10 h-10" :aria-label="$t('รายการโปรด')" @click.stop="openWishlistSheet">
               <span
                 class="material-symbols-rounded text-[22px]"
                 :class="{ 'text-red-500': wishlistStore.favorites.length > 0 }"
@@ -57,7 +58,7 @@
               <span v-if="wishlistStore.favorites.length > 0" class="badge">{{ wishlistStore.favorites.length }}</span>
             </button>
 
-            <button type="button" class="icon-btn w-10 h-10" aria-label="บัญชีของฉัน" @click.stop="openAccountSheet">
+            <button type="button" class="icon-btn w-10 h-10" :aria-label="$t('บัญชีของฉัน')" @click.stop="openAccountSheet">
               <span class="w-8 h-8 rounded-full bg-primary flex items-center justify-center overflow-hidden ring-2 ring-white">
                 <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
                 <span v-else class="text-white text-[11px] font-bold">{{ auth.userName?.charAt(0)?.toUpperCase() }}</span>
@@ -65,11 +66,11 @@
             </button>
           </template>
 
-          <router-link v-else to="/login" class="icon-btn w-10 h-10" aria-label="เข้าสู่ระบบ">
+          <router-link v-else to="/login" class="icon-btn w-10 h-10" :aria-label="$t('เข้าสู่ระบบ')">
             <span class="material-symbols-rounded text-[22px]">account_circle</span>
           </router-link>
 
-          <button type="button" class="icon-btn w-10 h-10" aria-label="เปิดเมนู" :aria-expanded="mobileOpen" @click.stop="openNavSheet">
+          <button type="button" class="icon-btn w-10 h-10" :aria-label="$t('เปิดเมนู')" :aria-expanded="mobileOpen" @click.stop="openNavSheet">
             <span class="material-symbols-rounded text-[24px] text-text-dark">menu</span>
           </button>
         </div>
@@ -77,16 +78,16 @@
     </div>
 
     <!-- ── ชั้นเมนู (เขียวเข้มของแบรนด์) — เดสก์ท็อปเท่านั้น ──────────────── -->
-    <nav aria-label="เมนูหลัก" class="menu-bar hidden lg:block bg-[var(--color-primary)]">
+    <nav :aria-label="$t('เมนูหลัก')" class="menu-bar hidden lg:block bg-[var(--color-primary)]">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center gap-2 transition-[height] duration-300" :class="isScrolled ? 'h-16' : 'h-14'">
           <!-- โลโก้บนชิปขาวโผล่เมื่อชั้นบนยุบไป (โลโก้สีเขียวเข้มมองไม่เห็นบนพื้นเขียว) -->
-          <router-link v-if="isScrolled" to="/" class="mini-logo shrink-0 mr-2 rounded-xl focus-ring" aria-label="ลุยเลเขา หน้าแรก">
+          <router-link v-if="isScrolled" to="/" class="mini-logo shrink-0 mr-2 rounded-xl focus-ring" :aria-label="$t('ลุยเลเขา หน้าแรก')">
             <img src="/images/logo.png?v=2" alt="" class="w-10 h-10 object-contain" />
           </router-link>
 
           <div ref="navDropdownRef" class="flex flex-1 items-center min-w-0">
-            <div ref="navListRef" class="flex items-center -ml-3" :class="{ 'is-compact': isScrolled }" @mouseleave="hoveredNavLabel = null">
+            <div ref="navListRef" class="flex items-center -ml-3" :class="{ 'is-compact': isScrolled, 'is-en': $isEnglish }" @mouseleave="hoveredNavLabel = null">
               <template v-for="link in navLinks" :key="link.label">
                 <!-- Dropdown / Mega menu -->
                 <div
@@ -143,13 +144,13 @@
                       </div>
 
                       <div class="flex items-center justify-between gap-3 border-t border-sand-dark bg-sand/60 px-4 py-3">
-                        <p class="text-[12.5px] font-semibold text-text-muted">สอบถามเพิ่มเติม โทร <a :href="supportPhoneHref()" class="font-bold text-text-dark hover:text-accent">{{ supportPhone() }}</a></p>
+                        <p class="text-[12.5px] font-semibold text-text-muted">{{ $t('สอบถามเพิ่มเติม โทร') }} <a :href="supportPhoneHref()" class="font-bold text-text-dark hover:text-accent">{{ supportPhone() }}</a></p>
                         <router-link
                           to="/contact"
                           @click="openNavDropdown = null"
                           class="shrink-0 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12.5px] font-bold text-accent transition-colors hover:bg-accent-tint focus-ring"
                         >
-                          ติดต่อเรา
+                          {{ $t('ติดต่อเรา') }}
                           <span class="material-symbols-rounded icon-16">arrow_forward</span>
                         </router-link>
                       </div>
@@ -180,7 +181,7 @@
             <div v-if="isScrolled" ref="desktopSearchRef" class="relative flex items-center">
               <button
                 type="button"
-                aria-label="ค้นหาทริป"
+                :aria-label="$t('ค้นหาทริป')"
                 :aria-expanded="desktopSearchExpanded"
                 class="icon-btn"
                 :class="desktopSearchExpanded ? 'text-primary bg-sand' : ''"
@@ -197,14 +198,14 @@
                       ref="desktopSearchInput"
                       v-model="searchQuery"
                       type="text"
-                      placeholder="ค้นหาทริป..."
+                      :placeholder="$t('ค้นหาทริป...')"
                       class="w-full bg-sand rounded-full py-2.5 pl-10 pr-9 text-[14px] font-semibold text-text-dark outline-none ring-1 ring-transparent focus:ring-accent/40 transition"
                       @keyup.enter="doSearch(); desktopSearchExpanded = false"
                     />
                     <button
                       v-if="searchQuery"
                       type="button"
-                      aria-label="ล้างคำค้นหา"
+                      :aria-label="$t('ล้างคำค้นหา')"
                       class="absolute right-2.5 w-6 h-6 flex items-center justify-center rounded-full bg-sand-dark text-text-muted hover:text-red-500 transition-colors"
                       @click="searchQuery = ''"
                     >
@@ -219,7 +220,7 @@
             <div v-if="auth.isLoggedIn" ref="wishlistDropdownRef" class="relative flex items-center">
               <button
                 type="button"
-                aria-label="รายการโปรด"
+                :aria-label="$t('รายการโปรด')"
                 class="icon-btn"
                 :class="wishlistDropdownOpen ? 'text-primary bg-sand' : ''"
                 @click.stop="wishlistDropdownOpen = !wishlistDropdownOpen; notificationDropdownOpen = false; userDropdownOpen = false"
@@ -236,12 +237,12 @@
                 <div class="bg-white/95 supports-[backdrop-filter]:backdrop-blur-xl rounded-2xl ring-1 ring-primary/5 border border-sand-dark/40 overflow-hidden">
                   <div class="px-5 py-3.5 bg-sand/50 border-b border-sand-dark/40 flex items-center gap-2">
                     <span class="material-symbols-rounded text-[18px] text-red-500 filled-icon">favorite</span>
-                    <span class="text-[13px] font-bold text-text-dark">รายการโปรด</span>
+                    <span class="text-[13px] font-bold text-text-dark">{{ $t('รายการโปรด') }}</span>
                     <span class="ml-auto text-[11px] font-bold text-text-muted bg-sand px-2 py-0.5 rounded-full">{{ wishlistStore.favorites.length }}</span>
                   </div>
                   <div v-if="wishlistStore.favorites.length === 0" class="py-8 px-5 text-center">
                     <span class="material-symbols-rounded text-[40px] text-sand-dark">favorite_border</span>
-                    <p class="mt-2 text-[12px] text-text-muted font-medium">ยังไม่มีรายการโปรด</p>
+                    <p class="mt-2 text-[12px] text-text-muted font-medium">{{ $t('ยังไม่มีรายการโปรด') }}</p>
                   </div>
                   <div v-else class="max-h-64 overflow-y-auto">
                     <router-link
@@ -256,12 +257,12 @@
                       </div>
                       <div class="flex-1 min-w-0">
                         <p class="text-[12px] font-bold text-text-dark truncate">{{ favoriteTitle(trip) }}</p>
-                        <p v-if="trip.price" class="text-[10px] text-primary font-bold">฿{{ Number(trip.price).toLocaleString() }}</p>
+                        <p v-if="trip.price" class="text-[10px] text-primary font-bold">{{ $t('฿{Number}', { Number: Number(trip.price).toLocaleString() }) }}</p>
                       </div>
                     </router-link>
                   </div>
                   <div class="p-3 bg-sand/30">
-                    <router-link to="/trips" class="block w-full py-2 text-center text-[11px] font-bold text-primary bg-primary/5 hover:bg-primary/10 rounded-xl transition-colors" @click="wishlistDropdownOpen = false">ดูทริปทั้งหมด</router-link>
+                    <router-link to="/trips" class="block w-full py-2 text-center text-[11px] font-bold text-primary bg-primary/5 hover:bg-primary/10 rounded-xl transition-colors" @click="wishlistDropdownOpen = false">{{ $t('ดูทริปทั้งหมด') }}</router-link>
                   </div>
                 </div>
               </div>
@@ -271,7 +272,7 @@
             <div v-if="auth.isLoggedIn" ref="notificationDropdownRef" class="relative flex items-center">
               <button
                 type="button"
-                aria-label="การแจ้งเตือน"
+                :aria-label="$t('การแจ้งเตือน')"
                 class="icon-btn"
                 :class="notificationDropdownOpen ? 'text-primary bg-sand' : ''"
                 @click.stop="toggleNotificationDropdown"
@@ -288,9 +289,9 @@
                         <span class="material-symbols-rounded text-[22px]" :class="{ 'filled-icon': unreadNotifications > 0 }">notifications</span>
                       </div>
                       <div class="flex-1 min-w-0">
-                        <p class="text-[14px] font-black text-text-dark leading-tight">การแจ้งเตือน</p>
+                        <p class="text-[14px] font-black text-text-dark leading-tight">{{ $t('การแจ้งเตือน') }}</p>
                         <p class="text-[11px] font-semibold text-text-muted mt-1">
-                          {{ unreadNotifications > 0 ? `ยังไม่ได้อ่าน ${unreadNotifications} รายการ` : 'อ่านครบทุกข้อความแล้ว' }}
+                          {{ unreadNotifications > 0 ? $t('ยังไม่ได้อ่าน {unreadNotifications} รายการ', { unreadNotifications }) : $t('อ่านครบทุกข้อความแล้ว') }}
                         </p>
                       </div>
                     </div>
@@ -303,7 +304,7 @@
                         @click="markAllNotificationsRead"
                       >
                         <span class="material-symbols-rounded text-[17px]">done_all</span>
-                        อ่านทั้งหมด
+                        {{ $t('อ่านทั้งหมด') }}
                       </button>
                       <button
                         type="button"
@@ -312,26 +313,26 @@
                         @click="clearNotifications"
                       >
                         <span class="material-symbols-rounded text-[17px]">delete_sweep</span>
-                        เคลียร์ข้อความ
+                        {{ $t('เคลียร์ข้อความ') }}
                       </button>
                     </div>
                   </div>
 
                   <div v-if="notificationsLoading" class="py-10 px-5 text-center">
                     <div class="w-8 h-8 mx-auto border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-                    <p class="mt-3 text-[12px] font-bold text-text-muted">กำลังโหลดการแจ้งเตือน...</p>
+                    <p class="mt-3 text-[12px] font-bold text-text-muted">{{ $t('กำลังโหลดการแจ้งเตือน...') }}</p>
                   </div>
 
                   <div v-else-if="notificationError" class="py-10 px-5 text-center">
                     <span class="material-symbols-rounded text-[36px] text-red-300">error</span>
                     <p class="mt-2 text-[12px] font-bold text-text-muted">{{ notificationError }}</p>
-                    <button type="button" class="mt-3 px-4 py-2 rounded-xl text-[11px] font-black text-primary bg-primary/5 hover:bg-primary/10 transition-colors" @click="loadNotifications">ลองใหม่</button>
+                    <button type="button" class="mt-3 px-4 py-2 rounded-xl text-[11px] font-black text-primary bg-primary/5 hover:bg-primary/10 transition-colors" @click="loadNotifications">{{ $t('ลองใหม่') }}</button>
                   </div>
 
                   <div v-else-if="notifications.length === 0" class="py-10 px-5 text-center">
                     <span class="material-symbols-rounded text-[42px] text-sand-dark">notifications_off</span>
-                    <p class="mt-2 text-[13px] font-black text-text-dark">ยังไม่มีการแจ้งเตือน</p>
-                    <p class="mt-1 text-[11px] font-semibold text-text-muted">ข้อความใหม่จะแสดงในส่วนนี้</p>
+                    <p class="mt-2 text-[13px] font-black text-text-dark">{{ $t('ยังไม่มีการแจ้งเตือน') }}</p>
+                    <p class="mt-1 text-[11px] font-semibold text-text-muted">{{ $t('ข้อความใหม่จะแสดงในส่วนนี้') }}</p>
                   </div>
 
                   <div v-else class="max-h-[440px] overflow-y-auto divide-y divide-sand-dark/40">
@@ -354,8 +355,8 @@
                             </div>
                             <button
                               type="button"
-                              title="ลบข้อความนี้"
-                              aria-label="ลบข้อความนี้"
+                              :title="$t('ลบข้อความนี้')"
+                              :aria-label="$t('ลบข้อความนี้')"
                               class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
                               @click="deleteNotification(n.id)"
                             >
@@ -366,7 +367,7 @@
                           <div class="mt-3 flex flex-wrap items-center gap-1.5">
                             <span class="px-2 py-1 rounded-full text-[10px] font-black bg-sand text-text-muted">{{ notificationTypeLabel(n.type) }}</span>
                             <span class="px-2 py-1 rounded-full text-[10px] font-black" :class="n.is_read ? 'bg-sand text-text-muted' : 'bg-primary/10 text-primary'">
-                              {{ n.is_read ? 'อ่านแล้ว' : 'ยังไม่ได้อ่าน' }}
+                              {{ n.is_read ? $t('อ่านแล้ว') : $t('ยังไม่ได้อ่าน') }}
                             </span>
                             <span class="px-2 py-1 rounded-full text-[10px] font-black bg-sand text-text-muted">{{ timeAgo(n.created_at) }}</span>
                           </div>
@@ -388,7 +389,7 @@
                               @click="markNotificationRead(n)"
                             >
                               <span class="material-symbols-rounded text-[15px]">done</span>
-                              ทำเครื่องหมายว่าอ่านแล้ว
+                              {{ $t('ทำเครื่องหมายว่าอ่านแล้ว') }}
                             </button>
                           </div>
                         </div>
@@ -429,7 +430,7 @@
                         <span class="text-[14px] font-bold text-text-dark truncate">{{ auth.userName }}</span>
                         <span class="role-chip">{{ accountRoleLabel }}</span>
                       </span>
-                      <span class="block mt-0.5 text-[11px] font-semibold text-text-muted">จัดการโปรไฟล์และข้อมูลส่วนตัว</span>
+                      <span class="block mt-0.5 text-[11px] font-semibold text-text-muted">{{ $t('จัดการโปรไฟล์และข้อมูลส่วนตัว') }}</span>
                     </span>
                     <span class="material-symbols-rounded text-[20px] text-text-muted">chevron_right</span>
                   </router-link>
@@ -484,7 +485,7 @@
                   <div class="mt-2 pt-2 border-t border-sand-dark/50">
                     <button type="button" class="menu-row menu-row--danger w-full" @click="handleLogout">
                       <span class="material-symbols-rounded text-[20px]">logout</span>
-                      ออกจากระบบ
+                      {{ $t('ออกจากระบบ') }}
                     </button>
                   </div>
                 </div>
@@ -497,11 +498,11 @@
               class="flex items-center gap-1.5 px-3 py-2 rounded-full text-[14px] font-semibold text-white/85 hover:text-white hover:bg-white/10 transition-colors focus-ring"
             >
               <span class="material-symbols-rounded text-[20px]">account_circle</span>
-              <span>เข้าสู่ระบบ</span>
+              <span>{{ $t('เข้าสู่ระบบ') }}</span>
             </router-link>
 
             <router-link to="/trips" class="book-cta ml-2">
-              จองทริป
+              {{ $t('จองทริป') }}
               <span class="material-symbols-rounded icon-18">arrow_forward</span>
             </router-link>
           </div>
@@ -512,17 +513,17 @@
     <!-- ── Mobile: full-screen navigation sheet ─────────────────── -->
     <Teleport to="body">
       <Transition name="sheet">
-        <div v-if="mobileOpen" class="lg:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="เมนูหลัก">
+        <div v-if="mobileOpen" class="lg:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" :aria-label="$t('เมนูหลัก')">
           <div class="sheet-panel flex h-full w-full flex-col bg-white/95 supports-[backdrop-filter]:backdrop-blur-2xl">
             <div class="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
               <router-link to="/" class="flex items-center gap-2.5" @click="closeSheets">
-                <img src="/images/logo.png?v=2" alt="ลุยเลเขา" class="w-11 h-11 object-contain" />
+                <img src="/images/logo.png?v=2" :alt="$t('ลุยเลเขา')" class="w-11 h-11 object-contain" />
                 <span class="flex flex-col leading-none">
-                  <span class="text-[18px] font-black tracking-tight text-primary">ลุยเลเขา</span>
+                  <span class="text-[18px] font-black tracking-tight text-primary">{{ $t('ลุยเลเขา') }}</span>
                   <span class="mt-1 text-[9px] font-bold uppercase tracking-[0.24em] text-text-muted">Trip &amp; Travel</span>
                 </span>
               </router-link>
-              <button type="button" class="icon-btn w-11 h-11" aria-label="ปิดเมนู" @click="closeSheets">
+              <button type="button" class="icon-btn w-11 h-11" :aria-label="$t('ปิดเมนู')" @click="closeSheets">
                 <span class="material-symbols-rounded text-[26px] text-text-dark">close</span>
               </button>
             </div>
@@ -533,7 +534,7 @@
                 <input
                   v-model="searchQuery"
                   type="text"
-                  placeholder="ค้นหาทริปที่คุณต้องการ..."
+                  :placeholder="$t('ค้นหาทริปที่คุณต้องการ...')"
                   class="w-full rounded-2xl bg-sand py-3.5 pl-12 pr-4 text-[15px] font-semibold text-text-dark placeholder:text-text-muted outline-none ring-1 ring-transparent focus:bg-white focus:ring-accent/40 transition"
                   @keyup.enter="doSearch"
                 />
@@ -587,18 +588,22 @@
                 </template>
               </nav>
 
-              <div class="sheet-item mt-6" :style="{ '--i': navLinks.length + 1 }">
+              <div class="sheet-item mt-4" :style="{ '--i': navLinks.length + 1 }">
+                <LanguageSwitch variant="row" />
+              </div>
+
+              <div class="sheet-item mt-4" :style="{ '--i': navLinks.length + 1 }">
                 <router-link to="/trips" class="cta-btn w-full justify-center py-3.5 text-[16px]" @click="closeSheets">
                   <span class="cta-sheen" aria-hidden="true"></span>
                   <span class="material-symbols-rounded relative text-[20px]">explore</span>
-                  <span class="relative">จองทริป</span>
+                  <span class="relative">{{ $t('จองทริป') }}</span>
                 </router-link>
               </div>
 
               <div v-if="auth.isLoggedIn" class="sheet-item mt-3" :style="{ '--i': navLinks.length + 2 }">
                 <router-link to="/support" class="flex items-center gap-3 rounded-2xl border border-sand-dark bg-sand py-3.5 px-4 text-[15px] font-bold text-text-dark transition active:scale-[0.98]" @click="closeSheets">
                   <span class="material-symbols-rounded text-[20px] text-primary">support_agent</span>
-                  ศูนย์ช่วยเหลือ
+                  {{ $t('ศูนย์ช่วยเหลือ') }}
                   <span v-if="supportUnread" class="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
                     {{ supportUnread > 9 ? '9+' : supportUnread }}
                   </span>
@@ -608,11 +613,11 @@
               <div v-if="!auth.isLoggedIn" class="sheet-item mt-3 grid grid-cols-2 gap-2" :style="{ '--i': navLinks.length + 2 }">
                 <router-link to="/login" class="flex items-center justify-center gap-2 rounded-2xl border border-sand-dark bg-sand py-3.5 text-[15px] font-bold text-primary transition active:scale-[0.98]" @click="closeSheets">
                   <span class="material-symbols-rounded text-[20px]">login</span>
-                  เข้าสู่ระบบ
+                  {{ $t('เข้าสู่ระบบ') }}
                 </router-link>
                 <router-link to="/register" class="flex items-center justify-center gap-2 rounded-2xl border border-primary/15 bg-primary/5 py-3.5 text-[15px] font-bold text-primary transition active:scale-[0.98]" @click="closeSheets">
                   <span class="material-symbols-rounded text-[20px]">person_add</span>
-                  สมัครสมาชิก
+                  {{ $t('สมัครสมาชิก') }}
                 </router-link>
               </div>
 
@@ -622,7 +627,7 @@
                     <span class="material-symbols-rounded text-[20px]">call</span>
                   </span>
                   <span class="flex flex-col leading-tight">
-                    <span class="text-[11px] font-semibold text-text-muted">สอบถามเพิ่มเติม</span>
+                    <span class="text-[11px] font-semibold text-text-muted">{{ $t('สอบถามเพิ่มเติม') }}</span>
                     <span class="text-[15px] font-bold text-text-dark">{{ supportPhone() }}</span>
                   </span>
                 </a>
@@ -644,7 +649,7 @@
 
                 <p class="mt-4 flex items-center gap-1.5 text-[11px] font-semibold text-text-muted">
                   <span class="material-symbols-rounded text-[15px] text-accent filled-icon">verified_user</span>
-                  ใบอนุญาตนำเที่ยวเลขที่ {{ licence }}
+                  {{ $t('ใบอนุญาตนำเที่ยวเลขที่ {licence}', { licence }) }}
                 </p>
               </div>
             </div>
@@ -656,7 +661,7 @@
     <!-- ── Mobile: full-screen account sheet ────────────────────── -->
     <Teleport to="body">
       <Transition name="sheet">
-        <div v-if="mobileAccountOpen" class="lg:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="บัญชีของฉัน">
+        <div v-if="mobileAccountOpen" class="lg:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" :aria-label="$t('บัญชีของฉัน')">
           <div class="sheet-panel flex h-full w-full flex-col bg-white/95 supports-[backdrop-filter]:backdrop-blur-2xl">
             <div class="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
               <div class="flex items-center gap-3">
@@ -669,7 +674,7 @@
                   <span class="role-chip mt-1 inline-block">{{ accountRoleLabel }}</span>
                 </div>
               </div>
-              <button type="button" class="icon-btn w-11 h-11" aria-label="ปิด" @click="closeSheets">
+              <button type="button" class="icon-btn w-11 h-11" :aria-label="$t('ปิด')" @click="closeSheets">
                 <span class="material-symbols-rounded text-[26px] text-text-dark">close</span>
               </button>
             </div>
@@ -696,7 +701,7 @@
 
               <router-link to="/profile" class="sheet-item sheet-row mt-3" :style="{ '--i': 1 }" @click="closeSheets">
                 <span class="material-symbols-rounded text-[22px]">account_circle</span>
-                จัดการโปรไฟล์
+                {{ $t('จัดการโปรไฟล์') }}
                 <span class="material-symbols-rounded ml-auto text-[18px] text-text-muted">chevron_right</span>
               </router-link>
               <router-link
@@ -713,7 +718,7 @@
               </router-link>
 
               <template v-if="accountWorkLinks.length">
-                <p class="sheet-item menu-caption" :style="{ '--i': accountMoreLinks.length + 2 }">การทำงาน</p>
+                <p class="sheet-item menu-caption" :style="{ '--i': accountMoreLinks.length + 2 }">{{ $t('การทำงาน') }}</p>
                 <router-link
                   v-for="item in accountWorkLinks"
                   :key="item.to"
@@ -731,7 +736,7 @@
               <div class="sheet-item mt-5 border-t border-sand-dark pt-4" :style="{ '--i': accountMoreLinks.length + 4 }">
                 <button type="button" class="sheet-row sheet-row--danger w-full" @click="handleLogout">
                   <span class="material-symbols-rounded text-[22px]">logout</span>
-                  ออกจากระบบ
+                  {{ $t('ออกจากระบบ') }}
                 </button>
               </div>
             </div>
@@ -745,7 +750,7 @@
          ทั้งที่ป้ายบอกว่า "รายการโปรด" — ระบบไม่มีหน้ารายการโปรดให้ไป -->
     <Teleport to="body">
       <Transition name="sheet">
-        <div v-if="mobileWishlistOpen" class="lg:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="รายการโปรด">
+        <div v-if="mobileWishlistOpen" class="lg:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" :aria-label="$t('รายการโปรด')">
           <div class="sheet-panel flex h-full w-full flex-col bg-white/95 supports-[backdrop-filter]:backdrop-blur-2xl">
             <div class="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4">
               <div class="flex items-center gap-3">
@@ -753,13 +758,13 @@
                   <span class="material-symbols-rounded text-[24px] text-red-500 filled-icon">favorite</span>
                 </div>
                 <div class="min-w-0">
-                  <p class="text-[16px] font-bold text-text-dark">รายการโปรด</p>
+                  <p class="text-[16px] font-bold text-text-dark">{{ $t('รายการโปรด') }}</p>
                   <p class="text-[11px] font-semibold text-text-muted">
-                    {{ wishlistStore.favorites.length > 0 ? `บันทึกไว้ ${wishlistStore.favorites.length} ทริป` : 'ยังไม่ได้บันทึกทริปไหน' }}
+                    {{ wishlistStore.favorites.length > 0 ? $t('บันทึกไว้ {length} ทริป', { length: wishlistStore.favorites.length }) : $t('ยังไม่ได้บันทึกทริปไหน') }}
                   </p>
                 </div>
               </div>
-              <button type="button" class="icon-btn w-11 h-11" aria-label="ปิด" @click="closeSheets">
+              <button type="button" class="icon-btn w-11 h-11" :aria-label="$t('ปิด')" @click="closeSheets">
                 <span class="material-symbols-rounded text-[26px] text-text-dark">close</span>
               </button>
             </div>
@@ -767,12 +772,12 @@
             <div class="flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
               <div v-if="wishlistStore.favorites.length === 0" class="sheet-item pt-10 text-center" :style="{ '--i': 0 }">
                 <span class="material-symbols-rounded text-[52px] text-sand-dark">favorite_border</span>
-                <p class="mt-3 text-[15px] font-bold text-text-dark">ยังไม่มีรายการโปรด</p>
-                <p class="mt-1 text-[12px] font-medium text-text-muted">กดรูปหัวใจบนทริปที่สนใจ แล้วกลับมาดูที่นี่ได้</p>
+                <p class="mt-3 text-[15px] font-bold text-text-dark">{{ $t('ยังไม่มีรายการโปรด') }}</p>
+                <p class="mt-1 text-[12px] font-medium text-text-muted">{{ $t('กดรูปหัวใจบนทริปที่สนใจ แล้วกลับมาดูที่นี่ได้') }}</p>
                 <router-link to="/trips" class="cta-btn mt-6 w-full justify-center py-3.5 text-[16px]" @click="closeSheets">
                   <span class="cta-sheen" aria-hidden="true"></span>
                   <span class="material-symbols-rounded relative text-[20px]">explore</span>
-                  <span class="relative">ดูทริปทั้งหมด</span>
+                  <span class="relative">{{ $t('ดูทริปทั้งหมด') }}</span>
                 </router-link>
               </div>
 
@@ -789,14 +794,14 @@
                     </div>
                     <div class="min-w-0">
                       <p class="truncate text-[14px] font-bold text-text-dark">{{ favoriteTitle(trip) }}</p>
-                      <p v-if="trip.price" class="mt-0.5 text-[12px] font-bold text-primary">฿{{ Number(trip.price).toLocaleString() }}</p>
+                      <p v-if="trip.price" class="mt-0.5 text-[12px] font-bold text-primary">{{ $t('฿{Number}', { Number: Number(trip.price).toLocaleString() }) }}</p>
                     </div>
                   </router-link>
 
                   <button
                     type="button"
                     class="icon-btn w-10 h-10 shrink-0"
-                    :aria-label="`เอา ${favoriteTitle(trip)} ออกจากรายการโปรด`"
+                    :aria-label="$t('เอา {favoriteTitle} ออกจากรายการโปรด', { favoriteTitle: favoriteTitle(trip) })"
                     @click="wishlistStore.toggleFavorite(trip)"
                   >
                     <span class="material-symbols-rounded text-[21px] text-red-500" :style="wishlistFilledStyle">favorite</span>
@@ -810,7 +815,7 @@
                   @click="closeSheets"
                 >
                   <span class="material-symbols-rounded text-[20px]">explore</span>
-                  ดูทริปทั้งหมด
+                  {{ $t('ดูทริปทั้งหมด') }}
                 </router-link>
               </template>
             </div>
@@ -822,6 +827,9 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import LanguageSwitch from './LanguageSwitch.vue';
+import { DATE_LOCALE } from '@/i18n';
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
@@ -868,7 +876,7 @@ const wishlistFilledStyle = { fontVariationSettings: "'FILL' 1" };
    ::show ค้นจากคอลัมน์ slug ตรง ๆ) รายการที่ไม่มี slug จึงส่งไปหน้าทริปทั้งหมด
    แทนที่จะพาไปชน 404 */
 const favoriteKey = (trip) => (typeof trip === 'object' ? trip.id : trip);
-const favoriteTitle = (trip) => (typeof trip === 'object' && trip.title ? trip.title : 'ทริปที่บันทึกไว้');
+const favoriteTitle = (trip) => (typeof trip === 'object' && trip.title ? trip.title : $t('ทริปที่บันทึกไว้'));
 const favoriteLink = (trip) => (typeof trip === 'object' && trip.slug ? `/trips/${trip.slug}` : '/trips');
 const favoriteThumb = (trip) => (typeof trip === 'object' ? trip.thumbnail_image || trip.cover_image : null);
 
@@ -891,69 +899,69 @@ const tripCategories = ref([]);
 
 const navLinks = computed(() => [
   {
-    label: 'ทริปทั้งหมด',
+    label: $t('ทริปทั้งหมด'),
     icon: 'explore',
     to: '/trips',
     children: [
-      { to: '/trips', icon: 'explore', label: 'ทริปทั้งหมด', desc: 'ทุกทริปที่เปิดจองอยู่ตอนนี้' },
+      { to: '/trips', icon: 'explore', label: $t('ทริปทั้งหมด'), desc: $t('ทุกทริปที่เปิดจองอยู่ตอนนี้') },
       ...tripCategories.value.map((c) => ({
         to: `/trips?type=${c.slug}`,
         icon: c.icon || 'landscape',
         label: c.name,
         desc: c.subtitle || '',
       })),
-      { to: '/calendar', icon: 'event', label: 'ปฏิทินทริป', desc: 'เดือนนี้เดือนหน้ามีรอบไหนบ้าง' },
-      { to: '/explore', icon: 'map', label: 'แผนที่ทริป', desc: 'ดูว่าแต่ละทริปอยู่ตรงไหนของประเทศ' },
-      { to: '/find', icon: 'travel_explore', label: 'ค้นหาทริปที่ใช่', desc: 'ตอบไม่กี่ข้อ แล้วให้เราแนะนำ' },
-      { to: '/assistant', icon: 'auto_awesome', label: 'ถามผู้ช่วย', desc: 'พิมพ์บอกงบและวันที่ไหว แล้วให้ AI หาให้' },
+      { to: '/calendar', icon: 'event', label: $t('ปฏิทินทริป'), desc: $t('เดือนนี้เดือนหน้ามีรอบไหนบ้าง') },
+      { to: '/explore', icon: 'map', label: $t('แผนที่ทริป'), desc: $t('ดูว่าแต่ละทริปอยู่ตรงไหนของประเทศ') },
+      { to: '/find', icon: 'travel_explore', label: $t('ค้นหาทริปที่ใช่'), desc: $t('ตอบไม่กี่ข้อ แล้วให้เราแนะนำ') },
+      { to: '/assistant', icon: 'auto_awesome', label: $t('ถามผู้ช่วย'), desc: $t('พิมพ์บอกงบและวันที่ไหว แล้วให้ AI หาให้') },
     ],
   },
   // xlOnly: ซ่อนที่จอ 1024–1279px ให้แคปซูลเมนูพอดีแถว (ยังอยู่ในเมนูย่อย "ทริปทั้งหมด")
-  { to: '/calendar', icon: 'event', label: 'ปฏิทินทริป', xlOnly: true },
-  { to: '/explore', icon: 'map', label: 'แผนที่ทริป', xlOnly: true },
-  { to: '/stays', icon: 'cottage', label: 'ที่พักชุมชน' },
+  { to: '/calendar', icon: 'event', label: $t('ปฏิทินทริป'), xlOnly: true },
+  { to: '/explore', icon: 'map', label: $t('แผนที่ทริป'), xlOnly: true },
+  { to: '/stays', icon: 'cottage', label: $t('ที่พักชุมชน') },
   {
-    label: 'ข้อมูลก่อนไป',
+    label: $t('ข้อมูลก่อนไป'),
     icon: 'menu_book',
     to: '/places',
     children: [
-      { to: '/places', icon: 'landscape', label: 'สถานที่ธรรมชาติ', desc: 'ความสูง ระยะเดิน และช่วงที่ควรไปของแต่ละที่' },
-      { to: '/seasons', icon: 'calendar_month', label: 'เดือนไหนไปไหนดี', desc: 'ปฏิทินธรรมชาติไทยทั้ง 12 เดือน' },
-      { to: '/difficulty', icon: 'trending_up', label: 'ระดับความยาก', desc: 'สายชิล ปานกลาง สายโหด ต่างกันยังไง' },
-      { to: '/checklist', icon: 'checklist', label: 'เช็คลิสต์ของที่ต้องเตรียม', desc: 'ติ๊กได้ ปรินต์ได้ ใช้ฟรี' },
+      { to: '/places', icon: 'landscape', label: $t('สถานที่ธรรมชาติ'), desc: $t('ความสูง ระยะเดิน และช่วงที่ควรไปของแต่ละที่') },
+      { to: '/seasons', icon: 'calendar_month', label: $t('เดือนไหนไปไหนดี'), desc: $t('ปฏิทินธรรมชาติไทยทั้ง 12 เดือน') },
+      { to: '/difficulty', icon: 'trending_up', label: $t('ระดับความยาก'), desc: $t('สายชิล ปานกลาง สายโหด ต่างกันยังไง') },
+      { to: '/checklist', icon: 'checklist', label: $t('เช็คลิสต์ของที่ต้องเตรียม'), desc: $t('ติ๊กได้ ปรินต์ได้ ใช้ฟรี') },
     ],
   },
   {
-    label: 'รีวิว & ชุมชน',
+    label: $t('รีวิว & ชุมชน'),
     icon: 'reviews',
     to: '/reviews',
     children: [
-      { to: '/reviews', icon: 'reviews', label: 'รีวิวลูกค้า', desc: 'เสียงจริงจากผู้ร่วมทริป' },
-      { to: '/gallery', icon: 'photo_library', label: 'รูปจากคนที่ไปมาแล้ว', desc: 'รูปที่ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว' },
-      { to: '/feed', icon: 'dynamic_feed', label: 'ฟีดจากนักเดินทาง', desc: 'รูปที่คนไปมาแล้วโพสต์เอง' },
+      { to: '/reviews', icon: 'reviews', label: $t('รีวิวลูกค้า'), desc: $t('เสียงจริงจากผู้ร่วมทริป') },
+      { to: '/gallery', icon: 'photo_library', label: $t('รูปจากคนที่ไปมาแล้ว'), desc: $t('รูปที่ผู้ร่วมทริปถ่ายเองและแนบมากับรีวิว') },
+      { to: '/feed', icon: 'dynamic_feed', label: $t('ฟีดจากนักเดินทาง'), desc: $t('รูปที่คนไปมาแล้วโพสต์เอง') },
       // Blog is server-rendered (Blade) — full page load via a real <a>, not a router-link.
-      { to: '/blog', icon: 'article', label: 'บทความ', desc: 'ไอเดียและคู่มือการเดินทาง', external: true },
+      { to: '/blog', icon: 'article', label: $t('บทความ'), desc: $t('ไอเดียและคู่มือการเดินทาง'), external: true },
     ],
   },
   {
-    label: 'เกี่ยวกับเรา',
+    label: $t('เกี่ยวกับเรา'),
     icon: 'info',
     to: '/about',
     children: [
-      { to: '/about', icon: 'info', label: 'เกี่ยวกับเรา', desc: 'เรื่องราวและทีมงานของเรา' },
-      { to: '/goal', icon: 'flag', label: 'จุดมุ่งหมาย', desc: 'สิ่งที่เราตั้งใจทำให้สำเร็จ' },
-      { to: '/how-to-book', icon: 'menu_book', label: 'วิธีการจอง', desc: 'จองทริปได้ง่ายในไม่กี่ขั้นตอน' },
-      { to: '/faq', icon: 'quiz', label: 'คำถามที่พบบ่อย', desc: 'รวมคำตอบเรื่องการจอง การจ่าย และการเดินทาง' },
-      { to: '/contact', icon: 'contact_support', label: 'ติดต่อเรา', desc: 'โทร LINE อีเมล และเวลาทำการ' },
-      { to: '/problem', icon: 'report', label: 'แจ้งปัญหาการใช้งาน', desc: 'จองไม่ได้ จ่ายไม่ผ่าน บอกเราได้เลย' },
-      { to: '/terms', icon: 'gavel', label: 'เงื่อนไขการให้บริการ', desc: 'ข้อตกลงในการใช้บริการ' },
-      { to: '/privacy', icon: 'policy', label: 'นโยบายความเป็นส่วนตัว', desc: 'เราดูแลข้อมูลของคุณอย่างไร' },
+      { to: '/about', icon: 'info', label: $t('เกี่ยวกับเรา'), desc: $t('เรื่องราวและทีมงานของเรา') },
+      { to: '/goal', icon: 'flag', label: $t('จุดมุ่งหมาย'), desc: $t('สิ่งที่เราตั้งใจทำให้สำเร็จ') },
+      { to: '/how-to-book', icon: 'menu_book', label: $t('วิธีการจอง'), desc: $t('จองทริปได้ง่ายในไม่กี่ขั้นตอน') },
+      { to: '/faq', icon: 'quiz', label: $t('คำถามที่พบบ่อย'), desc: $t('รวมคำตอบเรื่องการจอง การจ่าย และการเดินทาง') },
+      { to: '/contact', icon: 'contact_support', label: $t('ติดต่อเรา'), desc: $t('โทร LINE อีเมล และเวลาทำการ') },
+      { to: '/problem', icon: 'report', label: $t('แจ้งปัญหาการใช้งาน'), desc: $t('จองไม่ได้ จ่ายไม่ผ่าน บอกเราได้เลย') },
+      { to: '/terms', icon: 'gavel', label: $t('เงื่อนไขการให้บริการ'), desc: $t('ข้อตกลงในการใช้บริการ') },
+      { to: '/privacy', icon: 'policy', label: $t('นโยบายความเป็นส่วนตัว'), desc: $t('เราดูแลข้อมูลของคุณอย่างไร') },
     ],
   },
 ]);
 
 // แผงเมนูมือถือมี "หน้าแรก" นำ เพราะมือถือไม่มีแถวลิงก์บริการลูกค้า
-const sheetLinks = computed(() => [{ to: '/', icon: 'home', label: 'หน้าแรก' }, ...navLinks.value]);
+const sheetLinks = computed(() => [{ to: '/', icon: 'home', label: $t('หน้าแรก') }, ...navLinks.value]);
 
 async function fetchTripCategories() {
   try {
@@ -1139,7 +1147,7 @@ async function loadNotifications() {
     notifications.value = res.data.data || [];
     await fetchUnreadCount();
   } catch {
-    notificationError.value = 'โหลดการแจ้งเตือนไม่สำเร็จ';
+    notificationError.value = $t('โหลดการแจ้งเตือนไม่สำเร็จ');
   } finally {
     notificationsLoading.value = false;
   }
@@ -1193,7 +1201,7 @@ async function deleteNotification(id) {
 
 async function clearNotifications() {
   if (notifications.value.length === 0 || notificationBusy.value) return;
-  if (!window.confirm('ต้องการเคลียร์ข้อความแจ้งเตือนทั้งหมดใช่ไหม?')) return;
+  if (!window.confirm($t('ต้องการเคลียร์ข้อความแจ้งเตือนทั้งหมดใช่ไหม?'))) return;
 
   notificationBusy.value = true;
   try {
@@ -1209,9 +1217,9 @@ async function clearNotifications() {
 // (route, screen, *_id, trip_slug, type, url, ...) is internal navigation
 // metadata for the app and must NOT be shown to the user.
 const NOTIFICATION_DATA_LABELS = {
-  booking_ref: 'รหัสจอง',
-  amount: 'ยอดเงิน',
-  points: 'แต้มสะสม',
+  booking_ref: $t('รหัสจอง'),
+  amount: $t('ยอดเงิน'),
+  points: $t('แต้มสะสม'),
 };
 
 function notificationDataEntries(data) {
@@ -1221,8 +1229,8 @@ function notificationDataEntries(data) {
     .filter(([key, value]) => key in NOTIFICATION_DATA_LABELS && value != null && value !== '')
     .map(([key, value]) => {
       let display = String(value);
-      if (key === 'amount') display = `฿${Number(value).toLocaleString()}`;
-      else if (key === 'points') display = `${Number(value).toLocaleString()} แต้ม`;
+      if (key === 'amount') display = $t('฿{Number}', { Number: Number(value).toLocaleString() });
+      else if (key === 'points') display = $t('{Number} แต้ม', { Number: Number(value).toLocaleString() });
       return { key, label: NOTIFICATION_DATA_LABELS[key], value: display };
     });
 }
@@ -1251,13 +1259,13 @@ function notifStyle(type) {
 
 function notificationTypeLabel(type) {
   const map = {
-    seat_alert: 'ที่นั่ง',
-    booking_reminder: 'เตือนการจอง',
-    promo: 'โปรโมชั่น',
-    system: 'ระบบ',
-    loyalty: 'แต้มสะสม',
+    seat_alert: $t('ที่นั่ง'),
+    booking_reminder: $t('เตือนการจอง'),
+    promo: $t('โปรโมชั่น'),
+    system: $t('ระบบ'),
+    loyalty: $t('แต้มสะสม'),
   };
-  return map[type] || type || 'ทั่วไป';
+  return map[type] || type || $t('ทั่วไป');
 }
 
 function timeAgo(dateStr) {
@@ -1265,16 +1273,16 @@ function timeAgo(dateStr) {
 
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'เมื่อกี้';
-  if (minutes < 60) return `${minutes} นาทีที่แล้ว`;
+  if (minutes < 1) return $t('เมื่อกี้');
+  if (minutes < 60) return $t('{minutes} นาทีที่แล้ว', { minutes });
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} ชั่วโมงที่แล้ว`;
+  if (hours < 24) return $t('{hours} ชั่วโมงที่แล้ว', { hours });
 
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} วันที่แล้ว`;
+  if (days < 7) return $t('{days} วันที่แล้ว', { days });
 
-  return new Date(dateStr).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(dateStr).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 let pollInterval = null;
@@ -1331,24 +1339,24 @@ const isStaff = computed(() => {
 const accountRoleLabel = computed(() => (isAdmin.value ? 'Admin' : isStaff.value ? 'Staff' : 'Member'));
 
 const accountQuickLinks = computed(() => [
-  { to: '/my-bookings', icon: 'confirmation_number', label: 'การจองของฉัน', short: 'การจอง' },
-  { to: '/loyalty', icon: 'stars', label: 'แต้มสะสม', short: 'แต้มสะสม' },
-  { to: '/support', icon: 'support_agent', label: 'ศูนย์ช่วยเหลือ', short: 'ช่วยเหลือ', badge: supportUnread.value },
+  { to: '/my-bookings', icon: 'confirmation_number', label: $t('การจองของฉัน'), short: $t('การจอง') },
+  { to: '/loyalty', icon: 'stars', label: $t('แต้มสะสม'), short: $t('แต้มสะสม') },
+  { to: '/support', icon: 'support_agent', label: $t('ศูนย์ช่วยเหลือ'), short: $t('ช่วยเหลือ'), badge: supportUnread.value },
 ]);
 
 const accountMoreLinks = computed(() => [
-  { to: '/my-stays', icon: 'cottage', label: 'ที่พักของฉัน' },
-  { to: '/my-reviews', icon: 'reviews', label: 'รีวิวของฉัน' },
-  { to: '/group-plans', icon: 'groups', label: 'กลุ่มไปด้วยกัน' },
-  { to: '/passport', icon: 'hiking', label: 'สมุดสะสมการเดินทาง', short: 'สมุดสะสมทริป' },
-  { to: '/my-tracks', icon: 'route', label: 'บันทึกการเดินของฉัน', short: 'บันทึกการเดิน' },
-  { to: '/referral', icon: 'group_add', label: 'ชวนเพื่อน' },
-  ...(auth.user?.is_partner ? [{ to: '/partner', icon: 'handshake', label: 'พาร์ทเนอร์ช่วยขาย', short: 'พาร์ทเนอร์' }] : []),
+  { to: '/my-stays', icon: 'cottage', label: $t('ที่พักของฉัน') },
+  { to: '/my-reviews', icon: 'reviews', label: $t('รีวิวของฉัน') },
+  { to: '/group-plans', icon: 'groups', label: $t('กลุ่มไปด้วยกัน') },
+  { to: '/passport', icon: 'hiking', label: $t('สมุดสะสมการเดินทาง'), short: $t('สมุดสะสมทริป') },
+  { to: '/my-tracks', icon: 'route', label: $t('บันทึกการเดินของฉัน'), short: $t('บันทึกการเดิน') },
+  { to: '/referral', icon: 'group_add', label: $t('ชวนเพื่อน') },
+  ...(auth.user?.is_partner ? [{ to: '/partner', icon: 'handshake', label: $t('พาร์ทเนอร์ช่วยขาย'), short: $t('พาร์ทเนอร์') }] : []),
 ]);
 
 const accountWorkLinks = computed(() => [
-  ...(isStaff.value ? [{ to: '/my-staff-trips', icon: 'badge', label: 'ตารางงานสตาฟ' }] : []),
-  ...(isAdmin.value ? [{ to: '/admin', icon: 'admin_panel_settings', label: 'ผู้ดูแลระบบ', accent: true }] : []),
+  ...(isStaff.value ? [{ to: '/my-staff-trips', icon: 'badge', label: $t('ตารางงานสตาฟ') }] : []),
+  ...(isAdmin.value ? [{ to: '/admin', icon: 'admin_panel_settings', label: $t('ผู้ดูแลระบบ'), accent: true }] : []),
 ]);
 
 async function handleLogout() {
@@ -1532,6 +1540,18 @@ async function handleLogout() {
 }
 @media (min-width: 1280px) {
   .mb-link.xl-only { display: flex; }
+}
+
+/* หน้าอังกฤษ: คำในเมนูยาวกว่าไทยราวครึ่งหนึ่ง ที่ 1280px ไอคอน + ทางลัดสองตัวจะดัน
+   "About us" ไปทับปุ่มเข้าสู่ระบบ — เลื่อนสองอย่างนี้ไปโผล่ที่ 1440px แทน */
+@media (min-width: 1280px) {
+  .is-en .mb-ico { display: none; }
+  .is-en .mb-link.xl-only { display: none; }
+}
+@media (min-width: 1440px) {
+  .is-en .mb-ico { display: inline-block; }
+  .is-en.is-compact .mb-ico { display: none; }
+  .is-en .mb-link.xl-only { display: flex; }
 }
 
 .mini-logo {

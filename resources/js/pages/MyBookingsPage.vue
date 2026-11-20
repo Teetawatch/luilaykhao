@@ -1,15 +1,15 @@
 <template>
   <div class="min-h-screen bg-[var(--color-sand)] pb-32 font-anuphan relative overflow-hidden">
     <PageHeader
-      title="การจองของฉัน"
-      subtitle="ดูสถานะการจอง ชำระเงินงวดถัดไป และตั๋วเดินทางของทุกทริปได้ที่นี่"
-      :crumbs="[{ to: '/profile', label: 'บัญชีของฉัน' }]"
+      :title="$t('การจองของฉัน')"
+      :subtitle="$t('ดูสถานะการจอง ชำระเงินงวดถัดไป และตั๋วเดินทางของทุกทริปได้ที่นี่')"
+      :crumbs="[{ to: '/profile', label: $t('บัญชีของฉัน') }]"
       container="max-w-4xl px-4 sm:px-6"
     >
       <template #actions>
         <router-link to="/trips" class="ph-btn ph-btn--solid">
           <span class="material-symbols-rounded icon-18">explore</span>
-          จองทริปใหม่
+          {{ $t('จองทริปใหม่') }}
         </router-link>
       </template>
     </PageHeader>
@@ -28,7 +28,7 @@
             ? 'bg-[var(--color-accent)] text-white'
             : 'text-[#505E5E] hover:text-[var(--color-accent)] hover:bg-[#F4F7F6]'">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'upcoming' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">event_upcoming</span>
-          ที่กำลังจะมาถึง
+          {{ $t('ที่กำลังจะมาถึง') }}
           <span v-if="upcomingCount" class="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center"
             :class="activeTab === 'upcoming' ? 'bg-white/25 text-white' : 'bg-[#E8EEEF] text-[#505E5E]'">{{ upcomingCount }}</span>
         </button>
@@ -39,7 +39,7 @@
             ? 'bg-[var(--color-accent)] text-white'
             : 'text-[#505E5E] hover:text-[var(--color-accent)] hover:bg-[#F4F7F6]'">
           <span class="material-symbols-rounded text-[20px]" :style="activeTab === 'past' ? 'font-variation-settings:\'FILL\' 1' : 'font-variation-settings:\'FILL\' 0'">history</span>
-          ที่ผ่านมาแล้ว
+          {{ $t('ที่ผ่านมาแล้ว') }}
           <span v-if="pastCount" class="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-black flex items-center justify-center"
             :class="activeTab === 'past' ? 'bg-white/25 text-white' : 'bg-[#E8EEEF] text-[#505E5E]'">{{ pastCount }}</span>
         </button>
@@ -48,7 +48,7 @@
       <!-- Loading -->
       <div v-if="bookingStore.loading" class="flex flex-col items-center justify-center py-24 space-y-4">
         <div class="w-10 h-10 border-4 border-[var(--color-accent)]/20 border-t-[var(--color-accent)] rounded-full animate-spin"></div>
-        <p class="text-[#505E5E] font-medium animate-pulse text-sm">กำลังโหลดข้อมูลการจอง...</p>
+        <p class="text-[#505E5E] font-medium animate-pulse text-sm">{{ $t('กำลังโหลดข้อมูลการจอง...') }}</p>
       </div>
 
       <!-- Empty State -->
@@ -59,16 +59,16 @@
               {{ activeTab === 'upcoming' ? 'event_busy' : 'history_toggle_off' }}
             </span>
           </div>
-          <h3 class="text-lg font-bold text-[#1a1c1c] mb-2">ยังไม่มีการจอง</h3>
+          <h3 class="text-lg font-bold text-[#1a1c1c] mb-2">{{ $t('ยังไม่มีการจอง') }}</h3>
           <p class="text-[#505E5E] text-sm mb-6 max-w-sm mx-auto">
             {{ activeTab === 'upcoming' 
-                ? 'คุณยังไม่มีแผนการเดินทางที่กำลังจะมาถึง เริ่มค้นหาประสบการณ์ใหม่ๆ ได้เลย!' 
-                : 'คุณยังไม่เคยเดินทางกับเรามาก่อน ลองดูทริปที่น่าสนใจสิ' }}
+                ? $t('คุณยังไม่มีแผนการเดินทางที่กำลังจะมาถึง เริ่มค้นหาประสบการณ์ใหม่ๆ ได้เลย!') 
+                : $t('คุณยังไม่เคยเดินทางกับเรามาก่อน ลองดูทริปที่น่าสนใจสิ') }}
           </p>
           <router-link to="/trips"
              class="inline-flex items-center gap-2 bg-[var(--color-accent)] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[var(--color-accent-mid)] transition-all">
             <span class="material-symbols-rounded text-[20px]">explore</span>
-            เริ่มค้นหากิจกรรม
+            {{ $t('เริ่มค้นหากิจกรรม') }}
             <span class="material-symbols-rounded text-[20px]">arrow_forward</span>
           </router-link>
         </div>
@@ -102,7 +102,7 @@
 
             <!-- Title overlay (mobile) -->
             <h2 class="absolute bottom-4 left-4 right-4 md:hidden text-white text-lg font-bold leading-snug line-clamp-2">
-              {{ b.schedule?.trip?.title || 'การจอง' }}
+              {{ b.schedule?.trip?.title || $t('การจอง') }}
             </h2>
           </div>
 
@@ -110,7 +110,7 @@
           <div class="p-5 md:p-6 flex-1 flex flex-col relative w-full">
             <div class="flex flex-col sm:flex-row justify-between items-start mb-3 gap-3">
               <h2 class="hidden md:block text-lg font-bold text-[#1a1c1c] leading-snug line-clamp-2 md:mr-8 transition-colors group-hover:text-[var(--color-accent)]">
-                {{ b.schedule?.trip?.title || 'การจอง' }}
+                {{ b.schedule?.trip?.title || $t('การจอง') }}
               </h2>
               <div class="flex flex-col items-start sm:items-end gap-2 shrink-0 w-full sm:w-auto">
                 <span class="px-2.5 py-1 text-xs font-bold rounded-[8px] flex items-center gap-1.5 whitespace-nowrap"
@@ -133,10 +133,10 @@
                     <span class="material-symbols-rounded text-[16px] text-[var(--color-accent)]">calendar_month</span>
                   </div>
                   <span class="font-medium text-[#1a1c1c]" :class="{ 'line-through text-[#889696]': awaitsNewRound(b) }">{{ formatDate(b.schedule?.departure_date) }}</span>
-                  <span v-if="awaitsNewRound(b)" class="text-[11px] font-bold text-[#B45309]">รอบนี้ยกเลิก</span>
+                  <span v-if="awaitsNewRound(b)" class="text-[11px] font-bold text-[#B45309]">{{ $t('รอบนี้ยกเลิก') }}</span>
                 </div>
                 <div class="text-right shrink-0">
-                  <span class="text-[10px] text-[#889696] font-bold block mb-0.5 uppercase tracking-wider">หมายเลขการจอง</span>
+                  <span class="text-[10px] text-[#889696] font-bold block mb-0.5 uppercase tracking-wider">{{ $t('หมายเลขการจอง') }}</span>
                   <span class="font-bold text-[#1a1c1c] font-mono">{{ b.booking_ref }}</span>
                 </div>
               </div>
@@ -145,9 +145,9 @@
             <!-- Price & Installment Info -->
             <div class="mb-5">
               <div class="flex justify-between items-end">
-                <div class="text-[11px] font-bold text-[#889696] uppercase tracking-wide">ยอดชำระ</div>
+                <div class="text-[11px] font-bold text-[#889696] uppercase tracking-wide">{{ $t('ยอดชำระ') }}</div>
                 <div class="text-xl md:text-2xl font-bold text-[var(--color-accent)] tracking-tight">
-                  <span class="text-sm text-[var(--color-accent)] mr-0.5">฿</span>{{ Number(b.total_amount).toLocaleString() }}
+                  <span class="text-sm text-[var(--color-accent)] mr-0.5">{{ $t('฿') }}</span>{{ Number(b.total_amount).toLocaleString() }}
                 </div>
               </div>
 
@@ -170,47 +170,45 @@
             <div v-if="awaitsNewRound(b)" class="mb-5 rounded-[16px] bg-[#FFFBEB] border border-[#FDE68A] p-4">
               <p class="font-bold text-[#78350F] text-sm flex items-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">{{ isUnderfilled(b) ? 'groups' : 'thunderstorm' }}</span>
-                {{ isUnderfilled(b) ? 'รอบเดินทางนี้ไม่ได้ออก' : 'รอบเดินทางนี้ออกไม่ได้' }}<template v-if="b.force_majeure.reason"> เนื่องจาก{{ b.force_majeure.reason }}</template>
+                {{ isUnderfilled(b) ? $t('รอบเดินทางนี้ไม่ได้ออก') : $t('รอบเดินทางนี้ออกไม่ได้') }}<template v-if="b.force_majeure.reason"> {{ $t('เนื่องจาก{reason}', { reason: b.force_majeure.reason }) }}</template>
               </p>
               <template v-if="b.force_majeure.can_choose">
                 <p v-if="isUnderfilled(b)" class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
-                  เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม หรือขอรับเงินคืนเต็มจำนวน
-                  <template v-if="b.force_majeure.refund_amount > 0">฿{{ Number(b.force_majeure.refund_amount).toLocaleString('th-TH') }}</template>
-                  ภายใน <strong>{{ b.force_majeure.decide_by_label }}</strong>
-                  <template v-if="b.force_majeure.days_left != null"> (เหลือ {{ b.force_majeure.days_left }} วัน)</template>
+                  {{ $t('เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม หรือขอรับเงินคืนเต็มจำนวน') }}
+                  <template v-if="b.force_majeure.refund_amount > 0">{{ $t('฿{Number}', { Number: Number(b.force_majeure.refund_amount).toLocaleString($dateLocale) }) }}</template>
+                  {{ $t('ภายใน') }} <strong>{{ b.force_majeure.decide_by_label }}</strong>
+                  <template v-if="b.force_majeure.days_left != null"> {{ $t('(เหลือ {days_left} วัน)', { days_left: b.force_majeure.days_left }) }}</template>
                 </p>
                 <p v-else class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
-                  ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม
-                  ภายใน <strong>{{ b.force_majeure.until_label }}</strong>
-                  <template v-if="b.force_majeure.days_left != null"> (เหลือ {{ b.force_majeure.days_left }} วัน)</template>
+                  {{ $t('ยอดที่ชำระไว้ยังอยู่ครบ เลือกรอบใหม่ของทริปนี้ได้ฟรี ราคาเดิม ภายใน') }} <strong>{{ b.force_majeure.until_label }}</strong>
+                  <template v-if="b.force_majeure.days_left != null"> {{ $t('(เหลือ {days_left} วัน)', { days_left: b.force_majeure.days_left }) }}</template>
                 </p>
-                <p v-if="b.viewer_is_owner === false" class="text-[12px] text-[#92400E] mt-2">ผู้จองเป็นคนเลือกรอบใหม่ให้ทั้งกลุ่มครับ</p>
+                <p v-if="b.viewer_is_owner === false" class="text-[12px] text-[#92400E] mt-2">{{ $t('ผู้จองเป็นคนเลือกรอบใหม่ให้ทั้งกลุ่มครับ') }}</p>
                 <div v-else class="mt-3 flex flex-col sm:flex-row gap-2">
                   <button v-if="b.can_reschedule" @click="openReschedule(b)"
                     class="w-full sm:w-auto bg-[#D97706] text-white py-2.5 px-5 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all inline-flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[18px]">event_repeat</span>
-                    เลือกรอบใหม่
+                    {{ $t('เลือกรอบใหม่') }}
                   </button>
                   <button v-if="b.force_majeure.can_request_refund" @click="openRefund(b)"
                     class="w-full sm:w-auto bg-white text-[#B45309] border border-[#FCD34D] py-2.5 px-5 rounded-[12px] font-bold text-sm hover:bg-[#FFFBEB] transition-all inline-flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[18px]">currency_exchange</span>
-                    {{ b.force_majeure.refund_amount > 0 ? 'ขอรับเงินคืน' : 'ยกเลิกการจอง' }}
+                    {{ b.force_majeure.refund_amount > 0 ? $t('ขอรับเงินคืน') : $t('ยกเลิกการจอง') }}
                   </button>
                 </div>
               </template>
               <template v-else-if="isUnderfilled(b)">
                 <p class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
-                  เลยกำหนดเลือกรอบใหม่แล้ว ({{ b.force_majeure.decide_by_label }}) เราจะคืนเงินเต็มจำนวนให้ครับ
-                  กรอกบัญชีรับเงินไว้ได้เลย จะได้เร็วขึ้น
+                  {{ $t('เลยกำหนดเลือกรอบใหม่แล้ว ({decide_by_label}) เราจะคืนเงินเต็มจำนวนให้ครับ กรอกบัญชีรับเงินไว้ได้เลย จะได้เร็วขึ้น', { decide_by_label: b.force_majeure.decide_by_label }) }}
                 </p>
                 <button v-if="b.force_majeure.can_request_refund && b.viewer_is_owner !== false" @click="openRefund(b)"
                   class="mt-3 w-full sm:w-auto bg-[#D97706] text-white py-2.5 px-5 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all inline-flex items-center justify-center gap-1.5">
                   <span class="material-symbols-rounded text-[18px]">currency_exchange</span>
-                  {{ b.force_majeure.refund_amount > 0 ? 'กรอกบัญชีรับเงินคืน' : 'ยกเลิกการจอง' }}
+                  {{ b.force_majeure.refund_amount > 0 ? $t('กรอกบัญชีรับเงินคืน') : $t('ยกเลิกการจอง') }}
                 </button>
               </template>
               <p v-else class="text-[13px] text-[#92400E] mt-1.5 leading-relaxed">
-                เลยกำหนดเลือกรอบใหม่แล้ว ({{ b.force_majeure.until_label }}) ทักทีมงานเพื่อช่วยดูแลต่อได้เลยครับ
+                {{ $t('เลยกำหนดเลือกรอบใหม่แล้ว ({until_label}) ทักทีมงานเพื่อช่วยดูแลต่อได้เลยครับ', { until_label: b.force_majeure.until_label }) }}
               </p>
             </div>
 
@@ -218,12 +216,12 @@
             <div v-else-if="refundState(b)" class="mb-5 rounded-[16px] bg-[#F0FAFA] border border-[#BCDFDF] p-4 text-[13px] text-[#0F3D3E]">
               <p class="font-bold text-sm flex items-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">currency_exchange</span>
-                {{ refundState(b) === 'refunded' ? 'โอนเงินคืนแล้ว' : 'รับเรื่องคืนเงินแล้ว' }}
-                <template v-if="b.force_majeure.refund_amount > 0">· ฿{{ Number(b.force_majeure.refund_amount).toLocaleString('th-TH') }}</template>
+                {{ refundState(b) === 'refunded' ? $t('โอนเงินคืนแล้ว') : $t('รับเรื่องคืนเงินแล้ว') }}
+                <template v-if="b.force_majeure.refund_amount > 0">{{ $t('· ฿{Number}', { Number: Number(b.force_majeure.refund_amount).toLocaleString($dateLocale) }) }}</template>
               </p>
               <p v-if="refundState(b) === 'refund_requested'" class="mt-1 leading-relaxed">
-                <template v-if="b.force_majeure.refund_account_label">โอนเข้า {{ b.force_majeure.refund_account_label }} ภายใน 3–7 วันทำการครับ</template>
-                <template v-else>ทีมงานจะติดต่อขอเลขบัญชีรับเงินคืนครับ</template>
+                <template v-if="b.force_majeure.refund_account_label">{{ $t('โอนเข้า {refund_account_label} ภายใน 3–7 วันทำการครับ', { refund_account_label: b.force_majeure.refund_account_label }) }}</template>
+                <template v-else>{{ $t('ทีมงานจะติดต่อขอเลขบัญชีรับเงินคืนครับ') }}</template>
               </p>
             </div>
 
@@ -235,7 +233,7 @@
                 class="flex-1 text-center bg-[var(--color-accent)] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[var(--color-accent-mid)] transition-all flex items-center justify-center gap-1.5">
                 <span v-if="b.status === 'confirmed'" class="material-symbols-rounded text-[18px]">confirmation_number</span>
                 <span v-else class="material-symbols-rounded text-[18px]">visibility</span>
-                {{ b.status === 'confirmed' ? 'ดาวน์โหลดตั๋ว' : 'ดูรายละเอียด' }}
+                {{ b.status === 'confirmed' ? $t('ดาวน์โหลดตั๋ว') : $t('ดูรายละเอียด') }}
               </router-link>
 
               <!-- ปุ่มจ่ายเงินขึ้นเฉพาะ pending ที่ยังไม่ได้ส่งสลิป หรือถูกปฏิเสธให้ส่งใหม่
@@ -245,7 +243,7 @@
                 :to="`/payment/${b.booking_ref}`"
                 class="flex-1 text-center bg-[#D97706] text-white py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#B45309] transition-all flex items-center justify-center gap-1.5 animate-pulse">
                 <span class="material-symbols-rounded text-[18px]" style="font-variation-settings:'FILL' 1">payments</span>
-                {{ reviewState(b) === 'rejected' ? 'ส่งสลิปใหม่' : 'ชำระเงิน' }}
+                {{ reviewState(b) === 'rejected' ? $t('ส่งสลิปใหม่') : $t('ชำระเงิน') }}
               </router-link>
 
               <!-- เฉพาะสถานะ pending: ปุ่มหลักคือ "ชำระเงิน" จึงต้องมีทางไปดูรายละเอียด
@@ -255,7 +253,7 @@
                 :to="`/confirmation/${b.booking_ref}`"
                 class="flex-1 text-center bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">info</span>
-                รายละเอียด
+                {{ $t('รายละเอียด') }}
               </router-link>
 
               <!-- สรุปทริป — ขึ้นเฉพาะรอบที่จบแล้ว เพราะ recap ต้องรอวันสุดท้ายผ่านไป -->
@@ -264,7 +262,7 @@
                 :to="`/recap/${b.booking_ref}`"
                 class="flex-1 text-center border-2 border-[#0F3D3E] text-[#0F3D3E] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">auto_awesome</span>
-                สรุปทริป
+                {{ $t('สรุปทริป') }}
               </router-link>
 
               <router-link
@@ -272,7 +270,7 @@
                 to="/my-reviews"
                 class="flex-1 text-center border-2 border-[var(--color-accent)] text-[var(--color-accent)] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">star</span>
-                เขียนรีวิว
+                {{ $t('เขียนรีวิว') }}
               </router-link>
 
               <router-link
@@ -280,7 +278,7 @@
                 :to="{ name: 'trip-chat', params: { scheduleId: b.schedule.id }, query: { title: b.schedule?.trip?.title, date: b.schedule?.departure_date } }"
                 class="flex-1 text-center border-2 border-[var(--color-accent)] text-[var(--color-accent)] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E3F2F2] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">chat</span>
-                แชท
+                {{ $t('แชท') }}
               </router-link>
 
               <button
@@ -288,14 +286,14 @@
                 @click="openStaffReviewModal(b)"
                 class="flex-1 text-center border-2 border-[#0C4A6E] text-[#0C4A6E] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#E0F2FE] transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">badge</span>
-                รีวิวสตาฟ
+                {{ $t('รีวิวสตาฟ') }}
               </button>
               
               <button
                 v-if="b.status === 'pending'"
                 @click="handleCancel(b)"
                 class="flex-1 sm:flex-none border border-[#FCA5A5] text-[#DC2626] py-2.5 px-4 rounded-[12px] font-bold text-sm hover:bg-[#FEF2F2] hover:border-[#F87171] transition-all">
-                ยกเลิก
+                {{ $t('ยกเลิก') }}
               </button>
 
               <button
@@ -303,7 +301,7 @@
                 @click="openReschedule(b)"
                 class="flex-1 sm:flex-none bg-white text-[var(--color-accent)] border border-[#BCDFDF] hover:bg-[#F0FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">event_repeat</span>
-                เปลี่ยนวันเดินทาง
+                {{ $t('เปลี่ยนวันเดินทาง') }}
               </button>
 
               <button
@@ -311,7 +309,7 @@
                 @click="permitTarget = b"
                 class="flex-1 sm:flex-none bg-[#FFFBEB] text-[#92400E] border border-[#FDE68A] hover:bg-[#FEF3C7] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">signature</span>
-                เซ็นแบบฟอร์มอุทยาน
+                {{ $t('เซ็นแบบฟอร์มอุทยาน') }}
               </button>
 
               <button
@@ -319,10 +317,10 @@
                 @click="handoverTarget = b"
                 class="flex-1 sm:flex-none bg-white text-[var(--color-accent)] border border-[#BCDFDF] hover:bg-[#F0FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">swap_horiz</span>
-                ส่งต่อที่นั่ง
+                {{ $t('ส่งต่อที่นั่ง') }}
                 <span v-if="b.seat_handover.open_count > 0"
                   class="ml-0.5 text-[11px] font-black bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] rounded-full px-1.5">
-                  รอรับ {{ b.seat_handover.open_count }}
+                  {{ $t('รอรับ {open_count}', { open_count: b.seat_handover.open_count }) }}
                 </span>
               </button>
 
@@ -331,7 +329,7 @@
                 @click="addToCalendar(b)"
                 class="flex-1 sm:flex-none bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">event</span>
-                เพิ่มลงปฏิทิน
+                {{ $t('เพิ่มลงปฏิทิน') }}
               </button>
 
               <button
@@ -339,7 +337,7 @@
                 @click="openShareTracking(b)"
                 class="flex-1 sm:flex-none bg-white text-[#505E5E] border border-[#E8EEEF] hover:bg-[#F9FAFA] py-2.5 px-4 rounded-[12px] font-bold text-sm transition-all flex items-center justify-center gap-1.5">
                 <span class="material-symbols-rounded text-[18px]">share_location</span>
-                แชร์ให้ที่บ้านติดตาม
+                {{ $t('แชร์ให้ที่บ้านติดตาม') }}
               </button>
 
               <button
@@ -354,12 +352,12 @@
         </article>
 
         <!-- Pagination -->
-        <nav v-if="lastPage > 1" class="flex justify-center items-center mt-8 gap-2" aria-label="หน้าของรายการจอง">
+        <nav v-if="lastPage > 1" class="flex justify-center items-center mt-8 gap-2" :aria-label="$t('หน้าของรายการจอง')">
           <button
             :disabled="currentPage === 1"
             @click="load(currentPage - 1)"
             class="w-9 h-9 rounded-[10px] bg-white border border-[#E8EEEF] text-[#505E5E] hover:bg-[#F9FAFA] disabled:opacity-40 disabled:hover:bg-white flex items-center justify-center"
-            aria-label="หน้าก่อนหน้า">
+            :aria-label="$t('หน้าก่อนหน้า')">
             <span class="material-symbols-rounded text-[18px]">chevron_left</span>
           </button>
 
@@ -381,7 +379,7 @@
             :disabled="currentPage === lastPage"
             @click="load(currentPage + 1)"
             class="w-9 h-9 rounded-[10px] bg-white border border-[#E8EEEF] text-[#505E5E] hover:bg-[#F9FAFA] disabled:opacity-40 disabled:hover:bg-white flex items-center justify-center"
-            aria-label="หน้าถัดไป">
+            :aria-label="$t('หน้าถัดไป')">
             <span class="material-symbols-rounded text-[18px]">chevron_right</span>
           </button>
         </nav>
@@ -392,7 +390,7 @@
         <div class="bg-white w-full max-w-lg rounded-2xl border border-[#E8EEEF] overflow-hidden">
           <div class="px-5 py-4 border-b border-[#E8EEEF] flex items-center justify-between">
             <div>
-              <h3 class="text-lg font-bold text-[#1a1c1c]">รีวิวสตาฟประจำทริป</h3>
+              <h3 class="text-lg font-bold text-[#1a1c1c]">{{ $t('รีวิวสตาฟประจำทริป') }}</h3>
               <p class="text-xs text-[#6b7280] mt-0.5">{{ reviewingBooking?.schedule?.trip?.title || '-' }}</p>
             </div>
             <button @click="showStaffReviewModal = false" class="w-8 h-8 rounded-lg border border-[#E5E7EB] hover:bg-[#F3F4F6] inline-flex items-center justify-center">
@@ -402,9 +400,9 @@
 
           <div class="p-5 space-y-4">
             <div>
-              <label class="block text-sm font-semibold text-[#334155] mb-1">เลือกสตาฟ</label>
+              <label class="block text-sm font-semibold text-[#334155] mb-1">{{ $t('เลือกสตาฟ') }}</label>
               <select v-model.number="staffReviewForm.staff_user_id" @change="hydrateStaffReviewForm" class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm">
-                <option :value="0" disabled>-- เลือกสตาฟ --</option>
+                <option :value="0" disabled>{{ $t('-- เลือกสตาฟ --') }}</option>
                 <option v-for="staff in reviewingBooking?.assigned_staff || []" :key="staff.id" :value="staff.id">
                   {{ staff.name }}
                 </option>
@@ -412,7 +410,7 @@
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-[#334155] mb-1">คะแนนความพึงพอใจ</label>
+              <label class="block text-sm font-semibold text-[#334155] mb-1">{{ $t('คะแนนความพึงพอใจ') }}</label>
               <div class="grid grid-cols-5 gap-2">
                 <button
                   v-for="score in [1,2,3,4,5]"
@@ -428,28 +426,28 @@
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-[#334155] mb-1">ความคิดเห็น (ไม่บังคับ)</label>
+              <label class="block text-sm font-semibold text-[#334155] mb-1">{{ $t('ความคิดเห็น (ไม่บังคับ)') }}</label>
               <textarea
                 v-model="staffReviewForm.comment"
                 rows="4"
                 class="w-full rounded-xl border border-[#D7E0E1] px-3 py-2.5 text-sm"
-                placeholder="เล่าประสบการณ์การดูแลของสตาฟคนนี้"
+                :placeholder="$t('เล่าประสบการณ์การดูแลของสตาฟคนนี้')"
               ></textarea>
             </div>
 
             <div v-if="selectedStaffReview" class="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3 text-xs text-[#475569]">
-              คุณเคยรีวิวสตาฟคนนี้แล้ว ระบบจะอัปเดตรีวิวเดิม
+              {{ $t('คุณเคยรีวิวสตาฟคนนี้แล้ว ระบบจะอัปเดตรีวิวเดิม') }}
             </div>
           </div>
 
           <div class="px-5 py-4 border-t border-[#E8EEEF] flex justify-end gap-2">
-            <button @click="showStaffReviewModal = false" class="px-4 py-2.5 rounded-xl border border-[#D7E0E1] text-sm font-semibold text-[#475569] hover:bg-[#F8FAFC]">ยกเลิก</button>
+            <button @click="showStaffReviewModal = false" class="px-4 py-2.5 rounded-xl border border-[#D7E0E1] text-sm font-semibold text-[#475569] hover:bg-[#F8FAFC]">{{ $t('ยกเลิก') }}</button>
             <button
               @click="submitStaffReview"
               :disabled="reviewSubmitting || !staffReviewForm.staff_user_id"
               class="px-4 py-2.5 rounded-xl bg-[var(--color-accent)] text-white text-sm font-bold hover:bg-[var(--color-accent-mid)] disabled:opacity-60"
             >
-              {{ selectedStaffReview ? 'อัปเดตรีวิวสตาฟ' : 'ส่งรีวิวสตาฟ' }}
+              {{ selectedStaffReview ? $t('อัปเดตรีวิวสตาฟ') : $t('ส่งรีวิวสตาฟ') }}
             </button>
           </div>
         </div>
@@ -467,7 +465,7 @@
               <span class="material-symbols-rounded text-white text-[22px]" style="font-variation-settings:'FILL' 1">sos</span>
             </div>
             <div class="flex-1">
-              <h3 class="text-white font-black text-base">ขอความช่วยเหลือ SOS</h3>
+              <h3 class="text-white font-black text-base">{{ $t('ขอความช่วยเหลือ SOS') }}</h3>
               <p class="text-red-100 text-xs">{{ sosBooking?.schedule?.trip?.title }}</p>
             </div>
             <button @click="showSosModal = false" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all">
@@ -476,7 +474,7 @@
           </div>
 
           <div class="p-5 space-y-4">
-            <p class="text-sm text-[#505E5E]">เลือกข้อความที่ต้องการส่งให้สตาฟและผู้ร่วมทริป</p>
+            <p class="text-sm text-[#505E5E]">{{ $t('เลือกข้อความที่ต้องการส่งให้สตาฟและผู้ร่วมทริป') }}</p>
 
             <!-- Predefined options -->
             <div class="grid grid-cols-2 gap-2">
@@ -495,31 +493,31 @@
 
             <!-- Custom message (shown when "อื่น ๆ" selected) -->
             <div v-if="sosSelectedOption === 'other'" class="space-y-1.5">
-              <label class="text-xs font-bold text-[#505E5E] uppercase tracking-wide">ระบุเพิ่มเติม</label>
+              <label class="text-xs font-bold text-[#505E5E] uppercase tracking-wide">{{ $t('ระบุเพิ่มเติม') }}</label>
               <textarea
                 v-model="sosCustomMessage"
                 rows="3"
                 maxlength="255"
-                placeholder="อธิบายสถานการณ์โดยย่อ..."
+                :placeholder="$t('อธิบายสถานการณ์โดยย่อ...')"
                 class="w-full rounded-[14px] border-2 border-[#E8EEEF] focus:border-red-400 focus:outline-none px-3.5 py-2.5 text-sm resize-none"
               ></textarea>
             </div>
 
             <p class="text-xs text-[#889696] bg-[#F4F7F6] p-3 rounded-[12px]">
               <span class="material-symbols-rounded text-[14px] align-middle mr-1" style="font-variation-settings:'FILL' 1">info</span>
-              สตาฟและผู้โดยสารในทริปจะได้รับการแจ้งเตือนทันที
+              {{ $t('สตาฟและผู้โดยสารในทริปจะได้รับการแจ้งเตือนทันที') }}
             </p>
           </div>
 
           <div class="px-5 pb-5 flex gap-2">
-            <button @click="showSosModal = false" class="flex-1 py-3 rounded-[14px] border-2 border-[#E8EEEF] text-sm font-bold text-[#505E5E] hover:bg-[#F4F7F6] transition-all">ยกเลิก</button>
+            <button @click="showSosModal = false" class="flex-1 py-3 rounded-[14px] border-2 border-[#E8EEEF] text-sm font-bold text-[#505E5E] hover:bg-[#F4F7F6] transition-all">{{ $t('ยกเลิก') }}</button>
             <button
               @click="submitSos"
               :disabled="!sosSelectedOption || sosSubmitting || (sosSelectedOption === 'other' && !sosCustomMessage.trim())"
               class="flex-1 py-3 rounded-[14px] bg-red-600 text-white font-black text-sm hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
               <span v-if="sosSubmitting" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
               <span class="material-symbols-rounded text-[18px]" v-else style="font-variation-settings:'FILL' 1">sos</span>
-              {{ sosSubmitting ? 'กำลังส่ง...' : 'ส่งสัญญาณ SOS' }}
+              {{ sosSubmitting ? $t('กำลังส่ง...') : $t('ส่งสัญญาณ SOS') }}
             </button>
           </div>
         </div>
@@ -555,6 +553,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useBookingStore } from '../stores/booking';
@@ -596,18 +596,18 @@ const sosCustomMessage = ref('');
 const sosSubmitting = ref(false);
 
 const sosOptions = [
-  { value: 'help', label: 'ช่วยด้วย', emoji: '🆘' },
-  { value: 'lost', label: 'ฉันหลงทาง', emoji: '🗺️' },
-  { value: 'worried', label: 'ฉันกังวล', emoji: '😟' },
-  { value: 'unsafe', label: 'ฉันรู้สึกไม่ปลอดภัย', emoji: '⚠️' },
-  { value: 'other', label: 'อื่น ๆ', emoji: '💬' },
+  { value: 'help', label: $t('ช่วยด้วย'), emoji: '🆘' },
+  { value: 'lost', label: $t('ฉันหลงทาง'), emoji: '🗺️' },
+  { value: 'worried', label: $t('ฉันกังวล'), emoji: '😟' },
+  { value: 'unsafe', label: $t('ฉันรู้สึกไม่ปลอดภัย'), emoji: '⚠️' },
+  { value: 'other', label: $t('อื่น ๆ'), emoji: '💬' },
 ];
 
 const sosMessageMap = {
-  help: 'ช่วยด้วย',
-  lost: 'ฉันหลงทาง',
-  worried: 'ฉันกังวล',
-  unsafe: 'ฉันรู้สึกไม่ปลอดภัย',
+  help: $t('ช่วยด้วย'),
+  lost: $t('ฉันหลงทาง'),
+  worried: $t('ฉันกังวล'),
+  unsafe: $t('ฉันรู้สึกไม่ปลอดภัย'),
 };
 const staffReviewForm = ref({
   staff_user_id: 0,
@@ -653,10 +653,10 @@ function refundState(b) {
 }
 
 function displayStatusLabel(b) {
-  if (awaitsNewRound(b)) return 'รอเลือกรอบใหม่';
+  if (awaitsNewRound(b)) return $t('รอเลือกรอบใหม่');
   const rs = reviewState(b);
-  if (rs === 'under_review') return 'กำลังตรวจสอบยอด';
-  if (rs === 'rejected') return 'ต้องส่งสลิปใหม่';
+  if (rs === 'under_review') return $t('กำลังตรวจสอบยอด');
+  if (rs === 'rejected') return $t('ต้องส่งสลิปใหม่');
   return statusLabel(b.status);
 }
 
@@ -702,11 +702,11 @@ function load(page = 1) {
 watch(activeTab, () => load(1));
 
 const statusMap = {
-  pending:   'รอชำระเงิน',
-  confirmed: 'ยืนยันแล้ว',
-  cancelled: 'ยกเลิกแล้ว',
-  refunded:  'คืนเงินแล้ว',
-  completed: 'เสร็จสิ้นแล้ว',
+  pending:   $t('รอชำระเงิน'),
+  confirmed: $t('ยืนยันแล้ว'),
+  cancelled: $t('ยกเลิกแล้ว'),
+  refunded:  $t('คืนเงินแล้ว'),
+  completed: $t('เสร็จสิ้นแล้ว'),
 };
 
 function statusLabel(s) { return statusMap[s] || s; }
@@ -735,12 +735,12 @@ function statusDotClass(s) {
 
 function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatShortDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { day: 'numeric', month: 'short' });
 }
 
 function getDay(d) {
@@ -750,7 +750,7 @@ function getDay(d) {
 
 function getMonthShort(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('th-TH', { month: 'short' });
+  return new Date(d).toLocaleDateString(DATE_LOCALE, { month: 'short' });
 }
 
 function canReviewStaff(booking) {
@@ -798,9 +798,9 @@ async function submitStaffReview() {
 
     showStaffReviewModal.value = false;
     await load(currentPage.value);
-    toast.success('บันทึกรีวิวสตาฟเรียบร้อยแล้ว');
+    toast.success($t('บันทึกรีวิวสตาฟเรียบร้อยแล้ว'));
   } catch (e) {
-    toast.error(e?.response?.data?.message || 'ส่งรีวิวสตาฟไม่สำเร็จ');
+    toast.error(e?.response?.data?.message || $t('ส่งรีวิวสตาฟไม่สำเร็จ'));
   } finally {
     reviewSubmitting.value = false;
   }
@@ -840,25 +840,24 @@ async function openShareTracking(b) {
     const url = res.data?.data?.share_url;
 
     if (!url) {
-      toast.error('ยังไม่มีลิงก์ติดตามสำหรับการจองนี้');
+      toast.error($t('ยังไม่มีลิงก์ติดตามสำหรับการจองนี้'));
       return;
     }
 
     const { isConfirmed } = await swal.confirm({
-      title: 'แชร์ให้ที่บ้านติดตาม',
-      html: `<p style="margin-bottom:8px">ส่งลิงก์นี้ให้คนที่บ้านดูตำแหน่งรถได้แบบไม่ต้องล็อกอิน</p>
-             <code style="word-break:break-all;font-size:13px">${url}</code>`,
+      title: $t('แชร์ให้ที่บ้านติดตาม'),
+      html: $t('<p style="margin-bottom:8px">ส่งลิงก์นี้ให้คนที่บ้านดูตำแหน่งรถได้แบบไม่ต้องล็อกอิน</p>\n             <code style="word-break:break-all;font-size:13px">{url}</code>', { url }),
       icon: 'info',
-      confirmText: 'คัดลอกลิงก์',
-      cancelText: 'ปิด',
+      confirmText: $t('คัดลอกลิงก์'),
+      cancelText: $t('ปิด'),
     });
 
     if (!isConfirmed) return;
 
     await navigator.clipboard.writeText(url);
-    toast.success('คัดลอกลิงก์แล้ว');
+    toast.success($t('คัดลอกลิงก์แล้ว'));
   } catch (e) {
-    toast.error(e?.response?.data?.message || 'ขอลิงก์ติดตามไม่สำเร็จ');
+    toast.error(e?.response?.data?.message || $t('ขอลิงก์ติดตามไม่สำเร็จ'));
   }
 }
 
@@ -870,7 +869,7 @@ function addToCalendar(b) {
   const start = b.schedule?.departure_date;
 
   if (!start) {
-    toast.error('การจองนี้ยังไม่มีวันเดินทาง');
+    toast.error($t('การจองนี้ยังไม่มีวันเดินทาง'));
     return;
   }
 
@@ -889,9 +888,9 @@ function addToCalendar(b) {
     `UID:${b.booking_ref}@luilaykhao.com`,
     `DTSTART;VALUE=DATE:${compact(start)}`,
     `DTEND;VALUE=DATE:${compact(endDate.toISOString().slice(0, 10))}`,
-    `SUMMARY:${escape(b.schedule?.trip?.title || 'ทริปลุยเลเขา')}`,
+    `SUMMARY:${escape(b.schedule?.trip?.title || $t('ทริปลุยเลเขา'))}`,
     `LOCATION:${escape(b.schedule?.trip?.location)}`,
-    `DESCRIPTION:${escape(`หมายเลขการจอง ${b.booking_ref}`)}`,
+    `DESCRIPTION:${escape($t('หมายเลขการจอง {booking_ref}', { booking_ref: b.booking_ref }))}`,
     'END:VEVENT',
     'END:VCALENDAR',
   ].join('\r\n');
@@ -902,7 +901,7 @@ function addToCalendar(b) {
   link.click();
   URL.revokeObjectURL(link.href);
 
-  toast.success('ดาวน์โหลดไฟล์ปฏิทินแล้ว');
+  toast.success($t('ดาวน์โหลดไฟล์ปฏิทินแล้ว'));
 }
 
 function openSosModal(b) {
@@ -932,9 +931,9 @@ async function submitSos() {
     });
     showSosModal.value = false;
     // SOS ต้องยืนยันแบบที่ผู้ใช้ต้องกดรับรู้ ไม่ใช่ toast ที่หายไปเอง
-    await swal.success('ส่งสัญญาณ SOS แล้ว', 'สตาฟและผู้ร่วมทริปได้รับการแจ้งเตือนแล้ว');
+    await swal.success($t('ส่งสัญญาณ SOS แล้ว'), $t('สตาฟและผู้ร่วมทริปได้รับการแจ้งเตือนแล้ว'));
   } catch (e) {
-    swal.error('ส่ง SOS ไม่สำเร็จ', e?.response?.data?.message || 'กรุณาลองใหม่อีกครั้ง');
+    swal.error($t('ส่ง SOS ไม่สำเร็จ'), e?.response?.data?.message || $t('กรุณาลองใหม่อีกครั้ง'));
   } finally {
     sosSubmitting.value = false;
   }
@@ -942,11 +941,11 @@ async function submitSos() {
 
 async function handleCancel(b) {
   const { isConfirmed } = await swal.confirm({
-    title: 'ยกเลิกการจองนี้?',
-    text: `${b.schedule?.trip?.title || 'การจอง'} · ${b.booking_ref}`,
+    title: $t('ยกเลิกการจองนี้?'),
+    text: `${b.schedule?.trip?.title || $t('การจอง')} · ${b.booking_ref}`,
     icon: 'warning',
-    confirmText: 'ยกเลิกการจอง',
-    cancelText: 'ไม่ใช่ตอนนี้',
+    confirmText: $t('ยกเลิกการจอง'),
+    cancelText: $t('ไม่ใช่ตอนนี้'),
   });
 
   if (!isConfirmed) return;
@@ -954,9 +953,9 @@ async function handleCancel(b) {
   try {
     await bookingStore.cancelBooking(b.booking_ref, 'ยกเลิกโดยลูกค้า');
     await load(currentPage.value);
-    toast.success('ยกเลิกการจองแล้ว');
+    toast.success($t('ยกเลิกการจองแล้ว'));
   } catch (e) {
-    toast.error(e?.response?.data?.message || 'ยกเลิกไม่สำเร็จ');
+    toast.error(e?.response?.data?.message || $t('ยกเลิกไม่สำเร็จ'));
   }
 }
 
@@ -989,8 +988,8 @@ async function onRefundRequested(updated) {
   await load(currentPage.value);
   const amount = Number(updated?.force_majeure?.refund_amount || 0);
   swal.success(
-    amount > 0 ? 'รับเรื่องคืนเงินแล้ว' : 'ยกเลิกการจองแล้ว',
-    amount > 0 ? `เราจะโอนคืน ฿${amount.toLocaleString('th-TH')} ภายใน 3–7 วันทำการครับ` : '',
+    amount > 0 ? $t('รับเรื่องคืนเงินแล้ว') : $t('ยกเลิกการจองแล้ว'),
+    amount > 0 ? $t('เราจะโอนคืน ฿{toLocaleString} ภายใน 3–7 วันทำการครับ', { toLocaleString: amount.toLocaleString(DATE_LOCALE) }) : '',
   );
 }
 
@@ -998,7 +997,7 @@ async function onRescheduled(updated) {
   rescheduleTarget.value = null;
   const date = updated?.schedule?.departure_date;
   await load(currentPage.value);
-  swal.success('ย้ายรอบเรียบร้อยแล้ว', date ? `รอบใหม่ของคุณคือวันที่ ${formatDate(date)}` : '');
+  swal.success($t('ย้ายรอบเรียบร้อยแล้ว'), date ? $t('รอบใหม่ของคุณคือวันที่ {formatDate}', { formatDate: formatDate(date) }) : '');
 }
 
 /**
@@ -1020,14 +1019,14 @@ async function openFromLink() {
       // คนไม่ครบที่เลยกำหนดเลือกรอบ — ทางเดียวที่เหลือคือกรอกบัญชีรับเงินคืน
       openRefund(booking);
     } else if (booking?.force_majeure?.expired) {
-      swal.warning('เลยกำหนดเลือกรอบใหม่แล้ว', 'ทักทีมงานเพื่อช่วยดูแลต่อได้เลยครับ');
+      swal.warning($t('เลยกำหนดเลือกรอบใหม่แล้ว'), $t('ทักทีมงานเพื่อช่วยดูแลต่อได้เลยครับ'));
     } else if (booking && refundState(booking)) {
-      toast.success('การจองนี้ขอรับเงินคืนเรียบร้อยแล้ว');
+      toast.success($t('การจองนี้ขอรับเงินคืนเรียบร้อยแล้ว'));
     } else if (booking?.force_majeure?.state === 'moved') {
-      toast.success('การจองนี้เลือกรอบใหม่เรียบร้อยแล้ว');
+      toast.success($t('การจองนี้เลือกรอบใหม่เรียบร้อยแล้ว'));
     }
   } catch {
-    toast.error('ไม่พบการจองนี้ในบัญชีของคุณ');
+    toast.error($t('ไม่พบการจองนี้ในบัญชีของคุณ'));
   }
 }
 

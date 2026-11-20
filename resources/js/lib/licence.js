@@ -9,6 +9,7 @@
  */
 
 import { supportEmail, supportLine, supportPhone } from './contact';
+import { $t } from '../i18n/index.js';
 
 /** ค่าสำรองเมื่ออ่าน meta ไม่ได้ (เช่น หน้าที่เรนเดอร์นอก shell ปกติ) */
 const FALLBACK_LICENCE_NO = '11/13855';
@@ -33,7 +34,10 @@ export function licenceImageUrl() {
  * ที่ /admin/settings ผลการค้นหาบน Google จะยังโชว์เบอร์เก่าจนกว่าจะ deploy
  */
 export function withLicence(text) {
-  if (typeof text !== 'string' || !text.includes(':')) return text;
+  if (typeof text !== 'string') return text;
+  // ข้อความ SEO ใน router เป็นภาษาไทย แปลก่อนแทนค่า (คำแปลต้องเก็บ :licence ไว้)
+  text = $t(text);
+  if (!text.includes(':')) return text;
 
   return text
     .replace(/:licence/g, licenceNo())

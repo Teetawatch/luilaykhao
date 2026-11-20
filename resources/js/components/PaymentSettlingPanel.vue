@@ -23,12 +23,12 @@
       </div>
 
       <p class="mt-5 text-base font-black text-gray-900">
-        {{ slow ? 'ยังตรวจสอบอยู่ ใช้เวลานานกว่าปกติเล็กน้อย' : 'กำลังตรวจสอบการชำระเงิน' }}
+        {{ slow ? $t('ยังตรวจสอบอยู่ ใช้เวลานานกว่าปกติเล็กน้อย') : $t('กำลังตรวจสอบการชำระเงิน') }}
       </p>
       <p class="mt-1.5 text-xs text-gray-500 font-medium leading-relaxed px-2">
         {{ slow
-          ? 'ธนาคารบางแห่งส่งผลช้ากว่าปกติในช่วงเวลาเร่งด่วน ระบบยังตามผลให้อยู่ ไม่ต้องจ่ายซ้ำ'
-          : 'ระบบกำลังรอผลจากธนาคาร ปกติใช้เวลาไม่เกิน 1 นาที กรุณาอย่าปิดหน้านี้' }}
+          ? $t('ธนาคารบางแห่งส่งผลช้ากว่าปกติในช่วงเวลาเร่งด่วน ระบบยังตามผลให้อยู่ ไม่ต้องจ่ายซ้ำ')
+          : $t('ระบบกำลังรอผลจากธนาคาร ปกติใช้เวลาไม่เกิน 1 นาที กรุณาอย่าปิดหน้านี้') }}
       </p>
     </template>
 
@@ -58,13 +58,12 @@
 
     <div v-if="isSettling" class="mt-6 flex items-center justify-center gap-2 text-[11px] font-bold text-gray-400">
       <span class="w-1.5 h-1.5 rounded-full bg-accent-light animate-pulse"></span>
-      <span class="tabular-nums">รอมาแล้ว {{ elapsedText }}</span>
+      <span class="tabular-nums">{{ $t('รอมาแล้ว {elapsedText}', { elapsedText }) }}</span>
     </div>
 
     <p v-if="isSettling && slow" class="mt-4 text-[11px] font-bold text-gray-500 leading-relaxed">
-      หากเงินถูกตัดไปแล้วแต่สถานะยังไม่ขึ้น ระบบจะยืนยันที่นั่งให้เองเมื่อได้รับผลจากธนาคาร
-      หรือทักหาเราได้ที่
-      <router-link to="/support" class="text-accent underline underline-offset-4">ศูนย์ช่วยเหลือ</router-link>
+      {{ $t('หากเงินถูกตัดไปแล้วแต่สถานะยังไม่ขึ้น ระบบจะยืนยันที่นั่งให้เองเมื่อได้รับผลจากธนาคาร หรือทักหาเราได้ที่') }}
+      <router-link to="/support" class="text-accent underline underline-offset-4">{{ $t('ศูนย์ช่วยเหลือ') }}</router-link>
     </p>
 
     <slot name="actions" />
@@ -72,6 +71,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -90,9 +90,9 @@ const props = defineProps({
   /** รอนานผิดปกติแล้ว เปลี่ยนคำพูดจาก "รอสักครู่" เป็น "ยังตามให้อยู่" */
   slow: { type: Boolean, default: false },
   /** ขั้นแรก ต่างกันตามว่าหน้านั้นให้จ่ายด้วยอะไร (QR / แอปธนาคาร) */
-  firstStep: { type: String, default: 'สแกน QR ด้วยแอปธนาคาร' },
+  firstStep: { type: String, default: () => $t('สแกน QR ด้วยแอปธนาคาร') },
   /** ข้อความบรรทัดสุดท้ายของขั้นตอน ต่างกันตามว่าจ่ายเพื่ออะไร */
-  finalStep: { type: String, default: 'ยืนยันที่นั่งของคุณอัตโนมัติ' },
+  finalStep: { type: String, default: () => $t('ยืนยันที่นั่งของคุณอัตโนมัติ') },
 });
 
 const isSettling = computed(() => props.stage === 'settling');
@@ -102,13 +102,13 @@ const activeIndex = computed(() => (isSettling.value ? 1 : 0));
 
 const steps = computed(() => [
   { label: props.firstStep },
-  { label: 'รอธนาคารยืนยันว่าเงินเข้า' },
+  { label: $t('รอธนาคารยืนยันว่าเงินเข้า') },
   { label: props.finalStep },
 ]);
 
 const elapsedText = computed(() => {
   const s = Math.max(0, props.seconds);
-  return s < 60 ? `${s} วินาที` : `${Math.floor(s / 60)} นาที ${String(s % 60).padStart(2, '0')} วินาที`;
+  return s < 60 ? $t('{s} วินาที', { s }) : $t('{floor} นาที {String} วินาที', { floor: Math.floor(s / 60), String: String(s % 60).padStart(2, '0') });
 });
 </script>
 

@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { pageView } from '../lib/analytics';
 import { rememberPartnerCode } from '../lib/partnerRef';
+import { ROUTER_BASE, localePath } from '../i18n';
 
 // Home stays eagerly bundled so the most common landing renders without a
 // second round-trip. Every other page is lazy-loaded (route-level code
@@ -392,7 +393,8 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  // หน้าอังกฤษใช้ base /en — ลิงก์ภายในทุกตัวจึงอยู่ใต้ /en ต่อเอง (ดู i18n/index.js)
+  history: createWebHistory(ROUTER_BASE),
   routes,
   scrollBehavior() {
     return { top: 0 };
@@ -428,7 +430,7 @@ router.beforeEach((to, from, next) => {
 router.afterEach((to) => {
   if (to.path.startsWith('/admin')) return;
 
-  nextTick(() => pageView(to.fullPath, document.title));
+  nextTick(() => pageView(localePath(to.fullPath), document.title));
 });
 
 export default router;

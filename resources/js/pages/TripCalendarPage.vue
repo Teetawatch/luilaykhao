@@ -174,6 +174,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -195,7 +196,7 @@ useHead({
 });
 
 function baht(amount) {
-  return `฿${Number(amount || 0).toLocaleString('th-TH')}`;
+  return `฿${Number(amount || 0).toLocaleString(DATE_LOCALE)}`;
 }
 
 const shareUrl = computed(() => `${window.location.origin}/calendar/${data.value.month || ''}`);

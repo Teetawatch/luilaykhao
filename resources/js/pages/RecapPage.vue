@@ -121,6 +121,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
@@ -165,7 +166,7 @@ const statSlides = computed(() => {
     slides.push({
       key: 'distance',
       caption: 'ระยะทางบนเส้นทางนี้',
-      value: Number(data.distance_km).toLocaleString('th-TH'),
+      value: Number(data.distance_km).toLocaleString(DATE_LOCALE),
       unit: 'กม.',
     });
   }
@@ -174,7 +175,7 @@ const statSlides = computed(() => {
     slides.push({
       key: 'elevation',
       caption: 'ความสูงที่ไต่ขึ้นไป',
-      value: Number(data.elevation_gain_m).toLocaleString('th-TH'),
+      value: Number(data.elevation_gain_m).toLocaleString(DATE_LOCALE),
       unit: 'เมตร',
       note: `สูงกว่าตึกใบหยก 2 ราว ${Math.max(1, Math.round(data.elevation_gain_m / 304))} เท่า`,
     });
@@ -237,8 +238,8 @@ async function renderCard() {
   // ตัวเลขหลักสามช่อง
   const cells = [
     [data.duration_days, 'วัน'],
-    [data.distance_km ? Number(data.distance_km).toLocaleString('th-TH') : null, 'กม.'],
-    [data.elevation_gain_m ? Number(data.elevation_gain_m).toLocaleString('th-TH') : null, 'ม. ที่ไต่'],
+    [data.distance_km ? Number(data.distance_km).toLocaleString(DATE_LOCALE) : null, 'กม.'],
+    [data.elevation_gain_m ? Number(data.elevation_gain_m).toLocaleString(DATE_LOCALE) : null, 'ม. ที่ไต่'],
   ].filter(([value]) => value);
 
   if (cells.length) {

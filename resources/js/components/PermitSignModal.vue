@@ -7,19 +7,19 @@
           <div class="min-w-0 flex items-start gap-2">
             <button v-if="current" @click="current = null"
               class="w-8 h-8 rounded-lg border border-[#E8EEEF] hover:bg-[#F4F7F6] inline-flex items-center justify-center shrink-0"
-              aria-label="กลับ">
+              :aria-label="$t('กลับ')">
               <span class="material-symbols-rounded text-[18px]">arrow_back</span>
             </button>
             <div class="min-w-0">
-              <h3 class="text-lg font-bold text-[#1a1c1c]">{{ current ? `เซ็นแบบฟอร์ม · ${current.passenger.name}` : 'เซ็นแบบฟอร์มอุทยาน' }}</h3>
+              <h3 class="text-lg font-bold text-[#1a1c1c]">{{ current ? $t('เซ็นแบบฟอร์ม · {name}', { name: current.passenger.name }) : $t('เซ็นแบบฟอร์มอุทยาน') }}</h3>
               <p class="text-xs text-[#505E5E] mt-0.5 truncate">
-                {{ booking.schedule?.trip?.title || 'ทริป' }} · {{ booking.booking_ref }}
+                {{ booking.schedule?.trip?.title || $t('ทริป') }} · {{ booking.booking_ref }}
               </p>
             </div>
           </div>
           <button @click="close"
             class="w-8 h-8 rounded-lg border border-[#E8EEEF] hover:bg-[#F4F7F6] inline-flex items-center justify-center shrink-0"
-            aria-label="ปิด">
+            :aria-label="$t('ปิด')">
             <span class="material-symbols-rounded text-[18px]">close</span>
           </button>
         </div>
@@ -34,21 +34,21 @@
           <!-- ─── รายชื่อ ─── -->
           <template v-else-if="!current && summary">
             <div class="rounded-[16px] bg-[#F0FAFA] border border-[#BCDFDF] p-4 text-[13px] text-[#0F3D3E] space-y-1.5">
-              <p class="font-bold text-sm">อุทยานให้ผู้เดินทางทุกคนเซ็นแบบฟอร์มก่อนลงทะเบียน</p>
-              <p>เราเติมข้อมูลที่ให้ไว้ตอนจองลงแบบฟอร์มแล้ว อ่านให้ครบแล้วเซ็นชื่อ ทีมงานจะนำไปลงทะเบียนให้</p>
+              <p class="font-bold text-sm">{{ $t('อุทยานให้ผู้เดินทางทุกคนเซ็นแบบฟอร์มก่อนลงทะเบียน') }}</p>
+              <p>{{ $t('เราเติมข้อมูลที่ให้ไว้ตอนจองลงแบบฟอร์มแล้ว อ่านให้ครบแล้วเซ็นชื่อ ทีมงานจะนำไปลงทะเบียนให้') }}</p>
               <p v-if="summary.deadline_label" class="font-bold" :class="summary.overdue ? 'text-[#B91C1C]' : ''">
-                {{ summary.overdue ? 'เลยกำหนดแล้ว' : 'เซ็นภายใน' }} {{ summary.deadline_label }}
+                {{ summary.overdue ? $t('เลยกำหนดแล้ว') : $t('เซ็นภายใน') }} {{ summary.deadline_label }}
               </p>
             </div>
 
-            <p class="text-sm font-bold text-[#1a1c1c]">เซ็นแล้ว {{ summary.signed_count }} จาก {{ summary.total }} คน</p>
+            <p class="text-sm font-bold text-[#1a1c1c]">{{ $t('เซ็นแล้ว {signed_count} จาก {total} คน', { signed_count: summary.signed_count, total: summary.total }) }}</p>
 
             <div v-for="p in summary.passengers" :key="p.id" class="rounded-[16px] border border-[#E8EEEF] p-4">
               <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
                   <p class="text-sm font-bold text-[#1a1c1c] truncate">{{ p.name }}</p>
                   <p class="text-xs mt-0.5" :class="p.signed ? 'text-[#047857]' : 'text-[#B45309]'">
-                    {{ p.signed ? 'เซ็นแล้ว' : 'ยังไม่เซ็น' }}
+                    {{ p.signed ? $t('เซ็นแล้ว') : $t('ยังไม่เซ็น') }}
                   </p>
                 </div>
                 <button @click="openPassenger(p)"
@@ -56,23 +56,23 @@
                   :class="p.signed
                     ? 'bg-white text-[var(--color-accent)] border border-[#BCDFDF] hover:bg-[#F0FAFA]'
                     : 'bg-[var(--color-accent)] text-white hover:bg-[#004D4D]'">
-                  {{ p.signed ? 'ดูแบบฟอร์ม' : 'อ่านและเซ็น' }}
+                  {{ p.signed ? $t('ดูแบบฟอร์ม') : $t('อ่านและเซ็น') }}
                 </button>
               </div>
               <button v-if="p.sign_url && !p.signed" @click="copyLink(p)"
                 class="mt-2 text-xs text-[var(--color-accent)] font-bold inline-flex items-center gap-1 hover:underline">
                 <span class="material-symbols-rounded text-[16px]">link</span>
-                ก๊อปลิงก์ให้ {{ p.name }} เซ็นเอง
+                {{ $t('ก๊อปลิงก์ให้ {name} เซ็นเอง', { name: p.name }) }}
               </button>
             </div>
             <p v-if="summary.viewer_role === 'owner' && summary.total > 1" class="text-xs text-[#889696]">
-              ให้เจ้าตัวเป็นคนเซ็นนะครับ — ส่งลิงก์ให้เพื่อนทางไลน์ได้ เปิดได้โดยไม่ต้องสมัครสมาชิก
+              {{ $t('ให้เจ้าตัวเป็นคนเซ็นนะครับ — ส่งลิงก์ให้เพื่อนทางไลน์ได้ เปิดได้โดยไม่ต้องสมัครสมาชิก') }}
             </p>
           </template>
 
           <!-- ─── แบบฟอร์มของคนหนึ่ง ─── -->
           <template v-else-if="current">
-            <p class="text-[13px] text-[#505E5E]">อ่านข้อความในแบบฟอร์มให้ครบ — ช่องที่ยังว่าง ทีมงานจะกรอกให้หรือสอบถามเพิ่มเติม</p>
+            <p class="text-[13px] text-[#505E5E]">{{ $t('อ่านข้อความในแบบฟอร์มให้ครบ — ช่องที่ยังว่าง ทีมงานจะกรอกให้หรือสอบถามเพิ่มเติม') }}</p>
 
             <div v-for="(page, pi) in current.pages" :key="pi" ref="pageEls"
               class="relative w-full border border-[#E8EEEF] rounded-[8px] overflow-hidden bg-white">
@@ -81,7 +81,7 @@
                 class="absolute whitespace-nowrap"
                 :class="f.type === 'signature' ? 'pf-sig' : 'pf-text'"
                 :style="fieldStyle(f, page, pi)">
-                <img v-if="f.type === 'signature' && current.signature_url" :src="current.signature_url" alt="ลายเซ็น"
+                <img v-if="f.type === 'signature' && current.signature_url" :src="current.signature_url" :alt="$t('ลายเซ็น')"
                   class="pf-sig-img" :class="`pf-align-${f.align}`" />
                 <template v-else>{{ f.input && askValues[f.input] !== undefined && current.ask?.length ? askValues[f.input] : f.value }}</template>
               </div>
@@ -90,35 +90,35 @@
             <button @click="openPdf" :disabled="pdfLoading"
               class="text-sm text-[var(--color-accent)] font-bold inline-flex items-center gap-1 hover:underline">
               <span class="material-symbols-rounded text-[18px]">picture_as_pdf</span>
-              {{ pdfLoading ? 'กำลังเตรียม…' : 'เปิดเป็น PDF' }}
+              {{ pdfLoading ? $t('กำลังเตรียม…') : $t('เปิดเป็น PDF') }}
             </button>
 
             <div v-if="current.signed && !resigning" class="rounded-[16px] bg-[var(--color-accent-tint)] border border-accent/20 p-4 text-sm text-[#065F46] flex items-center justify-between gap-3">
-              <span>✓ เซ็นแล้ว</span>
-              <button v-if="current.open" @click="startResign" class="text-xs underline text-[#505E5E]">เซ็นใหม่</button>
+              <span>{{ $t('✓ เซ็นแล้ว') }}</span>
+              <button v-if="current.open" @click="startResign" class="text-xs underline text-[#505E5E]">{{ $t('เซ็นใหม่') }}</button>
             </div>
 
             <div v-else-if="current.open" class="space-y-3">
               <!-- ภูมิลำเนา/โทรศัพท์บ้าน/คำถามที่แอดมินตั้ง — อุทยานบังคับ แต่เราไม่เก็บในการจอง จึงถามตอนเซ็น -->
               <div v-if="current.ask?.length" class="space-y-3">
-                <p class="text-sm font-bold text-[#1a1c1c]">ข้อมูลที่อุทยานต้องการ</p>
-                <p class="text-xs text-[#505E5E]">อุทยานบังคับกรอกทุกช่อง — ใช้เฉพาะในแบบฟอร์มฉบับนี้ ไม่เก็บไว้ในการจอง และลบทิ้งหลังจบทริป</p>
+                <p class="text-sm font-bold text-[#1a1c1c]">{{ $t('ข้อมูลที่อุทยานต้องการ') }}</p>
+                <p class="text-xs text-[#505E5E]">{{ $t('อุทยานบังคับกรอกทุกช่อง — ใช้เฉพาะในแบบฟอร์มฉบับนี้ ไม่เก็บไว้ในการจอง และลบทิ้งหลังจบทริป') }}</p>
                 <div v-if="current.address_suggestions?.length" class="flex flex-wrap gap-2">
                   <button v-for="(sug, si) in current.address_suggestions" :key="si" @click="applyExtra(sug.extra)"
                     class="text-xs font-bold text-[var(--color-accent)] border border-[#BCDFDF] rounded-full px-3 py-1 hover:bg-[#F0FAFA]">
-                    ใช้ที่อยู่เดียวกับ {{ sug.name }}
+                    {{ $t('ใช้ที่อยู่เดียวกับ {name}', { name: sug.name }) }}
                   </button>
                 </div>
                 <template v-for="item in askInputs" :key="item.key">
                   <div v-if="item.key === 'address'" class="relative">
-                    <label class="block text-xs font-bold text-[#505E5E] mb-1">แขวง/ตำบล · เขต/อำเภอ · จังหวัด</label>
-                    <input v-model="addrQuery" @focus="loadAddresses" type="search" placeholder="พิมพ์ชื่อตำบล อำเภอ หรือรหัสไปรษณีย์"
+                    <label class="block text-xs font-bold text-[#505E5E] mb-1">{{ $t('แขวง/ตำบล · เขต/อำเภอ · จังหวัด') }}</label>
+                    <input v-model="addrQuery" @focus="loadAddresses" type="search" :placeholder="$t('พิมพ์ชื่อตำบล อำเภอ หรือรหัสไปรษณีย์')"
                       class="w-full border border-[#CBD5E1] rounded-[12px] px-3 py-2.5 text-sm" />
                     <ul v-if="addrMatches.length" class="mt-1 border border-[#E8EEEF] rounded-[12px] max-h-56 overflow-y-auto bg-white">
                       <li v-for="(r, ri) in addrMatches" :key="ri" @click="chooseAddress(r)"
                         class="px-3 py-2 text-sm border-t first:border-t-0 border-[#F1F5F9] cursor-pointer hover:bg-[#F0FAFA]">{{ addressLabel(r) }}</li>
                     </ul>
-                    <p v-else-if="addrQuery.trim().length >= 2 && addrRows" class="mt-1 text-xs text-[#889696]">ไม่พบ ลองพิมพ์ชื่อตำบลหรืออำเภอ</p>
+                    <p v-else-if="addrQuery.trim().length >= 2 && addrRows" class="mt-1 text-xs text-[#889696]">{{ $t('ไม่พบ ลองพิมพ์ชื่อตำบลหรืออำเภอ') }}</p>
                     <p v-if="askValues.province" class="mt-1 text-sm font-bold text-[var(--color-accent)]">✓ {{ addressLabel([askValues.sub_district, askValues.district, askValues.province, '']) }}</p>
                   </div>
                   <div v-else>
@@ -129,37 +129,37 @@
                         class="flex-1 border border-[#CBD5E1] rounded-[12px] px-3 py-2.5 text-sm read-only:bg-[#F1F5F9] read-only:text-[#889696]" />
                       <label v-if="item.allow_none" class="flex items-center gap-1.5 text-sm text-[#334155] whitespace-nowrap">
                         <input type="checkbox" :checked="askValues[item.key] === '-'" @change="askValues[item.key] = $event.target.checked ? '-' : ''" class="w-4 h-4" />
-                        ไม่มี
+                        {{ $t('ไม่มี') }}
                       </label>
                     </div>
                   </div>
                 </template>
                 <label class="flex items-start gap-2 text-xs text-[#505E5E]">
                   <input type="checkbox" v-model="rememberAddress" class="mt-0.5 w-4 h-4 shrink-0" />
-                  <span>จำ{{ askInputs.some((x) => x.key === 'address') ? 'ที่อยู่' : 'ข้อมูล' }}นี้ไว้ในเบราว์เซอร์นี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)</span>
+                  <span>{{ $t('จำ{some}นี้ไว้ในเบราว์เซอร์นี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)', { some: askInputs.some((x) => x.key === 'address') ? $t('ที่อยู่') : $t('ข้อมูล') }) }}</span>
                 </label>
               </div>
 
-              <p class="text-sm font-bold text-[#1a1c1c]">เซ็นชื่อ <span class="font-normal text-[#889696] text-xs">— ลายเซ็นจะไปอยู่ในช่องสีเหลือง</span></p>
+              <p class="text-sm font-bold text-[#1a1c1c]">{{ $t('เซ็นชื่อ') }} <span class="font-normal text-[#889696] text-xs">{{ $t('— ลายเซ็นจะไปอยู่ในช่องสีเหลือง') }}</span></p>
               <div class="relative border-[1.5px] border-[#CBD5E1] rounded-[12px] bg-white" style="touch-action:none">
                 <canvas ref="padEl" class="block w-full h-[190px] rounded-[12px] cursor-crosshair"
                   @pointerdown="padDown" @pointermove="padMove" @pointerup="padUp" @pointercancel="padUp" @pointerleave="padUp"></canvas>
                 <div class="absolute left-[18px] right-[18px] bottom-[44px] border-b border-dashed border-[#CBD5E1] pointer-events-none"></div>
-                <div v-if="!drawn" class="absolute inset-x-0 bottom-[18px] text-center text-xs text-[#94A3B8] pointer-events-none">ใช้นิ้วหรือเมาส์วาดลายเซ็นตรงนี้</div>
+                <div v-if="!drawn" class="absolute inset-x-0 bottom-[18px] text-center text-xs text-[#94A3B8] pointer-events-none">{{ $t('ใช้นิ้วหรือเมาส์วาดลายเซ็นตรงนี้') }}</div>
               </div>
               <div class="flex justify-end">
-                <button @click="clearPad" class="text-xs underline text-[#505E5E]">ล้างแล้วเซ็นใหม่</button>
+                <button @click="clearPad" class="text-xs underline text-[#505E5E]">{{ $t('ล้างแล้วเซ็นใหม่') }}</button>
               </div>
               <label class="flex items-start gap-2 text-sm text-[#334155]">
                 <input type="checkbox" v-model="accepted" class="mt-1 w-4 h-4 shrink-0" />
-                <span>ข้าพเจ้า {{ current.passenger.name }} ได้อ่านข้อความในแบบฟอร์มนี้ครบถ้วนแล้ว และยินยอมให้ใช้ลายเซ็นนี้ลงในแบบฟอร์มฉบับนี้</span>
+                <span>{{ $t('ข้าพเจ้า {name} ได้อ่านข้อความในแบบฟอร์มนี้ครบถ้วนแล้ว และยินยอมให้ใช้ลายเซ็นนี้ลงในแบบฟอร์มฉบับนี้', { name: current.passenger.name }) }}</span>
               </label>
               <p v-if="signError" class="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] p-3">{{ signError }}</p>
               <button @click="submit" :disabled="!drawn || !accepted || signing || !askComplete"
                 class="w-full bg-[var(--color-accent)] text-white py-3 rounded-[12px] font-bold text-sm hover:bg-[#004D4D] disabled:opacity-50 transition-all">
-                {{ signing ? 'กำลังบันทึก…' : 'ยืนยันลายเซ็น' }}
+                {{ signing ? $t('กำลังบันทึก…') : $t('ยืนยันลายเซ็น') }}
               </button>
-              <p class="text-[11px] text-[#889696]">เราเก็บลายเซ็นไว้เฉพาะเพื่อยื่นแบบฟอร์มนี้กับอุทยาน และลบทิ้งหลังจบทริป</p>
+              <p class="text-[11px] text-[#889696]">{{ $t('เราเก็บลายเซ็นไว้เฉพาะเพื่อยื่นแบบฟอร์มนี้กับอุทยาน และลบทิ้งหลังจบทริป') }}</p>
             </div>
           </template>
         </div>
@@ -169,6 +169,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../lib/axios';
 import { useToast } from '../lib/toast';
@@ -211,9 +212,9 @@ async function loadSummary() {
   try {
     const res = await api.get(base.value);
     summary.value = res.data.data;
-    if (!summary.value) loadError.value = 'ทริปนี้ไม่ต้องเซ็นแบบฟอร์ม';
+    if (!summary.value) loadError.value = $t('ทริปนี้ไม่ต้องเซ็นแบบฟอร์ม');
   } catch (e) {
-    loadError.value = e.response?.data?.message || 'โหลดข้อมูลไม่สำเร็จ';
+    loadError.value = e.response?.data?.message || $t('โหลดข้อมูลไม่สำเร็จ');
   } finally {
     loading.value = false;
   }
@@ -231,7 +232,7 @@ async function openPassenger(p) {
     signError.value = '';
     resigning.value = false;
   } catch (e) {
-    loadError.value = e.response?.data?.message || 'เปิดแบบฟอร์มไม่สำเร็จ';
+    loadError.value = e.response?.data?.message || $t('เปิดแบบฟอร์มไม่สำเร็จ');
   } finally {
     loading.value = false;
   }
@@ -285,7 +286,7 @@ async function loadAddresses() {
     const res = await api.get('/thai-address');
     addrRows.value = res.data.rows;
   } catch {
-    toast.error('โหลดรายชื่อตำบลไม่สำเร็จ ลองใหม่อีกครั้ง');
+    toast.error($t('โหลดรายชื่อตำบลไม่สำเร็จ ลองใหม่อีกครั้ง'));
   }
 }
 
@@ -333,9 +334,9 @@ function fieldStyle(f, page, pi) {
 async function copyLink(p) {
   try {
     await navigator.clipboard.writeText(p.sign_url);
-    toast.success(`ก๊อปลิงก์ของ ${p.name} แล้ว ส่งให้ทางไลน์ได้เลย`);
+    toast.success($t('ก๊อปลิงก์ของ {name} แล้ว ส่งให้ทางไลน์ได้เลย', { name: p.name }));
   } catch {
-    window.prompt('ก๊อปลิงก์นี้ส่งให้เพื่อน', p.sign_url);
+    window.prompt($t('ก๊อปลิงก์นี้ส่งให้เพื่อน'), p.sign_url);
   }
 }
 
@@ -350,7 +351,7 @@ async function openPdf() {
     else window.location.href = url;
   } catch {
     tab?.close();
-    toast.error('เปิด PDF ไม่สำเร็จ');
+    toast.error($t('เปิด PDF ไม่สำเร็จ'));
   } finally {
     pdfLoading.value = false;
   }
@@ -435,11 +436,11 @@ async function submit() {
       }
     }
     summary.value = res.data.data;
-    toast.success(res.data.message || 'เซ็นแล้ว');
+    toast.success(res.data.message || $t('เซ็นแล้ว'));
     current.value = null;
     emit('changed');
   } catch (e) {
-    signError.value = e.response?.data?.message || 'บันทึกลายเซ็นไม่สำเร็จ ลองใหม่อีกครั้ง';
+    signError.value = e.response?.data?.message || $t('บันทึกลายเซ็นไม่สำเร็จ ลองใหม่อีกครั้ง');
   } finally {
     signing.value = false;
   }

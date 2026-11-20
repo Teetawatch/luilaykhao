@@ -15,7 +15,7 @@
           <button
             class="shrink-0 opacity-60 hover:opacity-100 transition-opacity ml-1"
             @click="remove(toast.id)"
-            aria-label="ปิด"
+            :aria-label="$t('ปิด')"
           >
             <span class="material-symbols-rounded text-[18px]">close</span>
           </button>

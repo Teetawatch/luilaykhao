@@ -117,6 +117,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { computed, onMounted, reactive, watch, ref } from 'vue';
 import api from '../lib/axios';
 import { THAI_MONTHS_LONG, THAI_MONTHS_SHORT } from '../lib/thaiDate';
@@ -158,7 +159,7 @@ const isClosedNow = (place) => (place.closed_months || []).includes(nowMonth);
 
 function facts(place) {
   const out = [];
-  if (place.elevation_m) out.push({ icon: 'altitude', text: `${place.elevation_m.toLocaleString('th-TH')} ม.` });
+  if (place.elevation_m) out.push({ icon: 'altitude', text: `${place.elevation_m.toLocaleString(DATE_LOCALE)} ม.` });
   if (place.trail_distance_km) out.push({ icon: 'route', text: `${place.trail_distance_km} กม.` });
   if (place.difficulty_label) out.push({ icon: 'hiking', text: place.difficulty_label });
   return out;

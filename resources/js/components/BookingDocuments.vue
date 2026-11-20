@@ -6,13 +6,13 @@
       <span class="material-symbols-rounded text-[22px]"
         :class="hasMissing ? 'text-amber-600' : 'text-violet-600'">attach_file</span>
       <div class="flex-1">
-        <h2 class="font-black text-gray-900">{{ hasMissing ? 'ยังขาดเอกสารแนบ' : isEmpty ? 'ยังไม่ได้แนบเอกสาร' : 'เอกสารแนบ' }}</h2>
+        <h2 class="font-black text-gray-900">{{ hasMissing ? $t('ยังขาดเอกสารแนบ') : isEmpty ? $t('ยังไม่ได้แนบเอกสาร') : $t('เอกสารแนบ') }}</h2>
         <p class="text-xs text-gray-600 mt-0.5">
           {{ hasMissing
-            ? 'ทริปนี้ต้องใช้เอกสารของผู้เดินทางทุกท่าน แนบเป็นรูปหรือไฟล์ PDF ก็ได้'
+            ? $t('ทริปนี้ต้องใช้เอกสารของผู้เดินทางทุกท่าน แนบเป็นรูปหรือไฟล์ PDF ก็ได้')
             : isEmpty
-              ? 'เอกสารของทริปนี้ไม่บังคับ มีไว้ก็แนบได้เลย แนบเป็นรูปหรือไฟล์ PDF ก็ได้'
-              : 'ทีมงานได้รับเอกสารของทุกท่านแล้ว แนบผิดไฟล์สามารถลบแล้วแนบใหม่ได้' }}
+              ? $t('เอกสารของทริปนี้ไม่บังคับ มีไว้ก็แนบได้เลย แนบเป็นรูปหรือไฟล์ PDF ก็ได้')
+              : $t('ทีมงานได้รับเอกสารของทุกท่านแล้ว แนบผิดไฟล์สามารถลบแล้วแนบใหม่ได้') }}
         </p>
       </div>
     </div>
@@ -20,13 +20,13 @@
     <div class="p-6 sm:p-8 space-y-6">
       <div v-for="person in passengers" :key="person.passenger_id"
         class="rounded-3xl border border-gray-100 bg-gray-50/60 p-5 space-y-5">
-        <p class="font-black text-gray-900 text-sm">{{ person.name || 'ผู้เดินทาง' }}</p>
+        <p class="font-black text-gray-900 text-sm">{{ person.name || $t('ผู้เดินทาง') }}</p>
 
         <div v-for="req in person.requirements" :key="req.key">
           <div class="flex items-center gap-2 flex-wrap">
             <span class="text-sm font-bold text-gray-800">{{ req.label }}</span>
-            <span v-if="req.is_missing" class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">ยังไม่แนบ</span>
-            <span v-else-if="!req.required" class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[11px] font-bold">ไม่บังคับ</span>
+            <span v-if="req.is_missing" class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">{{ $t('ยังไม่แนบ') }}</span>
+            <span v-else-if="!req.required" class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[11px] font-bold">{{ $t('ไม่บังคับ') }}</span>
           </div>
           <p v-if="req.note" class="text-xs text-gray-600 mt-1">{{ req.note }}</p>
           <DocumentGuideButton :doc="req" :max-size-mb="maxSizeMb" :max-files="req.for === 'border_pass' ? 1 : maxFiles" class="mt-1" />
@@ -38,11 +38,11 @@
                 {{ file.is_image ? 'image' : 'picture_as_pdf' }}
               </span>
               <span class="text-xs font-bold text-gray-700 truncate flex-1">{{ file.original_name }}</span>
-              <a :href="file.url" target="_blank" rel="noopener" title="เปิดดู"
+              <a :href="file.url" target="_blank" rel="noopener" :title="$t('เปิดดู')"
                 class="text-gray-400 hover:text-accent shrink-0">
                 <span class="material-symbols-rounded text-[18px]">open_in_new</span>
               </a>
-              <button type="button" title="ลบไฟล์นี้" :disabled="deletingId === file.id"
+              <button type="button" :title="$t('ลบไฟล์นี้')" :disabled="deletingId === file.id"
                 @click="removeFile(file)" class="text-gray-400 hover:text-red-500 shrink-0 disabled:opacity-40">
                 <span class="material-symbols-rounded text-[18px]">delete</span>
               </button>
@@ -56,8 +56,8 @@
               {{ uploadingSlot === `${person.passenger_id}:${req.key}` ? 'hourglass_top' : 'upload_file' }}
             </span>
             {{ uploadingSlot === `${person.passenger_id}:${req.key}`
-              ? 'กำลังอัปโหลด...'
-              : (req.files.length ? 'แนบไฟล์เพิ่ม' : 'เลือกไฟล์') }}
+              ? $t('กำลังอัปโหลด...')
+              : (req.files.length ? $t('แนบไฟล์เพิ่ม') : $t('เลือกไฟล์')) }}
             <input type="file" class="hidden" accept="image/*,.pdf,application/pdf"
               @change="uploadFile(person.passenger_id, req.key, $event)" />
           </label>
@@ -65,13 +65,14 @@
       </div>
 
       <p class="text-xs text-gray-500 text-center">
-        ไฟล์ละไม่เกิน {{ maxSizeMb }} MB · เอกสารเหล่านี้เห็นได้เฉพาะท่านและทีมงานเท่านั้น
+        {{ $t('ไฟล์ละไม่เกิน {maxSizeMb} MB · เอกสารเหล่านี้เห็นได้เฉพาะท่านและทีมงานเท่านั้น', { maxSizeMb }) }}
       </p>
     </div>
   </section>
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 /**
  * เอกสารแนบของการจอง — ดู แนบเพิ่ม และลบ
  *
@@ -115,11 +116,11 @@ async function uploadFile(passengerId, requirementKey, event) {
   if (!file || uploadingSlot.value) return;
 
   if (file.size > maxSizeMb * 1024 * 1024) {
-    toast.error(`ไฟล์ใหญ่เกิน ${maxSizeMb} MB`);
+    toast.error($t('ไฟล์ใหญ่เกิน {maxSizeMb} MB', { maxSizeMb }));
     return;
   }
   if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-    toast.error('รองรับไฟล์รูปภาพและ PDF เท่านั้น');
+    toast.error($t('รองรับไฟล์รูปภาพและ PDF เท่านั้น'));
     return;
   }
 
@@ -132,9 +133,9 @@ async function uploadFile(passengerId, requirementKey, event) {
     const res = await api.post(`/bookings/${props.bookingRef}/documents`, form);
     local.value = res.data.data.documents;
     emit('updated', local.value);
-    toast.success('แนบเอกสารแล้ว');
+    toast.success($t('แนบเอกสารแล้ว'));
   } catch (e) {
-    toast.error(e?.response?.data?.message || 'แนบเอกสารไม่สำเร็จ');
+    toast.error(e?.response?.data?.message || $t('แนบเอกสารไม่สำเร็จ'));
   } finally {
     uploadingSlot.value = '';
   }
@@ -142,16 +143,16 @@ async function uploadFile(passengerId, requirementKey, event) {
 
 async function removeFile(file) {
   if (deletingId.value) return;
-  if (!confirm(`ลบเอกสาร "${file.original_name}" ใช่หรือไม่?\nลบแล้วต้องแนบใหม่ครับ`)) return;
+  if (!confirm($t('ลบเอกสาร "{original_name}" ใช่หรือไม่?\nลบแล้วต้องแนบใหม่ครับ', { original_name: file.original_name }))) return;
 
   deletingId.value = file.id;
   try {
     const res = await api.delete(`/bookings/${props.bookingRef}/documents/${file.id}`);
     local.value = res.data.data;
     emit('updated', local.value);
-    toast.success('ลบเอกสารแล้ว');
+    toast.success($t('ลบเอกสารแล้ว'));
   } catch (e) {
-    toast.error(e?.response?.data?.message || 'ลบเอกสารไม่สำเร็จ');
+    toast.error(e?.response?.data?.message || $t('ลบเอกสารไม่สำเร็จ'));
   } finally {
     deletingId.value = null;
   }

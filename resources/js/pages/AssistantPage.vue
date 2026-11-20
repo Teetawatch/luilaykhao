@@ -50,7 +50,7 @@
                   </p>
                 </div>
                 <p class="font-black text-[var(--color-text-dark)] shrink-0">
-                  ฿{{ Number(trip.price_from).toLocaleString('th-TH') }}
+                  ฿{{ Number(trip.price_from).toLocaleString($dateLocale) }}
                 </p>
               </router-link>
             </div>

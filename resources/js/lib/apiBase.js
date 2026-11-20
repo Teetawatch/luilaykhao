@@ -6,6 +6,8 @@
  * แล้ว API ยิงผิดที่ ที่นี่รับได้ทั้งสองรูป ("http://host" หรือ "http://host/api/v1")
  * และว่าง = โดเมนเดียวกับหน้าเว็บ
  */
+import { LOCALE, isEnglish, savedLocale } from '../i18n/index.js';
+
 const raw = String(import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
 
 /** ต้นทางของ API ไม่มี path — '' คือโดเมนเดียวกับหน้าเว็บ */
@@ -18,4 +20,16 @@ export const API_BASE_URL = `${API_ORIGIN}/api/v1`;
  * header ที่บอกเซิร์ฟเวอร์ว่า request มาจากเว็บ — ใช้ตั้งชื่อ token ตอนล็อกอิน
  * (token เว็บหมดอายุเมื่อไม่ได้ใช้) และบันทึกช่องทางของใบจอง
  */
-export const CLIENT_HEADERS = Object.freeze({ 'X-Client': 'web' });
+export const CLIENT_HEADERS = Object.freeze({
+  'X-Client': 'web',
+  // ภาษาของข้อความจากเซิร์ฟเวอร์ (error, อีเมล, push) — ส่งเฉพาะเมื่อเปิดหน้าอังกฤษ
+  // หรือผู้ใช้เคยเลือกภาษาเอง ลูกค้าไทยที่ไม่เคยแตะปุ่มภาษาจึงไม่เขียนทับ
+  // users.locale ที่ตั้งไว้จากแอป (ดู App\Http\Middleware\SetAppLocale)
+  ...languageHeader(),
+});
+
+function languageHeader() {
+  const lang = isEnglish ? LOCALE : savedLocale();
+
+  return lang ? { 'X-App-Language': lang } : {};
+}

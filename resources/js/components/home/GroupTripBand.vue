@@ -5,20 +5,20 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
         <div class="relative overflow-hidden rounded-2xl aspect-[4/3] lg:aspect-[5/4] bg-[var(--color-sand-dark)]">
-          <img :src="image" alt="ทริปกลุ่มกับลุยเลเขา" loading="lazy" class="absolute inset-0 w-full h-full object-cover" />
+          <img :src="image" :alt="$t('ทริปกลุ่มกับลุยเลเขา')" loading="lazy" class="absolute inset-0 w-full h-full object-cover" />
           <span class="absolute left-4 bottom-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[14px] font-bold text-[var(--color-text-dark)]">
             <span class="material-symbols-rounded icon-20 text-[var(--color-accent)]">groups</span>
-            กลุ่มเพื่อน · ครอบครัว · องค์กร
+            {{ $t('กลุ่มเพื่อน · ครอบครัว · องค์กร') }}
           </span>
         </div>
 
         <div>
-          <p class="text-[14px] font-bold text-[var(--color-accent)]">เหมาทริปส่วนตัว</p>
+          <p class="text-[14px] font-bold text-[var(--color-accent)]">{{ $t('เหมาทริปส่วนตัว') }}</p>
           <h2 class="mt-2 text-[1.75rem] sm:text-3xl md:text-[2.4rem] font-bold leading-tight tracking-tight text-[var(--color-text-dark)]">
-            ไปเป็นกลุ่ม เลือกวันเองได้
+            {{ $t('ไปเป็นกลุ่ม เลือกวันเองได้') }}
           </h2>
           <p class="mt-4 text-base md:text-[1.1rem] leading-relaxed text-[var(--color-text-mid)]">
-            ทริปเพื่อนสนิท ทริปครอบครัว หรือทริปบริษัทประจำปี บอกจำนวนคน วันที่สะดวก และปลายทางที่สนใจ ทีมงานจะเสนอราคาให้ก่อนตัดสินใจ
+            {{ $t('ทริปเพื่อนสนิท ทริปครอบครัว หรือทริปบริษัทประจำปี บอกจำนวนคน วันที่สะดวก และปลายทางที่สนใจ ทีมงานจะเสนอราคาให้ก่อนตัดสินใจ') }}
           </p>
 
           <ul class="mt-6 space-y-3">
@@ -36,11 +36,11 @@
           <div class="mt-8 flex flex-wrap items-center gap-3">
             <a :href="supportLineUrl()" target="_blank" rel="noopener" class="group-btn group-btn--line">
               <i class="fa-brands fa-line" aria-hidden="true"></i>
-              ขอใบเสนอราคาทางไลน์
+              {{ $t('ขอใบเสนอราคาทางไลน์') }}
             </a>
             <a :href="supportPhoneHref()" class="group-btn group-btn--outline">
               <span class="material-symbols-rounded icon-20">call</span>
-              โทร {{ supportPhone() }}
+              {{ $t('โทร {supportPhone}', { supportPhone: supportPhone() }) }}
             </a>
           </div>
         </div>
@@ -50,6 +50,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { supportLineUrl, supportPhone, supportPhoneHref } from '../../lib/contact';
 
 defineProps({
@@ -57,9 +58,9 @@ defineProps({
 });
 
 const points = [
-  { icon: 'event_available', title: 'เลือกวันและจุดรับเอง', desc: 'เปิดรอบเฉพาะกลุ่มของคุณ ไม่ต้องรอรอบปกติเต็ม' },
-  { icon: 'request_quote', title: 'เสนอราคาต่อคนตามขนาดกลุ่ม', desc: 'เห็นยอดรวมก่อนตอบรับ จองและจ่ายผ่านระบบเดียวกับทริปปกติ' },
-  { icon: 'support_agent', title: 'ทีมงานชุดเดียวกับทริปปกติ', desc: 'รถ คนขับ และสตาฟที่พาทริปของเราอยู่ทุกสัปดาห์' },
+  { icon: 'event_available', title: $t('เลือกวันและจุดรับเอง'), desc: $t('เปิดรอบเฉพาะกลุ่มของคุณ ไม่ต้องรอรอบปกติเต็ม') },
+  { icon: 'request_quote', title: $t('เสนอราคาต่อคนตามขนาดกลุ่ม'), desc: $t('เห็นยอดรวมก่อนตอบรับ จองและจ่ายผ่านระบบเดียวกับทริปปกติ') },
+  { icon: 'support_agent', title: $t('ทีมงานชุดเดียวกับทริปปกติ'), desc: $t('รถ คนขับ และสตาฟที่พาทริปของเราอยู่ทุกสัปดาห์') },
 ];
 </script>
 

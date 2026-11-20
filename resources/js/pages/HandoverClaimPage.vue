@@ -61,7 +61,7 @@
                 คุณจะได้ดูแลการจองนี้แทน{{ preview.from_name }}ด้วย (แชท วันเดินทาง และเรื่องการจองทั้งหมด)
               </p>
               <p v-if="preview.pending_share_amount" class="rounded-[12px] bg-[#FFFBEB] text-[#92400E] px-3 py-2">
-                ที่นั่งนี้ยังมีส่วนแบ่งค่าทริปค้างจ่าย ฿{{ Number(preview.pending_share_amount).toLocaleString('th-TH') }}
+                ที่นั่งนี้ยังมีส่วนแบ่งค่าทริปค้างจ่าย ฿{{ Number(preview.pending_share_amount).toLocaleString($dateLocale) }}
                 รับแล้วจะเป็นส่วนของคุณ
               </p>
               <p class="text-[#889696]">ค่าที่นั่งตกลงกันเองกับคนที่ส่งให้คุณ ทางเราไม่เก็บเงินเพิ่มจากการรับที่นั่ง</p>

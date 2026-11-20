@@ -15,7 +15,7 @@
         <span class="material-symbols-rounded icon-48">landscape</span>
       </span>
 
-      <span v-if="discountPct" class="pkg-badge">ลด {{ discountPct }}%</span>
+      <span v-if="discountPct" class="pkg-badge">{{ $t('ลด {discountPct}%', { discountPct }) }}</span>
       <span
         v-else-if="trip.campaign"
         class="pkg-badge"
@@ -31,7 +31,7 @@
         type="button"
         class="pkg-fav"
         :class="isFav ? 'text-red-500' : 'text-[var(--color-text-dark)]'"
-        :aria-label="isFav ? 'นำออกจากรายการโปรด' : 'บันทึกรายการโปรด'"
+        :aria-label="isFav ? $t('นำออกจากรายการโปรด') : $t('บันทึกรายการโปรด')"
         @click.prevent="wishlist.toggleFavorite(trip)"
       >
         <span
@@ -55,11 +55,11 @@
         <div class="flex flex-wrap items-end justify-between gap-x-3 gap-y-1 border-t border-[var(--color-sand-dark)] pt-3">
           <div class="min-w-0">
             <p class="text-[12px] font-medium text-[var(--color-text-muted)]">
-              ราคาเริ่มต้น
-              <s v-if="discountPct" class="ml-1">฿{{ fmt(trip.min_original_price) }}</s>
+              {{ $t('ราคาเริ่มต้น') }}
+              <s v-if="discountPct" class="ml-1">{{ $t('฿{fmt}', { fmt: fmt(trip.min_original_price) }) }}</s>
             </p>
             <p class="whitespace-nowrap text-[22px] font-extrabold leading-tight text-[var(--color-text-dark)] tabular-nums">
-              ฿{{ fmt(trip.min_price) }}<span class="ml-1 text-[13px] font-semibold text-[var(--color-text-muted)]">/ ท่าน</span>
+              {{ $t('฿{fmt}', { fmt: fmt(trip.min_price) }) }}<span class="ml-1 text-[13px] font-semibold text-[var(--color-text-muted)]">{{ $t('/ ท่าน') }}</span>
             </p>
           </div>
           <div class="shrink-0 ml-auto text-right text-[12.5px] leading-tight">
@@ -68,7 +68,7 @@
               {{ Number(trip.rating).toFixed(1) }}
               <span class="font-medium text-[var(--color-text-muted)]">({{ trip.review_count }})</span>
             </p>
-            <p v-if="nextDeparture" class="mt-0.5 text-[var(--color-text-muted)]">รอบถัดไป {{ nextDeparture }}</p>
+            <p v-if="nextDeparture" class="mt-0.5 text-[var(--color-text-muted)]">{{ $t('รอบถัดไป {nextDeparture}', { nextDeparture }) }}</p>
             <p v-if="lastSeats" class="mt-0.5 font-semibold text-amber-700">{{ lastSeats }}</p>
           </div>
         </div>
@@ -78,6 +78,8 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
+import { DATE_LOCALE } from '@/i18n';
 import { computed } from 'vue';
 import { useWishlistStore } from '../stores/wishlist';
 import { tripCardImage } from '../lib/tripImage';
@@ -91,18 +93,18 @@ const props = defineProps({
 
 const wishlist = useWishlistStore();
 
-const TYPE_LABELS = { trekking: 'เดินป่า', snorkeling: 'ดำน้ำตื้น', diving: 'ดำน้ำ' };
-const DIFFICULTY_LABELS = { easy: 'ระดับง่าย', medium: 'ระดับปานกลาง', hard: 'ระดับท้าทาย' };
+const TYPE_LABELS = { trekking: $t('เดินป่า'), snorkeling: $t('ดำน้ำตื้น'), diving: $t('ดำน้ำ') };
+const DIFFICULTY_LABELS = { easy: $t('ระดับง่าย'), medium: $t('ระดับปานกลาง'), hard: $t('ระดับท้าทาย') };
 
 const image = computed(() => tripCardImage(props.trip));
 const isFav = computed(() => wishlist.isFavorite(props.trip.id));
 const typeLabel = computed(() => TYPE_LABELS[props.trip.type] || props.trip.type);
 
-const fmt = (n) => Number(n || 0).toLocaleString('th-TH');
+const fmt = (n) => Number(n || 0).toLocaleString(DATE_LOCALE);
 
 const durationLabel = computed(() => {
   const d = Number(props.trip.duration_days) || 1;
-  return d > 1 ? `${d} วัน ${d - 1} คืน` : '1 วัน';
+  return d > 1 ? $t('{d} วัน {v} คืน', { d, v: d - 1 }) : $t('1 วัน');
 });
 
 const discountPct = computed(() => {
@@ -118,8 +120,8 @@ const facts = computed(() => {
   const t = props.trip;
   const out = [];
   if (DIFFICULTY_LABELS[t.difficulty]) out.push(DIFFICULTY_LABELS[t.difficulty]);
-  if (Number(t.distance_km) > 0) out.push(`เดิน ${Number(t.distance_km).toLocaleString()} กม.`);
-  if (Number(t.elevation_gain_m) > 0) out.push(`ขึ้น ${Number(t.elevation_gain_m).toLocaleString()} ม.`);
+  if (Number(t.distance_km) > 0) out.push($t('เดิน {Number} กม.', { Number: Number(t.distance_km).toLocaleString() }));
+  if (Number(t.elevation_gain_m) > 0) out.push($t('ขึ้น {Number} ม.', { Number: Number(t.elevation_gain_m).toLocaleString() }));
   return out;
 });
 
@@ -127,7 +129,7 @@ const facts = computed(() => {
 const lastSeats = computed(() => {
   if (tripScarcityLevel(props.trip) !== 'last') return null;
   const left = tripSeatsLeft(props.trip);
-  return left ? `เหลือ ${left} ที่` : null;
+  return left ? $t('เหลือ {left} ที่', { left }) : null;
 });
 
 const nextDeparture = computed(() => {

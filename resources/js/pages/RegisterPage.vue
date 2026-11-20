@@ -3,13 +3,14 @@
     <!-- Image Side -->
     <div class="w-full lg:w-1/2 relative bg-sand-dark h-64 sm:h-80 md:h-96 lg:h-auto overflow-hidden">
       <div class="absolute inset-0 bg-black/40 z-10"></div>
-      <img src="/images/register_page.png" alt="เริ่มต้นการเดินทาง" class="absolute inset-0 w-full h-full object-cover" />
+      <!-- ภาพของหน้าไทยมีตัวหนังสือไทยฝังอยู่ในภาพ หน้าอังกฤษใช้ภาพที่ไม่มีตัวหนังสือ -->
+      <img :src="$isEnglish ? '/images/hiking.webp' : '/images/register_page.png'" :alt="$t('เริ่มต้นการเดินทาง')" class="absolute inset-0 w-full h-full object-cover" />
       <div class="relative z-20 flex flex-col justify-center px-6 sm:px-10 md:px-16 text-white h-full">
         <h1 class="font-anuphan text-2xl sm:text-3xl md:text-5xl font-bold mb-3 md:mb-6 leading-tight">
-          เริ่มต้นการเดินทาง<br />ครั้งใหม่ไปกับเรา
+          {{ $t('เริ่มต้นการเดินทาง') }}<br />{{ $t('ครั้งใหม่ไปกับเรา') }}
         </h1>
         <p class="hidden sm:block text-sm md:text-lg text-white/90 max-w-md leading-relaxed mb-6 md:mb-12">
-          เข้าร่วมกับ ลุยเลเขา เพื่อค้นพบเส้นทางธรรมชาติที่สวยงาม และประสบการณ์การผจญภัยที่คุณจะไม่มีวันลืม
+          {{ $t('เข้าร่วมกับ ลุยเลเขา เพื่อค้นพบเส้นทางธรรมชาติที่สวยงาม และประสบการณ์การผจญภัยที่คุณจะไม่มีวันลืม') }}
         </p>
         
         <div class="hidden sm:flex items-center space-x-4 text-xs md:text-sm font-medium">
@@ -24,7 +25,7 @@
               <span class="text-[10px] md:text-xs">+1k</span>
             </div>
           </div>
-          <span class="text-white/90">นักเดินทางกว่า 1,000+ คนไว้วางใจเรา</span>
+          <span class="text-white/90">{{ $t('นักเดินทางกว่า 1,000+ คนไว้วางใจเรา') }}</span>
         </div>
       </div>
     </div>
@@ -36,8 +37,8 @@
           <div class="lg:hidden w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="fa-solid fa-mountain-sun text-accent text-2xl"></i>
           </div>
-          <h2 class="font-anuphan text-3xl md:text-4xl font-bold text-text-dark mb-3">สร้างบัญชีใหม่</h2>
-          <p class="text-text-muted">กรอกข้อมูลด้านล่างเพื่อเริ่มต้นใช้งาน ลุยเลเขา</p>
+          <h2 class="font-anuphan text-3xl md:text-4xl font-bold text-text-dark mb-3">{{ $t('สร้างบัญชีใหม่') }}</h2>
+          <p class="text-text-muted">{{ $t('กรอกข้อมูลด้านล่างเพื่อเริ่มต้นใช้งาน ลุยเลเขา') }}</p>
         </div>
 
         <form @submit.prevent="handleRegister" class="space-y-5">
@@ -45,19 +46,19 @@
           <div class="grid grid-cols-12 gap-4">
             <div class="col-span-12 md:col-span-3 space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-                คำนำหน้า <span class="text-red-500">*</span>
+                {{ $t('คำนำหน้า') }} <span class="text-red-500">*</span>
               </label>
               <select v-model="form.title" required
                 class="w-full bg-white border border-sand-dark/60 rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none">
-                <option value="" disabled>เลือก...</option>
-                <option value="นาย">นาย</option>
-                <option value="นาง">นาง</option>
-                <option value="นางสาว">นางสาว</option>
+                <option value="" disabled>{{ $t('เลือก...') }}</option>
+                <option value="นาย">{{ $t('นาย') }}</option>
+                <option value="นาง">{{ $t('นาง') }}</option>
+                <option value="นางสาว">{{ $t('นางสาว') }}</option>
               </select>
             </div>
             <div class="col-span-12 md:col-span-9 space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-                ชื่อ-นามสกุล <span class="text-red-500">*</span>
+                {{ $t('ชื่อ-นามสกุล') }} <span class="text-red-500">*</span>
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -65,7 +66,7 @@
                 </div>
                 <input v-model="form.name" type="text" required
                   class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
-                  placeholder="สมชาย ใจดี" />
+                  :placeholder="$t('สมชาย ใจดี')" />
               </div>
             </div>
           </div>
@@ -73,7 +74,7 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-                ชื่อเล่น
+                {{ $t('ชื่อเล่น') }}
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -81,14 +82,14 @@
                 </div>
                 <input v-model="form.nickname" type="text"
                   class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
-                  placeholder="น้องเอ" />
+                  :placeholder="$t('น้องเอ')" />
               </div>
             </div>
             <!-- วันเกิดถูกใช้ต่อในขั้นตอนจอง (ประกันการเดินทาง/ออกตั๋ว)
                  กรอกที่นี่ครั้งเดียวแล้วระบบเติมให้เองตอนจอง -->
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-                วัน/เดือน/ปีเกิด
+                {{ $t('วัน/เดือน/ปีเกิด') }}
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -100,11 +101,11 @@
             </div>
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-                กรุ๊ปเลือด
+                {{ $t('กรุ๊ปเลือด') }}
               </label>
               <select v-model="form.blood_group"
                 class="w-full bg-white border border-sand-dark/60 rounded-xl px-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none">
-                <option value="">ไม่ระบุ</option>
+                <option value="">{{ $t('ไม่ระบุ') }}</option>
                 <option value="A">A</option>
                 <option value="B">B</option>
                 <option value="AB">AB</option>
@@ -117,7 +118,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-                อีเมล
+                {{ $t('อีเมล') }}
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -137,13 +138,13 @@
                 <i class="fa-solid fa-circle-exclamation"></i>{{ emailError }}
               </p>
               <p v-else class="text-xs text-text-muted/70">
-                รองรับ Gmail, Hotmail, Outlook, Yahoo, iCloud ฯลฯ
+                {{ $t('รองรับ Gmail, Hotmail, Outlook, Yahoo, iCloud ฯลฯ') }}
               </p>
             </div>
 
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-                เบอร์โทรศัพท์
+                {{ $t('เบอร์โทรศัพท์') }}
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -160,7 +161,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-                รหัสผ่าน
+                {{ $t('รหัสผ่าน') }}
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -168,13 +169,13 @@
                 </div>
                 <input v-model="form.password" type="password" required
                   class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
-                  placeholder="อย่างน้อย 8 ตัวอักษร" />
+                  :placeholder="$t('อย่างน้อย 8 ตัวอักษร')" />
               </div>
             </div>
 
             <div class="space-y-1.5">
               <label class="text-sm font-medium text-text-dark flex items-center gap-2">
-                ยืนยันรหัสผ่าน
+                {{ $t('ยืนยันรหัสผ่าน') }}
               </label>
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -182,7 +183,7 @@
                 </div>
                 <input v-model="form.password_confirmation" type="password" required
                   class="w-full bg-white border border-sand-dark/60 rounded-xl pl-11 pr-4 py-3 text-sm transition-all duration-200 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none placeholder:text-text-muted/50"
-                  placeholder="ยืนยันรหัสผ่านอีกครั้ง" />
+                  :placeholder="$t('ยืนยันรหัสผ่านอีกครั้ง')" />
               </div>
             </div>
           </div>
@@ -194,7 +195,7 @@
                 class="w-4 h-4 text-accent border-sand-dark rounded focus:ring-accent focus:ring-2" />
             </div>
             <label for="terms" class="text-sm text-text-muted leading-relaxed">
-              ฉันยอมรับ <router-link to="/terms" class="text-accent hover:underline font-medium">ข้อกำหนดการใช้งาน</router-link> และ <router-link to="/privacy" class="text-accent hover:underline font-medium">นโยบายความเป็นส่วนตัว</router-link> ของ ลุยเลเขา
+              {{ $t('ฉันยอมรับ') }} <router-link to="/terms" class="text-accent hover:underline font-medium">{{ $t('ข้อกำหนดการใช้งาน') }}</router-link> {{ $t('และ') }} <router-link to="/privacy" class="text-accent hover:underline font-medium">{{ $t('นโยบายความเป็นส่วนตัว') }}</router-link> {{ $t('ของ ลุยเลเขา') }}
             </label>
           </div>
 
@@ -209,15 +210,15 @@
             class="w-full bg-accent text-white py-3.5 rounded-xl font-bold shadow-accent/20 hover:bg-accent-mid hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled: flex items-center justify-center gap-2 mt-4">
             <i v-if="auth.loading" class="fa-solid fa-circle-notch fa-spin"></i>
             <i v-else class="fa-solid fa-user-plus"></i>
-            {{ auth.loading ? 'กำลังสร้างบัญชี...' : 'สมัครสมาชิก' }}
+            {{ auth.loading ? $t('กำลังสร้างบัญชี...') : $t('สมัครสมาชิก') }}
           </button>
         </form>
         <!-- Login Link -->
         <div class="mt-8 text-center lg:text-left border-t border-sand-dark/50 pt-6">
           <p class="text-sm text-text-muted">
-            มีบัญชีอยู่แล้ว?
+            {{ $t('มีบัญชีอยู่แล้ว?') }}
             <router-link :to="{ name: 'login', query: route.query.redirect ? { redirect: route.query.redirect } : {} }" class="text-accent hover:text-accent-mid font-semibold inline-flex items-center gap-1 transition-colors">
-              เข้าสู่ระบบเลย
+              {{ $t('เข้าสู่ระบบเลย') }}
               <i class="fa-solid fa-arrow-right-to-bracket text-xs ml-1"></i>
             </router-link>
           </p>
@@ -228,6 +229,7 @@
 </template>
 
 <script setup>
+import { $t, LOCALE, isEnglish, rememberLocale } from '@/i18n';
 import { ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
@@ -275,7 +277,7 @@ function validateEmail() {
   const at = value.lastIndexOf('@');
   const domain = at >= 0 ? value.slice(at + 1) : '';
   if (!ALLOWED_EMAIL_DOMAINS.includes(domain)) {
-    emailError.value = 'กรุณาใช้อีเมลจากผู้ให้บริการที่รองรับ เช่น Gmail, Hotmail, Outlook, Yahoo หรือ iCloud';
+    emailError.value = $t('กรุณาใช้อีเมลจากผู้ให้บริการที่รองรับ เช่น Gmail, Hotmail, Outlook, Yahoo หรือ iCloud');
     return false;
   }
   emailError.value = '';
@@ -294,16 +296,19 @@ async function handleRegister() {
     if (errors) {
       error.value = Object.values(errors).flat().join(', ');
     } else {
-      error.value = e?.response?.data?.message || 'สมัครสมาชิกล้มเหลว';
+      error.value = e?.response?.data?.message || $t('สมัครสมาชิกล้มเหลว');
     }
   }
 }
 
+// ผู้ให้บริการส่งกลับมาที่ URL ไทยเสมอ — จำภาษาไว้ก่อน หน้าที่กลับมาจะพาไป /en เอง
 function loginWithGoogle() {
+  if (isEnglish) rememberLocale(LOCALE);
   window.location.href = '/auth/google/redirect';
 }
 
 function loginWithFacebook() {
+  if (isEnglish) rememberLocale(LOCALE);
   window.location.href = '/auth/facebook/redirect';
 }
 </script>

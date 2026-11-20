@@ -16,8 +16,8 @@
 
       <div class="overflow-y-auto px-6 py-4 flex flex-col gap-4">
         <p class="text-sm text-gray-500 leading-relaxed">
-          เลื่อนแผนที่ให้หมุดอยู่ตรงจุดที่สะดวก แล้วจองต่อได้ทันที
-          <strong class="text-gray-700">ราคาคิดเท่าจุดรับที่ใกล้หมุดที่สุด</strong> (ไม่ต่ำกว่าราคารอบเดินทาง)
+          {{ $t('เลื่อนแผนที่ให้หมุดอยู่ตรงจุดที่สะดวก แล้วจองต่อได้ทันที') }}
+          <strong class="text-gray-700">{{ $t('ราคาคิดเท่าจุดรับที่ใกล้หมุดที่สุด') }}</strong> {{ $t('(ไม่ต่ำกว่าราคารอบเดินทาง)') }}
         </p>
 
         <!-- ค้นหาสถานที่ตามชื่อ (Nominatim / OpenStreetMap) -->
@@ -25,7 +25,7 @@
           <div class="relative">
             <span class="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
             <input v-model="searchQuery" @input="onSearchInput" @keyup.enter="runSearch" type="text"
-              placeholder="ค้นหาสถานที่ เช่น เซ็นทรัลลาดพร้าว, ปั๊ม ปตท. ทางเข้าเขาใหญ่"
+              :placeholder="$t('ค้นหาสถานที่ เช่น เซ็นทรัลลาดพร้าว, ปั๊ม ปตท. ทางเข้าเขาใหญ่')"
               class="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium" />
             <span v-if="searching" class="material-symbols-rounded animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-accent text-[20px]">progress_activity</span>
             <button v-else-if="searchQuery" type="button" @click="clearSearch"
@@ -44,7 +44,7 @@
               </button>
             </li>
           </ul>
-          <p v-else-if="searchedEmpty" class="mt-1.5 text-xs text-gray-400 font-medium">ไม่พบสถานที่ตามคำค้นหา ลองพิมพ์ใหม่หรือปักหมุดบนแผนที่เอง</p>
+          <p v-else-if="searchedEmpty" class="mt-1.5 text-xs text-gray-400 font-medium">{{ $t('ไม่พบสถานที่ตามคำค้นหา ลองพิมพ์ใหม่หรือปักหมุดบนแผนที่เอง') }}</p>
         </div>
 
         <!-- Map — หมุดตรึงกลาง เลื่อนแผนที่เอา (แบบ LINE MAN) -->
@@ -64,36 +64,36 @@
 
         <!-- พิกัด Lat/Long — แก้ไขเองได้ กด "ไป" เพื่อเลื่อนแผนที่ไปยังพิกัดนั้น -->
         <div>
-          <label class="block text-sm font-bold text-gray-700 mb-1.5">พิกัด (ละติจูด, ลองจิจูด)</label>
+          <label class="block text-sm font-bold text-gray-700 mb-1.5">{{ $t('พิกัด (ละติจูด, ลองจิจูด)') }}</label>
           <div class="flex items-center gap-2">
             <input v-model="latInput" @keyup.enter="goToLatLng" @focus="latLngFocused = true" @blur="latLngFocused = false"
-              type="text" inputmode="decimal" placeholder="ละติจูด เช่น 13.75630"
+              type="text" inputmode="decimal" :placeholder="$t('ละติจูด เช่น 13.75630')"
               class="min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium tabular-nums" />
             <input v-model="lngInput" @keyup.enter="goToLatLng" @focus="latLngFocused = true" @blur="latLngFocused = false"
-              type="text" inputmode="decimal" placeholder="ลองจิจูด เช่น 100.50180"
+              type="text" inputmode="decimal" :placeholder="$t('ลองจิจูด เช่น 100.50180')"
               class="min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium tabular-nums" />
             <button type="button" @click="goToLatLng" :disabled="!canGoLatLng"
               class="shrink-0 px-4 py-2.5 rounded-xl bg-accent text-white text-sm font-bold hover:bg-accent-mid disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-              ไป
+              {{ $t('ไป') }}
             </button>
           </div>
           <p v-if="latLngError" class="mt-1.5 text-xs text-red-500 font-medium">{{ latLngError }}</p>
-          <p v-else class="mt-1.5 text-xs text-gray-400 font-medium">วางพิกัดจาก Google Maps ได้ (เช่น 13.7563, 100.5018)</p>
+          <p v-else class="mt-1.5 text-xs text-gray-400 font-medium">{{ $t('วางพิกัดจาก Google Maps ได้ (เช่น 13.7563, 100.5018)') }}</p>
         </div>
 
         <!-- Label -->
         <div>
-          <label class="block text-sm font-bold text-gray-700 mb-1.5">ชื่อจุดรับ / จุดสังเกต <span class="text-red-500">*</span></label>
+          <label class="block text-sm font-bold text-gray-700 mb-1.5">{{ $t('ชื่อจุดรับ / จุดสังเกต') }} <span class="text-red-500">*</span></label>
           <input v-model="label" type="text" maxlength="255"
-            placeholder="เช่น ปั๊ม ปตท. ทางเข้าเขาใหญ่"
+            :placeholder="$t('เช่น ปั๊ม ปตท. ทางเข้าเขาใหญ่')"
             class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium" />
         </div>
 
         <!-- Note -->
         <div>
-          <label class="block text-sm font-bold text-gray-700 mb-1.5">รายละเอียดเพิ่มเติม (ถ้ามี)</label>
+          <label class="block text-sm font-bold text-gray-700 mb-1.5">{{ $t('รายละเอียดเพิ่มเติม (ถ้ามี)') }}</label>
           <textarea v-model="note" rows="2" maxlength="1000"
-            placeholder="เช่น รอตรงร้านกาแฟหน้าปั๊ม"
+            :placeholder="$t('เช่น รอตรงร้านกาแฟหน้าปั๊ม')"
             class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none text-sm font-medium resize-none"></textarea>
         </div>
       </div>
@@ -102,11 +102,11 @@
       <div class="px-6 py-4 border-t border-gray-100 shrink-0 flex gap-3">
         <button @click="$emit('close')"
           class="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-all">
-          ยกเลิก
+          {{ $t('ยกเลิก') }}
         </button>
         <button @click="confirm" :disabled="!canConfirm"
           class="flex-1 py-3 rounded-xl font-bold text-white bg-accent hover:bg-accent-mid transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-          ใช้จุดนี้
+          {{ $t('ใช้จุดนี้') }}
         </button>
       </div>
     </div>
@@ -114,6 +114,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 
 const props = defineProps({
@@ -121,7 +122,7 @@ const props = defineProps({
   centerLat: { type: Number, default: 13.7563 },
   centerLng: { type: Number, default: 100.5018 },
   initial: { type: Object, default: null }, // { label, lat, lng, note }
-  title: { type: String, default: 'ปักหมุดจุดรับของคุณ' },
+  title: { type: String, default: () => $t('ปักหมุดจุดรับของคุณ') },
 });
 
 const emit = defineEmits(['close', 'confirm']);
@@ -254,7 +255,7 @@ function clearSearch() {
 function goToLatLng() {
   const { lat, lng, valid } = parsedLatLng.value;
   if (!valid) {
-    latLngError.value = 'พิกัดไม่ถูกต้อง กรุณากรอกละติจูด (-90 ถึง 90) และลองจิจูด (-180 ถึง 180)';
+    latLngError.value = $t('พิกัดไม่ถูกต้อง กรุณากรอกละติจูด (-90 ถึง 90) และลองจิจูด (-180 ถึง 180)');
     return;
   }
   latLngError.value = '';
@@ -295,7 +296,7 @@ onBeforeUnmount(() => {
 function goToMyLocation() {
   if (locating.value || !map) return;
   if (!('geolocation' in navigator)) {
-    alert('เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง');
+    alert($t('เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง'));
     return;
   }
   locating.value = true;
@@ -307,7 +308,7 @@ function goToMyLocation() {
     },
     () => {
       locating.value = false;
-      alert('ไม่สามารถระบุตำแหน่งได้ กรุณาอนุญาตการเข้าถึงตำแหน่งและลองอีกครั้ง');
+      alert($t('ไม่สามารถระบุตำแหน่งได้ กรุณาอนุญาตการเข้าถึงตำแหน่งและลองอีกครั้ง'));
     },
     { enableHighAccuracy: true, timeout: 10000 },
   );

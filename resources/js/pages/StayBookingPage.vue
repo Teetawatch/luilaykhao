@@ -197,6 +197,7 @@
 </template>
 
 <script setup>
+import { DATE_LOCALE } from '@/i18n';
 import { computed, defineComponent, h, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
@@ -298,7 +299,7 @@ const mapLink = computed(() => {
 });
 
 function money(n) {
-  return Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+  return Number(n || 0).toLocaleString(DATE_LOCALE, { maximumFractionDigits: 2 });
 }
 
 function thaiDate(ymd) {

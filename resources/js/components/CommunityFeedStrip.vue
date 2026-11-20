@@ -3,12 +3,12 @@
     <div class="max-w-7xl mx-auto px-6 md:px-8">
       <SectionTitle
         class="mb-8 md:mb-10"
-        title="รูปจริงจากคนที่ไปมาแล้ว"
-        subtitle="จากทริปที่เพิ่งกลับมา ผู้ร่วมทริปถ่ายและโพสต์เอง"
+        :title="$t('รูปจริงจากคนที่ไปมาแล้ว')"
+        :subtitle="$t('จากทริปที่เพิ่งกลับมา ผู้ร่วมทริปถ่ายและโพสต์เอง')"
       >
         <template #action>
           <router-link to="/gallery" class="section-more">
-            ดูทั้งหมด
+            {{ $t('ดูทั้งหมด') }}
             <span class="material-symbols-rounded icon-18">chevron_right</span>
           </router-link>
         </template>
@@ -24,7 +24,7 @@
         >
           <img
             :src="photo.url"
-            :alt="photo.caption || photo.tripTitle || 'รูปจากทริป'"
+            :alt="photo.caption || photo.tripTitle || $t('รูปจากทริป')"
             loading="lazy"
             class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
@@ -44,6 +44,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { ref, onMounted } from 'vue';
 import api from '../lib/axios';
 import SectionTitle from './SectionTitle.vue';
@@ -57,14 +58,14 @@ function timeAgo(value) {
   if (!value) return '';
   const diffMs = Date.now() - new Date(value).getTime();
   const mins = Math.floor(diffMs / 60000);
-  if (mins < 60) return mins <= 1 ? 'เมื่อสักครู่' : `${mins} นาทีที่แล้ว`;
+  if (mins < 60) return mins <= 1 ? $t('เมื่อสักครู่') : $t('{mins} นาทีที่แล้ว', { mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} ชม.ที่แล้ว`;
+  if (hours < 24) return $t('{hours} ชม.ที่แล้ว', { hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} วันที่แล้ว`;
+  if (days < 7) return $t('{days} วันที่แล้ว', { days });
   const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `${weeks} สัปดาห์ที่แล้ว`;
-  return `${Math.floor(days / 30)} เดือนที่แล้ว`;
+  if (weeks < 5) return $t('{weeks} สัปดาห์ที่แล้ว', { weeks });
+  return $t('{floor} เดือนที่แล้ว', { floor: Math.floor(days / 30) });
 }
 
 onMounted(async () => {
@@ -80,8 +81,8 @@ onMounted(async () => {
           url: p.url,
           caption: post.caption,
           tripSlug: post.trip?.slug,
-          tripTitle: post.trip?.title || 'ทริปลุยเลเขา',
-          userName: post.user?.name || 'นักเดินทาง',
+          tripTitle: post.trip?.title || $t('ทริปลุยเลเขา'),
+          userName: post.user?.name || $t('นักเดินทาง'),
           timeAgo: timeAgo(post.created_at),
         }))
       )

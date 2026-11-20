@@ -23,15 +23,16 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { licenceNo } from '../lib/licence';
 import { supportHours } from '../lib/contact';
 
 const items = [
   // short: ชื่อบนจอเล็ก (2 คอลัมน์) — สั้นพอให้ไม่ตัดกลางคำ
-  { icon: 'verified_user', filled: true, title: `ใบอนุญาตเลขที่ ${licenceNo()}`, short: `ใบอนุญาต ${licenceNo()}`, desc: 'นำเที่ยวได้ทั้งในและต่างประเทศ' },
-  { icon: 'near_me', title: 'ดูตำแหน่งรถได้ตลอดทาง', short: 'ดูตำแหน่งรถได้', desc: 'คนที่บ้านตามดูได้ระหว่างเดินทาง' },
-  { icon: 'receipt_long', title: 'ตรวจสลิปอัตโนมัติ', short: 'ตรวจสลิปอัตโนมัติ', desc: 'โอนแล้วไม่ต้องรอแอดมินตอบ' },
-  { icon: 'support_agent', title: 'ทีมงานดูแลตลอดทริป', short: 'ทีมงานดูแลตลอดทริป', desc: `สอบถามได้${supportHours()}` },
+  { icon: 'verified_user', filled: true, title: $t('ใบอนุญาตเลขที่ {licenceNo}', { licenceNo: licenceNo() }), short: $t('ใบอนุญาต {licenceNo}', { licenceNo: licenceNo() }), desc: $t('นำเที่ยวได้ทั้งในและต่างประเทศ') },
+  { icon: 'near_me', title: $t('ดูตำแหน่งรถได้ตลอดทาง'), short: $t('ดูตำแหน่งรถได้'), desc: $t('คนที่บ้านตามดูได้ระหว่างเดินทาง') },
+  { icon: 'receipt_long', title: $t('ตรวจสลิปอัตโนมัติ'), short: $t('ตรวจสลิปอัตโนมัติ'), desc: $t('โอนแล้วไม่ต้องรอแอดมินตอบ') },
+  { icon: 'support_agent', title: $t('ทีมงานดูแลตลอดทริป'), short: $t('ทีมงานดูแลตลอดทริป'), desc: $t('สอบถามได้{supportHours}', { supportHours: supportHours() }) },
 ];
 </script>
 

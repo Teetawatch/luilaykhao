@@ -50,7 +50,7 @@
           <span class="impact__label">ชุมชน</span>
         </div>
         <div v-if="impact.nights_hosted" class="impact__item">
-          <span class="impact__num">{{ impact.nights_hosted.toLocaleString('th-TH') }}</span>
+          <span class="impact__num">{{ impact.nights_hosted.toLocaleString($dateLocale) }}</span>
           <span class="impact__label">คืนที่ต้อนรับแขก</span>
         </div>
       </div>
@@ -110,7 +110,7 @@
               <span v-else class="text-[12px] font-bold text-[var(--color-text-muted)]">ที่พักใหม่</span>
               <span v-if="stay.price_from !== null" class="text-right">
                 <span class="block text-[11px] font-bold text-[var(--color-text-muted)]">เริ่มต้น/คืน</span>
-                <span class="text-lg font-black text-[var(--color-text-dark)]">฿{{ Math.round(stay.price_from).toLocaleString('th-TH') }}</span>
+                <span class="text-lg font-black text-[var(--color-text-dark)]">฿{{ Math.round(stay.price_from).toLocaleString($dateLocale) }}</span>
               </span>
             </div>
           </div>

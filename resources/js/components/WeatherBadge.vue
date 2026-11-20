@@ -7,7 +7,7 @@
     <div class="text-3xl leading-none shrink-0">{{ emoji }}</div>
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-sm font-black text-[var(--color-text-dark)]">{{ weather.description_th || 'พยากรณ์อากาศ' }}</span>
+        <span class="text-sm font-black text-[var(--color-text-dark)]">{{ weather.description_th || $t('พยากรณ์อากาศ') }}</span>
         <span v-if="tempText" class="text-xs font-bold text-[var(--color-text-muted)]">{{ tempText }}</span>
       </div>
       <div class="flex items-center gap-3 mt-0.5 text-[11px] font-bold text-[var(--color-text-muted)]">
@@ -23,6 +23,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -52,13 +53,13 @@ const tempText = computed(() => {
 const popText = computed(() => {
   const pop = props.weather?.pop;
   if (pop == null) return '';
-  return `โอกาสฝน ${Math.round(pop * (pop <= 1 ? 100 : 1))}%`;
+  return $t('โอกาสฝน {round}%', { round: Math.round(pop * (pop <= 1 ? 100 : 1)) });
 });
 
 const windText = computed(() => {
   const wind = props.weather?.wind_speed;
   if (wind == null) return '';
-  return `ลม ${Math.round(wind)} กม./ชม.`;
+  return $t('ลม {round} กม./ชม.', { round: Math.round(wind) });
 });
 
 const severityClass = computed(() => {

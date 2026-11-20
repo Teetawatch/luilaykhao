@@ -3,9 +3,9 @@
     <div class="flex items-start gap-3">
       <span class="material-symbols-rounded text-[22px] text-[var(--color-primary)] shrink-0 mt-0.5">group_add</span>
       <div class="min-w-0 flex-1">
-        <p class="text-sm font-extrabold text-[var(--color-text-dark)]">ไปกันหลายคน?</p>
+        <p class="text-sm font-extrabold text-[var(--color-text-dark)]">{{ $t('ไปกันหลายคน?') }}</p>
         <p class="text-xs font-medium text-[var(--color-text-muted)] mt-0.5 leading-relaxed">
-          ตั้งกลุ่มแล้วแชร์ลิงก์ให้เพื่อน แต่ละคนเลือกที่นั่งและกรอกข้อมูลเอง แล้วคุณค่อยจองรวมทีเดียว
+          {{ $t('ตั้งกลุ่มแล้วแชร์ลิงก์ให้เพื่อน แต่ละคนเลือกที่นั่งและกรอกข้อมูลเอง แล้วคุณค่อยจองรวมทีเดียว') }}
         </p>
 
         <button
@@ -14,22 +14,22 @@
           class="mt-3 text-sm font-bold text-[var(--color-primary)]"
           @click="start"
         >
-          ชวนเพื่อนไปด้วยกัน
+          {{ $t('ชวนเพื่อนไปด้วยกัน') }}
         </button>
 
         <form v-else class="mt-3 space-y-3" @submit.prevent="submit">
           <label class="block">
-            <span class="text-xs font-bold text-[var(--color-text-muted)] block mb-1">ชื่อกลุ่ม (ไม่ใส่ก็ได้)</span>
+            <span class="text-xs font-bold text-[var(--color-text-muted)] block mb-1">{{ $t('ชื่อกลุ่ม (ไม่ใส่ก็ได้)') }}</span>
             <input
               v-model.trim="name"
               maxlength="120"
-              placeholder="เช่น ทีมออฟฟิศ, ก๊วนเดินป่า"
+              :placeholder="$t('เช่น ทีมออฟฟิศ, ก๊วนเดินป่า')"
               class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm"
             />
           </label>
 
           <label class="block">
-            <span class="text-xs font-bold text-[var(--color-text-muted)] block mb-1">จองไว้กี่ที่นั่ง</span>
+            <span class="text-xs font-bold text-[var(--color-text-muted)] block mb-1">{{ $t('จองไว้กี่ที่นั่ง') }}</span>
             <input
               v-model.number="seatCount"
               type="number"
@@ -38,7 +38,7 @@
               class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm"
             />
             <span class="text-[11px] text-[var(--color-text-muted)] mt-1 block">
-              กันที่นั่งไว้ให้กลุ่มก่อน เพื่อนที่ยังไม่มาเลือกก็ไม่โดนคนอื่นแย่ง
+              {{ $t('กันที่นั่งไว้ให้กลุ่มก่อน เพื่อนที่ยังไม่มาเลือกก็ไม่โดนคนอื่นแย่ง') }}
             </span>
           </label>
 
@@ -48,14 +48,14 @@
               class="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-bold text-[var(--color-text-muted)]"
               @click="open = false"
             >
-              ยกเลิก
+              {{ $t('ยกเลิก') }}
             </button>
             <button
               type="submit"
               :disabled="busy || !seatCount"
               class="flex-1 rounded-xl bg-[var(--color-accent)] py-2.5 text-sm font-bold text-white disabled:opacity-40"
             >
-              {{ busy ? 'กำลังสร้าง...' : 'สร้างกลุ่ม' }}
+              {{ busy ? $t('กำลังสร้าง...') : $t('สร้างกลุ่ม') }}
             </button>
           </div>
         </form>
@@ -65,6 +65,7 @@
 </template>
 
 <script setup>
+import { $t } from '@/i18n';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/axios';
@@ -104,10 +105,10 @@ async function submit() {
       name: name.value || null,
     });
     const code = res.data?.data?.invite_code;
-    toast.success(res.data?.message || 'สร้างกลุ่มแล้ว');
+    toast.success(res.data?.message || $t('สร้างกลุ่มแล้ว'));
     if (code) router.push(`/group/${code}`);
   } catch (err) {
-    toast.error(err.response?.data?.message || 'สร้างกลุ่มไม่สำเร็จ');
+    toast.error(err.response?.data?.message || $t('สร้างกลุ่มไม่สำเร็จ'));
   } finally {
     busy.value = false;
   }
