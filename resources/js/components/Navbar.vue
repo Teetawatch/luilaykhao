@@ -87,7 +87,7 @@
           </router-link>
 
           <div ref="navDropdownRef" class="flex flex-1 items-center min-w-0">
-            <div ref="navListRef" class="flex items-center -ml-3" :class="{ 'is-compact': isScrolled, 'is-en': $isEnglish }" @mouseleave="hoveredNavLabel = null">
+            <div ref="navListRef" class="flex items-center -ml-3" :class="{ 'is-compact': isScrolled, 'fit-1': navFit >= 1, 'fit-2': navFit >= 2, 'fit-3': navFit >= 3 }" @mouseleave="hoveredNavLabel = null">
               <template v-for="link in navLinks" :key="link.label">
                 <!-- Dropdown / Mega menu -->
                 <div
@@ -891,8 +891,9 @@ const socialLinks = [
 ];
 
 /*
-   เมนูหลักชั้นที่ 2 (แถบหมวดบริการ) — 7 หัวข้อพอดีที่จอ 1024px เมื่อไม่มีไอคอน
-   และ 1280px เมื่อมีไอคอน จะเพิ่มหัวข้อต้องหาที่ตัดก่อน อย่าต่อท้ายเฉย ๆ
+   เมนูหลักชั้นที่ 2 (แถบหมวดบริการ) — ความยาวคำต่างกันตามภาษา (อังกฤษยาวกว่าไทยราวครึ่ง)
+   และปุ่มทางขวาก็ยาวขึ้นเมื่อเข้าสู่ระบบ จึงให้ fitNav() วัดพื้นที่จริงแล้วยุบทีละขั้น
+   (ไอคอน → ลิงก์ทางลัด xlOnly → ระยะห่าง) จะเพิ่มหัวข้อให้ลองทั้งสองภาษาทั้งตอนล็อกอิน
    หมวดทริปมาจาก /categories (แอดมินจัดการเอง) — ระหว่างรอ API เมนูยังมีลิงก์ทริปทั้งหมด
 */
 const tripCategories = ref([]);
@@ -984,6 +985,32 @@ function publishHeaderHeight() {
 
 /* ── Desktop service bar ───────────────────────────────────────── */
 const navListRef = ref(null);
+
+/*
+   แถบเมนูกว้างได้ไม่เกิน max-w-7xl ไม่ว่าจอจะกว้างแค่ไหน เงื่อนไขตามความกว้างจอจึงเดาไม่ถูก
+   (หน้าอังกฤษที่จอ ≥1440px เคยเปิดไอคอนกลับมาจน "About us" ล้นไปทับเส้นคั่น)
+   — วัดจากพื้นที่ที่เหลือจริงแทน แล้วยุบทีละขั้นจนพอดี:
+   1 ซ่อนไอคอน · 2 ซ่อนลิงก์ทางลัด (ยังอยู่ในเมนูย่อย "ทริปทั้งหมด") · 3 บีบระยะห่าง
+*/
+const NAV_FIT_MAX = 3;
+const navFit = ref(0);
+let navFitRun = 0;
+let navFitObserver = null;
+
+async function fitNav() {
+  const box = navDropdownRef.value;
+  const list = navListRef.value;
+  // แถบนี้ซ่อนบนมือถือ (display: none) — ไม่มีอะไรให้วัด
+  if (!box || !list || box.offsetParent === null) return;
+  const run = ++navFitRun;
+  navFit.value = 0;
+  await nextTick();
+  // แถวเมนูขยับซ้าย 12px ด้วย -ml-3 จึงมีที่มากกว่ากล่องเท่านั้น
+  while (run === navFitRun && navFit.value < NAV_FIT_MAX && list.scrollWidth > box.clientWidth + 12) {
+    navFit.value++;
+    await nextTick();
+  }
+}
 const hoveredNavLabel = ref(null);
 const navItemEls = new Map();
 
@@ -1311,12 +1338,22 @@ onMounted(() => {
     headerObserver = new ResizeObserver(publishHeaderHeight);
     headerObserver.observe(headerEl.value);
   }
+  fitNav();
+  // กล่องเมนูกว้าง = ที่เหลือจากปุ่มทางขวา (flex-1 + min-w-0) ไม่ขึ้นกับเนื้อหาในแถว
+  // จึงไม่วนลูปกับการยุบเมนู — เปลี่ยนเมื่อจอเปลี่ยน ล็อกอิน/ออก หรือเลื่อนจนโลโก้เล็กโผล่
+  if (typeof ResizeObserver !== 'undefined' && navDropdownRef.value) {
+    navFitObserver = new ResizeObserver(() => fitNav());
+    navFitObserver.observe(navDropdownRef.value);
+  }
+  // ฟอนต์เว็บโหลดเสร็จทีหลัง ความกว้างคำเปลี่ยน
+  document.fonts?.ready?.then(() => fitNav());
 });
 
 onUnmounted(() => {
   clearInterval(pollInterval);
   clearTimeout(dropdownCloseTimer);
   headerObserver?.disconnect();
+  navFitObserver?.disconnect();
   window.removeEventListener('scroll', handleScroll);
   document.removeEventListener('click', handleClickOutside);
   document.removeEventListener('touchstart', handleClickOutside);
@@ -1542,17 +1579,11 @@ async function handleLogout() {
   .mb-link.xl-only { display: flex; }
 }
 
-/* หน้าอังกฤษ: คำในเมนูยาวกว่าไทยราวครึ่งหนึ่ง ที่ 1280px ไอคอน + ทางลัดสองตัวจะดัน
-   "About us" ไปทับปุ่มเข้าสู่ระบบ — เลื่อนสองอย่างนี้ไปโผล่ที่ 1440px แทน */
-@media (min-width: 1280px) {
-  .is-en .mb-ico { display: none; }
-  .is-en .mb-link.xl-only { display: none; }
-}
-@media (min-width: 1440px) {
-  .is-en .mb-ico { display: inline-block; }
-  .is-en.is-compact .mb-ico { display: none; }
-  .is-en .mb-link.xl-only { display: flex; }
-}
+/* ยุบตามพื้นที่จริงที่ fitNav() วัดได้ (ทับเงื่อนไขตามความกว้างจอข้างบน) */
+.fit-1 .mb-ico { display: none; }
+.fit-2 .mb-link.xl-only { display: none; }
+.fit-3 .mb-link { gap: 0.3rem; padding: 0 0.5rem; }
+.fit-3 .mb-link.is-active::after { left: 0.5rem; right: 0.5rem; }
 
 .mini-logo {
   display: flex;
