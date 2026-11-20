@@ -21,12 +21,12 @@ class TripPostponedMail extends QueuedMail
 
     public function envelope(): Envelope
     {
-        $title = $this->booking->schedule->trip->title ?? 'ทริป';
+        $title = $this->booking->schedule?->trip?->tr('title') ?? __('ทริป');
 
         return new Envelope(
             subject: $this->booking->isUnderfilledPostponement()
-                ? "แจ้งงดการเดินทางรอบ {$title} — เลือกรอบใหม่หรือรับเงินคืนเต็มจำนวน #{$this->booking->booking_ref}"
-                : "แจ้งเลื่อนรอบเดินทาง {$title} — กรุณาเลือกรอบใหม่ #{$this->booking->booking_ref}",
+                ? __('แจ้งงดการเดินทางรอบ :title — เลือกรอบใหม่หรือรับเงินคืนเต็มจำนวน #:ref', ['title' => $title, 'ref' => $this->booking->booking_ref])
+                : __('แจ้งเลื่อนรอบเดินทาง :title — กรุณาเลือกรอบใหม่ #:ref', ['title' => $title, 'ref' => $this->booking->booking_ref]),
         );
     }
 

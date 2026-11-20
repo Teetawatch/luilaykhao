@@ -18,9 +18,11 @@ use App\Observers\ScheduleItineraryItemObserver;
 use App\Observers\TripObserver;
 use App\Observers\TripScheduleObserver;
 use App\Services\SaleCampaignService;
+use App\Support\AppLocale;
 use App\Support\TranslationStore;
 use App\Support\TripListCache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 use SocialiteProviders\Line\Provider;
 use SocialiteProviders\Manager\SocialiteWasCalled;
@@ -48,6 +50,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(function (SocialiteWasCalled $event) {
             $event->extendSocialite('line', Provider::class);
         });
+
+        // งานในคิวเริ่มเป็นภาษาไทยเสมอ — ข้อความในแชท/ใบเดินทางที่งานสร้างเป็นภาษา
+        // ของทีมงาน ส่วนอีเมล/SMS ถึงลูกค้ากำหนดภาษาของตัวเอง (->locale(), AppLocale::withUser)
+        // ไม่ให้ภาษาของงานก่อนหน้าหลงมาถึงงานถัดไปใน worker ตัวเดียวกัน
+        Queue::before(fn () => app()->setLocale(AppLocale::THAI));
 
         TripSchedule::observe(TripScheduleObserver::class);
         Trip::observe(TripObserver::class);

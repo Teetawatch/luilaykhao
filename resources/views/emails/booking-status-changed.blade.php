@@ -11,16 +11,16 @@
   $accentClass = $cfg['text'];
   $boxClass    = $cfg['box'];
 
-  $depDateFormatted = $booking->schedule?->departureLabelThai() ?? '-';
+  $depDateFormatted = $booking->schedule?->departureLabel() ?? '-';
 @endphp
 
-<x-emails.partials.base subject="แจ้งการเปลี่ยนแปลงสถานะการจอง {{ $booking->booking_ref }}">
+<x-emails.partials.base :subject="__('แจ้งการเปลี่ยนแปลงสถานะการจอง :booking_ref', ['booking_ref' => $booking->booking_ref])">
 
   {{-- Header --}}
   <div class="email-header {{ $headerClass }}">
     <span class="email-brand">Luilaykhao</span>
-    <h1 class="header-title">แจ้งการเปลี่ยนแปลงสถานะการจอง</h1>
-    <p class="header-subtitle">สถานะการจองของคุณได้รับการปรับปรุง</p>
+    <h1 class="header-title">{{ __('แจ้งการเปลี่ยนแปลงสถานะการจอง') }}</h1>
+    <p class="header-subtitle">{{ __('สถานะการจองของคุณได้รับการปรับปรุง') }}</p>
     <div class="ref-badge">{{ $booking->booking_ref }}</div>
   </div>
 
@@ -28,37 +28,36 @@
   <div class="email-body">
 
     <div class="greeting">
-      เรียน คุณ<strong>{{ $booking->user->name }}</strong><br />
-      ทีมงานขอแจ้งให้ทราบว่า สถานะการจองของคุณได้เปลี่ยนเป็น
-      <strong class="{{ $accentClass }}">{{ $statusLabel }}</strong> แล้วครับ
-      หากข้อมูลไม่ตรงกับที่คุณเข้าใจ กรุณาติดต่อทีมงานได้ทันทีครับ
+      {{ __('เรียน คุณ') }}<strong>{{ $booking->user->name }}</strong><br />
+      {{ __('ทีมงานขอแจ้งให้ทราบว่า สถานะการจองของคุณได้เปลี่ยนเป็น') }}
+      <strong class="{{ $accentClass }}">{{ __($statusLabel) }}</strong> {{ __('แล้วครับ หากข้อมูลไม่ตรงกับที่คุณเข้าใจ กรุณาติดต่อทีมงานได้ทันทีครับ') }}
     </div>
 
     <div class="status-box {{ $boxClass }}">
-      <div class="status-label-small">สถานะปัจจุบัน</div>
-      <div class="status-value">{{ $statusLabel }}</div>
+      <div class="status-label-small">{{ __('สถานะปัจจุบัน') }}</div>
+      <div class="status-value">{{ __($statusLabel) }}</div>
     </div>
 
-    <p class="section-label">รายละเอียดการจอง</p>
+    <p class="section-label">{{ __('รายละเอียดการจอง') }}</p>
     <div class="info-card">
       <div class="info-card-header">
-        <span class="info-card-title">ข้อมูลการเดินทาง</span>
+        <span class="info-card-title">{{ __('ข้อมูลการเดินทาง') }}</span>
       </div>
       <div class="info-row">
-        <span class="info-label">ทริป / กิจกรรม</span>
-        <span class="info-value">{{ $booking->schedule->trip->title ?? '-' }}</span>
+        <span class="info-label">{{ __('ทริป / กิจกรรม') }}</span>
+        <span class="info-value">{{ $booking->schedule?->trip?->tr('title') ?? '-' }}</span>
       </div>
       <div class="info-row">
-        <span class="info-label">วันเดินทาง</span>
+        <span class="info-label">{{ __('วันเดินทาง') }}</span>
         <span class="info-value">{{ $depDateFormatted }}</span>
       </div>
       @if($booking->pickupPoint || $booking->pickup_region)
       <div class="pickup-block">
-        <div class="pickup-label">จุดรับ</div>
+        <div class="pickup-label">{{ __('จุดรับ') }}</div>
         @if($booking->pickupPoint)
-          <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
-          @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
-          <div class="pickup-region">{{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          <div class="pickup-location">{{ $booking->pickupPoint->tr('pickup_location') }}</div>
+          @if($booking->pickupPoint->tr('region_label') ?? $booking->pickup_region)
+          <div class="pickup-region">{{ $booking->pickupPoint->tr('region_label') ?? $booking->pickup_region }}</div>
           @endif
         @else
           <div class="pickup-location">{{ $booking->pickup_region }}</div>
@@ -66,34 +65,34 @@
       </div>
       @endif
       <div class="info-row">
-        <span class="info-label">จำนวนผู้เดินทาง</span>
-        <span class="info-value">{{ $booking->passengers->count() }} ท่าน</span>
+        <span class="info-label">{{ __('จำนวนผู้เดินทาง') }}</span>
+        <span class="info-value">{{ __(':count ท่าน', ['count' => $booking->passengers->count()]) }}</span>
       </div>
       <div class="info-row">
-        <span class="info-label">ยอดรวม</span>
+        <span class="info-label">{{ __('ยอดรวม') }}</span>
         <span class="info-value">฿{{ number_format($booking->total_amount, 0) }}</span>
       </div>
       <div class="info-row">
-        <span class="info-label">รูปแบบการชำระ</span>
+        <span class="info-label">{{ __('รูปแบบการชำระ') }}</span>
         <span class="info-value">
           @if($booking->payment_type === 'installment')
-            ผ่อนชำระ {{ $booking->installment_count }} งวด
+            {{ __('ผ่อนชำระ :installment_count งวด', ['installment_count' => $booking->installment_count]) }}
           @elseif($booking->payment_type === 'deposit')
-            วางมัดจำ
+            {{ __('วางมัดจำ') }}
           @else
-            ชำระเต็มจำนวน
+            {{ __('ชำระเต็มจำนวน') }}
           @endif
         </span>
       </div>
       @if($booking->paid_amount > 0)
       <div class="info-row">
-        <span class="info-label">ยอดชำระแล้ว</span>
+        <span class="info-label">{{ __('ยอดชำระแล้ว') }}</span>
         <span class="info-value accent-teal">฿{{ number_format($booking->paid_amount, 0) }}</span>
       </div>
       @endif
       @if($newStatus === 'refunded' && $booking->refund_amount > 0)
       <div class="info-row">
-        <span class="info-label">ยอดคืนเงิน</span>
+        <span class="info-label">{{ __('ยอดคืนเงิน') }}</span>
         <span class="info-value accent-amber">฿{{ number_format($booking->refund_amount, 0) }}</span>
       </div>
       @endif

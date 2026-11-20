@@ -19,10 +19,10 @@ class TripResumedMail extends QueuedMail
 
     public function envelope(): Envelope
     {
-        $title = $this->booking->schedule->trip->title ?? 'ทริป';
+        $title = $this->booking->schedule?->trip?->tr('title') ?? __('ทริป');
 
         return new Envelope(
-            subject: "แก้ไขข้อมูล: ทริป {$title} เดินทางตามกำหนดเดิม #{$this->booking->booking_ref}",
+            subject: __('แก้ไขข้อมูล: ทริป :title เดินทางตามกำหนดเดิม #:ref', ['title' => $title, 'ref' => $this->booking->booking_ref]),
         );
     }
 

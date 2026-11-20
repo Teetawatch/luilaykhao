@@ -21,7 +21,7 @@ class PasswordResetMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'คำขอตั้งรหัสผ่านใหม่ - Luilaykhao',
+            subject: __('คำขอตั้งรหัสผ่านใหม่ - Luilaykhao'),
         );
     }
 

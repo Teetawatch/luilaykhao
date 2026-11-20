@@ -32,7 +32,7 @@ class BalancePaidMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "ยืนยันการชำระเงินครบถ้วน #{$this->booking->booking_ref} - Luilaykhao",
+            subject: __('ยืนยันการชำระเงินครบถ้วน #:ref - Luilaykhao', ['ref' => $this->booking->booking_ref]),
         );
     }
 

@@ -21,10 +21,11 @@ class InstallmentDueReminderMail extends QueuedMail
 
     public function envelope(): Envelope
     {
+        $params = ['no' => $this->installment->installment_no, 'ref' => $this->booking->booking_ref];
         $subject = match ($this->reminderType) {
-            'overdue' => "ค่างวดที่ {$this->installment->installment_no} เลยกำหนดชำระ #{$this->booking->booking_ref}",
-            'due_today' => "ครบกำหนดชำระค่างวดที่ {$this->installment->installment_no} วันนี้ #{$this->booking->booking_ref}",
-            default => "แจ้งเตือนกำหนดชำระค่างวดที่ {$this->installment->installment_no} #{$this->booking->booking_ref}",
+            'overdue' => __('ค่างวดที่ :no เลยกำหนดชำระ #:ref', $params),
+            'due_today' => __('ครบกำหนดชำระค่างวดที่ :no วันนี้ #:ref', $params),
+            default => __('แจ้งเตือนกำหนดชำระค่างวดที่ :no #:ref', $params),
         };
 
         return new Envelope(subject: $subject);

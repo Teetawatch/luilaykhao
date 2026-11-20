@@ -6,6 +6,7 @@ use App\Jobs\NotifyTripCrewAssignedJob;
 use App\Jobs\SendDriverAssignmentPushJob;
 use App\Models\Concerns\HasContentTranslations;
 use App\Services\SaleCampaignService;
+use App\Support\AppLocale;
 use App\Support\LoyaltyTier;
 use App\Support\SeatLayoutFactory;
 use App\Support\SiteSettings;
@@ -226,6 +227,27 @@ class TripSchedule extends Model
      * ข้อความวันเดินทางภาษาไทย เช่น "12 มิถุนายน 2026 เวลา 23:30 น."
      * ถ้าไม่ได้กำหนดเวลาออกรถ จะแสดงเฉพาะวันทริป
      */
+    /**
+     * วันเดินทางตามภาษาของข้อความ (อีเมล/push ถึงลูกค้า) — ไทยได้ข้อความเดิม
+     * ของ departureLabelThai() ทุกตัวอักษร
+     */
+    public function departureLabel(): string
+    {
+        if (! AppLocale::isEnglish()) {
+            return $this->departureLabelThai();
+        }
+
+        return $this->departs_at
+            ? AppLocale::fullDate($this->departs_at).' at '.$this->departs_at->format('H:i')
+            : AppLocale::fullDate($this->departure_date);
+    }
+
+    /** ช่วงวันเดินทางตามภาษาของข้อความ */
+    public function dateRangeLabel(): string
+    {
+        return AppLocale::dateRange($this->departure_date, $this->return_date);
+    }
+
     public function departureLabelThai(): string
     {
         if ($this->departs_at) {
@@ -282,6 +304,18 @@ class TripSchedule extends Model
     /**
      * ข้อความวันเดินทางแบบสั้น เช่น "12/06/2026 23:30 น." — ใช้ใน SMS
      */
+    /** departureLabelShort() ตามภาษาของข้อความ (SMS ถึงลูกค้าภาษาอังกฤษ) */
+    public function departureLabelShortLocalized(): string
+    {
+        if (! AppLocale::isEnglish()) {
+            return $this->departureLabelShort();
+        }
+
+        return $this->departs_at
+            ? AppLocale::shortDateTime($this->departs_at)
+            : AppLocale::shortDate($this->departure_date);
+    }
+
     public function departureLabelShort(): string
     {
         if ($this->departs_at) {

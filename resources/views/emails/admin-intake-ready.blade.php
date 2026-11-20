@@ -55,12 +55,12 @@
     <div class="info-card">
       <div class="info-row">
         <span class="info-label">ทริป</span>
-        <span class="info-value">{{ $schedule?->trip?->title ?? 'ยังไม่ระบุรอบ' }}</span>
+        <span class="info-value">{{ $schedule?->trip?->tr('title') ?? 'ยังไม่ระบุรอบ' }}</span>
       </div>
       @if ($schedule)
       <div class="info-row">
         <span class="info-label">วันเดินทาง</span>
-        <span class="info-value">{{ $schedule->dateRangeLabelThai() }}</span>
+        <span class="info-value">{{ $schedule->dateRangeLabel() }}</span>
       </div>
       {{-- รอบที่รถออกคืนก่อนวันทริป — คนโทรกลับต้องย้ำวันขึ้นรถให้ลูกค้า
            ไม่ใช่วันแรกของทริป --}}
@@ -68,7 +68,7 @@
       <div class="info-row">
         <span class="info-label">ขึ้นรถจริง</span>
         <span class="info-value accent-amber">
-          {{ $schedule->departureLabelThai() }} (ก่อนวันทริป {{ $schedule->daysDepartingEarly() }} วัน)
+          {{ $schedule->departureLabel() }} (ก่อนวันทริป {{ $schedule->daysDepartingEarly() }} วัน)
         </span>
       </div>
       @endif

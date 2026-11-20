@@ -28,12 +28,12 @@ class TripBriefMail extends QueuedMail
 
     public function envelope(): Envelope
     {
-        $title = $this->booking->schedule?->trip?->title ?? 'ทริปของคุณ';
+        $title = $this->booking->schedule?->trip?->tr('title') ?? __('ทริปของคุณ');
 
         return new Envelope(
             subject: $this->isUpdate
-                ? "อัปเดตใบเดินทาง {$title} #{$this->booking->booking_ref} - Luilaykhao"
-                : "ใบเดินทาง {$title} #{$this->booking->booking_ref} - Luilaykhao",
+                ? __('อัปเดตใบเดินทาง :title #:ref - Luilaykhao', ['title' => $title, 'ref' => $this->booking->booking_ref])
+                : __('ใบเดินทาง :title #:ref - Luilaykhao', ['title' => $title, 'ref' => $this->booking->booking_ref]),
         );
     }
 

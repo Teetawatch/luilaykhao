@@ -22,7 +22,7 @@ class GiftPurchasedMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ทริปของขวัญของคุณพร้อมส่งต่อแล้ว #'.$this->booking->booking_ref.' - Luilaykhao',
+            subject: __('ทริปของขวัญของคุณพร้อมส่งต่อแล้ว #:ref - Luilaykhao', ['ref' => $this->booking->booking_ref]),
         );
     }
 

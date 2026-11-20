@@ -9,6 +9,7 @@ use App\Models\SmartNotification;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\AppLocale;
 use App\Support\ThaiDate;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -356,7 +357,7 @@ class CharterRequestService
         }
 
         try {
-            Mail::to($email)->send(new CharterQuoteMail($request));
+            Mail::to($email)->locale(AppLocale::forUser($request->user))->send(new CharterQuoteMail($request));
         } catch (\Throwable $e) {
             Log::error('Failed to send charter quote email', ['ref' => $request->ref, 'error' => $e->getMessage()]);
         }

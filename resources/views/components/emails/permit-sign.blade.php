@@ -17,19 +17,18 @@
 
 @if($showPermit)
   <div class="alert-box alert-amber">
-    <p class="alert-title">ทริปนี้ต้องลงนามในแบบฟอร์มของอุทยาน</p>
+    <p class="alert-title">{{ __('ทริปนี้ต้องลงนามในแบบฟอร์มของอุทยาน') }}</p>
     <p class="alert-text">
-      อุทยานกำหนดให้ผู้เดินทางทุกท่านลงนามในแบบฟอร์มก่อนลงทะเบียน ทีมงานได้กรอกข้อมูลจากการจองลงในแบบฟอร์มไว้แล้ว
-      คุณเพียงอ่านและลงนามผ่านโทรศัพท์มือถือครับ
+      {{ __('อุทยานกำหนดให้ผู้เดินทางทุกท่านลงนามในแบบฟอร์มก่อนลงทะเบียน ทีมงานได้กรอกข้อมูลจากการจองลงในแบบฟอร์มไว้แล้ว คุณเพียงอ่านและลงนามผ่านโทรศัพท์มือถือครับ') }}
       @if($permitDeadline)
-        <strong>กรุณาลงนามภายใน {{ \App\Support\ThaiDate::full($permitDeadline) }}</strong>
+        <strong>{{ __('กรุณาลงนามภายใน :permitdeadline', ['permitdeadline' => \App\Support\AppLocale::fullDate($permitDeadline)]) }}</strong>
       @endif
       @if($booking->passengers->whereNull('not_going_at')->count() > 1)
-        — ผู้เดินทางท่านอื่นในการจองนี้สามารถลงนามของตนเองผ่านลิงก์ในหน้าดังกล่าวได้
+        {{ __('— ผู้เดินทางท่านอื่นในการจองนี้สามารถลงนามของตนเองผ่านลิงก์ในหน้าดังกล่าวได้') }}
       @endif
     </p>
   </div>
   <div class="cta-wrap">
-    <a href="{{ $booking->briefUrl() }}#permit" class="cta-btn cta-amber">อ่านและลงนามแบบฟอร์มอุทยาน</a>
+    <a href="{{ $booking->briefUrl() }}#permit" class="cta-btn cta-amber">{{ __('อ่านและลงนามแบบฟอร์มอุทยาน') }}</a>
   </div>
 @endif

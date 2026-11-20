@@ -30,19 +30,19 @@
       </div>
       <div class="info-row">
         <span class="info-label">ทริป / กิจกรรม</span>
-        <span class="info-value">{{ $booking->schedule->trip->title ?? '-' }}</span>
+        <span class="info-value">{{ $booking->schedule?->trip?->tr('title') ?? '-' }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">วันเดินทาง</span>
-        <span class="info-value">{{ $booking->schedule?->departureLabelThai() ?? '-' }}</span>
+        <span class="info-value">{{ $booking->schedule?->departureLabel() ?? '-' }}</span>
       </div>
       @if($booking->pickupPoint || $booking->pickup_region)
       <div class="pickup-block">
         <div class="pickup-label">จุดรับ</div>
         @if($booking->pickupPoint)
-          <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
-          @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
-          <div class="pickup-region">{{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          <div class="pickup-location">{{ $booking->pickupPoint->tr('pickup_location') }}</div>
+          @if($booking->pickupPoint->tr('region_label') ?? $booking->pickup_region)
+          <div class="pickup-region">{{ $booking->pickupPoint->tr('region_label') ?? $booking->pickup_region }}</div>
           @endif
         @else
           <div class="pickup-location">{{ $booking->pickup_region }}</div>

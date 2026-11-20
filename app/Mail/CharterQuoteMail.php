@@ -3,7 +3,7 @@
 namespace App\Mail;
 
 use App\Models\CharterRequest;
-use App\Support\ThaiDate;
+use App\Support\AppLocale;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -23,7 +23,7 @@ class CharterQuoteMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ใบเสนอราคาเหมาทริป '.$this->charter->ref.' - Luilaykhao',
+            subject: __('ใบเสนอราคาเหมาทริป :ref - Luilaykhao', ['ref' => $this->charter->ref]),
         );
     }
 
@@ -36,12 +36,12 @@ class CharterQuoteMail extends QueuedMail
             with: [
                 'tripTitle' => $c->quoteTrip?->title ?? $c->destinationLabel(),
                 'dateLabel' => $c->quote_departure_date
-                    ? ThaiDate::full($c->quote_departure_date)
+                    ? AppLocale::fullDate($c->quote_departure_date)
                         .($c->quote_return_date && ! $c->quote_return_date->isSameDay($c->quote_departure_date)
-                            ? ' – '.ThaiDate::full($c->quote_return_date)
+                            ? ' – '.AppLocale::fullDate($c->quote_return_date)
                             : '')
                     : '-',
-                'validUntilLabel' => $c->quote_valid_until ? ThaiDate::full($c->quote_valid_until) : null,
+                'validUntilLabel' => $c->quote_valid_until ? AppLocale::fullDate($c->quote_valid_until) : null,
             ],
         );
     }

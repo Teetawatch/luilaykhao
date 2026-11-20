@@ -65,7 +65,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">วันเดินทาง</span>
-        <span class="info-value">{{ $schedule?->departureLabelThai() ?? '-' }}</span>
+        <span class="info-value">{{ $schedule?->departureLabel() ?? '-' }}</span>
       </div>
       @if($vehicle)
         <div class="info-row">

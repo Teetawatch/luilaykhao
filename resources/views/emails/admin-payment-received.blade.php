@@ -47,7 +47,7 @@
       <div class="amount-label">ยอดที่ได้รับ &mdash; {{ $ptLabel }}</div>
       <div class="amount">฿{{ number_format($paidAmount, 0) }}</div>
       <div class="amount-note">
-        {{ $methodLabel }} &nbsp;&middot;&nbsp; {{ \App\Support\ThaiDate::shortTime(now()) }} น.
+        {{ $methodLabel }} &nbsp;&middot;&nbsp; {{ \App\Support\AppLocale::shortDateTime(now()) }} น.
       </div>
     </div>
 
@@ -58,19 +58,19 @@
       </div>
       <div class="info-row">
         <span class="info-label">ทริป / กิจกรรม</span>
-        <span class="info-value">{{ $booking->schedule->trip->title ?? '-' }}</span>
+        <span class="info-value">{{ $booking->schedule?->trip?->tr('title') ?? '-' }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">วันเดินทาง</span>
-        <span class="info-value">{{ $booking->schedule?->departureLabelThai() ?? '-' }}</span>
+        <span class="info-value">{{ $booking->schedule?->departureLabel() ?? '-' }}</span>
       </div>
       @if($booking->pickupPoint || $booking->pickup_region)
       <div class="pickup-block">
         <div class="pickup-label">จุดรับ</div>
         @if($booking->pickupPoint)
-          <div class="pickup-location">{{ $booking->pickupPoint->pickup_location }}</div>
-          @if($booking->pickupPoint->region_label ?? $booking->pickup_region)
-          <div class="pickup-region">{{ $booking->pickupPoint->region_label ?? $booking->pickup_region }}</div>
+          <div class="pickup-location">{{ $booking->pickupPoint->tr('pickup_location') }}</div>
+          @if($booking->pickupPoint->tr('region_label') ?? $booking->pickup_region)
+          <div class="pickup-region">{{ $booking->pickupPoint->tr('region_label') ?? $booking->pickup_region }}</div>
           @endif
         @else
           <div class="pickup-location">{{ $booking->pickup_region }}</div>
@@ -153,7 +153,7 @@
           <tr>
             <td>{{ $inst->installment_no }}</td>
             <td>฿{{ number_format($inst->amount, 0) }}</td>
-            <td>{{ \App\Support\ThaiDate::short($inst->due_date ? \Carbon\Carbon::parse($inst->due_date) : null) }}</td>
+            <td>{{ \App\Support\AppLocale::shortDate($inst->due_date ? \Carbon\Carbon::parse($inst->due_date) : null) }}</td>
             <td style="text-align:right;">
               @if($inst->status === 'paid')
                 <span class="badge-paid">ชำระแล้ว</span>

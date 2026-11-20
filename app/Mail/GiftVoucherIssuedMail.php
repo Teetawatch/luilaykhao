@@ -3,7 +3,7 @@
 namespace App\Mail;
 
 use App\Models\GiftVoucher;
-use App\Support\ThaiDate;
+use App\Support\AppLocale;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -23,7 +23,7 @@ class GiftVoucherIssuedMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'บัตรของขวัญ ฿'.number_format((float) $this->voucher->amount).' พร้อมใช้งาน - Luilaykhao',
+            subject: __('บัตรของขวัญ ฿:amount พร้อมใช้งาน - Luilaykhao', ['amount' => number_format((float) $this->voucher->amount)]),
         );
     }
 
@@ -39,7 +39,7 @@ class GiftVoucherIssuedMail extends QueuedMail
                 'shareUrl' => $this->voucher->shareUrl(),
                 'forSelf' => $forSelf,
                 'expiresLabel' => $this->voucher->expires_at
-                    ? ThaiDate::full($this->voucher->expires_at->copy()->setTimezone('Asia/Bangkok'))
+                    ? AppLocale::fullDate($this->voucher->expires_at->copy()->setTimezone('Asia/Bangkok'))
                     : null,
             ],
         );

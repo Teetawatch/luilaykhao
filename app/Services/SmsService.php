@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Models\SmsLog;
-use App\Support\ThaiDate;
+use App\Support\AppLocale;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -26,61 +26,70 @@ class SmsService
 
     public function sendPaymentConfirmed(Booking $booking, string $paymentType = 'full'): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $paymentType) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        // ข้อความนี้จะค้างอยู่ในเครื่องลูกค้าไปจนถึงวันเดินทาง จึงต้องตอบได้ด้วยตัวเอง
-        // ว่าไปทริปไหน วันไหน และกดดูรายละเอียดการเดินทางต่อได้ที่ไหน
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'payment_confirmed',
-            dedupeKey: $paymentType,
-            message: sprintf(
-                'ยืนยันที่นั่งแล้ว %s %s %s ขอบคุณครับ ดูกำหนดการและจุดขึ้นรถ %s',
-                $this->tripTitle($booking),
-                $this->departureDate($booking),
-                $booking->booking_ref,
-                $this->briefUrl($booking),
-            ),
-        );
+            // ข้อความนี้จะค้างอยู่ในเครื่องลูกค้าไปจนถึงวันเดินทาง จึงต้องตอบได้ด้วยตัวเอง
+            // ว่าไปทริปไหน วันไหน และกดดูรายละเอียดการเดินทางต่อได้ที่ไหน
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'payment_confirmed',
+                dedupeKey: $paymentType,
+                message: sprintf(
+                    __('ยืนยันที่นั่งแล้ว %s %s %s ขอบคุณครับ ดูกำหนดการและจุดขึ้นรถ %s'),
+                    $this->tripTitle($booking),
+                    $this->departureDate($booking),
+                    $booking->booking_ref,
+                    $this->briefUrl($booking),
+                ),
+            );
+        });
     }
 
     public function sendInstallmentPaid(Booking $booking, InstallmentPayment $installment): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'installmentPayments']);
-        $nextInstallmentText = $this->nextInstallmentText($booking, $installment);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $installment) {
+            $booking->loadMissing(['user', 'passengers', 'installmentPayments']);
+            $nextInstallmentText = $this->nextInstallmentText($booking, $installment);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'installment_paid',
-            dedupeKey: 'installment:'.$installment->installment_no,
-            message: sprintf(
-                'รับชำระงวดที่ %d จำนวน %s บาท สำหรับ booking %s แล้ว%s',
-                $installment->installment_no,
-                $this->money($installment->amount),
-                $booking->booking_ref,
-                $nextInstallmentText,
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'installment_paid',
+                dedupeKey: 'installment:'.$installment->installment_no,
+                message: sprintf(
+                    __('รับชำระงวดที่ %d จำนวน %s บาท สำหรับ booking %s แล้ว%s'),
+                    $installment->installment_no,
+                    $this->money($installment->amount),
+                    $booking->booking_ref,
+                    $nextInstallmentText,
+                ),
+            );
+        });
     }
 
     public function sendBookingCancelled(Booking $booking, ?string $reason = null): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $reason) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        $trimmedReason = $this->clip($reason, 60);
-        $reasonText = $trimmedReason !== '' ? " เหตุผล: {$trimmedReason}" : '';
+            $trimmedReason = $this->clip($reason, 60);
+            $reasonText = $trimmedReason !== '' ? ' '.__('เหตุผล: :reason', ['reason' => $trimmedReason]) : '';
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'booking_cancelled',
-            dedupeKey: 'default',
-            message: sprintf(
-                'หมายเลขการจอง %s ทริป %s ถูกยกเลิก%s ติดต่อทีมงานหากต้องการความช่วยเหลือ',
-                $booking->booking_ref,
-                $this->tripTitle($booking),
-                $reasonText,
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'booking_cancelled',
+                dedupeKey: 'default',
+                message: sprintf(
+                    __('หมายเลขการจอง %s ทริป %s ถูกยกเลิก%s ติดต่อทีมงานหากต้องการความช่วยเหลือ'),
+                    $booking->booking_ref,
+                    $this->tripTitle($booking),
+                    $reasonText,
+                ),
+            );
+        });
     }
 
     /**
@@ -89,32 +98,35 @@ class SmsService
      */
     public function sendTripPostponed(Booking $booking): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'trip_postponed',
-            // ผูกกับครั้งที่เลื่อน — ย้อนแล้วเลื่อนใหม่ (หรือรอบใหม่ถูกเลื่อนซ้ำ) ต้องส่งได้อีก
-            dedupeKey: 's'.($booking->force_majeure_schedule_id ?? $booking->schedule_id)
-                .':'.$booking->force_majeure_at?->timestamp,
-            message: $booking->isUnderfilledPostponement()
-                ? sprintf(
-                    'ทริป %s %s ไม่ได้ออกเดินทางเนื่องจาก%s เลือกรอบใหม่ฟรีหรือรับเงินคืนเต็มจำนวน ภายใน %s %s',
-                    $this->tripTitle($booking),
-                    ThaiDate::short($booking->schedule?->departure_date),
-                    $this->clip($booking->force_majeure_reason, 40),
-                    ThaiDate::short($booking->postpone_decide_by),
-                    ForceMajeureService::chooseUrl($booking),
-                )
-                : sprintf(
-                    'ทริป %s %s ต้องเลื่อนเนื่องจาก%s ยอดที่ชำระยังอยู่ครบ เลือกรอบใหม่ได้ฟรีถึง %s %s',
-                    $this->tripTitle($booking),
-                    ThaiDate::short($booking->schedule?->departure_date),
-                    $this->clip($booking->force_majeure_reason, 40),
-                    ThaiDate::short($booking->force_majeure_until),
-                    ForceMajeureService::chooseUrl($booking),
-                ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'trip_postponed',
+                // ผูกกับครั้งที่เลื่อน — ย้อนแล้วเลื่อนใหม่ (หรือรอบใหม่ถูกเลื่อนซ้ำ) ต้องส่งได้อีก
+                dedupeKey: 's'.($booking->force_majeure_schedule_id ?? $booking->schedule_id)
+                    .':'.$booking->force_majeure_at?->timestamp,
+                message: $booking->isUnderfilledPostponement()
+                    ? sprintf(
+                        __('ทริป %s %s ไม่ได้ออกเดินทางเนื่องจาก%s เลือกรอบใหม่ฟรีหรือรับเงินคืนเต็มจำนวน ภายใน %s %s'),
+                        $this->tripTitle($booking),
+                        AppLocale::shortDate($booking->schedule?->departure_date),
+                        $this->clip($booking->force_majeure_reason, 40),
+                        AppLocale::shortDate($booking->postpone_decide_by),
+                        ForceMajeureService::chooseUrl($booking),
+                    )
+                    : sprintf(
+                        __('ทริป %s %s ต้องเลื่อนเนื่องจาก%s ยอดที่ชำระยังอยู่ครบ เลือกรอบใหม่ได้ฟรีถึง %s %s'),
+                        $this->tripTitle($booking),
+                        AppLocale::shortDate($booking->schedule?->departure_date),
+                        $this->clip($booking->force_majeure_reason, 40),
+                        AppLocale::shortDate($booking->force_majeure_until),
+                        ForceMajeureService::chooseUrl($booking),
+                    ),
+            );
+        });
     }
 
     /**
@@ -123,24 +135,27 @@ class SmsService
      */
     public function sendUnderfilledRefund(Booking $booking): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
-        $amount = (float) ($booking->refund_amount ?? 0);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+            $amount = (float) ($booking->refund_amount ?? 0);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'trip_refund_requested',
-            dedupeKey: 'fm:'.$booking->force_majeure_at?->timestamp,
-            message: $amount > 0
-                ? sprintf(
-                    'การจอง %s ยกเลิกแล้ว เราจะคืนเงิน %s บาทเต็มจำนวน%s',
-                    $booking->booking_ref,
-                    number_format($amount, 0),
-                    $booking->refundAccountSummary()
-                        ? ' เข้าบัญชีที่แจ้งไว้ภายใน 3-7 วันทำการ'
-                        : ' กรุณาแจ้งบัญชีรับเงินคืนในแอป (การจองของฉัน) หรือติดต่อทีมงาน',
-                )
-                : sprintf('การจอง %s ยกเลิกแล้ว ไม่มียอดที่ต้องคืน', $booking->booking_ref),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'trip_refund_requested',
+                dedupeKey: 'fm:'.$booking->force_majeure_at?->timestamp,
+                message: $amount > 0
+                    ? sprintf(
+                        __('การจอง %s ยกเลิกแล้ว เราจะคืนเงิน %s บาทเต็มจำนวน%s'),
+                        $booking->booking_ref,
+                        number_format($amount, 0),
+                        $booking->refundAccountSummary()
+                            ? __(' เข้าบัญชีที่แจ้งไว้ภายใน 3-7 วันทำการ')
+                            : __(' กรุณาแจ้งบัญชีรับเงินคืนในแอป (การจองของฉัน) หรือติดต่อทีมงาน'),
+                    )
+                    : sprintf(__('การจอง %s ยกเลิกแล้ว ไม่มียอดที่ต้องคืน'), $booking->booking_ref),
+            );
+        });
     }
 
     /**
@@ -149,24 +164,27 @@ class SmsService
      */
     public function sendRefundOpened(Booking $booking, bool $tripCancelled): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
-        $needsAccount = $booking->refund_status === RefundService::AWAITING_ACCOUNT;
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $tripCancelled) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+            $needsAccount = $booking->refund_status === RefundService::AWAITING_ACCOUNT;
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'refund_opened',
-            dedupeKey: 'default',
-            message: sprintf(
-                '%sเราจะคืนเงิน %s บาท%s',
-                $tripCancelled
-                    ? sprintf('ขออภัย ทริป %s %s ถูกยกเลิก ', $this->tripTitle($booking), ThaiDate::short($booking->schedule?->departure_date))
-                    : sprintf('การจอง %s ', $booking->booking_ref),
-                number_format((float) $booking->refund_amount, 0),
-                $needsAccount
-                    ? ' กรุณาแจ้งบัญชีรับเงินคืนในแอป (การจองของฉัน) หรือติดต่อทีมงาน'
-                    : ' เข้าบัญชีที่แจ้งไว้ '.RefundService::ETA_LABEL,
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'refund_opened',
+                dedupeKey: 'default',
+                message: sprintf(
+                    __('%sเราจะคืนเงิน %s บาท%s'),
+                    $tripCancelled
+                        ? sprintf(__('ขออภัย ทริป %s %s ถูกยกเลิก '), $this->tripTitle($booking), AppLocale::shortDate($booking->schedule?->departure_date))
+                        : sprintf(__('การจอง %s '), $booking->booking_ref),
+                    number_format((float) $booking->refund_amount, 0),
+                    $needsAccount
+                        ? __(' กรุณาแจ้งบัญชีรับเงินคืนในแอป (การจองของฉัน) หรือติดต่อทีมงาน')
+                        : __(' เข้าบัญชีที่แจ้งไว้ ').RefundService::ETA_LABEL,
+                ),
+            );
+        });
     }
 
     /**
@@ -174,45 +192,51 @@ class SmsService
      */
     public function sendTripResumed(Booking $booking, int $postponedAt): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $postponedAt) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'trip_resumed',
-            dedupeKey: 'fm:'.$postponedAt,
-            message: sprintf(
-                'ขออภัยครับ ทริป %s %s เดินทางตามกำหนดเดิม ข้อความเลื่อนรอบก่อนหน้าส่งผิด ไม่ต้องเลือกรอบใหม่ (%s)',
-                $this->tripTitle($booking),
-                ThaiDate::short($booking->schedule?->departure_date),
-                $booking->booking_ref,
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'trip_resumed',
+                dedupeKey: 'fm:'.$postponedAt,
+                message: sprintf(
+                    __('ขออภัยครับ ทริป %s %s เดินทางตามกำหนดเดิม ข้อความเลื่อนรอบก่อนหน้าส่งผิด ไม่ต้องเลือกรอบใหม่ (%s)'),
+                    $this->tripTitle($booking),
+                    AppLocale::shortDate($booking->schedule?->departure_date),
+                    $booking->booking_ref,
+                ),
+            );
+        });
     }
 
     public function sendTripPostponedReminder(Booking $booking): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'trip_postponed_reminder',
-            dedupeKey: $booking->isUnderfilledPostponement()
-                ? 'decide:'.$booking->postpone_decide_by?->toDateString()
-                : 'until:'.$booking->force_majeure_until?->toDateString(),
-            message: $booking->isUnderfilledPostponement()
-                ? sprintf(
-                    'การจอง %s ยังไม่ได้เลือกรอบใหม่ เลือกรอบฟรีหรือรับเงินคืนได้ถึง %s ถ้าไม่เลือกเราจะคืนเงินให้ %s',
-                    $booking->booking_ref,
-                    ThaiDate::short($booking->postpone_decide_by),
-                    ForceMajeureService::chooseUrl($booking),
-                )
-                : sprintf(
-                    'การจอง %s ยังไม่ได้เลือกรอบใหม่ เลือกได้ถึง %s ราคาเดิม %s',
-                    $booking->booking_ref,
-                    ThaiDate::short($booking->force_majeure_until),
-                    ForceMajeureService::chooseUrl($booking),
-                ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'trip_postponed_reminder',
+                dedupeKey: $booking->isUnderfilledPostponement()
+                    ? 'decide:'.$booking->postpone_decide_by?->toDateString()
+                    : 'until:'.$booking->force_majeure_until?->toDateString(),
+                message: $booking->isUnderfilledPostponement()
+                    ? sprintf(
+                        __('การจอง %s ยังไม่ได้เลือกรอบใหม่ เลือกรอบฟรีหรือรับเงินคืนได้ถึง %s ถ้าไม่เลือกเราจะคืนเงินให้ %s'),
+                        $booking->booking_ref,
+                        AppLocale::shortDate($booking->postpone_decide_by),
+                        ForceMajeureService::chooseUrl($booking),
+                    )
+                    : sprintf(
+                        __('การจอง %s ยังไม่ได้เลือกรอบใหม่ เลือกได้ถึง %s ราคาเดิม %s'),
+                        $booking->booking_ref,
+                        AppLocale::shortDate($booking->force_majeure_until),
+                        ForceMajeureService::chooseUrl($booking),
+                    ),
+            );
+        });
     }
 
     /**
@@ -223,14 +247,17 @@ class SmsService
      */
     public function sendUnderfilledNotice(Booking $booking, string $message): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $message) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: self::UNDERFILLED_NOTICE,
-            dedupeKey: self::underfilledNoticeKey($booking->schedule_id),
-            message: trim($message),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: self::UNDERFILLED_NOTICE,
+                dedupeKey: self::underfilledNoticeKey($booking->schedule_id),
+                message: trim($message),
+            );
+        });
     }
 
     /**
@@ -241,24 +268,27 @@ class SmsService
      */
     public function sendUnderfilledWarning(Booking $booking, int $bookedSeats, int $minSeats, bool $emailed): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $bookedSeats, $minSeats, $emailed) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: self::UNDERFILLED_WARNING,
-            dedupeKey: self::underfilledNoticeKey($booking->schedule_id),
-            message: sprintf(
-                'ทริป %s %s ตอนนี้มีผู้ร่วมทริป %d/%d ท่าน รถออกเมื่อครบ %d ท่าน หากรอบนี้ไม่ได้ออก เราคืนเงินเต็มจำนวน ย้ายรอบหรือขอคืนเงินได้เลยที่ไลน์ %s (%s)%s',
-                $this->tripTitle($booking),
-                ThaiDate::short($booking->schedule?->departure_date),
-                $bookedSeats,
-                $minSeats,
-                $minSeats,
-                config('app.support_line_id'),
-                $booking->booking_ref,
-                $emailed ? ' รายละเอียดส่งทางอีเมลแล้ว' : '',
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: self::UNDERFILLED_WARNING,
+                dedupeKey: self::underfilledNoticeKey($booking->schedule_id),
+                message: sprintf(
+                    __('ทริป %s %s ตอนนี้มีผู้ร่วมทริป %d/%d ท่าน รถออกเมื่อครบ %d ท่าน หากรอบนี้ไม่ได้ออก เราคืนเงินเต็มจำนวน ย้ายรอบหรือขอคืนเงินได้เลยที่ไลน์ %s (%s)%s'),
+                    $this->tripTitle($booking),
+                    AppLocale::shortDate($booking->schedule?->departure_date),
+                    $bookedSeats,
+                    $minSeats,
+                    $minSeats,
+                    config('app.support_line_id'),
+                    $booking->booking_ref,
+                    $emailed ? __(' รายละเอียดส่งทางอีเมลแล้ว') : '',
+                ),
+            );
+        });
     }
 
     public static function underfilledNoticeKey(int $scheduleId): string
@@ -268,114 +298,129 @@ class SmsService
 
     public function sendInstallmentReminder(InstallmentPayment $installment, string $reminderType): ?SmsLog
     {
-        $installment->loadMissing(['booking.user', 'booking.passengers']);
-        $booking = $installment->booking;
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($installment->booking?->user, function () use ($installment, $reminderType) {
+            $installment->loadMissing(['booking.user', 'booking.passengers']);
+            $booking = $installment->booking;
 
-        if (! $booking) {
-            return null;
-        }
+            if (! $booking) {
+                return null;
+            }
 
-        $prefix = match ($reminderType) {
-            'due_soon' => 'ใกล้ครบกำหนดชำระในอีก 2 วัน',
-            'due_today' => 'ครบกำหนดชำระวันนี้',
-            'overdue' => 'เลยกำหนดชำระแล้ว',
-            default => 'แจ้งเตือนชำระเงิน',
-        };
+            $prefix = match ($reminderType) {
+                'due_soon' => __('ใกล้ครบกำหนดชำระในอีก 2 วัน'),
+                'due_today' => __('ครบกำหนดชำระวันนี้'),
+                'overdue' => __('เลยกำหนดชำระแล้ว'),
+                default => __('แจ้งเตือนชำระเงิน'),
+            };
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'installment_'.$reminderType,
-            dedupeKey: 'installment:'.$installment->installment_no.':'.$installment->due_date?->toDateString(),
-            message: sprintf(
-                '%s งวดที่ %d จำนวน %s บาท booking %s กำหนด %s ชำระที่ %s',
-                $prefix,
-                $installment->installment_no,
-                $this->money($installment->amount),
-                $booking->booking_ref,
-                ThaiDate::short($installment->due_date),
-                $this->payUrl($booking),
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'installment_'.$reminderType,
+                dedupeKey: 'installment:'.$installment->installment_no.':'.$installment->due_date?->toDateString(),
+                message: sprintf(
+                    __('%s งวดที่ %d จำนวน %s บาท booking %s กำหนด %s ชำระที่ %s'),
+                    $prefix,
+                    $installment->installment_no,
+                    $this->money($installment->amount),
+                    $booking->booking_ref,
+                    AppLocale::shortDate($installment->due_date),
+                    $this->payUrl($booking),
+                ),
+            );
+        });
     }
 
     public function sendDepositPaid(Booking $booking): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        $balance = (float) ($booking->balance_amount ?? 0);
-        $due = ThaiDate::short($booking->balance_due_at);
+            $balance = (float) ($booking->balance_amount ?? 0);
+            $due = AppLocale::shortDate($booking->balance_due_at);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'deposit_paid',
-            dedupeKey: 'default',
-            message: sprintf(
-                'รับมัดจำ %s บาทแล้ว %s ยอดคงเหลือ %s บาท ครบกำหนด %s ชำระที่ %s',
-                $this->money($booking->deposit_amount),
-                $booking->booking_ref,
-                $this->money($balance),
-                $due,
-                $this->payUrl($booking),
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'deposit_paid',
+                dedupeKey: 'default',
+                message: sprintf(
+                    __('รับมัดจำ %s บาทแล้ว %s ยอดคงเหลือ %s บาท ครบกำหนด %s ชำระที่ %s'),
+                    $this->money($booking->deposit_amount),
+                    $booking->booking_ref,
+                    $this->money($balance),
+                    $due,
+                    $this->payUrl($booking),
+                ),
+            );
+        });
     }
 
     public function sendBalanceDueReminder(Booking $booking): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        $due = ThaiDate::short($booking->balance_due_at);
+            $due = AppLocale::shortDate($booking->balance_due_at);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'balance_due_reminder',
-            dedupeKey: $booking->balance_due_at?->toDateString() ?? 'default',
-            message: sprintf(
-                'เตือนชำระยอดคงเหลือ %s บาท %s ภายใน %s ชำระที่ %s',
-                $this->money($booking->balance_amount),
-                $booking->booking_ref,
-                $due,
-                $this->payUrl($booking),
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'balance_due_reminder',
+                dedupeKey: $booking->balance_due_at?->toDateString() ?? 'default',
+                message: sprintf(
+                    __('เตือนชำระยอดคงเหลือ %s บาท %s ภายใน %s ชำระที่ %s'),
+                    $this->money($booking->balance_amount),
+                    $booking->booking_ref,
+                    $due,
+                    $this->payUrl($booking),
+                ),
+            );
+        });
     }
 
     public function sendBalancePaid(Booking $booking): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'balance_paid',
-            dedupeKey: 'default',
-            message: sprintf(
-                'รับชำระครบแล้ว %s บาท %s ขอบคุณครับ ดูกำหนดการและจุดขึ้นรถ %s',
-                $this->money($booking->balance_amount),
-                $booking->booking_ref,
-                $this->briefUrl($booking),
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'balance_paid',
+                dedupeKey: 'default',
+                message: sprintf(
+                    __('รับชำระครบแล้ว %s บาท %s ขอบคุณครับ ดูกำหนดการและจุดขึ้นรถ %s'),
+                    $this->money($booking->balance_amount),
+                    $booking->booking_ref,
+                    $this->briefUrl($booking),
+                ),
+            );
+        });
     }
 
     public function sendDepartureReminder(Booking $booking, int $daysBefore): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip', 'pickupPoint']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $daysBefore) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip', 'pickupPoint']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'departure_reminder',
-            // ใบที่ย้ายรอบมาแล้วต้องได้เตือนของรอบใหม่ด้วย — ใบที่ไม่เคยย้ายคงคีย์เดิมไว้
-            dedupeKey: $daysBefore.'_days_before'
-                .($booking->roundChangedAt() ? ':s'.$booking->schedule_id : ''),
-            message: sprintf(
-                'อีก %d วันถึงทริป %s %s จุดนัดพบ %s ใบเดินทาง %s',
-                $daysBefore,
-                $this->tripTitle($booking),
-                $this->departureDate($booking),
-                $this->meetingPoint($booking),
-                $this->briefUrl($booking),
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'departure_reminder',
+                // ใบที่ย้ายรอบมาแล้วต้องได้เตือนของรอบใหม่ด้วย — ใบที่ไม่เคยย้ายคงคีย์เดิมไว้
+                dedupeKey: $daysBefore.'_days_before'
+                    .($booking->roundChangedAt() ? ':s'.$booking->schedule_id : ''),
+                message: sprintf(
+                    __('อีก %d วันถึงทริป %s %s จุดนัดพบ %s ใบเดินทาง %s'),
+                    $daysBefore,
+                    $this->tripTitle($booking),
+                    $this->departureDate($booking),
+                    $this->meetingPoint($booking),
+                    $this->briefUrl($booking),
+                ),
+            );
+        });
     }
 
     /**
@@ -387,23 +432,26 @@ class SmsService
      */
     public function sendAccountClaimLink(Booking $booking, string $url, string $dedupeKey = 'default', bool $selfBooked = false): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $url, $dedupeKey, $selfBooked) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'account_claim',
-            dedupeKey: $dedupeKey,
-            message: sprintf(
-                // ลูกค้าที่จองเองจากลิงก์กรอกข้อมูลไม่ได้คุยกับทีมงาน — "ทีมงานเปิดให้"
-                // จะทำให้เขาสงสัยว่ามีใครจองซ้อนให้อีกใบหรือเปล่า
-                $selfBooked
-                    ? 'ยืนยันการจอง %s ทริป %s แล้ว เปิดใช้บัญชีเพื่อดูในแอป %s'
-                    : 'ทีมงานเปิดการจอง %s ทริป %s ให้คุณแล้ว เปิดใช้บัญชีเพื่อดูในแอป %s',
-                $booking->booking_ref,
-                $this->tripTitle($booking),
-                $url,
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'account_claim',
+                dedupeKey: $dedupeKey,
+                message: sprintf(
+                    // ลูกค้าที่จองเองจากลิงก์กรอกข้อมูลไม่ได้คุยกับทีมงาน — "ทีมงานเปิดให้"
+                    // จะทำให้เขาสงสัยว่ามีใครจองซ้อนให้อีกใบหรือเปล่า
+                    $selfBooked
+                        ? __('ยืนยันการจอง %s ทริป %s แล้ว เปิดใช้บัญชีเพื่อดูในแอป %s')
+                        : __('ทีมงานเปิดการจอง %s ทริป %s ให้คุณแล้ว เปิดใช้บัญชีเพื่อดูในแอป %s'),
+                    $booking->booking_ref,
+                    $this->tripTitle($booking),
+                    $url,
+                ),
+            );
+        });
     }
 
     /**
@@ -417,19 +465,22 @@ class SmsService
      */
     public function sendTripBrief(Booking $booking, string $url, string $dedupeKey = 'default'): ?SmsLog
     {
-        $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
+        // ข้อความ SMS ในภาษาของเจ้าของการจอง (users.locale) — ลูกค้าไทยได้ข้อความเดิม
+        return AppLocale::withUser($booking->user, function () use ($booking, $url, $dedupeKey) {
+            $booking->loadMissing(['user', 'passengers', 'schedule.trip']);
 
-        return $this->queueOrSend(
-            booking: $booking,
-            type: 'trip_brief',
-            dedupeKey: $dedupeKey,
-            message: sprintf(
-                'ใบเดินทาง %s %s จุดขึ้นรถ กำหนดการ และเบอร์ทีมงานดูได้ที่ %s',
-                $this->tripTitle($booking),
-                $this->departureDate($booking),
-                $url,
-            ),
-        );
+            return $this->queueOrSend(
+                booking: $booking,
+                type: 'trip_brief',
+                dedupeKey: $dedupeKey,
+                message: sprintf(
+                    __('ใบเดินทาง %s %s จุดขึ้นรถ กำหนดการ และเบอร์ทีมงานดูได้ที่ %s'),
+                    $this->tripTitle($booking),
+                    $this->departureDate($booking),
+                    $url,
+                ),
+            );
+        });
     }
 
     public function sendPending(int $limit = 100): int
@@ -640,21 +691,21 @@ class SmsService
 
     private function tripTitle(Booking $booking): string
     {
-        return $this->clip($booking->schedule?->trip?->title, 45) ?: 'ทริปของคุณ';
+        return $this->clip($booking->schedule?->trip?->tr('title'), 45) ?: __('ทริปของคุณ');
     }
 
     private function departureDate(Booking $booking): string
     {
         // แสดงวัน-เวลาออกรถจริง (เช่น 12/06/2026 23:30 น.) ถ้ารอบนั้นกำหนดไว้
-        return $booking->schedule?->departureLabelShort() ?? '-';
+        return $booking->schedule?->departureLabelShortLocalized() ?? '-';
     }
 
     private function meetingPoint(Booking $booking): string
     {
         $name = $booking->pickupPoint?->name
-            ?? $booking->schedule?->trip?->departure_point;
+            ?? $booking->schedule?->trip?->tr('departure_point');
 
-        return $this->clip($name, 45) ?: 'ตามรายละเอียดการจอง';
+        return $this->clip($name, 45) ?: __('ตามรายละเอียดการจอง');
     }
 
     /**
@@ -715,14 +766,14 @@ class SmsService
             ->first();
 
         if (! $nextInstallment) {
-            return ' ชำระครบทุกงวดแล้ว';
+            return __(' ชำระครบทุกงวดแล้ว');
         }
 
         return sprintf(
-            ' งวดถัดไปงวดที่ %d จำนวน %s บาท กำหนด %s ชำระที่ %s',
+            __(' งวดถัดไปงวดที่ %d จำนวน %s บาท กำหนด %s ชำระที่ %s'),
             $nextInstallment->installment_no,
             $this->money($nextInstallment->amount),
-            ThaiDate::short($nextInstallment->due_date),
+            AppLocale::shortDate($nextInstallment->due_date),
             $this->payUrl($booking),
         );
     }

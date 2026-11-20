@@ -19,7 +19,7 @@ class BookingCreatedMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ได้รับการจองของคุณแล้ว #'.$this->booking->booking_ref.' - Luilaykhao',
+            subject: __('ได้รับการจองของคุณแล้ว #:ref - Luilaykhao', ['ref' => $this->booking->booking_ref]),
         );
     }
 

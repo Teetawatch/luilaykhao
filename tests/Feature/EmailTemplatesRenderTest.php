@@ -29,7 +29,10 @@ use App\Models\InstallmentPayment;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Services\MailService;
+use App\Support\LegalPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -217,5 +220,52 @@ class EmailTemplatesRenderTest extends TestCase
 
         // Blade variables must all resolve — an unset one would print as literal syntax.
         $this->assertStringNotContainsString('{{', $html);
+    }
+
+    /**
+     * ลูกค้าที่ใช้เว็บ /en หรือแอปภาษาอังกฤษได้อีเมลภาษาอังกฤษทั้งฉบับ — ข้อความไทยที่
+     * เหลือได้มีแค่ข้อมูลที่ลูกค้า/ทีมงานพิมพ์เอง (ชื่อคน เหตุผล ข้อความอวยพร)
+     */
+    #[DataProvider('mailables')]
+    public function test_customer_template_renders_in_english(callable $make): void
+    {
+        $mailable = $make($this);
+        if (str_starts_with(class_basename($mailable), 'Admin')) {
+            $this->markTestSkipped('ทีมงานอ่านภาษาไทย');
+        }
+
+        $html = $mailable->locale('en')->render();
+        // Mailable::send() สร้าง envelope ภายใต้ locale ของฉบับนั้น — ทำแบบเดียวกัน
+        $subject = $mailable->withLocale('en', fn () => $mailable->envelope()->subject);
+
+        $typed = ['สมชาย ใจดี', 'ผู้จัดยกเลิกรอบเดินทาง', 'พี่หมี', 'สุขสันต์วันเกิดนะ', 'คุณสมศรี',
+            'รถตู้ VIP', 'ที่พัก 2 คืน', 'ราคาพิเศษ', 'น้องมายด์'];
+        // เงื่อนไขการจองคือข้อความไทยที่ลูกค้ากดยอมรับ (ผูกพันตามฉบับไทย) — ทวนตามหลักฐานทุกตัวอักษร
+        $typed = array_merge($typed, LegalPolicy::bookingTerms());
+        $body = preg_replace('#<style\b.*?</style>#s', '', html_entity_decode($html));
+        $text = strip_tags(str_replace($typed, '', $body));
+        preg_match_all('/[\x{0E01}-\x{0E3A}\x{0E40}-\x{0E5B}][^<\n]{0,40}/u', $text, $thai);
+
+        $this->assertSame([], array_values(array_unique($thai[0])), 'Thai left in the English email');
+        $this->assertDoesNotMatchRegularExpression('/[\x{0E01}-\x{0E3A}\x{0E40}-\x{0E5B}]/u', $subject);
+    }
+
+    public function test_customer_mail_goes_out_in_the_owner_language(): void
+    {
+        Mail::fake();
+        $this->booking->user->forceFill(['locale' => 'en'])->save();
+
+        app(MailService::class)->sendBookingCreatedEmail($this->booking->fresh());
+
+        Mail::assertQueued(BookingCreatedMail::class, fn ($mail) => $mail->locale === 'en');
+    }
+
+    public function test_thai_customers_still_get_thai_mail(): void
+    {
+        Mail::fake();
+
+        app(MailService::class)->sendBookingCreatedEmail($this->booking->fresh());
+
+        Mail::assertQueued(BookingCreatedMail::class, fn ($mail) => $mail->locale === 'th');
     }
 }

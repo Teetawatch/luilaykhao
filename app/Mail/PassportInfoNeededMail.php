@@ -27,7 +27,7 @@ class PassportInfoNeededMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ขอข้อมูลหนังสือเดินทางของผู้เดินทาง #'.$this->booking->booking_ref.' - Luilaykhao',
+            subject: __('ขอข้อมูลหนังสือเดินทางของผู้เดินทาง #:ref - Luilaykhao', ['ref' => $this->booking->booking_ref]),
         );
     }
 

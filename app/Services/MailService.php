@@ -34,6 +34,7 @@ use App\Models\InstallmentPayment;
 use App\Models\Receipt;
 use App\Models\User;
 use App\Support\AccountLinks;
+use App\Support\AppLocale;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
@@ -115,12 +116,12 @@ class MailService
             );
 
             if ($email === $payerEmail || $own->isEmpty()) {
-                Mail::to($email)->send($mailableFactory($receipt, $personal, null));
+                Mail::to($email)->locale($this->bookingLocale($booking))->send($mailableFactory($receipt, $personal, null));
 
                 continue;
             }
 
-            Mail::to($email)->send($mailableFactory($own->first(), $own, $theirs->first()?->name));
+            Mail::to($email)->locale($this->bookingLocale($booking))->send($mailableFactory($own->first(), $own, $theirs->first()?->name));
         }
     }
 
@@ -142,6 +143,15 @@ class MailService
             ->first(fn ($email) => $email !== null && in_array($email, $emails, true));
 
         return $first ?? ($emails[0] ?? null);
+    }
+
+    /**
+     * ภาษาของอีเมลถึงลูกค้าของใบจองนี้ = ภาษาที่เจ้าของการจองใช้ (users.locale
+     * ที่เว็บ /en หรือแอปภาษาอังกฤษจำไว้) — ผู้ร่วมเดินทางในใบเดียวกันได้ภาษาเดียวกัน
+     */
+    private function bookingLocale(Booking $booking): string
+    {
+        return AppLocale::forUser($booking->user);
     }
 
     private function normaliseEmail(mixed $email): ?string
@@ -233,7 +243,7 @@ class MailService
     private function sendToCustomerEmails(Booking $booking, callable $mailableFactory): void
     {
         foreach ($this->customerEmails($booking) as $email) {
-            Mail::to($email)->send($mailableFactory());
+            Mail::to($email)->locale($this->bookingLocale($booking))->send($mailableFactory());
         }
     }
 
@@ -247,7 +257,7 @@ class MailService
     public function sendWelcomeEmail(User $user, ?string $verifyUrl = null): void
     {
         try {
-            Mail::to($user->email)->send(new WelcomeRegistrationMail($user, $verifyUrl));
+            Mail::to($user->email)->locale(AppLocale::forUser($user))->send(new WelcomeRegistrationMail($user, $verifyUrl));
         } catch (\Throwable $e) {
             Log::error('Failed to send welcome email', [
                 'user_id' => $user->id,
@@ -268,7 +278,7 @@ class MailService
         try {
             $expires = (int) config('auth.passwords.users.expire', 60);
 
-            Mail::to($user->email)->send(new PasswordResetMail(
+            Mail::to($user->email)->locale(AppLocale::forUser($user))->send(new PasswordResetMail(
                 $user,
                 AccountLinks::resetPassword($token, $user->email),
                 $expires,
@@ -288,7 +298,7 @@ class MailService
     public function sendEmailVerificationEmail(User $user): void
     {
         try {
-            Mail::to($user->email)->send(new EmailVerificationMail(
+            Mail::to($user->email)->locale(AppLocale::forUser($user))->send(new EmailVerificationMail(
                 $user,
                 AccountLinks::verifyEmail($user),
             ));
@@ -317,7 +327,7 @@ class MailService
 
         try {
             foreach ($emails as $email) {
-                Mail::to($email)->send(new TripBriefMail($booking, $isUpdate));
+                Mail::to($email)->locale($this->bookingLocale($booking))->send(new TripBriefMail($booking, $isUpdate));
             }
 
             return true;
@@ -436,7 +446,7 @@ class MailService
         }
 
         try {
-            Mail::to($email)->send(new GiftPurchasedMail($booking));
+            Mail::to($email)->locale($this->bookingLocale($booking))->send(new GiftPurchasedMail($booking));
         } catch (\Throwable $e) {
             Log::error('Failed to send gift purchased email', [
                 'booking_ref' => $booking->booking_ref,
@@ -458,7 +468,7 @@ class MailService
         }
 
         try {
-            Mail::to($email)->send(new GiftVoucherIssuedMail($voucher));
+            Mail::to($email)->locale(AppLocale::forUser($voucher->purchaser))->send(new GiftVoucherIssuedMail($voucher));
         } catch (\Throwable $e) {
             Log::error('Failed to send gift voucher email', [
                 'voucher_id' => $voucher->id,
@@ -480,7 +490,7 @@ class MailService
         }
 
         try {
-            Mail::to($email)->send(new GiftClaimedMail($booking, $recipientName));
+            Mail::to($email)->locale(AppLocale::forUser($booking->giftedBy))->send(new GiftClaimedMail($booking, $recipientName));
         } catch (\Throwable $e) {
             Log::error('Failed to send gift claimed email', [
                 'booking_ref' => $booking->booking_ref,
@@ -749,7 +759,7 @@ class MailService
             $log = EmailLog::create($base + ['recipient' => $email]);
 
             try {
-                Mail::to($email)->send(
+                Mail::to($email)->locale($this->bookingLocale($booking))->send(
                     (new TripUnderfilledWarningMail($booking, $daysBefore, $bookedSeats, $minSeats))->logAs($log),
                 );
             } catch (\Throwable $e) {

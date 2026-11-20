@@ -20,7 +20,7 @@ class BookingCancelledMail extends QueuedMail
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'ยืนยันการยกเลิกการจอง #'.$this->booking->booking_ref.' - Luilaykhao',
+            subject: __('ยืนยันการยกเลิกการจอง #:ref - Luilaykhao', ['ref' => $this->booking->booking_ref]),
         );
     }
 

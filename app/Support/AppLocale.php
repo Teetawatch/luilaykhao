@@ -82,6 +82,56 @@ class AppLocale
             : ThaiDate::short($date);
     }
 
+    /** วันที่เต็มตามภาษา: "25 กรกฎาคม 2569" หรือ "25 July 2026" */
+    public static function fullDate(?\DateTimeInterface $date): string
+    {
+        if ($date === null) {
+            return '-';
+        }
+
+        return self::isEnglish()
+            ? Carbon::instance($date)->format('j F Y')
+            : ThaiDate::full(Carbon::instance($date));
+    }
+
+    /** วันที่+เวลาแบบสั้น (ยังไม่รวม " น."): "25 ก.ค. 2569 14:30" หรือ "25 Jul 2026 14:30" */
+    public static function shortDateTime(?\DateTimeInterface $date): string
+    {
+        if ($date === null) {
+            return '-';
+        }
+
+        return self::isEnglish()
+            ? Carbon::instance($date)->format('j M Y H:i')
+            : ThaiDate::shortTime(Carbon::instance($date));
+    }
+
+    /** ช่วงวันที่: "12 – 14 กรกฎาคม 2569" หรือ "12 – 14 July 2026" */
+    public static function dateRange(?\DateTimeInterface $from, ?\DateTimeInterface $to): string
+    {
+        if (! self::isEnglish()) {
+            return ThaiDate::range($from ? Carbon::instance($from) : null, $to ? Carbon::instance($to) : null);
+        }
+
+        if ($from === null) {
+            return self::fullDate($to);
+        }
+
+        $from = Carbon::instance($from);
+        if ($to === null || $from->isSameDay($to)) {
+            return self::fullDate($from);
+        }
+
+        $to = Carbon::instance($to);
+        if ($from->year !== $to->year) {
+            return self::fullDate($from).' – '.self::fullDate($to);
+        }
+
+        $head = $from->month === $to->month ? $from->format('j') : $from->format('j F');
+
+        return $head.' – '.self::fullDate($to);
+    }
+
     /**
      * ทำงาน $callback ด้วยภาษาของผู้ใช้ แล้วคืนภาษาเดิม — ใช้ตอนประกอบ push
      * หรือข้อความที่จะส่งหาคนอื่นจากใน request ของอีกคน
