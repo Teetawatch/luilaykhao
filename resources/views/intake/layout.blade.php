@@ -9,7 +9,7 @@
     ผ่านเบราว์เซอร์ในแอปไลน์/เฟส/ไอจี ที่บางเครื่องโหลดของข้ามโดเมนไม่ผ่าน
 --}}
 <!DOCTYPE html>
-<html lang="th">
+<html lang="{{ app()->getLocale() === 'en' ? 'en' : 'th' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -17,24 +17,24 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#0D2B1E">
     <meta name="color-scheme" content="light only">
-    <title>@yield('title', 'กรอกข้อมูลผู้เดินทาง') · ลุยเลเขา</title>
+    <title>@yield('title', 'กรอกข้อมูลผู้เดินทาง') {{ __('· ลุยเลเขา') }}</title>
 
     {{-- การ์ดพรีวิวตอนวางลิงก์ในแชท — ลิงก์นี้เดินทางด้วยการวางในไลน์/เมสเซนเจอร์
          เป็นหลัก ถ้าไม่มีการ์ด ลูกค้าเห็นแค่ URL สุ่มยาว ๆ แล้วลังเลที่จะกด
          และตอนลูกค้าส่งลิงก์กลุ่มต่อให้เพื่อน การ์ดคือสิ่งที่อธิบายแทนเขา --}}
     @php
-        $ogTitle = ($ogTitle ?? null) ?: (($heroTitle ?? 'กรอกข้อมูลผู้เดินทาง').' · ลุยเลเขา');
-        $ogDescription = ($ogDescription ?? null) ?: ($heroSub ?? 'กรอกข้อมูลผู้เดินทางล่วงหน้า ใช้เวลาประมาณ 2 นาที');
+        $ogTitle = ($ogTitle ?? null) ?: (($heroTitle ?? __('กรอกข้อมูลผู้เดินทาง')).__(' · ลุยเลเขา'));
+        $ogDescription = ($ogDescription ?? null) ?: ($heroSub ?? __('กรอกข้อมูลผู้เดินทางล่วงหน้า ใช้เวลาประมาณ 2 นาที'));
         $ogImage = ($ogImage ?? null) ?: ($heroImage ?? null);
     @endphp
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="ลุยเลเขา">
+    <meta property="og:site_name" content="{{ __('ลุยเลเขา') }}">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:title" content="{{ $ogTitle }}">
     <meta property="og:description" content="{{ $ogDescription }}">
     @if ($ogImage)
         <meta property="og:image" content="{{ $ogImage }}">
-        <meta property="og:image:alt" content="{{ $heroTitle ?? 'ลุยเลเขา' }}">
+        <meta property="og:image:alt" content="{{ $heroTitle ?? __('ลุยเลเขา') }}">
     @endif
     <meta name="twitter:card" content="{{ $ogImage ? 'summary_large_image' : 'summary' }}">
     <meta name="twitter:title" content="{{ $ogTitle }}">
@@ -466,11 +466,12 @@
     @stack('styles')
 </head>
 <body>
+<x-page-lang-switch />
     <div class="shell">
         <header class="masthead">
             <img src="{{ asset('images/logo.png') }}" alt="" width="34" height="34">
-            <span class="name">ลุยเลเขา</span>
-            <span class="tag">@include('intake.icon', ['name' => 'lock']) ข้อมูลเข้ารหัส</span>
+            <span class="name">{{ __('ลุยเลเขา') }}</span>
+            <span class="tag">@include('intake.icon', ['name' => 'lock']) {{ __('ข้อมูลเข้ารหัส') }}</span>
         </header>
 
         <main class="card">
@@ -482,7 +483,7 @@
                     @if (! empty($heroEyebrow))
                         <div class="eyebrow">@include('intake.icon', ['name' => $heroEyebrowIcon ?? 'sparkle']) {{ $heroEyebrow }}</div>
                     @endif
-                    <h1>{{ $heroTitle ?? 'กรอกข้อมูลผู้เดินทาง' }}</h1>
+                    <h1>{{ $heroTitle ?? __('กรอกข้อมูลผู้เดินทาง') }}</h1>
                     @if (! empty($heroSub))
                         <p class="sub">{{ $heroSub }}</p>
                     @endif
@@ -502,7 +503,7 @@
         </main>
 
         <p class="site-foot">
-            &copy; {{ date('Y') }} ลุยเลเขา · <a href="{{ url('/') }}">luilaykhao.com</a>
+            {{ __('© :date ลุยเลเขา ·', ['date' => date('Y')]) }} <a href="{{ url('/') }}">luilaykhao.com</a>
         </p>
     </div>
     <script>
@@ -574,7 +575,7 @@
                 if (!button) { return; }
                 setTimeout(function () {
                     button.disabled = true;
-                    button.textContent = 'กำลังส่งข้อมูล...';
+                    button.textContent = @json(__('กำลังส่งข้อมูล...'));
                 }, 0);
             });
         });

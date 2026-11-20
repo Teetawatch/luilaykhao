@@ -137,7 +137,8 @@ Route::get('/driver/track', function () {
 Route::get('/t/{token}', [PublicTripBriefController::class, 'show'])
     ->where('token', '[a-z0-9]+')
     ->middleware('throttle:120,1')
-    ->name('public.trip-brief.show');
+    ->name('public.trip-brief.show')
+    ->middleware('page.locale');
 // ไฟล์ปฏิทินของรอบเดียวกัน — ต้องมาก่อนอะไรก็ตามที่จับ /t/{token} แบบกว้างกว่า
 Route::get('/t/{token}/calendar.ics', [PublicTripBriefController::class, 'calendar'])
     ->where('token', '[a-z0-9]+')
@@ -146,15 +147,18 @@ Route::get('/t/{token}/calendar.ics', [PublicTripBriefController::class, 'calend
 Route::post('/t/{token}/pickup-status', [PublicTripBriefController::class, 'reportPickupStatus'])
     ->where('token', '[a-z0-9]+')
     ->middleware('throttle:30,1')
-    ->name('public.trip-brief.pickup-status');
+    ->name('public.trip-brief.pickup-status')
+    ->middleware('page.locale');
 Route::post('/t/{token}/attendance', [PublicTripBriefController::class, 'attendance'])
     ->where('token', '[a-z0-9]+')
     ->middleware('throttle:20,1')
-    ->name('public.trip-brief.attendance');
+    ->name('public.trip-brief.attendance')
+    ->middleware('page.locale');
 Route::post('/t/{token}/ack', [PublicTripBriefController::class, 'acknowledge'])
     ->where('token', '[a-z0-9]+')
     ->middleware('throttle:20,1')
-    ->name('public.trip-brief.ack');
+    ->name('public.trip-brief.ack')
+    ->middleware('page.locale');
 
 // Digital Travel Receipt — หน้าตรวจสอบใบเสร็จสาธารณะจาก QR / ลิงก์ในอีเมล
 Route::get('/receipt/{token}/pdf', [PublicReceiptController::class, 'pdf'])
@@ -236,10 +240,12 @@ Route::get('/album/{token}/download/{photoId}', [PublicAlbumController::class, '
 // Public birth-date page — ลูกค้ากรอกวัน/เดือน/ปีเกิดเองจากลิงก์เฉพาะคน (ไม่ต้องล็อกอิน)
 // เพื่อนร่วมทางกรอกข้อมูลของตัวเองผ่านลิงก์เฉพาะคน (ไม่ต้องล็อกอิน ไม่ต้องมีแอป)
 Route::get('/p/{token}', [PublicPassengerFillController::class, 'show'])
-    ->name('public.passenger-fill.show');
+    ->name('public.passenger-fill.show')
+    ->middleware('page.locale');
 Route::post('/p/{token}', [PublicPassengerFillController::class, 'submit'])
     ->middleware('throttle:20,60')
-    ->name('public.passenger-fill.submit');
+    ->name('public.passenger-fill.submit')
+    ->middleware('page.locale');
 Route::get('/p-done', [PublicPassengerFillController::class, 'done'])
     ->name('public.passenger-fill.done');
 
@@ -247,25 +253,30 @@ Route::get('/p-done', [PublicPassengerFillController::class, 'done'])
 Route::get('/f/{token}', [PublicFriendPassController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:120,1')
-    ->name('public.friend-pass.show');
+    ->name('public.friend-pass.show')
+    ->middleware('page.locale');
 Route::post('/f/{token}/fill', [PublicFriendPassController::class, 'fill'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:20,1')
-    ->name('public.friend-pass.fill');
+    ->name('public.friend-pass.fill')
+    ->middleware('page.locale');
 Route::post('/f/{token}/attendance', [PublicFriendPassController::class, 'attendance'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:20,1')
-    ->name('public.friend-pass.attendance');
+    ->name('public.friend-pass.attendance')
+    ->middleware('page.locale');
 
 // เซ็นแบบฟอร์มอุทยานผ่านลิงก์ของเพื่อน + ภาพที่หน้าเซ็น/แอป/เว็บเปิดด้วย signed URL
 Route::get('/f/{token}/permit', [PublicPermitFormController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:60,1')
-    ->name('public.friend-permit.show');
+    ->name('public.friend-permit.show')
+    ->middleware('page.locale');
 Route::post('/f/{token}/permit', [PublicPermitFormController::class, 'sign'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:10,1')
-    ->name('public.friend-permit.sign');
+    ->name('public.friend-permit.sign')
+    ->middleware('page.locale');
 Route::get('/permit-forms/{form}/pages/{page}', [PublicPermitFormController::class, 'page'])
     ->whereNumber(['form', 'page'])
     ->middleware(['signed', 'throttle:120,1'])
@@ -293,11 +304,13 @@ Route::get('/staff-permit-signatures/{row}', [PublicPermitFormController::class,
 Route::get('/r/{token}', [PublicIntakeController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:60,1')
-    ->name('public.intake.show');
+    ->name('public.intake.show')
+    ->middleware('page.locale');
 Route::post('/r/{token}', [PublicIntakeController::class, 'submit'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:10,1')
-    ->name('public.intake.submit');
+    ->name('public.intake.submit')
+    ->middleware('page.locale');
 
 Route::get('/g/{token}', [PublicIntakeController::class, 'groupShow'])
     ->where('token', '[A-Za-z0-9]+')
@@ -328,11 +341,13 @@ Route::post('/g/{token}/pay', [PublicIntakeBookingController::class, 'pay'])
 Route::get('/claim/{token}', [PublicAccountClaimController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:30,1')
-    ->name('public.claim.show');
+    ->name('public.claim.show')
+    ->middleware('page.locale');
 Route::post('/claim/{token}', [PublicAccountClaimController::class, 'submit'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:10,1')
-    ->name('public.claim.submit');
+    ->name('public.claim.submit')
+    ->middleware('page.locale');
 Route::get('/claim-done', [PublicAccountClaimController::class, 'done'])
     ->name('public.claim.done');
 
@@ -370,11 +385,13 @@ Route::post('/booking-passport/{token}', [PublicPassportController::class, 'subm
 Route::get('/pay/{token}', [PublicPaymentController::class, 'show'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:60,1')
-    ->name('public.pay.show');
+    ->name('public.pay.show')
+    ->middleware('page.locale');
 Route::post('/pay/{token}', [PublicPaymentController::class, 'pay'])
     ->where('token', '[A-Za-z0-9]+')
     ->middleware('throttle:payment')
-    ->name('public.pay.submit');
+    ->name('public.pay.submit')
+    ->middleware('page.locale');
 
 // เลือกรอบใหม่หลังรอบเดิมถูกเลื่อนเพราะเหตุสุดวิสัย — จากลิงก์ในอีเมล/SMS/ไลน์
 // (ไม่ต้องล็อกอิน ลูกค้าที่ทีมงานจองให้ยังไม่มีบัญชีที่ใช้งานได้)

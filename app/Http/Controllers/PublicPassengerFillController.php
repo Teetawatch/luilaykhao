@@ -98,23 +98,23 @@ class PublicPassengerFillController extends Controller
                 'nullable', 'file', 'mimes:'.implode(',', BookingDocumentService::ALLOWED_MIMES), 'max:'.BookingDocumentService::MAX_SIZE_KB,
             ],
         ], [
-            'border_pass_front.required_if' => 'กรุณาแนบรูปบัตรประชาชนด้านหน้า ด่านใช้เป็นหลักฐานทำ Border Pass',
-            'border_pass_back.required_if' => 'กรุณาแนบรูปบัตรประชาชนด้านหลัง ด่านใช้เป็นหลักฐานทำ Border Pass',
-            'border_pass_front.mimes' => 'บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น',
-            'border_pass_back.mimes' => 'บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น',
-            'border_pass_front.max' => 'ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB',
-            'border_pass_back.max' => 'ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB',
-            'name.required' => 'กรุณากรอกชื่อ-นามสกุล',
-            'phone.required' => 'กรุณากรอกเบอร์โทรศัพท์',
-            'birth_date.before' => 'วันเกิดต้องเป็นวันในอดีต',
-            'name_en.required' => 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษให้ตรงกับหน้าพาสปอร์ต',
-            'name_en.regex' => 'ชื่อ-สกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น',
-            'passport_no.required' => 'กรุณากรอกเลขที่พาสปอร์ต',
-            'passport_no.regex' => 'เลขที่พาสปอร์ตไม่ถูกต้อง',
-            'passport_expires_at.required' => 'กรุณาระบุวันหมดอายุพาสปอร์ต',
-            'passport_expires_at.after' => 'พาสปอร์ตหมดอายุแล้ว',
-            'travel_document.required' => 'กรุณาเลือกว่ามีพาสปอร์ตหรือให้ทีมงานทำ Border Pass',
-            'id_card.required_if' => 'กรุณากรอกเลขบัตรประชาชน ทีมงานใช้ยื่นทำ Border Pass',
+            'border_pass_front.required_if' => __('กรุณาแนบรูปบัตรประชาชนด้านหน้า ด่านใช้เป็นหลักฐานทำ Border Pass'),
+            'border_pass_back.required_if' => __('กรุณาแนบรูปบัตรประชาชนด้านหลัง ด่านใช้เป็นหลักฐานทำ Border Pass'),
+            'border_pass_front.mimes' => __('บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น'),
+            'border_pass_back.mimes' => __('บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น'),
+            'border_pass_front.max' => __('ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB'),
+            'border_pass_back.max' => __('ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB'),
+            'name.required' => __('กรุณากรอกชื่อ-นามสกุล'),
+            'phone.required' => __('กรุณากรอกเบอร์โทรศัพท์'),
+            'birth_date.before' => __('วันเกิดต้องเป็นวันในอดีต'),
+            'name_en.required' => __('กรุณากรอกชื่อ-สกุลภาษาอังกฤษให้ตรงกับหน้าพาสปอร์ต'),
+            'name_en.regex' => __('ชื่อ-สกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น'),
+            'passport_no.required' => __('กรุณากรอกเลขที่พาสปอร์ต'),
+            'passport_no.regex' => __('เลขที่พาสปอร์ตไม่ถูกต้อง'),
+            'passport_expires_at.required' => __('กรุณาระบุวันหมดอายุพาสปอร์ต'),
+            'passport_expires_at.after' => __('พาสปอร์ตหมดอายุแล้ว'),
+            'travel_document.required' => __('กรุณาเลือกว่ามีพาสปอร์ตหรือให้ทีมงานทำ Border Pass'),
+            'id_card.required_if' => __('กรุณากรอกเลขบัตรประชาชน ทีมงานใช้ยื่นทำ Border Pass'),
         ]);
 
         // เกณฑ์ 6 เดือนเหมือนตอนจอง — เพื่อนที่กรอกทีหลังต้องผ่านด่านเดียวกัน
@@ -124,7 +124,7 @@ class PublicPassengerFillController extends Controller
             if ($departure && Carbon::parse($data['passport_expires_at'])->lt($departure->copy()->addMonths(6))) {
                 return back()
                     ->withInput()
-                    ->withErrors(['passport_expires_at' => 'พาสปอร์ตต้องมีอายุเหลืออย่างน้อย 6 เดือนนับจากวันเดินทาง']);
+                    ->withErrors(['passport_expires_at' => __('พาสปอร์ตต้องมีอายุเหลืออย่างน้อย 6 เดือนนับจากวันเดินทาง')]);
             }
         }
 
@@ -179,19 +179,19 @@ class PublicPassengerFillController extends Controller
             ->first();
 
         if (! $passenger) {
-            throw new NotFoundHttpException('ลิงก์นี้ใช้ไม่ได้แล้ว');
+            throw new NotFoundHttpException(__('ลิงก์นี้ใช้ไม่ได้แล้ว'));
         }
 
         if ($passenger->self_fill_expires_at && $passenger->self_fill_expires_at->isPast()) {
-            throw new NotFoundHttpException('ลิงก์นี้หมดอายุแล้ว');
+            throw new NotFoundHttpException(__('ลิงก์นี้หมดอายุแล้ว'));
         }
 
         if (! $passenger->booking) {
-            throw new NotFoundHttpException('ไม่พบการจองของลิงก์นี้');
+            throw new NotFoundHttpException(__('ไม่พบการจองของลิงก์นี้'));
         }
 
         if ($passenger->booking->status === 'cancelled') {
-            throw new NotFoundHttpException('การจองนี้ถูกยกเลิกแล้ว');
+            throw new NotFoundHttpException(__('การจองนี้ถูกยกเลิกแล้ว'));
         }
 
         return $passenger;

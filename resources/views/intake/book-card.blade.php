@@ -17,35 +17,35 @@
         <div class="book-head">
             <span class="book-ic">@include('intake.icon', ['name' => 'check-circle'])</span>
             <div>
-                <h2>จองสำเร็จแล้ว</h2>
-                <p>เลขที่จอง {{ $groupBooking->booking_ref }} · ดูรายละเอียดทริป ห้องแชท และ QR ขึ้นรถได้ในแอปลุยเลเขา</p>
+                <h2>{{ __('จองสำเร็จแล้ว') }}</h2>
+                <p>{{ __('เลขที่จอง :booking_ref · ดูรายละเอียดทริป ห้องแชท และ QR ขึ้นรถได้ในแอปลุยเลเขา', ['booking_ref' => $groupBooking->booking_ref]) }}</p>
             </div>
         </div>
-        <a class="btn" href="{{ $intake->payUrl() }}">@include('intake.icon', ['name' => 'check']) ดูการจองของกลุ่มนี้</a>
+        <a class="btn" href="{{ $intake->payUrl() }}">@include('intake.icon', ['name' => 'check']) {{ __('ดูการจองของกลุ่มนี้') }}</a>
     </div>
 @elseif ($groupBooking && $groupBooking->status === 'pending')
     <div class="book book--waiting">
         <div class="book-head">
             <span class="book-ic">@include('intake.icon', ['name' => 'clock'])</span>
             <div>
-                <h2>รอชำระเงินเพื่อยืนยันที่นั่ง</h2>
+                <h2>{{ __('รอชำระเงินเพื่อยืนยันที่นั่ง') }}</h2>
                 <p>
                     @if ($groupBooking->slip_ocr_status !== null)
-                        ได้รับสลิปแล้ว ทีมงานกำลังตรวจสอบยอดโอน ที่นั่งยังกันไว้ให้กลุ่มนี้
+                        {{ __('ได้รับสลิปแล้ว ทีมงานกำลังตรวจสอบยอดโอน ที่นั่งยังกันไว้ให้กลุ่มนี้') }}
                     @else
-                        เปิดการจอง {{ $groupBooking->booking_ref }} ไว้แล้ว ชำระเงินให้ทันเวลา ไม่งั้นระบบจะคืนที่นั่ง
+                        {{ __('เปิดการจอง :booking_ref ไว้แล้ว ชำระเงินให้ทันเวลา ไม่งั้นระบบจะคืนที่นั่ง', ['booking_ref' => $groupBooking->booking_ref]) }}
                     @endif
                 </p>
             </div>
         </div>
-        <a class="btn" href="{{ $intake->payUrl() }}">@include('intake.icon', ['name' => 'send']) ไปหน้าชำระเงิน</a>
+        <a class="btn" href="{{ $intake->payUrl() }}">@include('intake.icon', ['name' => 'send']) {{ __('ไปหน้าชำระเงิน') }}</a>
     </div>
 @elseif ($intake->acceptsSubmissions())
     <div class="book" id="book">
         @if ($bookErrors->any())
             <div class="callout callout--error">
                 @include('intake.icon', ['name' => 'alert'])
-                <div><strong>จองไม่สำเร็จ</strong>{{ $bookErrors->first() }}</div>
+                <div><strong>{{ __('จองไม่สำเร็จ') }}</strong>{{ $bookErrors->first() }}</div>
             </div>
         @endif
 
@@ -53,7 +53,7 @@
             <div class="book-head">
                 <span class="book-ic book-ic--muted">@include('intake.icon', ['name' => 'info'])</span>
                 <div>
-                    <h2>ยังกดจองเองไม่ได้</h2>
+                    <h2>{{ __('ยังกดจองเองไม่ได้') }}</h2>
                     <p>{{ $bookBlock }}</p>
                 </div>
             </div>
@@ -61,18 +61,18 @@
             <div class="book-head">
                 <span class="book-ic">@include('intake.icon', ['name' => 'sparkle'])</span>
                 <div>
-                    <h2>จองและชำระเงินได้เลย</h2>
-                    <p>ไม่ต้องรอทีมงานส่ง QR — ที่นั่งเป็นของกลุ่มนี้ทันทีที่ชำระเงิน</p>
+                    <h2>{{ __('จองและชำระเงินได้เลย') }}</h2>
+                    <p>{{ __('ไม่ต้องรอทีมงานส่ง QR — ที่นั่งเป็นของกลุ่มนี้ทันทีที่ชำระเงิน') }}</p>
                 </div>
             </div>
 
             @if ($estimate)
                 <dl class="book-sum">
-                    <div><dt>ผู้เดินทาง</dt><dd>{{ $estimate['people'] }} คน</dd></div>
-                    <div><dt>ยอดรวมโดยประมาณ</dt><dd>฿{{ number_format($estimate['total']) }}</dd></div>
+                    <div><dt>{{ __('ผู้เดินทาง') }}</dt><dd>{{ __(':estimate คน', ['estimate' => $estimate['people']]) }}</dd></div>
+                    <div><dt>{{ __('ยอดรวมโดยประมาณ') }}</dt><dd>฿{{ number_format($estimate['total']) }}</dd></div>
                     <div>
-                        <dt>วิธีชำระ</dt>
-                        <dd>{{ $estimate['deposit_enabled'] ? 'จ่ายเต็ม หรือมัดจำก่อนก็ได้' : 'ชำระเต็มจำนวน' }}</dd>
+                        <dt>{{ __('วิธีชำระ') }}</dt>
+                        <dd>{{ $estimate['deposit_enabled'] ? __('จ่ายเต็ม หรือมัดจำก่อนก็ได้') : __('ชำระเต็มจำนวน') }}</dd>
                     </div>
                 </dl>
             @endif
@@ -81,17 +81,15 @@
                 <div class="callout callout--warn">
                     @include('intake.icon', ['name' => 'alert'])
                     <div>
-                        <strong>ยังรอเพื่อนอีก {{ $intake->missingCount() }} คน</strong>
-                        ถ้ากดจองตอนนี้ จะจองให้เฉพาะ {{ $estimate['people'] ?? 0 }} คนที่กรอกแล้ว
-                        เพื่อนที่ยังไม่กรอกจะเพิ่มเข้าการจองนี้ไม่ได้ ต้องจองแยกอีกใบ
+                        <strong>{{ __('ยังรอเพื่อนอีก :missingcount คน', ['missingcount' => $intake->missingCount()]) }}</strong>
+                        {{ __('ถ้ากดจองตอนนี้ จะจองให้เฉพาะ :estimate คนที่กรอกแล้ว เพื่อนที่ยังไม่กรอกจะเพิ่มเข้าการจองนี้ไม่ได้ ต้องจองแยกอีกใบ', ['estimate' => $estimate['people'] ?? 0]) }}
                     </div>
                 </div>
             @endif
 
             <p class="book-timer">
                 @include('intake.icon', ['name' => 'clock'])
-                <span>กดจองแล้วมีเวลาชำระเงิน {{ $windowMinutes }} นาที ระหว่างนี้ที่นั่งถูกกันไว้ให้
-                    ถ้าไม่ชำระทัน ระบบจะคืนที่นั่งให้คนอื่นอัตโนมัติ</span>
+                <span>{{ __('กดจองแล้วมีเวลาชำระเงิน :windowminutes นาที ระหว่างนี้ที่นั่งถูกกันไว้ให้ ถ้าไม่ชำระทัน ระบบจะคืนที่นั่งให้คนอื่นอัตโนมัติ', ['windowminutes' => $windowMinutes]) }}</span>
             </p>
 
             <form method="POST" action="{{ route('public.intake.book', $intake->token) }}" data-guard>
@@ -99,7 +97,7 @@
                 <input type="hidden" name="terms_version" value="{{ config('legal.terms_version') }}">
 
                 <details class="book-terms">
-                    <summary>อ่านเงื่อนไขการจอง</summary>
+                    <summary>{{ __('อ่านเงื่อนไขการจอง') }}</summary>
                     <ol>
                         @foreach ($bookingTerms as $line)
                             <li>{{ $line }}</li>
@@ -109,11 +107,11 @@
 
                 <label class="check check--consent">
                     <input type="checkbox" name="accepted_terms" value="1" required>
-                    <span>อ่านและยอมรับเงื่อนไขการจองแล้ว</span>
+                    <span>{{ __('อ่านและยอมรับเงื่อนไขการจองแล้ว') }}</span>
                 </label>
 
                 <button type="submit" class="btn">
-                    @include('intake.icon', ['name' => 'send']) จองและไปหน้าชำระเงิน
+                    @include('intake.icon', ['name' => 'send']) {{ __('จองและไปหน้าชำระเงิน') }}
                 </button>
             </form>
         @endif

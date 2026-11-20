@@ -12,9 +12,9 @@
     $seatsLeft = $schedule->is_charter ? null : $schedule->bookable_seats;
 
     $closedReason = match (true) {
-        $schedule->status !== 'open' => 'รอบนี้ปิดรับแล้ว',
-        $departure && $departure->toDateString() < now('Asia/Bangkok')->toDateString() => 'รอบนี้ออกเดินทางไปแล้ว',
-        default => 'รอบนี้เต็มแล้ว',
+        $schedule->status !== 'open' => __('รอบนี้ปิดรับแล้ว'),
+        $departure && $departure->toDateString() < now('Asia/Bangkok')->toDateString() => __('รอบนี้ออกเดินทางไปแล้ว'),
+        default => __('รอบนี้เต็มแล้ว'),
     };
 
     // departs_at เก็บเวลาไทยตรง ๆ ในคอลัมน์ชนิด UTC — อ่านค่าดิบจึงได้เวลาที่ตั้งไว้จริง
@@ -27,24 +27,24 @@
 
     $roundMeta = [];
     if (! $departsEarly && $departure) {
-        $roundMeta[] = 'ออกวัน'.$departure->locale('th')->isoFormat('dddd');
+        $roundMeta[] = __('ออกวัน').$departure->locale(app()->getLocale())->isoFormat('dddd');
     }
     if (! $departsEarly && $departsAt) {
-        $roundMeta[] = 'เวลา '.$departsAt->format('H:i').' น.';
+        $roundMeta[] = __('เวลา ').$departsAt->format('H:i').__(' น.');
     }
     if ($nights > 0) {
-        $roundMeta[] = ($nights + 1).' วัน '.$nights.' คืน';
+        $roundMeta[] = ($nights + 1).__(' วัน ').$nights.__(' คืน');
     }
     if (! $roundClosed && $seatsLeft !== null) {
-        $roundMeta[] = $seatsLeft <= 5 ? 'เหลือ '.$seatsLeft.' ที่นั่ง' : 'ที่นั่งว่าง '.$seatsLeft.' ที่';
+        $roundMeta[] = $seatsLeft <= 5 ? __('เหลือ ').$seatsLeft.__(' ที่นั่ง') : __('ที่นั่งว่าง ').$seatsLeft.__(' ที่');
     }
 @endphp
 
 <div class="round @if ($roundClosed) round--closed @endif">
     <span class="round-ic">@include('intake.icon', ['name' => 'calendar'])</span>
     <div class="round-text">
-        <span class="round-label">{{ $roundLabel ?? 'รอบเดินทาง' }}</span>
-        <strong>{{ $schedule->dateRangeLabelThai() }}</strong>
+        <span class="round-label">{{ $roundLabel ?? __('รอบเดินทาง') }}</span>
+        <strong>{{ $schedule->dateRangeLabel() }}</strong>
         @if ($roundMeta)
             <span class="round-meta">{{ implode(' · ', $roundMeta) }}</span>
         @endif
@@ -54,9 +54,8 @@
             <span class="round-early">
                 @include('intake.icon', ['name' => 'clock'])
                 <span>
-                    ขึ้นรถ <strong>{{ $departsAt->locale('th')->isoFormat('dddd') }}ที่ {{ \App\Support\ThaiDate::full($departsAt) }}
-                    เวลา {{ $departsAt->format('H:i') }} น.</strong>
-                    — รถออกก่อนวันทริป {{ $daysEarly }} วัน
+                    {{ __('ขึ้นรถ') }} <strong>{{ __(':isoformatที่ :departsat เวลา :format น.', ['isoformat' => $departsAt->locale(app()->getLocale())->isoFormat('dddd'), 'departsat' => \App\Support\AppLocale::fullDate($departsAt), 'format' => $departsAt->format('H:i')]) }}</strong>
+                    {{ __('— รถออกก่อนวันทริป :daysearly วัน', ['daysearly' => $daysEarly]) }}
                 </span>
             </span>
         @endif

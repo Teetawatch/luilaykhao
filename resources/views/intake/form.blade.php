@@ -1,6 +1,6 @@
 @extends('intake.layout')
 
-@section('title', 'กรอกข้อมูลผู้เดินทาง')
+@section('title', __('กรอกข้อมูลผู้เดินทาง'))
 
 @php
     $isJoinLink = ($bookingType ?? 'normal') === \App\Models\IntakeLink::TYPE_JOIN;
@@ -8,29 +8,29 @@
     // ที่ราคาตกลงกันรายกลุ่ม ทีมงานเปิดใบจองให้เสมอ
     $selfBookable = ! ($schedule?->is_charter ?? false);
     $heroImage = $trip?->cover_image ? url($trip->cover_image) : null;
-    $heroTitle = $trip?->title ?: 'กรอกข้อมูลผู้เดินทาง';
-    $heroEyebrow = $trip ? 'ฟอร์มข้อมูลผู้เดินทาง' : 'ฝากข้อมูลไว้กับทีมงาน';
+    $heroTitle = $trip?->tr('title') ?: __('กรอกข้อมูลผู้เดินทาง');
+    $heroEyebrow = $trip ? __('ฟอร์มข้อมูลผู้เดินทาง') : __('ฝากข้อมูลไว้กับทีมงาน');
     $heroEyebrowIcon = $trip ? 'note' : 'sparkle';
     $heroSub = match (true) {
-        ($closed ?? false) => 'รอบนี้ปิดรับแล้ว แต่ฝากข้อมูลไว้ได้ ทีมงานจะติดต่อกลับเรื่องรอบอื่นหรือคิวรอที่นั่ง',
-        (bool) $trip && $selfBookable => 'กรอกข้อมูลของคุณ แล้วจองและชำระเงินต่อได้ทันที ไม่ต้องรอทีมงานส่ง QR',
-        (bool) $trip => 'กรอกข้อมูลของคุณไว้ล่วงหน้า ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่งและวิธีชำระเงิน',
-        default => 'ยังไม่ต้องรู้ว่าจะไปรอบไหนก็ฝากข้อมูลไว้ได้ ทีมงานจะช่วยแนะนำทริปที่เหมาะกับคุณ',
+        ($closed ?? false) => __('รอบนี้ปิดรับแล้ว แต่ฝากข้อมูลไว้ได้ ทีมงานจะติดต่อกลับเรื่องรอบอื่นหรือคิวรอที่นั่ง'),
+        (bool) $trip && $selfBookable => __('กรอกข้อมูลของคุณ แล้วจองและชำระเงินต่อได้ทันที ไม่ต้องรอทีมงานส่ง QR'),
+        (bool) $trip => __('กรอกข้อมูลของคุณไว้ล่วงหน้า ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่งและวิธีชำระเงิน'),
+        default => __('ยังไม่ต้องรู้ว่าจะไปรอบไหนก็ฝากข้อมูลไว้ได้ ทีมงานจะช่วยแนะนำทริปที่เหมาะกับคุณ'),
     };
     $heroChips = [];
     if ($trip && $schedule) {
-        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabelThai()];
+        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabel()];
     }
-    $heroChips[] = ['icon' => 'clock', 'text' => 'ใช้เวลาประมาณ 2 นาที'];
+    $heroChips[] = ['icon' => 'clock', 'text' => __('ใช้เวลาประมาณ 2 นาที')];
 
     // การ์ดพรีวิวตอนแอดมินวางลิงก์ในแชท — พูดให้จบในบรรทัดเดียวว่าให้ทำอะไร
     // และไม่ใช่การจอง เพื่อไม่ให้ลูกค้าเข้าใจผิดตั้งแต่ยังไม่กด
     $ogTitle = $trip
-        ? 'กรอกข้อมูลผู้เดินทาง · '.$trip->title
-        : 'ฝากข้อมูลไว้กับทีมงาน · ลุยเลเขา';
+        ? __('กรอกข้อมูลผู้เดินทาง · ').$trip->title
+        : __('ฝากข้อมูลไว้กับทีมงาน · ลุยเลเขา');
     $ogDescription = $schedule
-        ? $schedule->dateRangeLabelThai().' — ใช้เวลาประมาณ 2 นาที กรอกแล้วจองและชำระเงินต่อได้ทันที'
-        : 'กรอกข้อมูลผู้เดินทางไว้ล่วงหน้า ใช้เวลาประมาณ 2 นาที ทีมงานจะติดต่อกลับเพื่อแนะนำทริปที่เหมาะกับคุณ';
+        ? $schedule->dateRangeLabel().__(' — ใช้เวลาประมาณ 2 นาที กรอกแล้วจองและชำระเงินต่อได้ทันที')
+        : __('กรอกข้อมูลผู้เดินทางไว้ล่วงหน้า ใช้เวลาประมาณ 2 นาที ทีมงานจะติดต่อกลับเพื่อแนะนำทริปที่เหมาะกับคุณ');
 @endphp
 
 @section('content')
@@ -40,12 +40,11 @@
         <div class="callout callout--warn">
             @include('intake.icon', ['name' => 'alert'])
             <div>
-                <strong>รอบนี้ปิดรับแล้ว</strong>
+                <strong>{{ __('รอบนี้ปิดรับแล้ว') }}</strong>
                 @if ($scheduleOptions->isNotEmpty())
-                    เลือกรอบอื่นของทริปนี้ด้านล่างได้เลย หรือฝากข้อมูลไว้เฉย ๆ
-                    ทีมงานจะติดต่อกลับถ้ามีที่ว่างในรอบนี้
+                    {{ __('เลือกรอบอื่นของทริปนี้ด้านล่างได้เลย หรือฝากข้อมูลไว้เฉย ๆ ทีมงานจะติดต่อกลับถ้ามีที่ว่างในรอบนี้') }}
                 @else
-                    ฝากข้อมูลไว้ได้ ทีมงานจะติดต่อกลับถ้ามีที่ว่างหรือมีรอบใหม่
+                    {{ __('ฝากข้อมูลไว้ได้ ทีมงานจะติดต่อกลับถ้ามีที่ว่างหรือมีรอบใหม่') }}
                 @endif
             </div>
         </div>
@@ -54,11 +53,11 @@
         <div class="callout callout--warn">
             @include('intake.icon', ['name' => 'alert'])
             <div>
-                <strong>การกรอกฟอร์มนี้ยังไม่ใช่การจอง</strong>
+                <strong>{{ __('การกรอกฟอร์มนี้ยังไม่ใช่การจอง') }}</strong>
                 @if ($selfBookable)
-                    กรอกเสร็จแล้วกด "จองและชำระเงิน" ในหน้าถัดไป ที่นั่งจะเป็นของคุณเมื่อชำระเงินเรียบร้อย
+                    {{ __('กรอกเสร็จแล้วกด "จองและชำระเงิน" ในหน้าถัดไป ที่นั่งจะเป็นของคุณเมื่อชำระเงินเรียบร้อย') }}
                 @else
-                    ที่นั่งจะถูกกันให้เมื่อทีมงานยืนยันกับคุณอีกครั้ง
+                    {{ __('ที่นั่งจะถูกกันให้เมื่อทีมงานยืนยันกับคุณอีกครั้ง') }}
                 @endif
             </div>
         </div>
@@ -70,23 +69,21 @@
         <div class="callout callout--ok">
             @include('intake.icon', ['name' => 'bus'])
             <div>
-                <strong>ลิงก์นี้สำหรับจอยทริป (เดินทางไปเอง)</strong>
-                ไปเจอกันที่จุดหมาย ไม่มีรถของทริปไปรับ — ถ้าคุณอยากไปกับรถ
-                บอกทีมงานในช่อง "ฝากบอกทีมงาน" ด้านล่างได้เลย
+                <strong>{{ __('ลิงก์นี้สำหรับจอยทริป (เดินทางไปเอง)') }}</strong>
+                {{ __('ไปเจอกันที่จุดหมาย ไม่มีรถของทริปไปรับ — ถ้าคุณอยากไปกับรถ บอกทีมงานในช่อง "ฝากบอกทีมงาน" ด้านล่างได้เลย') }}
             </div>
         </div>
     @endif
 
     <p class="lead">
-        กรอกข้อมูลของ <strong>ตัวคุณเอง</strong> ก่อนได้เลย ไม่ต้องสมัครสมาชิก
-        ถ้ามาหลายคน กรอกเสร็จแล้วจะได้ลิงก์ไว้ส่งต่อให้เพื่อนกรอกของตัวเอง
+        {{ __('กรอกข้อมูลของ') }} <strong>{{ __('ตัวคุณเอง') }}</strong> {{ __('ก่อนได้เลย ไม่ต้องสมัครสมาชิก ถ้ามาหลายคน กรอกเสร็จแล้วจะได้ลิงก์ไว้ส่งต่อให้เพื่อนกรอกของตัวเอง') }}
     </p>
 
     @if ($errors->any())
         <div class="callout callout--error">
             @include('intake.icon', ['name' => 'alert'])
             <div>
-                <strong>กรุณาตรวจสอบข้อมูลอีกครั้ง</strong>
+                <strong>{{ __('กรุณาตรวจสอบข้อมูลอีกครั้ง') }}</strong>
                 <ul>
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -101,7 +98,7 @@
 
         <div class="step">
             <span class="n">@include('intake.icon', ['name' => 'calendar'])</span>
-            <h2>{{ $link->trip_schedule_id ? 'การเดินทางของคุณ' : 'ทริปที่สนใจ' }}</h2>
+            <h2>{{ $link->trip_schedule_id ? __('การเดินทางของคุณ') : __('ทริปที่สนใจ') }}</h2>
             <span class="rule"></span>
         </div>
 
@@ -112,16 +109,16 @@
         @if ($scheduleOptions->isNotEmpty())
             <div class="f">
                 <label class="field" for="schedule_id">
-                    {{ ($closed ?? false) ? 'ย้ายไปรอบอื่นของทริปนี้' : 'เลือกรอบเดินทาง' }}
+                    {{ ($closed ?? false) ? __('ย้ายไปรอบอื่นของทริปนี้') : __('เลือกรอบเดินทาง') }}
                 </label>
                 <select id="schedule_id" name="schedule_id">
                     <option value="">
-                        {{ ($closed ?? false) ? 'ยังไม่เปลี่ยนรอบ — รอที่ว่างรอบนี้' : 'ยังไม่ระบุ — ให้ทีมงานแนะนำ' }}
+                        {{ ($closed ?? false) ? __('ยังไม่เปลี่ยนรอบ — รอที่ว่างรอบนี้') : __('ยังไม่ระบุ — ให้ทีมงานแนะนำ') }}
                     </option>
                     @foreach ($scheduleOptions as $option)
                         <option value="{{ $option->id }}" @selected((int) old('schedule_id') === $option->id)>
-                            {{ $option->trip->title }} · {{ $option->departureLabelShort() }}
-                            ({{ $option->is_charter ? 'รอบเหมา' : 'เหลือ '.$option->bookable_seats.' ที่' }})
+                            {{ $option->trip?->tr('title') }} · {{ $option->departureLabelShort() }}
+                            ({{ $option->is_charter ? __('รอบเหมา') : __('เหลือ ').$option->bookable_seats.__(' ที่') }})
                         </option>
                     @endforeach
                 </select>
@@ -133,18 +130,18 @@
         @endif
 
         <div class="f">
-            <span class="field" style="display:block">มากันกี่คน</span>
+            <span class="field" style="display:block">{{ __('มากันกี่คน') }}</span>
             <div class="stepper">
                 <div class="stepper-box" data-stepper>
-                    <button type="button" data-step="-1" aria-label="ลดจำนวน">@include('intake.icon', ['name' => 'minus'])</button>
+                    <button type="button" data-step="-1" aria-label="{{ __('ลดจำนวน') }}">@include('intake.icon', ['name' => 'minus'])</button>
                     <input type="number" id="party_size" name="party_size" inputmode="numeric"
                            min="1" max="{{ \App\Services\CustomerIntakeService::MAX_PEOPLE }}"
-                           value="{{ old('party_size', 1) }}" aria-label="จำนวนผู้เดินทาง">
-                    <button type="button" data-step="1" aria-label="เพิ่มจำนวน">@include('intake.icon', ['name' => 'plus'])</button>
+                           value="{{ old('party_size', 1) }}" aria-label="{{ __('จำนวนผู้เดินทาง') }}">
+                    <button type="button" data-step="1" aria-label="{{ __('เพิ่มจำนวน') }}">@include('intake.icon', ['name' => 'plus'])</button>
                 </div>
-                <span class="unit">คน</span>
+                <span class="unit">{{ __('คน') }}</span>
             </div>
-            <p class="hint">กรอกคร่าว ๆ ได้ แก้ทีหลังได้ ใช้บอกทีมงานว่าต้องรอเพื่อนอีกกี่คน</p>
+            <p class="hint">{{ __('กรอกคร่าว ๆ ได้ แก้ทีหลังได้ ใช้บอกทีมงานว่าต้องรอเพื่อนอีกกี่คน') }}</p>
         </div>
 
         @include('intake.person-fields', [
@@ -155,18 +152,18 @@
 
         <div class="step">
             <span class="n">@include('intake.icon', ['name' => 'note'])</span>
-            <h2>ฝากบอกทีมงาน</h2>
+            <h2>{{ __('ฝากบอกทีมงาน') }}</h2>
             <span class="rule"></span>
         </div>
 
         <div class="f">
-            <label class="field" for="note">มีอะไรอยากบอกไหม <span class="opt">(ไม่บังคับ)</span></label>
+            <label class="field" for="note">{{ __('มีอะไรอยากบอกไหม') }} <span class="opt">{{ __('(ไม่บังคับ)') }}</span></label>
             <textarea id="note" name="note" maxlength="1000"
-                      placeholder="เช่น ขอที่นั่งติดกัน, ขึ้นรถที่ปั๊มไหน, สอบถามเรื่องอะไร">{{ old('note') }}</textarea>
+                      placeholder="{{ __('เช่น ขอที่นั่งติดกัน, ขึ้นรถที่ปั๊มไหน, สอบถามเรื่องอะไร') }}">{{ old('note') }}</textarea>
         </div>
 
         <div class="f">
-            <span class="field" style="display:block">รู้จักเราจากช่องทางไหน</span>
+            <span class="field" style="display:block">{{ __('รู้จักเราจากช่องทางไหน') }}</span>
             <div class="pills">
                 @foreach (['' => 'ไม่ระบุ', 'line' => 'LINE', 'facebook' => 'Facebook', 'instagram' => 'Instagram', 'other' => 'อื่น ๆ'] as $value => $label)
                     <label class="pill">
@@ -184,16 +181,14 @@
             </label>
 
             <button type="submit" class="btn">
-                @include('intake.icon', ['name' => 'send']) ส่งข้อมูลให้ทีมงาน
+                @include('intake.icon', ['name' => 'send']) {{ __('ส่งข้อมูลให้ทีมงาน') }}
             </button>
         </div>
 
         <div class="privacy">
             @include('intake.icon', ['name' => 'lock'])
             <span>
-                ข้อมูลนี้ใช้สำหรับติดต่อกลับ ทำประกันการเดินทาง และการดูแลระหว่างทริปเท่านั้น
-                หากไม่ได้เดินทางกับเรา ข้อมูลจะถูกลบอัตโนมัติภายใน
-                {{ \App\Models\CustomerIntake::RETENTION_DAYS }} วัน
+                {{ __('ข้อมูลนี้ใช้สำหรับติดต่อกลับ ทำประกันการเดินทาง และการดูแลระหว่างทริปเท่านั้น หากไม่ได้เดินทางกับเรา ข้อมูลจะถูกลบอัตโนมัติภายใน :retention_days วัน', ['retention_days' => \App\Models\CustomerIntake::RETENTION_DAYS]) }}
             </span>
         </div>
     </form>

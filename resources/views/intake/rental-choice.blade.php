@@ -11,12 +11,11 @@
 
 <div class="step">
     <span class="n">@include('intake.icon', ['name' => 'backpack'])</span>
-    <h2>อุปกรณ์ให้เช่า</h2>
+    <h2>{{ __('อุปกรณ์ให้เช่า') }}</h2>
     <span class="rule"></span>
 </div>
 <p class="step-note">
-    ไม่มีของก็เช่าของเราได้ เลือกเฉพาะที่ <strong>คุณ</strong> ต้องใช้
-    ถ้ามีของตัวเองอยู่แล้วก็ข้ามส่วนนี้ไปได้เลย <span class="opt">(ไม่บังคับ)</span>
+    {{ __('ไม่มีของก็เช่าของเราได้ เลือกเฉพาะที่') }} <strong>{{ __('คุณ') }}</strong> {{ __('ต้องใช้ ถ้ามีของตัวเองอยู่แล้วก็ข้ามส่วนนี้ไปได้เลย') }} <span class="opt">{{ __('(ไม่บังคับ)') }}</span>
 </p>
 
 <div class="rentals" data-rentals>
@@ -38,32 +37,30 @@
                     {{-- ชุดที่มีของหลายชิ้น — ลูกค้าต้องรู้ว่า "ชุดเต็นท์" ได้อะไรมาบ้าง
                          ก่อนตัดสินใจ ไม่ใช่รู้ตอนไปรับของหน้างาน --}}
                     <span class="rental-parts">
-                        ในชุดมี
-                        {{ collect($item['parts'])->map(fn ($part) => $part['name'].' ×'.$part['quantity'])->implode(' · ') }}
+                        {{ __('ในชุดมี :implode', ['implode' => collect($item['parts'])->map(fn ($part) => $part['name'].' ×'.$part['quantity'])->implode(' · ')]) }}
                     </span>
                 @endif
-                <span class="rental-price">{{ number_format((float) $item['price']) }} บาท / ชิ้น</span>
+                <span class="rental-price">{{ __(':item บาท / ชิ้น', ['item' => number_format((float) $item['price'])]) }}</span>
             </div>
 
             <div class="stepper-box stepper-box--sm" data-stepper>
-                <button type="button" data-step="-1" aria-label="ลดจำนวน {{ $item['name'] }}">@include('intake.icon', ['name' => 'minus'])</button>
+                <button type="button" data-step="-1" aria-label="{{ __('ลดจำนวน :item', ['item' => $item['name']]) }}">@include('intake.icon', ['name' => 'minus'])</button>
                 <input type="number" name="rentals[{{ $item['key'] }}]" inputmode="numeric"
                        min="0" max="{{ \App\Http\Controllers\PublicIntakeController::MAX_RENTAL_QUANTITY }}" value="{{ $quantity }}"
-                       aria-label="จำนวนที่เช่า {{ $item['name'] }}">
-                <button type="button" data-step="1" aria-label="เพิ่มจำนวน {{ $item['name'] }}">@include('intake.icon', ['name' => 'plus'])</button>
+                       aria-label="{{ __('จำนวนที่เช่า :item', ['item' => $item['name']]) }}">
+                <button type="button" data-step="1" aria-label="{{ __('เพิ่มจำนวน :item', ['item' => $item['name']]) }}">@include('intake.icon', ['name' => 'plus'])</button>
             </div>
         </div>
     @endforeach
 </div>
 
 <div class="rental-sum" data-rental-sum hidden>
-    <span>ค่าเช่าของคุณ</span>
-    <strong data-rental-total>0 บาท</strong>
+    <span>{{ __('ค่าเช่าของคุณ') }}</span>
+    <strong data-rental-total>{{ __('0 บาท') }}</strong>
 </div>
 
 <p class="hint">
-    ค่าเช่าจะรวมอยู่ในยอดที่ทีมงานแจ้งกลับ ของมีจำนวนจำกัด
-    ถ้าชิ้นไหนหมด ทีมงานจะติดต่อกลับก่อนเปิดการจอง
+    {{ __('ค่าเช่าจะรวมอยู่ในยอดที่ทีมงานแจ้งกลับ ของมีจำนวนจำกัด ถ้าชิ้นไหนหมด ทีมงานจะติดต่อกลับก่อนเปิดการจอง') }}
 </p>
 
 @push('scripts')
@@ -88,7 +85,7 @@
                 });
 
                 sum.hidden = total <= 0;
-                out.textContent = total.toLocaleString('th-TH') + ' บาท';
+                out.textContent = total.toLocaleString('th-TH') + @json(__(' บาท'));
             }
 
             wrap.addEventListener('click', sync);

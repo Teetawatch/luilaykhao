@@ -1,25 +1,25 @@
 @extends('public.form-layout')
 
-@section('title', 'เปิดใช้บัญชีเรียบร้อย')
+@section('title', __('เปิดใช้บัญชีเรียบร้อย'))
 
 @section('content')
     <div class="card">
         <div class="card-header">
             <div class="brand">LUILAYKHAO</div>
-            <h1>เรียบร้อยแล้ว 🎉</h1>
+            <h1>{{ __('เรียบร้อยแล้ว 🎉') }}</h1>
         </div>
         <div class="card-body">
             <div class="alert alert-success">
                 @if ($result['merged'])
-                    ย้ายการจอง {{ $result['count'] }} รายการไปที่บัญชีของคุณแล้ว
+                    {{ __('ย้ายการจอง :result รายการไปที่บัญชีของคุณแล้ว', ['result' => $result['count']]) }}
                 @else
-                    เปิดใช้บัญชีเรียบร้อย การจอง {{ $result['count'] }} รายการอยู่ในบัญชีของคุณแล้ว
+                    {{ __('เปิดใช้บัญชีเรียบร้อย การจอง :result รายการอยู่ในบัญชีของคุณแล้ว', ['result' => $result['count']]) }}
                 @endif
             </div>
 
             <p class="lead">
-                เข้าสู่ระบบด้วยอีเมล <strong>{{ $result['email'] }}</strong>
-                และรหัสผ่านที่คุณเพิ่งตั้ง แล้วการจองจะขึ้นในหน้า "การจองของฉัน" ทันที
+                {{ __('เข้าสู่ระบบด้วยอีเมล') }} <strong>{{ $result['email'] }}</strong>
+                {{ __('และรหัสผ่านที่คุณเพิ่งตั้ง แล้วการจองจะขึ้นในหน้า "การจองของฉัน" ทันที') }}
             </p>
 
             {{--
@@ -31,10 +31,9 @@
                 การจองอยู่ในนั้นแล้ว เปิดแอปปุ๊บเห็นของตัวเองทันที ไม่ใช่หน้าว่าง
             --}}
             <div class="app-invite">
-                <div class="app-invite-title">เปิดในแอปได้เลย</div>
+                <div class="app-invite-title">{{ __('เปิดในแอปได้เลย') }}</div>
                 <p class="app-invite-text">
-                    ในแอปมีห้องแชทของรอบไว้คุยกับเพื่อนร่วมทริป ชื่อและเบอร์ทีมงาน
-                    ที่กดโทรได้ QR สำหรับเช็คอินหน้างาน และติดตามรถแบบเรียลไทม์วันเดินทาง
+                    {{ __('ในแอปมีห้องแชทของรอบไว้คุยกับเพื่อนร่วมทริป ชื่อและเบอร์ทีมงาน ที่กดโทรได้ QR สำหรับเช็คอินหน้างาน และติดตามรถแบบเรียลไทม์วันเดินทาง') }}
                 </p>
                 <div class="app-invite-stores">
                     <a href="{{ \App\Support\AppLinks::ios() }}" target="_blank" rel="noopener">App Store</a>
@@ -42,9 +41,9 @@
                 </div>
             </div>
 
-            <a class="btn" style="text-decoration:none;text-align:center" href="{{ url('/') }}">กลับหน้าแรก</a>
+            <a class="btn" style="text-decoration:none;text-align:center" href="{{ url('/') }}">{{ __('กลับหน้าแรก') }}</a>
 
-            <p class="note">ถ้ายังไม่เห็นการจอง ลองดึงหน้าจอลงเพื่อรีเฟรช หรือทักทีมงานได้เลยครับ</p>
+            <p class="note">{{ __('ถ้ายังไม่เห็นการจอง ลองดึงหน้าจอลงเพื่อรีเฟรช หรือทักทีมงานได้เลยครับ') }}</p>
         </div>
     </div>
 

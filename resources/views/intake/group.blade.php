@@ -1,36 +1,36 @@
 @extends('intake.layout')
 
-@section('title', 'ข้อมูลผู้เดินทางของกลุ่ม')
+@section('title', __('ข้อมูลผู้เดินทางของกลุ่ม'))
 
 @php
     $heroImage = $trip?->cover_image ? url($trip->cover_image) : null;
-    $heroTitle = $trip?->title ?: 'ข้อมูลผู้เดินทาง';
-    $heroEyebrow = 'ข้อมูลผู้เดินทางของกลุ่ม';
+    $heroTitle = $trip?->tr('title') ?: __('ข้อมูลผู้เดินทาง');
+    $heroEyebrow = __('ข้อมูลผู้เดินทางของกลุ่ม');
     $heroEyebrowIcon = 'users';
     $filledCount = count($filled);
     $partySize = max($intake->party_size, $filledCount);
     $percent = $partySize > 0 ? min(100, (int) round($filledCount / $partySize * 100)) : 0;
     $canBook = $intake->acceptsSubmissions() && ! ($bookBlock ?? 'x');
     $heroSub = match (true) {
-        ($groupBooking ?? null)?->status === 'confirmed' => 'กลุ่มนี้จองสำเร็จแล้ว',
-        ($groupBooking ?? null)?->status === 'pending' => 'รอชำระเงินเพื่อยืนยันที่นั่ง',
-        ! $intake->acceptsSubmissions() => 'ทีมงานเปิดการจองให้กลุ่มนี้เรียบร้อยแล้ว',
-        ($closed ?? false) => 'รอบนี้เต็มแล้ว ทีมงานจะติดต่อกลับเรื่องรอบอื่นหรือคิวรอที่นั่ง',
-        $canBook && $intake->isComplete() => 'กรอกครบทุกคนแล้ว กดจองและชำระเงินด้านล่างได้เลย',
-        $intake->isComplete() => 'กรอกครบทุกคนแล้ว ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่ง',
-        default => 'ส่งลิงก์นี้ให้เพื่อนในกลุ่ม แล้วแต่ละคนกรอกข้อมูลของตัวเองได้เลย',
+        ($groupBooking ?? null)?->status === 'confirmed' => __('กลุ่มนี้จองสำเร็จแล้ว'),
+        ($groupBooking ?? null)?->status === 'pending' => __('รอชำระเงินเพื่อยืนยันที่นั่ง'),
+        ! $intake->acceptsSubmissions() => __('ทีมงานเปิดการจองให้กลุ่มนี้เรียบร้อยแล้ว'),
+        ($closed ?? false) => __('รอบนี้เต็มแล้ว ทีมงานจะติดต่อกลับเรื่องรอบอื่นหรือคิวรอที่นั่ง'),
+        $canBook && $intake->isComplete() => __('กรอกครบทุกคนแล้ว กดจองและชำระเงินด้านล่างได้เลย'),
+        $intake->isComplete() => __('กรอกครบทุกคนแล้ว ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่ง'),
+        default => __('ส่งลิงก์นี้ให้เพื่อนในกลุ่ม แล้วแต่ละคนกรอกข้อมูลของตัวเองได้เลย'),
     };
     $heroChips = [];
     if ($trip && $schedule) {
-        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabelThai()];
+        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabel()];
     }
-    $heroChips[] = ['icon' => 'users', 'text' => 'กรอกแล้ว '.$filledCount.' / '.$partySize.' คน'];
+    $heroChips[] = ['icon' => 'users', 'text' => __('กรอกแล้ว ').$filledCount.' / '.$partySize.__(' คน')];
 
     // ลิงก์นี้ลูกค้าเป็นคนส่งต่อในแชทกลุ่มเอง การ์ดจึงต้องอธิบายแทนเขาได้
     // ห้ามมีชื่อใครในนี้ — แชทกลุ่มมีคนอ่านมากกว่าคนในทริป
-    $ogTitle = 'กรอกข้อมูลผู้เดินทางของกลุ่ม'.($trip ? ' · '.$trip->title : '');
-    $ogDescription = ($schedule ? $schedule->dateRangeLabelThai().' — ' : '')
-        .'แต่ละคนกรอกข้อมูลของตัวเองได้ คนละเวลา ใช้เวลาประมาณ 2 นาที';
+    $ogTitle = __('กรอกข้อมูลผู้เดินทางของกลุ่ม').($trip ? ' · '.$trip->title : '');
+    $ogDescription = ($schedule ? $schedule->dateRangeLabel().' — ' : '')
+        .__('แต่ละคนกรอกข้อมูลของตัวเองได้ คนละเวลา ใช้เวลาประมาณ 2 นาที');
 @endphp
 
 @push('styles')
@@ -77,9 +77,8 @@
         <div class="callout callout--warn">
             @include('intake.icon', ['name' => 'alert'])
             <div>
-                <strong>รอบนี้ปิดรับแล้ว</strong>
-                เพื่อนที่ยังไม่ได้กรอกยังกรอกต่อได้ ข้อมูลไม่หาย — ทีมงานจะติดต่อกลับ
-                เรื่องรอบอื่นหรือคิวรอที่นั่งให้ทั้งกลุ่ม
+                <strong>{{ __('รอบนี้ปิดรับแล้ว') }}</strong>
+                {{ __('เพื่อนที่ยังไม่ได้กรอกยังกรอกต่อได้ ข้อมูลไม่หาย — ทีมงานจะติดต่อกลับ เรื่องรอบอื่นหรือคิวรอที่นั่งให้ทั้งกลุ่ม') }}
             </div>
         </div>
     @endif
@@ -90,8 +89,8 @@
         <div class="callout callout--ok">
             @include('intake.icon', ['name' => 'bus'])
             <div>
-                <strong>กลุ่มนี้เป็นจอยทริป (เดินทางไปเอง)</strong>
-                ไปเจอกันที่จุดหมาย ไม่มีรถของทริปไปรับ จึงไม่ต้องเลือกจุดขึ้นรถ
+                <strong>{{ __('กลุ่มนี้เป็นจอยทริป (เดินทางไปเอง)') }}</strong>
+                {{ __('ไปเจอกันที่จุดหมาย ไม่มีรถของทริปไปรับ จึงไม่ต้องเลือกจุดขึ้นรถ') }}
             </div>
         </div>
     @endif
@@ -100,13 +99,13 @@
         <div class="callout callout--ok">
             @include('intake.icon', ['name' => 'check-circle'])
             <div>
-                <strong>บันทึกข้อมูลของ {{ $justFilled }} เรียบร้อยแล้ว</strong>
+                <strong>{{ __('บันทึกข้อมูลของ :justfilled เรียบร้อยแล้ว', ['justfilled' => $justFilled]) }}</strong>
                 @if ($intake->isComplete() && $canBook)
-                    ครบทุกคนแล้ว กดจองและชำระเงินด้านล่างได้เลย ไม่ต้องรอทีมงาน
+                    {{ __('ครบทุกคนแล้ว กดจองและชำระเงินด้านล่างได้เลย ไม่ต้องรอทีมงาน') }}
                 @elseif ($intake->isComplete())
-                    ครบทุกคนแล้ว ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่ง
+                    {{ __('ครบทุกคนแล้ว ทีมงานจะติดต่อกลับเพื่อยืนยันที่นั่ง') }}
                 @else
-                    ยังรอเพื่อนอีก {{ $intake->missingCount() }} คน ส่งลิงก์ด้านล่างให้เขาได้เลย
+                    {{ __('ยังรอเพื่อนอีก :missingcount คน ส่งลิงก์ด้านล่างให้เขาได้เลย', ['missingcount' => $intake->missingCount()]) }}
                 @endif
             </div>
         </div>
@@ -120,34 +119,33 @@
 
     <div class="share">
         @if ($intake->acceptsSubmissions())
-            <h2>ส่งลิงก์นี้ให้เพื่อนกรอกข้อมูลของตัวเอง</h2>
+            <h2>{{ __('ส่งลิงก์นี้ให้เพื่อนกรอกข้อมูลของตัวเอง') }}</h2>
             <p>
-                แต่ละคนกรอกของตัวเองได้ คนละเวลา ข้อมูลที่กรอกไปแล้วจะถูกเก็บไว้จนกว่าจะครบ
-                ไม่ต้องรีบกรอกให้เสร็จในครั้งเดียว
+                {{ __('แต่ละคนกรอกของตัวเองได้ คนละเวลา ข้อมูลที่กรอกไปแล้วจะถูกเก็บไว้จนกว่าจะครบ ไม่ต้องรีบกรอกให้เสร็จในครั้งเดียว') }}
             </p>
 
             <input class="share-url" type="text" id="share-url" readonly
-                   value="{{ $intake->groupUrl() }}" aria-label="ลิงก์ของกลุ่ม" onclick="this.select()">
+                   value="{{ $intake->groupUrl() }}" aria-label="{{ __('ลิงก์ของกลุ่ม') }}" onclick="this.select()">
 
             <div class="share-actions">
                 <button class="btn" type="button" id="share-btn" hidden>
-                    @include('intake.icon', ['name' => 'share']) ส่งต่อให้เพื่อน
+                    @include('intake.icon', ['name' => 'share']) {{ __('ส่งต่อให้เพื่อน') }}
                 </button>
                 <button class="btn btn--ghost" type="button" id="copy-btn">
-                    @include('intake.icon', ['name' => 'copy']) <span>คัดลอกลิงก์</span>
+                    @include('intake.icon', ['name' => 'copy']) <span>{{ __('คัดลอกลิงก์') }}</span>
                 </button>
             </div>
         @else
             {{-- ปิดรับแล้ว ส่งลิงก์ต่อไปก็กรอกไม่ได้ เหลือไว้แค่สรุปให้ดู --}}
-            <h2>สรุปข้อมูลของกลุ่ม</h2>
+            <h2>{{ __('สรุปข้อมูลของกลุ่ม') }}</h2>
         @endif
 
         <div class="progress @if (! $intake->acceptsSubmissions()) progress--bare @endif">
             <div class="progress-head">
-                <span>ความคืบหน้าของกลุ่ม</span>
-                <b>{{ $filledCount }} / {{ $partySize }} คน</b>
+                <span>{{ __('ความคืบหน้าของกลุ่ม') }}</span>
+                <b>{{ __(':filledcount / :partysize คน', ['filledcount' => $filledCount, 'partysize' => $partySize]) }}</b>
             </div>
-            <div class="progress-track" role="img" aria-label="กรอกแล้ว {{ $filledCount }} จาก {{ $partySize }} คน">
+            <div class="progress-track" role="img" aria-label="{{ __('กรอกแล้ว :filledcount จาก :partysize คน', ['filledcount' => $filledCount, 'partysize' => $partySize]) }}">
                 <div class="progress-fill" style="width: {{ $percent }}%"></div>
             </div>
 
@@ -156,14 +154,14 @@
                     <li>
                         <span class="avatar">{{ mb_substr($label, 0, 1) }}</span>
                         <span>{{ $label }}</span>
-                        <span class="state state--done">@include('intake.icon', ['name' => 'check']) กรอกแล้ว</span>
+                        <span class="state state--done">@include('intake.icon', ['name' => 'check']) {{ __('กรอกแล้ว') }}</span>
                     </li>
                 @endforeach
                 @for ($i = 0; $i < $intake->missingCount(); $i++)
                     <li>
                         <span class="avatar avatar--wait">?</span>
-                        <span class="waiting">รอเพื่อนกรอก</span>
-                        <span class="state">@include('intake.icon', ['name' => 'clock']) ยังไม่ได้กรอก</span>
+                        <span class="waiting">{{ __('รอเพื่อนกรอก') }}</span>
+                        <span class="state">@include('intake.icon', ['name' => 'clock']) {{ __('ยังไม่ได้กรอก') }}</span>
                     </li>
                 @endfor
             </ul>
@@ -178,7 +176,7 @@
         <div class="callout callout--error">
             @include('intake.icon', ['name' => 'alert'])
             <div>
-                <strong>กรุณาตรวจสอบข้อมูลอีกครั้ง</strong>
+                <strong>{{ __('กรุณาตรวจสอบข้อมูลอีกครั้ง') }}</strong>
                 <ul>
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -190,8 +188,7 @@
 
     @if ($intake->acceptsSubmissions())
         <p class="lead">
-            ถ้าคุณเพิ่งเปิดลิงก์นี้จากเพื่อน กรอกข้อมูลของ <strong>ตัวคุณเอง</strong> ด้านล่างได้เลย
-            กรอกซ้ำด้วยเบอร์เดิมจะเป็นการแก้ไขของเดิม ไม่ใช่เพิ่มคนใหม่
+            {{ __('ถ้าคุณเพิ่งเปิดลิงก์นี้จากเพื่อน กรอกข้อมูลของ') }} <strong>{{ __('ตัวคุณเอง') }}</strong> {{ __('ด้านล่างได้เลย กรอกซ้ำด้วยเบอร์เดิมจะเป็นการแก้ไขของเดิม ไม่ใช่เพิ่มคนใหม่') }}
         </p>
 
         <form method="POST" action="{{ route('public.intake.group.submit', $intake->token) }}" enctype="multipart/form-data" data-guard>
@@ -210,7 +207,7 @@
                 </label>
 
                 <button type="submit" class="btn">
-                    @include('intake.icon', ['name' => 'send']) บันทึกข้อมูลของฉัน
+                    @include('intake.icon', ['name' => 'send']) {{ __('บันทึกข้อมูลของฉัน') }}
                 </button>
             </div>
         </form>
@@ -220,8 +217,8 @@
         <div class="callout callout--ok">
             @include('intake.icon', ['name' => 'check-circle'])
             <div>
-                <strong>ทีมงานเปิดการจองให้กลุ่มนี้เรียบร้อยแล้ว</strong>
-                หากต้องการแก้ไขข้อมูล กรุณาทักหาทีมงานได้เลย
+                <strong>{{ __('ทีมงานเปิดการจองให้กลุ่มนี้เรียบร้อยแล้ว') }}</strong>
+                {{ __('หากต้องการแก้ไขข้อมูล กรุณาทักหาทีมงานได้เลย') }}
             </div>
         </div>
     @endif
@@ -229,8 +226,7 @@
     <div class="privacy">
         @include('intake.icon', ['name' => 'lock'])
         <span>
-            ลิงก์นี้เห็นได้เฉพาะชื่อเล่นว่าใครกรอกไปแล้วบ้าง ไม่แสดงเบอร์โทร เลขบัตรประชาชน
-            หรือข้อมูลสุขภาพของใครทั้งสิ้น
+            {{ __('ลิงก์นี้เห็นได้เฉพาะชื่อเล่นว่าใครกรอกไปแล้วบ้าง ไม่แสดงเบอร์โทร เลขบัตรประชาชน หรือข้อมูลสุขภาพของใครทั้งสิ้น') }}
         </span>
     </div>
 @endsection
@@ -241,7 +237,7 @@
         var field = document.getElementById('share-url');
         var copyBtn = document.getElementById('copy-btn');
         var shareBtn = document.getElementById('share-btn');
-        var shareText = @json(($trip?->title ? $trip->title.' — ' : '').'กรอกข้อมูลผู้เดินทางของคุณที่ลิงก์นี้ได้เลย');
+        var shareText = @json(($trip?->tr('title') ? $trip->tr('title').' — ' : '').__('กรอกข้อมูลผู้เดินทางของคุณที่ลิงก์นี้ได้เลย'));
 
         function flash(button, message) {
             var label = button.querySelector('span') || button;
@@ -253,12 +249,12 @@
         function copy() {
             // เบราว์เซอร์ในแอปแชทบางตัวไม่มี navigator.clipboard — ถอยไปใช้ execCommand
             if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(field.value).then(function () { flash(copyBtn, 'คัดลอกแล้ว ✓'); });
+                navigator.clipboard.writeText(field.value).then(function () { flash(copyBtn, @json(__('คัดลอกแล้ว ✓'))); });
             } else {
                 field.select();
                 field.setSelectionRange(0, 99999);
                 document.execCommand('copy');
-                flash(copyBtn, 'คัดลอกแล้ว ✓');
+                flash(copyBtn, @json(__('คัดลอกแล้ว ✓')));
             }
         }
 

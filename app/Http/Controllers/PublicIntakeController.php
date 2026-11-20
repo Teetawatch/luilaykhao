@@ -125,7 +125,7 @@ class PublicIntakeController extends Controller
         // ทีมงานเห็นในหน้าแอดมินแล้วโทรกลับได้)
         if ($isJoin && ! $link->locksBookingType() && $schedule && ! $schedule->join_trip_enabled) {
             return back()->withInput()->withErrors([
-                'booking_type' => 'รอบที่เลือกไม่มีจอยทริป กรุณาเลือกแบบจองปกติ หรือเลือกรอบอื่น',
+                'booking_type' => __('รอบที่เลือกไม่มีจอยทริป กรุณาเลือกแบบจองปกติ หรือเลือกรอบอื่น'),
             ]);
         }
 
@@ -179,7 +179,7 @@ class PublicIntakeController extends Controller
         $intake = $this->resolveIntake($token);
 
         if (! $intake->acceptsSubmissions()) {
-            return back()->withErrors(['name' => 'กลุ่มนี้ปิดรับข้อมูลแล้ว เพราะทีมงานเปิดการจองให้เรียบร้อยแล้ว']);
+            return back()->withErrors(['name' => __('กลุ่มนี้ปิดรับข้อมูลแล้ว เพราะทีมงานเปิดการจองให้เรียบร้อยแล้ว')]);
         }
 
         $data = $this->validatePerson(
@@ -284,42 +284,42 @@ class PublicIntakeController extends Controller
             'rentals.*' => ['nullable', 'integer', 'min:0', 'max:'.self::MAX_RENTAL_QUANTITY],
             ...$extra,
         ], [
-            'title.required' => 'กรุณาเลือกคำนำหน้า',
-            'title.in' => 'กรุณาเลือกคำนำหน้า',
-            'name.required' => 'กรุณากรอกชื่อ-นามสกุล',
-            'nickname.required' => 'กรุณากรอกชื่อเล่น (ทีมงานใช้เรียกหน้างาน)',
-            'id_card.required' => 'กรุณากรอกเลขบัตรประชาชน (ใช้ทำประกันการเดินทาง)',
-            'birth_date.required' => 'กรุณาระบุวันเกิด (ใช้ทำประกันการเดินทาง)',
-            'blood_group.present' => 'กรุณาเลือกกรุ๊ปเลือด เลือก "ไม่ทราบ" ได้ถ้าไม่แน่ใจ',
-            'emergency_contact.required' => 'กรุณากรอกผู้ติดต่อฉุกเฉิน',
-            'emergency_relation.required' => 'กรุณาระบุว่าผู้ติดต่อเป็นอะไรกับคุณ',
-            'emergency_phone.required' => 'กรุณากรอกเบอร์ผู้ติดต่อฉุกเฉิน',
-            'allergies.required' => 'กรุณากรอกการแพ้อาหาร/ยา กดปุ่ม "ไม่มี" ได้ถ้าไม่มี',
-            'health_notes.required' => 'กรุณากรอกโรคประจำตัว/หมายเหตุสุขภาพ กดปุ่ม "ไม่มี" ได้ถ้าไม่มี',
-            'halal_food.required' => 'กรุณาเลือกว่าต้องการอาหารฮาลาลหรือไม่',
-            'seat_id.required' => 'กรุณาเลือกที่นั่งของคุณ',
-            'seat_id.in' => 'ที่นั่งที่เลือกเพิ่งถูกใช้ไปแล้ว กรุณาเลือกที่นั่งอื่น',
-            'pickup_point_id.required' => 'กรุณาเลือกจุดขึ้นรถ',
-            'pickup_point_id.in' => 'จุดขึ้นรถนี้ไม่อยู่ในรอบเดินทางนี้',
-            'rentals.*.max' => 'เช่าอุปกรณ์ชิ้นเดียวกันได้สูงสุด '.self::MAX_RENTAL_QUANTITY.' ชิ้น กรุณาทักทีมงานถ้าต้องการมากกว่านี้',
-            'phone.required' => 'กรุณากรอกเบอร์โทรศัพท์',
-            'email.required' => 'กรุณากรอกอีเมล',
-            'email.email' => 'รูปแบบอีเมลไม่ถูกต้อง',
-            'birth_date.before' => 'วันเกิดต้องเป็นวันในอดีต',
-            'consent.accepted' => 'กรุณายินยอมให้เก็บข้อมูลก่อนส่ง',
-            'name_en.required' => 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษให้ตรงกับหน้าพาสปอร์ต',
-            'name_en.regex' => 'ชื่อ-สกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น',
-            'passport_no.required' => 'กรุณากรอกเลขที่พาสปอร์ต',
-            'passport_no.regex' => 'เลขที่พาสปอร์ตไม่ถูกต้อง',
-            'passport_expires_at.required' => 'กรุณาระบุวันหมดอายุพาสปอร์ต',
-            'passport_expires_at.after' => 'พาสปอร์ตหมดอายุแล้ว',
-            'travel_document.required' => 'กรุณาเลือกว่ามีพาสปอร์ตหรือให้ทีมงานทำ Border Pass',
-            'border_pass_front.required_if' => 'กรุณาแนบรูปบัตรประชาชนด้านหน้า ด่านใช้เป็นหลักฐานทำ Border Pass',
-            'border_pass_back.required_if' => 'กรุณาแนบรูปบัตรประชาชนด้านหลัง ด่านใช้เป็นหลักฐานทำ Border Pass',
-            'border_pass_front.mimes' => 'บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น',
-            'border_pass_back.mimes' => 'บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น',
-            'border_pass_front.max' => 'ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB',
-            'border_pass_back.max' => 'ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB',
+            'title.required' => __('กรุณาเลือกคำนำหน้า'),
+            'title.in' => __('กรุณาเลือกคำนำหน้า'),
+            'name.required' => __('กรุณากรอกชื่อ-นามสกุล'),
+            'nickname.required' => __('กรุณากรอกชื่อเล่น (ทีมงานใช้เรียกหน้างาน)'),
+            'id_card.required' => __('กรุณากรอกเลขบัตรประชาชน (ใช้ทำประกันการเดินทาง)'),
+            'birth_date.required' => __('กรุณาระบุวันเกิด (ใช้ทำประกันการเดินทาง)'),
+            'blood_group.present' => __('กรุณาเลือกกรุ๊ปเลือด เลือก "ไม่ทราบ" ได้ถ้าไม่แน่ใจ'),
+            'emergency_contact.required' => __('กรุณากรอกผู้ติดต่อฉุกเฉิน'),
+            'emergency_relation.required' => __('กรุณาระบุว่าผู้ติดต่อเป็นอะไรกับคุณ'),
+            'emergency_phone.required' => __('กรุณากรอกเบอร์ผู้ติดต่อฉุกเฉิน'),
+            'allergies.required' => __('กรุณากรอกการแพ้อาหาร/ยา กดปุ่ม "ไม่มี" ได้ถ้าไม่มี'),
+            'health_notes.required' => __('กรุณากรอกโรคประจำตัว/หมายเหตุสุขภาพ กดปุ่ม "ไม่มี" ได้ถ้าไม่มี'),
+            'halal_food.required' => __('กรุณาเลือกว่าต้องการอาหารฮาลาลหรือไม่'),
+            'seat_id.required' => __('กรุณาเลือกที่นั่งของคุณ'),
+            'seat_id.in' => __('ที่นั่งที่เลือกเพิ่งถูกใช้ไปแล้ว กรุณาเลือกที่นั่งอื่น'),
+            'pickup_point_id.required' => __('กรุณาเลือกจุดขึ้นรถ'),
+            'pickup_point_id.in' => __('จุดขึ้นรถนี้ไม่อยู่ในรอบเดินทางนี้'),
+            'rentals.*.max' => __('เช่าอุปกรณ์ชิ้นเดียวกันได้สูงสุด ').self::MAX_RENTAL_QUANTITY.__(' ชิ้น กรุณาทักทีมงานถ้าต้องการมากกว่านี้'),
+            'phone.required' => __('กรุณากรอกเบอร์โทรศัพท์'),
+            'email.required' => __('กรุณากรอกอีเมล'),
+            'email.email' => __('รูปแบบอีเมลไม่ถูกต้อง'),
+            'birth_date.before' => __('วันเกิดต้องเป็นวันในอดีต'),
+            'consent.accepted' => __('กรุณายินยอมให้เก็บข้อมูลก่อนส่ง'),
+            'name_en.required' => __('กรุณากรอกชื่อ-สกุลภาษาอังกฤษให้ตรงกับหน้าพาสปอร์ต'),
+            'name_en.regex' => __('ชื่อ-สกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น'),
+            'passport_no.required' => __('กรุณากรอกเลขที่พาสปอร์ต'),
+            'passport_no.regex' => __('เลขที่พาสปอร์ตไม่ถูกต้อง'),
+            'passport_expires_at.required' => __('กรุณาระบุวันหมดอายุพาสปอร์ต'),
+            'passport_expires_at.after' => __('พาสปอร์ตหมดอายุแล้ว'),
+            'travel_document.required' => __('กรุณาเลือกว่ามีพาสปอร์ตหรือให้ทีมงานทำ Border Pass'),
+            'border_pass_front.required_if' => __('กรุณาแนบรูปบัตรประชาชนด้านหน้า ด่านใช้เป็นหลักฐานทำ Border Pass'),
+            'border_pass_back.required_if' => __('กรุณาแนบรูปบัตรประชาชนด้านหลัง ด่านใช้เป็นหลักฐานทำ Border Pass'),
+            'border_pass_front.mimes' => __('บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น'),
+            'border_pass_back.mimes' => __('บัตรประชาชนรองรับไฟล์รูปภาพ และ PDF เท่านั้น'),
+            'border_pass_front.max' => __('ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB'),
+            'border_pass_back.max' => __('ไฟล์บัตรประชาชนต้องไม่เกิน 10 MB'),
         ]);
 
         // ที่นั่งเป็นของ "คัน" ไม่ใช่ของรอบ — คันมาจากฝั่งเรา ไม่ใช่จากเบราว์เซอร์
@@ -352,7 +352,7 @@ class PublicIntakeController extends Controller
 
         $departure = $schedule->departure_date;
         if ($departure && Carbon::parse($data['passport_expires_at'])->lt($departure->copy()->addMonths(6))) {
-            return 'พาสปอร์ตต้องมีอายุเหลืออย่างน้อย 6 เดือนนับจากวันเดินทาง';
+            return __('พาสปอร์ตต้องมีอายุเหลืออย่างน้อย 6 เดือนนับจากวันเดินทาง');
         }
 
         return null;
@@ -457,7 +457,7 @@ class PublicIntakeController extends Controller
         $link = IntakeLink::with('schedule.trip')->where('token', $token)->first();
 
         if (! $link || ! $link->is_active) {
-            throw new NotFoundHttpException('ลิงก์นี้ใช้ไม่ได้แล้ว');
+            throw new NotFoundHttpException(__('ลิงก์นี้ใช้ไม่ได้แล้ว'));
         }
 
         return $link;
@@ -468,7 +468,7 @@ class PublicIntakeController extends Controller
         $intake = CustomerIntake::with('schedule.trip')->where('token', $token)->first();
 
         if (! $intake) {
-            throw new NotFoundHttpException('ลิงก์นี้ใช้ไม่ได้แล้ว');
+            throw new NotFoundHttpException(__('ลิงก์นี้ใช้ไม่ได้แล้ว'));
         }
 
         return $intake;

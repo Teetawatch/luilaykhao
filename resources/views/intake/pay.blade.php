@@ -1,6 +1,6 @@
 @extends('intake.layout')
 
-@section('title', 'ชำระเงินเพื่อยืนยันที่นั่ง')
+@section('title', __('ชำระเงินเพื่อยืนยันที่นั่ง'))
 
 {{--
     หน้าชำระเงินของลิงก์กลุ่ม (/g/{token}/pay) — สามสถานะ
@@ -14,25 +14,25 @@
 
 @php
     $heroImage = $trip?->cover_image ? url($trip->cover_image) : null;
-    $heroTitle = $trip?->title ?: 'ชำระเงิน';
-    $heroEyebrow = 'เลขที่จอง '.$booking->booking_ref;
+    $heroTitle = $trip?->tr('title') ?: __('ชำระเงิน');
+    $heroEyebrow = __('เลขที่จอง ').$booking->booking_ref;
     $heroEyebrowIcon = 'lock';
     $heroSub = match ($state) {
-        'review' => 'ได้รับสลิปแล้ว ทีมงานกำลังตรวจสอบยอดโอน',
-        'expired' => 'หมดเวลาชำระเงินแล้ว',
-        default => 'ชำระเงินเพื่อยืนยันที่นั่งของกลุ่ม',
+        'review' => __('ได้รับสลิปแล้ว ทีมงานกำลังตรวจสอบยอดโอน'),
+        'expired' => __('หมดเวลาชำระเงินแล้ว'),
+        default => __('ชำระเงินเพื่อยืนยันที่นั่งของกลุ่ม'),
     };
     $heroChips = [];
     if ($schedule) {
-        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabelThai()];
+        $heroChips[] = ['icon' => 'calendar', 'text' => $schedule->dateRangeLabel()];
     }
-    $heroChips[] = ['icon' => 'users', 'text' => $booking->passengers->count().' คน'];
+    $heroChips[] = ['icon' => 'users', 'text' => $booking->passengers->count().__(' คน')];
     if ($booking->seats->isNotEmpty()) {
-        $heroChips[] = ['icon' => 'seat', 'text' => 'ที่นั่ง '.$booking->seats->pluck('seat_id')->join(', ')];
+        $heroChips[] = ['icon' => 'seat', 'text' => __('ที่นั่ง ').$booking->seats->pluck('seat_id')->join(', ')];
     }
     $isBeam = isset($beamPayment) && $beamPayment;
-    $ogTitle = 'ชำระเงิน · '.($trip?->title ?? 'ลุยเลเขา');
-    $ogDescription = 'ชำระเงินเพื่อยืนยันที่นั่งของกลุ่ม';
+    $ogTitle = __('ชำระเงิน · ').($trip?->tr('title') ?? __('ลุยเลเขา'));
+    $ogDescription = __('ชำระเงินเพื่อยืนยันที่นั่งของกลุ่ม');
 @endphp
 
 @push('styles')
@@ -97,7 +97,7 @@
         <div class="callout callout--error">
             @include('intake.icon', ['name' => 'alert'])
             <div>
-                <strong>ยังชำระเงินไม่สำเร็จ</strong>
+                <strong>{{ __('ยังชำระเงินไม่สำเร็จ') }}</strong>
                 {{ $errors->first() }}
             </div>
         </div>
@@ -107,34 +107,31 @@
         <div class="callout callout--warn">
             @include('intake.icon', ['name' => 'clock'])
             <div>
-                <strong>หมดเวลาชำระเงินของการจอง {{ $booking->booking_ref }}</strong>
-                ระบบกำลังคืนที่นั่งเข้ารอบ ข้อมูลผู้เดินทางของกลุ่มยังอยู่ครบ
-                กลับไปที่หน้ากลุ่มแล้วกดจองใหม่ได้ในอีกประมาณ 1 นาที (ถ้าที่นั่งยังว่างอยู่)
-                ถ้าโอนเงินไปแล้ว กรุณาทักทีมงานพร้อมสลิป
+                <strong>{{ __('หมดเวลาชำระเงินของการจอง :booking_ref', ['booking_ref' => $booking->booking_ref]) }}</strong>
+                {{ __('ระบบกำลังคืนที่นั่งเข้ารอบ ข้อมูลผู้เดินทางของกลุ่มยังอยู่ครบ กลับไปที่หน้ากลุ่มแล้วกดจองใหม่ได้ในอีกประมาณ 1 นาที (ถ้าที่นั่งยังว่างอยู่) ถ้าโอนเงินไปแล้ว กรุณาทักทีมงานพร้อมสลิป') }}
             </div>
         </div>
-        <a class="btn" href="{{ $intake->groupUrl() }}">กลับไปหน้ากลุ่ม</a>
+        <a class="btn" href="{{ $intake->groupUrl() }}">{{ __('กลับไปหน้ากลุ่ม') }}</a>
     @elseif ($state === 'review')
         <div class="callout callout--ok">
             @include('intake.icon', ['name' => 'shield'])
             <div>
-                <strong>ได้รับสลิปแล้ว — กำลังตรวจสอบยอดโอน</strong>
-                ยอดในสลิปไม่ตรงกับยอดที่ต้องชำระแบบอัตโนมัติ ทีมงานจะตรวจและยืนยันการจองให้เร็วที่สุด
-                ระหว่างนี้ที่นั่งยังกันไว้ให้กลุ่มนี้ ไม่ต้องโอนซ้ำ
+                <strong>{{ __('ได้รับสลิปแล้ว — กำลังตรวจสอบยอดโอน') }}</strong>
+                {{ __('ยอดในสลิปไม่ตรงกับยอดที่ต้องชำระแบบอัตโนมัติ ทีมงานจะตรวจและยืนยันการจองให้เร็วที่สุด ระหว่างนี้ที่นั่งยังกันไว้ให้กลุ่มนี้ ไม่ต้องโอนซ้ำ') }}
             </div>
         </div>
-        <a class="btn btn--ghost" href="{{ $intake->payUrl() }}">โหลดสถานะใหม่</a>
+        <a class="btn btn--ghost" href="{{ $intake->payUrl() }}">{{ __('โหลดสถานะใหม่') }}</a>
     @else
         @if ($deadline)
             <div class="timer" id="timer" data-deadline="{{ $deadline->toIso8601String() }}">
-                <span>@if ($booking->hold_until) ทีมงานกันที่นั่งไว้ให้ถึง @else ชำระภายใน @endif</span>
+                <span>@if ($booking->hold_until) {{ __('ทีมงานกันที่นั่งไว้ให้ถึง') }} @else {{ __('ชำระภายใน') }} @endif</span>
                 <b id="timer-left">--:--</b>
             </div>
         @endif
 
-        <p class="lead">เลือกวิธีชำระ แล้วสแกน QR ด้วยแอปธนาคาร</p>
+        <p class="lead">{{ __('เลือกวิธีชำระ แล้วสแกน QR ด้วยแอปธนาคาร') }}</p>
 
-        <div class="plans" role="radiogroup" aria-label="วิธีชำระ">
+        <div class="plans" role="radiogroup" aria-label="{{ __('วิธีชำระ') }}">
             @foreach ($plans as $row)
                 @if ($isBeam)
                     {{-- QR เกตเวย์ผูกกับยอด — เปลี่ยนแผน = ออก QR ใหม่จากเซิร์ฟเวอร์ --}}
@@ -170,7 +167,7 @@
 
         @if ($isBeam)
             <div class="amount-box">
-                <div class="label">ยอดที่ต้องชำระตอนนี้</div>
+                <div class="label">{{ __('ยอดที่ต้องชำระตอนนี้') }}</div>
                 <div class="value">฿{{ number_format($plans[$plan]['amount']) }}</div>
             </div>
             @include('payment.partials.gateway-qr')
@@ -178,12 +175,12 @@
             @foreach ($plans as $row)
                 <div data-plan-panel="{{ $row['key'] }}" @if ($plan !== $row['key']) hidden @endif>
                     <div class="amount-box">
-                        <div class="label">ยอดที่ต้องโอน{{ $row['key'] === 'deposit' ? ' (มัดจำ)' : '' }}</div>
+                        <div class="label">{{ __('ยอดที่ต้องโอน:row', ['row' => $row['key'] === 'deposit' ? __(' (มัดจำ)') : '']) }}</div>
                         <div class="value">฿{{ number_format($row['amount'], $row['amount'] == floor($row['amount']) ? 0 : 2) }}</div>
                     </div>
                     <div class="qr-wrap">
-                        <img src="{{ $qrByPlan[$row['key']] }}" alt="QR พร้อมเพย์ ยอด {{ number_format($row['amount'], 2) }} บาท">
-                        <div class="amount-sub" style="margin-top:6px">สแกนจ่ายผ่านแอปธนาคาร · PromptPay ยอดตรงอยู่ใน QR แล้ว</div>
+                        <img src="{{ $qrByPlan[$row['key']] }}" alt="{{ __('QR พร้อมเพย์ ยอด :row บาท', ['row' => number_format($row['amount'], 2)]) }}">
+                        <div class="amount-sub" style="margin-top:6px">{{ __('สแกนจ่ายผ่านแอปธนาคาร · PromptPay ยอดตรงอยู่ใน QR แล้ว') }}</div>
                     </div>
                 </div>
             @endforeach
@@ -192,34 +189,34 @@
                 <div>
                     <span>PromptPay</span>
                     <b>{{ config('payment.promptpay_id_display') }}
-                        <button type="button" class="copy-btn" data-copy="{{ config('payment.promptpay_id_display') }}">คัดลอก</button></b>
+                        <button type="button" class="copy-btn" data-copy="{{ config('payment.promptpay_id_display') }}">{{ __('คัดลอก') }}</button></b>
                 </div>
                 <div>
-                    <span>{{ config('payment.bank_name') }}</span>
+                    <span>{{ __(config('payment.bank_name')) }}</span>
                     <b>{{ config('payment.bank_account') }}
-                        <button type="button" class="copy-btn" data-copy="{{ config('payment.bank_account') }}">คัดลอก</button></b>
+                        <button type="button" class="copy-btn" data-copy="{{ config('payment.bank_account') }}">{{ __('คัดลอก') }}</button></b>
                 </div>
-                <div><span>ชื่อบัญชี</span><b>{{ config('payment.bank_holder') }}</b></div>
+                <div><span>{{ __('ชื่อบัญชี') }}</span><b>{{ config('payment.bank_holder') }}</b></div>
             </div>
 
             <form method="POST" action="{{ route('public.intake.pay.submit', $intake->token) }}"
                   enctype="multipart/form-data" data-guard id="intake-pay-form">
                 @csrf
 
-                <label class="slip-label" for="slip_image">โอนแล้ว? แนบสลิปที่นี่</label>
+                <label class="slip-label" for="slip_image">{{ __('โอนแล้ว? แนบสลิปที่นี่') }}</label>
                 <input class="slip-input" type="file" name="slip_image" id="slip_image" accept="image/*" required>
 
                 <button type="submit" class="btn">
-                    @include('intake.icon', ['name' => 'check']) ยืนยันการชำระเงิน
+                    @include('intake.icon', ['name' => 'check']) {{ __('ยืนยันการชำระเงิน') }}
                 </button>
-                <p class="hint" style="text-align:center">ระบบตรวจยอดในสลิปให้อัตโนมัติ ยอดตรงยืนยันที่นั่งทันที</p>
+                <p class="hint" style="text-align:center">{{ __('ระบบตรวจยอดในสลิปให้อัตโนมัติ ยอดตรงยืนยันที่นั่งทันที') }}</p>
             </form>
         @endif
     @endif
 
     <div class="privacy">
         @include('intake.icon', ['name' => 'lock'])
-        <span>หน้านี้แสดงเฉพาะยอดชำระและเลขที่จอง ไม่แสดงเบอร์โทรหรือข้อมูลส่วนตัวของใคร</span>
+        <span>{{ __('หน้านี้แสดงเฉพาะยอดชำระและเลขที่จอง ไม่แสดงเบอร์โทรหรือข้อมูลส่วนตัวของใคร') }}</span>
     </div>
 @endsection
 
@@ -249,7 +246,7 @@
                 if (!navigator.clipboard) { return; }
                 navigator.clipboard.writeText(text).then(function () {
                     var original = btn.textContent;
-                    btn.textContent = 'คัดลอกแล้ว';
+                    btn.textContent = @json(__('คัดลอกแล้ว'));
                     setTimeout(function () { btn.textContent = original; }, 1500);
                 });
             });
@@ -270,7 +267,7 @@
             }
             var days = Math.floor(seconds / 86400);
             if (days >= 1) {
-                left.textContent = days + ' วัน';
+                left.textContent = days + @json(__(' วัน'));
             } else {
                 var h = Math.floor(seconds / 3600);
                 var m = Math.floor((seconds % 3600) / 60);

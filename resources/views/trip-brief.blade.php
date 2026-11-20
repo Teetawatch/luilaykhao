@@ -2,14 +2,14 @@
     $b = $brief;
 @endphp
 <!DOCTYPE html>
-<html lang="th" dir="ltr">
+<html lang="{{ app()->getLocale() === 'en' ? 'en' : 'th' }}" dir="ltr">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {{-- ใบเดินทางเป็นของลูกค้ารายคน ไม่ใช่หน้าที่ควรถูกค้นเจอ --}}
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#0f3d3e">
-    <title>{{ $b ? 'ใบเดินทาง '.$b['trip']['title'].' | ลุยเลเขา' : 'ไม่พบใบเดินทาง | ลุยเลเขา' }}</title>
+    <title>{{ $b ? __('ใบเดินทาง ').$b['trip']['title'].__(' | ลุยเลเขา') : __('ไม่พบใบเดินทาง | ลุยเลเขา') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -209,19 +209,19 @@
     </style>
 </head>
 <body>
+<x-page-lang-switch />
 <div class="wrap">
 
 @if(! $b)
     <div class="empty">
         <div class="icon">🧭</div>
-        <h2>ไม่พบใบเดินทางนี้</h2>
+        <h2>{{ __('ไม่พบใบเดินทางนี้') }}</h2>
         <p>
-            ลิงก์อาจหมดอายุแล้ว (ใบเดินทางเปิดดูได้ถึง {{ \App\Services\TripBriefService::EXPIRES_DAYS_AFTER }} วันหลังจบทริป)
-            หรือการจองถูกยกเลิกไปแล้วครับ<br>
-            ถ้าคิดว่าไม่ถูกต้อง ทักหาทีมงานได้เลยนะครับ
+            {{ __('ลิงก์อาจหมดอายุแล้ว (ใบเดินทางเปิดดูได้ถึง :expires_days_after วันหลังจบทริป) หรือการจองถูกยกเลิกไปแล้วครับ', ['expires_days_after' => \App\Services\TripBriefService::EXPIRES_DAYS_AFTER]) }}<br>
+            {{ __('ถ้าคิดว่าไม่ถูกต้อง ทักหาทีมงานได้เลยนะครับ') }}
         </p>
         @if($phone = \App\Support\SiteSettings::supportPhone())
-            <a class="btn" style="margin-top:22px;" href="tel:{{ preg_replace('/\D+/', '', $phone) }}">📞 โทรหาทีมงาน {{ $phone }}</a>
+            <a class="btn" style="margin-top:22px;" href="tel:{{ preg_replace('/\D+/', '', $phone) }}">{{ __('📞 โทรหาทีมงาน :phone', ['phone' => $phone]) }}</a>
         @endif
     </div>
 @else
@@ -229,7 +229,7 @@
     {{-- ── หัวใบ ───────────────────────────────────────────────── --}}
     <div class="card">
         <div class="hero">
-            <div class="eyebrow">ใบเดินทาง</div>
+            <div class="eyebrow">{{ __('ใบเดินทาง') }}</div>
             <h1>{{ $b['trip']['title'] }}</h1>
             @if($b['trip']['location'])
                 <div class="where">📍 {{ $b['trip']['location'] }}</div>
@@ -237,7 +237,7 @@
             <div class="when">
                 🗓 {{ $b['when']['range_label'] ?? $b['when']['date_label'] }}
                 @if($b['when']['time_label'])
-                    · ออกเดินทาง {{ $b['when']['time_label'] }} น.
+                    {{ __('· ออกเดินทาง :b น.', ['b' => $b['when']['time_label']]) }}
                 @endif
             </div>
             <div class="pills">
@@ -245,7 +245,7 @@
                     <span class="pill {{ ($b['when']['days_left'] ?? 9) <= 1 ? 'hot' : '' }}">{{ $b['when']['countdown_label'] }}</span>
                 @endif
                 <span class="pill ref">{{ $b['booking']['ref'] }}</span>
-                <span class="pill">{{ $b['booking']['passenger_count'] }} ท่าน</span>
+                <span class="pill">{{ __(':b ท่าน', ['b' => $b['booking']['passenger_count']]) }}</span>
             </div>
         </div>
 
@@ -253,9 +253,8 @@
         @if($b['when']['night_before'])
             <div class="sec" style="padding-bottom:6px;">
                 <div class="alert amber">
-                    <b>⚠️ รถออกก่อนวันทริปนะครับ</b>
-                    รถออกวันที่ {{ $b['when']['departs_on_label'] }} เวลา {{ $b['when']['time_label'] }} น.
-                    ไม่ใช่เช้าวันทริป — เตรียมตัวให้ทันคืนก่อนหน้าด้วยนะครับ
+                    <b>{{ __('⚠️ รถออกก่อนวันทริปนะครับ') }}</b>
+                    {{ __('รถออกวันที่ :b เวลา :b2 น. ไม่ใช่เช้าวันทริป — เตรียมตัวให้ทันคืนก่อนหน้าด้วยนะครับ', ['b' => $b['when']['departs_on_label'], 'b2' => $b['when']['time_label']]) }}
                 </div>
             </div>
         @endif
@@ -266,15 +265,14 @@
     @if($b['progress'])
         <div class="card">
             <div class="sec">
-                <div class="sec-label">ตอนนี้ถึงไหนแล้ว</div>
-                <div class="big">{{ $b['progress']['current']['title'] ?? 'กำลังเดินทาง' }}</div>
+                <div class="sec-label">{{ __('ตอนนี้ถึงไหนแล้ว') }}</div>
+                <div class="big">{{ $b['progress']['current']['title'] ?? __('กำลังเดินทาง') }}</div>
                 @if($b['progress']['next'])
-                    <div class="sub">ต่อไป · {{ $b['progress']['next']['title'] }}</div>
+                    <div class="sub">{{ __('ต่อไป · :b', ['b' => $b['progress']['next']['title']]) }}</div>
                 @endif
                 <div class="bar"><i style="width:{{ $b['progress']['percent'] }}%"></i></div>
                 <div class="note">
-                    ผ่านมาแล้ว {{ $b['progress']['reached_count'] }} จาก {{ $b['progress']['total'] }} จุด
-                    · เปิดหน้านี้ใหม่เพื่อดูล่าสุดได้เลยครับ
+                    {{ __('ผ่านมาแล้ว :b จาก :b2 จุด · เปิดหน้านี้ใหม่เพื่อดูล่าสุดได้เลยครับ', ['b' => $b['progress']['reached_count'], 'b2' => $b['progress']['total']]) }}
                 </div>
             </div>
         </div>
@@ -284,9 +282,9 @@
     @if($b['meetup'])
         <div class="card">
             <div class="sec focus">
-                <div class="sec-label">จุดนัดพบ</div>
+                <div class="sec-label">{{ __('จุดนัดพบ') }}</div>
                 @if($b['meetup']['time_label'])
-                    <div class="time">{{ $b['meetup']['time_label'] }}<small>น.</small></div>
+                    <div class="time">{{ $b['meetup']['time_label'] }}<small>{{ __('น.') }}</small></div>
                 @endif
                 @if($b['meetup']['point'])
                     <div class="big" style="margin-top:8px;">{{ $b['meetup']['point'] }}</div>
@@ -295,10 +293,10 @@
                     <div class="sub">{{ $b['meetup']['date_label'] }}</div>
                 @endif
                 @if($b['meetup']['baggage'])
-                    <div class="note">🧳 สัมภาระ: {{ $b['meetup']['baggage'] }}</div>
+                    <div class="note">{{ __('🧳 สัมภาระ: :b', ['b' => $b['meetup']['baggage']]) }}</div>
                 @endif
                 @if($b['meetup']['map_url'])
-                    <a class="btn" href="{{ $b['meetup']['map_url'] }}" target="_blank" rel="noopener">🗺 เปิดแผนที่จุดนัดพบ</a>
+                    <a class="btn" href="{{ $b['meetup']['map_url'] }}" target="_blank" rel="noopener">{{ __('🗺 เปิดแผนที่จุดนัดพบ') }}</a>
                 @endif
             </div>
         </div>
@@ -308,10 +306,10 @@
                 @if($b['pickup']['same_for_everyone'] && $i > 0) @continue @endif
                 <div class="sec focus">
                     <div class="sec-label">
-                        จุดขึ้นรถ@if(! $b['pickup']['same_for_everyone'] && $row['passenger']) · {{ $row['passenger'] }}@endif
+                        {{ __('จุดขึ้นรถ') }}@if(! $b['pickup']['same_for_everyone'] && $row['passenger']) · {{ $row['passenger'] }}@endif
                     </div>
                     @if($row['point']['time'])
-                        <div class="time">{{ \Illuminate\Support\Str::substr($row['point']['time'], 0, 5) }}<small>น.</small></div>
+                        <div class="time">{{ \Illuminate\Support\Str::substr($row['point']['time'], 0, 5) }}<small>{{ __('น.') }}</small></div>
                     @endif
                     <div class="big" style="margin-top:8px;">{{ $row['point']['location'] }}</div>
                     @if($row['point']['region'])
@@ -321,20 +319,20 @@
                         <div class="note">{{ $row['point']['notes'] }}</div>
                     @endif
                     @if($row['point']['map_url'])
-                        <a class="btn" href="{{ $row['point']['map_url'] }}" target="_blank" rel="noopener">🗺 เปิดแผนที่จุดขึ้นรถ</a>
+                        <a class="btn" href="{{ $row['point']['map_url'] }}" target="_blank" rel="noopener">{{ __('🗺 เปิดแผนที่จุดขึ้นรถ') }}</a>
                     @endif
                 </div>
             @endforeach
 
             @if($b['pickup']['custom'])
                 <div class="sec">
-                    <div class="sec-label">จุดรับที่นัดไว้เป็นพิเศษ</div>
+                    <div class="sec-label">{{ __('จุดรับที่นัดไว้เป็นพิเศษ') }}</div>
                     <div class="big">{{ $b['pickup']['custom']['label'] }}</div>
                     @if($b['pickup']['custom']['note'])
                         <div class="note">{{ $b['pickup']['custom']['note'] }}</div>
                     @endif
                     @if($b['pickup']['custom']['map_url'])
-                        <a class="btn ghost" href="{{ $b['pickup']['custom']['map_url'] }}" target="_blank" rel="noopener">🗺 เปิดแผนที่จุดรับ</a>
+                        <a class="btn ghost" href="{{ $b['pickup']['custom']['map_url'] }}" target="_blank" rel="noopener">{{ __('🗺 เปิดแผนที่จุดรับ') }}</a>
                     @endif
                 </div>
             @endif
@@ -342,9 +340,9 @@
     @elseif(! empty($b['pickup']['join_trip']))
         <div class="card">
             <div class="sec">
-                <div class="sec-label">การเดินทาง</div>
-                <div class="big">จอยทริป — เดินทางไปเจอกันที่จุดหมาย</div>
-                <div class="note">รอบนี้คุณจองแบบจอยทริป ไม่มีรถไปรับนะครับ นัดเจอทีมงานที่หน้างานได้เลย</div>
+                <div class="sec-label">{{ __('การเดินทาง') }}</div>
+                <div class="big">{{ __('จอยทริป — เดินทางไปเจอกันที่จุดหมาย') }}</div>
+                <div class="note">{{ __('รอบนี้คุณจองแบบจอยทริป ไม่มีรถไปรับนะครับ นัดเจอทีมงานที่หน้างานได้เลย') }}</div>
             </div>
         </div>
     @endif
@@ -355,20 +353,20 @@
         <div class="card">
             @if($b['pickup_status']['show'])
                 <div class="sec">
-                    <div class="sec-label">บอกทีมงานหน่อยว่าคุณถึงไหนแล้ว</div>
+                    <div class="sec-label">{{ __('บอกทีมงานหน่อยว่าคุณถึงไหนแล้ว') }}</div>
 
                     @if(session('pickup_saved'))
-                        <div class="flash ok">ส่งให้ทีมงานแล้วครับ ขอบคุณมากครับ</div>
+                        <div class="flash ok">{{ __('ส่งให้ทีมงานแล้วครับ ขอบคุณมากครับ') }}</div>
                     @elseif(session('pickup_error'))
                         <div class="flash bad">{{ session('pickup_error') }}</div>
                     @endif
 
                     @if($b['pickup_status']['current_label'])
-                        <div class="big">ล่าสุดคุณแจ้งว่า · {{ $b['pickup_status']['current_label'] }}</div>
-                        <div class="sub">เมื่อ {{ $b['pickup_status']['reported_at_label'] }} น. · กดใหม่ได้ถ้าสถานการณ์เปลี่ยน</div>
+                        <div class="big">{{ __('ล่าสุดคุณแจ้งว่า · :b', ['b' => $b['pickup_status']['current_label']]) }}</div>
+                        <div class="sub">{{ __('เมื่อ :b น. · กดใหม่ได้ถ้าสถานการณ์เปลี่ยน', ['b' => $b['pickup_status']['reported_at_label']]) }}</div>
                     @else
                         <div class="note" style="margin-top:0;">
-                            ทีมงานจะได้ไม่ต้องโทรตามทีละคน ถ้ากดว่าอาจมาสาย ทีมงานจะรู้ทันทีครับ
+                            {{ __('ทีมงานจะได้ไม่ต้องโทรตามทีละคน ถ้ากดว่าอาจมาสาย ทีมงานจะรู้ทันทีครับ') }}
                         </div>
                     @endif
 
@@ -384,11 +382,11 @@
                             </button>
                         @endforeach
                         <div class="eta">
-                            <label for="eta">ถ้าสาย ประมาณ</label>
+                            <label for="eta">{{ __('ถ้าสาย ประมาณ') }}</label>
                             <select id="eta" name="eta_minutes">
-                                <option value="">ไม่แน่ใจ</option>
+                                <option value="">{{ __('ไม่แน่ใจ') }}</option>
                                 @foreach([10, 15, 20, 30, 45, 60] as $minutes)
-                                    <option value="{{ $minutes }}">{{ $minutes }} นาที</option>
+                                    <option value="{{ $minutes }}">{{ __(':minutes นาที', ['minutes' => $minutes]) }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -398,26 +396,26 @@
 
             @if($b['checkin']['checked_in'])
                 <div class="sec">
-                    <div class="sec-label">เช็คอิน</div>
-                    <div class="big">✓ เช็คอินขึ้นรถแล้ว</div>
+                    <div class="sec-label">{{ __('เช็คอิน') }}</div>
+                    <div class="big">{{ __('✓ เช็คอินขึ้นรถแล้ว') }}</div>
                     @if($b['checkin']['checked_in_label'])
                         <div class="sub">
-                            เมื่อ {{ $b['checkin']['checked_in_label'] }} น.@if($b['checkin']['aboard_label'] ?? null) · {{ $b['checkin']['aboard_label'] }}@endif
-                            · เดินทางปลอดภัยนะครับ
+                            {{ __('เมื่อ :b น.', ['b' => $b['checkin']['checked_in_label']]) }}@if($b['checkin']['aboard_label'] ?? null) · {{ $b['checkin']['aboard_label'] }}@endif
+                            {{ __('· เดินทางปลอดภัยนะครับ') }}
                         </div>
                     @endif
                 </div>
             @elseif($b['checkin']['show'])
                 <div class="sec">
-                    <div class="sec-label">QR เช็คอิน</div>
+                    <div class="sec-label">{{ __('QR เช็คอิน') }}</div>
                     <div class="qr-wrap">
-                        <img src="{{ $b['checkin']['qr'] }}" alt="QR เช็คอินของการจอง {{ $b['booking']['ref'] }}">
+                        <img src="{{ $b['checkin']['qr'] }}" alt="{{ __('QR เช็คอินของการจอง :b', ['b' => $b['booking']['ref']]) }}">
                         <div class="qr-code">{{ $b['checkin']['code'] }}</div>
                     </div>
                     <div class="note">
-                        ยื่นจอนี้ให้ทีมงานสแกนตอนขึ้นรถได้เลยครับ สแกนไม่ติดก็บอกเลขนี้แทนได้
+                        {{ __('ยื่นจอนี้ให้ทีมงานสแกนตอนขึ้นรถได้เลยครับ สแกนไม่ติดก็บอกเลขนี้แทนได้') }}
                         @if($b['checkin']['aboard_label'] ?? null)
-                            <br><b>{{ $b['checkin']['aboard_label'] }}</b> — สแกนอีกครั้งสำหรับคนที่เหลือ
+                            <br><b>{{ $b['checkin']['aboard_label'] }}</b> {{ __('— สแกนอีกครั้งสำหรับคนที่เหลือ') }}
                         @endif
                     </div>
                 </div>
@@ -431,20 +429,20 @@
     @if($b['attendance']['show'] ?? false)
         <div class="card" id="attendance">
             <div class="sec">
-                <div class="sec-label">ไปครบไหม</div>
+                <div class="sec-label">{{ __('ไปครบไหม') }}</div>
 
                 @if(session('attendance_saved'))
-                    <div class="flash ok">บันทึกแล้วครับ ทีมงานเห็นจำนวนคนล่าสุดแล้ว</div>
+                    <div class="flash ok">{{ __('บันทึกแล้วครับ ทีมงานเห็นจำนวนคนล่าสุดแล้ว') }}</div>
                 @elseif(session('attendance_error'))
                     <div class="flash bad">{{ session('attendance_error') }}</div>
                 @endif
 
                 @if($b['attendance']['confirmed'])
-                    <div class="big">ไป {{ $b['attendance']['going_count'] }} จาก {{ $b['attendance']['total'] }} คน</div>
-                    <div class="sub">แก้ได้จนถึงเวลารถออก</div>
+                    <div class="big">{{ __('ไป :b จาก :b2 คน', ['b' => $b['attendance']['going_count'], 'b2' => $b['attendance']['total']]) }}</div>
+                    <div class="sub">{{ __('แก้ได้จนถึงเวลารถออก') }}</div>
                 @else
                     <div class="note" style="margin-top:0;">
-                        ติ๊กคนที่ไป แล้วกดยืนยัน — คนที่ไม่ได้ติ๊ก ทีมงานจะรู้ว่าไม่ต้องรอที่จุดขึ้นรถ
+                        {{ __('ติ๊กคนที่ไป แล้วกดยืนยัน — คนที่ไม่ได้ติ๊ก ทีมงานจะรู้ว่าไม่ต้องรอที่จุดขึ้นรถ') }}
                     </div>
                 @endif
 
@@ -459,14 +457,13 @@
                             @else
                                 <input type="checkbox" name="going[]" value="{{ $person['id'] }}" @checked($person['going'])>
                             @endif
-                            <span>{{ $person['name'] }}@if($person['checked_in']) · ขึ้นรถแล้ว@endif</span>
+                            <span>{{ $person['name'] }}@if($person['checked_in']) {{ __('· ขึ้นรถแล้ว') }}@endif</span>
                         </label>
                     @endforeach
-                    <button type="submit" class="btn" style="margin-top:12px; border:none; font-family:inherit; cursor:pointer;">ยืนยันจำนวนคนเดินทาง</button>
+                    <button type="submit" class="btn" style="margin-top:12px; border:none; font-family:inherit; cursor:pointer;">{{ __('ยืนยันจำนวนคนเดินทาง') }}</button>
                 </form>
                 <div class="note">
-                    การแจ้งไม่ไปไม่ใช่การยกเลิก และไม่ได้คืนเงินอัตโนมัติ
-                    ถ้ามีคนไปแทน ใช้ “ส่งต่อที่นั่ง” ในแอป ชื่อในประกันจะได้ตรงตัวคนครับ
+                    {{ __('การแจ้งไม่ไปไม่ใช่การยกเลิก และไม่ได้คืนเงินอัตโนมัติ ถ้ามีคนไปแทน ใช้ “ส่งต่อที่นั่ง” ในแอป ชื่อในประกันจะได้ตรงตัวคนครับ') }}
                 </div>
             </div>
         </div>
@@ -479,25 +476,24 @@
     @if($b['permit']['show'] ?? false)
         <div class="card" id="permit">
             <div class="sec">
-                <div class="sec-label">เซ็นแบบฟอร์มอุทยาน</div>
-                <div class="big">เซ็นแล้ว {{ $b['permit']['signed_count'] }} จาก {{ $b['permit']['total'] }} คน</div>
+                <div class="sec-label">{{ __('เซ็นแบบฟอร์มอุทยาน') }}</div>
+                <div class="big">{{ __('เซ็นแล้ว :b จาก :b2 คน', ['b' => $b['permit']['signed_count'], 'b2' => $b['permit']['total']]) }}</div>
                 @if($b['permit']['deadline_label'])
                     <div class="sub" @if($b['permit']['overdue']) style="color:var(--red)" @endif>
-                        {{ $b['permit']['overdue'] ? 'เลยกำหนดแล้ว' : 'ต้องเซ็นภายใน' }} {{ $b['permit']['deadline_label'] }}
+                        {{ $b['permit']['overdue'] ? __('เลยกำหนดแล้ว') : __('ต้องเซ็นภายใน') }} {{ $b['permit']['deadline_label'] }}
                     </div>
                 @endif
                 @foreach($b['permit']['passengers'] as $person)
                     @if($person['signed'])
-                        <div class="choice on"><span>✅ {{ $person['name'] }} · เซ็นแล้ว</span></div>
+                        <div class="choice on"><span>{{ __('✅ :person · เซ็นแล้ว', ['person' => $person['name']]) }}</span></div>
                     @else
                         <a class="choice" href="{{ $person['url'] }}" style="text-decoration:none;">
-                            <span>✍️ {{ $person['name'] }} · กดเพื่ออ่านและเซ็น</span>
+                            <span>{{ __('✍️ :person · กดเพื่ออ่านและเซ็น', ['person' => $person['name']]) }}</span>
                         </a>
                     @endif
                 @endforeach
                 <div class="note">
-                    ให้เจ้าตัวเป็นคนเซ็นนะครับ — กดค้างที่ชื่อเพื่อก๊อปลิงก์ส่งให้เพื่อนในไลน์ได้เลย
-                    ทีมงานจะนำแบบฟอร์มไปลงทะเบียนกับอุทยานให้
+                    {{ __('ให้เจ้าตัวเป็นคนเซ็นนะครับ — กดค้างที่ชื่อเพื่อก๊อปลิงก์ส่งให้เพื่อนในไลน์ได้เลย ทีมงานจะนำแบบฟอร์มไปลงทะเบียนกับอุทยานให้') }}
                 </div>
             </div>
         </div>
@@ -508,16 +504,16 @@
     @if($b['when']['start_date'] ?? null)
         <div class="card">
             <div class="sec">
-                <div class="sec-label">กันลืม</div>
-                <a class="btn ghost" href="{{ $b['links']['calendar'] }}">📅 เพิ่มลงปฏิทินในมือถือ</a>
+                <div class="sec-label">{{ __('กันลืม') }}</div>
+                <a class="btn ghost" href="{{ $b['links']['calendar'] }}">{{ __('📅 เพิ่มลงปฏิทินในมือถือ') }}</a>
                 <div class="note">
-                    ปฏิทินจะเตือนล่วงหน้า
+                    {{ __('ปฏิทินจะเตือนล่วงหน้า') }}
                     @if(($b['meetup']['time_label'] ?? null) || (($b['pickup']['points'][0]['point']['time'] ?? null)) || ($b['when']['time_label'] ?? null))
-                        1 ชั่วโมงก่อนถึงเวลานัด และอีกครั้งตั้งแต่เย็นวันก่อนหน้า
+                        {{ __('1 ชั่วโมงก่อนถึงเวลานัด และอีกครั้งตั้งแต่เย็นวันก่อนหน้า') }}
                     @else
-                        ตั้งแต่เย็นวันก่อนเดินทาง
+                        {{ __('ตั้งแต่เย็นวันก่อนเดินทาง') }}
                     @endif
-                    ครับ
+                    {{ __('ครับ') }}
                 </div>
             </div>
         </div>
@@ -528,7 +524,7 @@
     @if(! empty($b['announcements']))
         <div class="card">
             <div class="sec">
-                <div class="sec-label">ประกาศจากทีมงาน</div>
+                <div class="sec-label">{{ __('ประกาศจากทีมงาน') }}</div>
                 @foreach($b['announcements'] as $ann)
                     <div class="ann">
                         <span class="tag {{ $ann['is_urgent'] ? 'urgent' : ($ann['is_pinned'] ? 'pin' : '') }}">
@@ -550,7 +546,7 @@
     @if(! empty($b['todo']))
         <div class="card">
             <div class="sec">
-                <div class="sec-label">ยังขาดข้อมูลอยู่นิดหน่อย</div>
+                <div class="sec-label">{{ __('ยังขาดข้อมูลอยู่นิดหน่อย') }}</div>
                 @foreach($b['todo'] as $item)
                     <div class="todo">
                         <div class="mark">!</div>
@@ -564,8 +560,7 @@
                     </div>
                 @endforeach
                 <div class="note">
-                    ลิงก์ในส่วนนี้เป็นของการจองคุณโดยเฉพาะ เก็บไว้กับตัวนะครับ
-                    ถ้าส่งเอกสารทางอื่นไว้แล้ว ข้ามได้เลย
+                    {{ __('ลิงก์ในส่วนนี้เป็นของการจองคุณโดยเฉพาะ เก็บไว้กับตัวนะครับ ถ้าส่งเอกสารทางอื่นไว้แล้ว ข้ามได้เลย') }}
                 </div>
             </div>
         </div>
@@ -575,17 +570,17 @@
     @if(! empty($b['crew']) || $b['vehicle'])
         <div class="card">
             <div class="sec">
-                <div class="sec-label">ติดต่อได้ที่ใคร</div>
+                <div class="sec-label">{{ __('ติดต่อได้ที่ใคร') }}</div>
 
                 @foreach($b['crew'] as $staff)
                     <div class="person">
                         <div class="avatar">{{ mb_substr($staff['name'], 0, 1) }}</div>
                         <div class="who">
                             <b>{{ $staff['name'] }}</b>
-                            <span>ทีมงานประจำรอบ</span>
+                            <span>{{ __('ทีมงานประจำรอบ') }}</span>
                         </div>
                         @if($staff['phone'])
-                            <a class="call" href="tel:{{ preg_replace('/\D+/', '', $staff['phone']) }}">โทร</a>
+                            <a class="call" href="tel:{{ preg_replace('/\D+/', '', $staff['phone']) }}">{{ __('โทร') }}</a>
                         @endif
                     </div>
                 @endforeach
@@ -595,36 +590,35 @@
                         <div class="avatar van">🚐</div>
                         <div class="who">
                             <b>{{ $b['vehicle']['driver_name'] }}</b>
-                            <span>คนขับ</span>
+                            <span>{{ __('คนขับ') }}</span>
                         </div>
                         @if($b['vehicle']['driver_phone'])
-                            <a class="call" href="tel:{{ preg_replace('/\D+/', '', $b['vehicle']['driver_phone']) }}">โทร</a>
+                            <a class="call" href="tel:{{ preg_replace('/\D+/', '', $b['vehicle']['driver_phone']) }}">{{ __('โทร') }}</a>
                         @endif
                     </div>
                 @endif
 
                 <div class="note" style="margin-top:10px;">
-                    เบอร์เหล่านี้ใช้ติดต่อเรื่องทริปในช่วงเดินทางนะครับ
-                    เรื่องอื่น ๆ ทักทีมงานที่เบอร์กลางได้เลย
+                    {{ __('เบอร์เหล่านี้ใช้ติดต่อเรื่องทริปในช่วงเดินทางนะครับ เรื่องอื่น ๆ ทักทีมงานที่เบอร์กลางได้เลย') }}
                 </div>
             </div>
 
             @if($b['vehicle'] && ($b['vehicle']['plate'] || $b['vehicle']['color']))
                 <div class="sec">
-                    <div class="sec-label">รถที่มารับ</div>
+                    <div class="sec-label">{{ __('รถที่มารับ') }}</div>
                     <div class="big">
                         {{ collect([
                             $b['booking']['vehicle_option_label'] ?: $b['vehicle']['name'],
                             $b['vehicle']['color'],
-                        ])->filter()->implode(' · ') ?: 'รถของรอบนี้' }}
+                        ])->filter()->implode(' · ') ?: __('รถของรอบนี้') }}
                     </div>
                     @if($b['vehicle']['plate'])
-                        <div class="sub">ทะเบียน <b>{{ $b['vehicle']['plate'] }}</b></div>
+                        <div class="sub">{{ __('ทะเบียน') }} <b>{{ $b['vehicle']['plate'] }}</b></div>
                     @endif
                     @if(! empty($b['booking']['seats']))
-                        <div class="note">ที่นั่งของคุณ: {{ implode(', ', $b['booking']['seats']) }}</div>
+                        <div class="note">{{ __('ที่นั่งของคุณ: :b', ['b' => implode(', ', $b['booking']['seats'])]) }}</div>
                     @endif
-                    <a class="btn ghost" href="{{ $b['links']['track'] }}">📍 ติดตามรถแบบเรียลไทม์</a>
+                    <a class="btn ghost" href="{{ $b['links']['track'] }}">{{ __('📍 ติดตามรถแบบเรียลไทม์') }}</a>
                 </div>
             @endif
         </div>
@@ -634,7 +628,7 @@
     @if(! empty($b['itinerary']))
         <div class="card">
             <div class="sec">
-                <div class="sec-label">กำหนดการ</div>
+                <div class="sec-label">{{ __('กำหนดการ') }}</div>
                 @php $lastDay = null; @endphp
                 @foreach($b['itinerary'] as $item)
                     @if($item['date_label'] && $item['date_label'] !== $lastDay)
@@ -649,7 +643,7 @@
                         </div>
                     </div>
                 @endforeach
-                <div class="note">กำหนดการอาจปรับตามสภาพอากาศและหน้างานนะครับ</div>
+                <div class="note">{{ __('กำหนดการอาจปรับตามสภาพอากาศและหน้างานนะครับ') }}</div>
             </div>
         </div>
     @endif
@@ -659,7 +653,7 @@
         @php $meals = $b['trip']['meals']; @endphp
         <div class="card">
             <div class="sec">
-                <div class="sec-label">มื้ออาหาร</div>
+                <div class="sec-label">{{ __('มื้ออาหาร') }}</div>
                 <div class="big">{{ $meals['summary'] }}</div>
                 @foreach($meals['days'] as $day)
                     <div class="item">
@@ -670,7 +664,7 @@
                     </div>
                 @endforeach
                 @if($meals['self_count'] > 0)
-                    <div class="note">เตรียมเงินสำหรับมื้อที่จ่ายเองไว้ด้วยนะครับ ({{ $meals['self_count'] }} มื้อ)</div>
+                    <div class="note">{{ __('เตรียมเงินสำหรับมื้อที่จ่ายเองไว้ด้วยนะครับ (:meals มื้อ)', ['meals' => $meals['self_count']]) }}</div>
                 @endif
                 @if($meals['note'])
                     <div class="note">{{ $meals['note'] }}</div>
@@ -684,13 +678,13 @@
         <div class="card">
             @if($b['trip']['bring'])
                 <div class="sec">
-                    <div class="sec-label">สิ่งที่ต้องพกวันเดินทาง</div>
+                    <div class="sec-label">{{ __('สิ่งที่ต้องพกวันเดินทาง') }}</div>
                     <div class="big">{{ $b['trip']['bring'] }}</div>
                 </div>
             @endif
             @if(! empty($b['trip']['preparations']))
                 <div class="sec">
-                    <div class="sec-label">ของที่ควรเตรียม</div>
+                    <div class="sec-label">{{ __('ของที่ควรเตรียม') }}</div>
                     <ul class="list">
                         @foreach($b['trip']['preparations'] as $line)
                             <li>{{ is_array($line) ? ($line['title'] ?? json_encode($line, JSON_UNESCAPED_UNICODE)) : $line }}</li>
@@ -700,7 +694,7 @@
             @endif
             @if(! empty($b['trip']['must_know']))
                 <div class="sec">
-                    <div class="sec-label">เรื่องที่ควรรู้ก่อนไป</div>
+                    <div class="sec-label">{{ __('เรื่องที่ควรรู้ก่อนไป') }}</div>
                     <ul class="list">
                         @foreach($b['trip']['must_know'] as $line)
                             <li>{{ is_array($line) ? ($line['title'] ?? json_encode($line, JSON_UNESCAPED_UNICODE)) : $line }}</li>
@@ -715,15 +709,15 @@
     @if($b['weather'])
         <div class="card">
             <div class="sec">
-                <div class="sec-label">อากาศวันเดินทาง</div>
+                <div class="sec-label">{{ __('อากาศวันเดินทาง') }}</div>
                 <div class="big">
-                    {{ $b['weather']['description_th'] ?: 'พยากรณ์อากาศ' }}
+                    {{ $b['weather']['description_th'] ?: __('พยากรณ์อากาศ') }}
                     @if($b['weather']['temp_min'] !== null && $b['weather']['temp_max'] !== null)
                         · {{ round($b['weather']['temp_min']) }}–{{ round($b['weather']['temp_max']) }}°
                     @endif
                 </div>
                 @if(($b['weather']['pop'] ?? 0) > 0)
-                    <div class="sub">โอกาสมีฝน {{ round($b['weather']['pop'] * 100) }}%</div>
+                    <div class="sub">{{ __('โอกาสมีฝน :b%', ['b' => round($b['weather']['pop'] * 100)]) }}</div>
                 @endif
             </div>
         </div>
@@ -733,19 +727,19 @@
     @if(! $b['payment']['is_settled'])
         <div class="card">
             <div class="sec">
-                <div class="sec-label">ยอดที่ยังค้างอยู่</div>
-                <div class="money"><span class="k">ยอดรวม</span><span class="v">฿{{ number_format($b['payment']['total'], 0) }}</span></div>
-                <div class="money"><span class="k">ชำระแล้ว</span><span class="v">฿{{ number_format($b['payment']['paid'], 0) }}</span></div>
-                <div class="money due"><span class="k">คงเหลือ</span><span class="v">฿{{ number_format($b['payment']['outstanding'], 0) }}</span></div>
+                <div class="sec-label">{{ __('ยอดที่ยังค้างอยู่') }}</div>
+                <div class="money"><span class="k">{{ __('ยอดรวม') }}</span><span class="v">฿{{ number_format($b['payment']['total'], 0) }}</span></div>
+                <div class="money"><span class="k">{{ __('ชำระแล้ว') }}</span><span class="v">฿{{ number_format($b['payment']['paid'], 0) }}</span></div>
+                <div class="money due"><span class="k">{{ __('คงเหลือ') }}</span><span class="v">฿{{ number_format($b['payment']['outstanding'], 0) }}</span></div>
                 <div class="alert amber">
-                    <b>{{ $b['payment']['is_overdue'] ? 'เลยกำหนดชำระแล้วครับ' : 'ชำระก่อนวันเดินทางนะครับ' }}</b>
+                    <b>{{ $b['payment']['is_overdue'] ? __('เลยกำหนดชำระแล้วครับ') : __('ชำระก่อนวันเดินทางนะครับ') }}</b>
                     @if($b['payment']['due_label'])
-                        กำหนดชำระ {{ $b['payment']['due_label'] }}@if($b['payment']['installment_no']) (งวดที่ {{ $b['payment']['installment_no'] }})@endif
+                        {{ __('กำหนดชำระ :b', ['b' => $b['payment']['due_label']]) }}@if($b['payment']['installment_no']) {{ __('(งวดที่ :b)', ['b' => $b['payment']['installment_no']]) }}@endif
                     @else
-                        ชำระได้เลยจากลิงก์ด้านล่าง หรือทักทีมงานได้ครับ
+                        {{ __('ชำระได้เลยจากลิงก์ด้านล่าง หรือทักทีมงานได้ครับ') }}
                     @endif
                 </div>
-                <a class="btn amber" href="{{ $b['links']['pay'] }}">💳 ชำระเงิน</a>
+                <a class="btn amber" href="{{ $b['links']['pay'] }}">{{ __('💳 ชำระเงิน') }}</a>
             </div>
         </div>
     @endif
@@ -754,17 +748,17 @@
     @if($b['app']['show'])
         <div class="card">
             <div class="sec">
-                <div class="sec-label">มีอะไรอยู่ในแอปอีก</div>
+                <div class="sec-label">{{ __('มีอะไรอยู่ในแอปอีก') }}</div>
                 <ul class="list app-list">
-                    <li><b>ห้องแชทของรอบนี้</b> — คุยกับเพื่อนร่วมทริปและทีมงานก่อนออกเดินทาง</li>
-                    <li><b>QR เช็คอิน</b> — ให้ทีมงานสแกนหน้างาน ไม่ต้องขานชื่อทีละคน</li>
-                    <li><b>ติดตามรถแบบเรียลไทม์</b> — เห็นว่ารถถึงไหนแล้ววันเดินทาง</li>
+                    <li><b>{{ __('ห้องแชทของรอบนี้') }}</b> {{ __('— คุยกับเพื่อนร่วมทริปและทีมงานก่อนออกเดินทาง') }}</li>
+                    <li><b>{{ __('QR เช็คอิน') }}</b> {{ __('— ให้ทีมงานสแกนหน้างาน ไม่ต้องขานชื่อทีละคน') }}</li>
+                    <li><b>{{ __('ติดตามรถแบบเรียลไทม์') }}</b> {{ __('— เห็นว่ารถถึงไหนแล้ววันเดินทาง') }}</li>
                 </ul>
                 <div class="stores">
                     <a href="{{ $b['app']['ios'] }}" target="_blank" rel="noopener">App Store</a>
                     <a href="{{ $b['app']['android'] }}" target="_blank" rel="noopener">Google Play</a>
                 </div>
-                <div class="note">ใบเดินทางหน้านี้ยังเปิดได้เหมือนเดิมนะครับ ไม่โหลดก็ไม่เป็นไร</div>
+                <div class="note">{{ __('ใบเดินทางหน้านี้ยังเปิดได้เหมือนเดิมนะครับ ไม่โหลดก็ไม่เป็นไร') }}</div>
             </div>
         </div>
     @endif
@@ -773,8 +767,8 @@
     @if($b['links']['receipt'] ?? null)
         <div class="card">
             <div class="sec">
-                <div class="sec-label">เอกสาร</div>
-                <a class="btn ghost" href="{{ $b['links']['receipt'] }}">🧾 ใบเสร็จของการจองนี้</a>
+                <div class="sec-label">{{ __('เอกสาร') }}</div>
+                <a class="btn ghost" href="{{ $b['links']['receipt'] }}">{{ __('🧾 ใบเสร็จของการจองนี้') }}</a>
             </div>
         </div>
     @endif
@@ -784,18 +778,17 @@
          ไม่ต้องเห็นยอดเงินคงเหลือหรือปุ่มจ่ายเงินของเรา --}}
     <div class="card">
         <div class="sec">
-            <div class="sec-label">ให้ที่บ้านตามดูได้</div>
+            <div class="sec-label">{{ __('ให้ที่บ้านตามดูได้') }}</div>
             <div class="note" style="margin-top:0;">
-                ส่งลิงก์ติดตามให้คนที่บ้านได้เลยครับ เขาจะเห็นว่ารถถึงไหนแล้วและทริปเดินทางถึงจุดไหน
-                โดยไม่ต้องโหลดแอปและไม่เห็นข้อมูลการเงินของคุณ
+                {{ __('ส่งลิงก์ติดตามให้คนที่บ้านได้เลยครับ เขาจะเห็นว่ารถถึงไหนแล้วและทริปเดินทางถึงจุดไหน โดยไม่ต้องโหลดแอปและไม่เห็นข้อมูลการเงินของคุณ') }}
             </div>
             <a
                 class="btn ghost"
                 href="{{ $b['links']['track'] }}"
                 data-share="{{ $b['links']['track'] }}"
-                data-share-text="ติดตามทริป {{ $b['trip']['title'] }} ของเราได้ที่ลิงก์นี้เลยครับ"
-            >📤 ส่งลิงก์ให้ที่บ้าน</a>
-            <button class="btn ghost" type="button" data-print style="display:none;">🖨 พิมพ์ / เซฟเป็น PDF</button>
+                data-share-text="{{ __('ติดตามทริป :b ของเราได้ที่ลิงก์นี้เลยครับ', ['b' => $b['trip']['title']]) }}"
+            >{{ __('📤 ส่งลิงก์ให้ที่บ้าน') }}</a>
+            <button class="btn ghost" type="button" data-print style="display:none;">{{ __('🖨 พิมพ์ / เซฟเป็น PDF') }}</button>
         </div>
     </div>
 
@@ -805,19 +798,18 @@
     @if($b['ack']['open'] ?? false)
     <div class="card">
         <div class="sec">
-            <div class="sec-label">ทีมงานขอรบกวนนิดเดียว</div>
+            <div class="sec-label">{{ __('ทีมงานขอรบกวนนิดเดียว') }}</div>
             @if(($b['ack']['acknowledged'] ?? false) || session('acked'))
-                <div class="big">ขอบคุณครับ 🙏</div>
-                <div class="note">ทีมงานรู้แล้วว่าคุณได้อ่านใบเดินทางนี้แล้ว เจอกันวันเดินทางนะครับ</div>
+                <div class="big">{{ __('ขอบคุณครับ 🙏') }}</div>
+                <div class="note">{{ __('ทีมงานรู้แล้วว่าคุณได้อ่านใบเดินทางนี้แล้ว เจอกันวันเดินทางนะครับ') }}</div>
             @else
-                <div class="big">อ่านครบแล้วกดปุ่มนี้ให้หน่อยนะครับ</div>
+                <div class="big">{{ __('อ่านครบแล้วกดปุ่มนี้ให้หน่อยนะครับ') }}</div>
                 <div class="note">
-                    ทีมงานจะได้รู้ว่าข้อมูลถึงมือคุณแล้ว จะได้ไม่ต้องโทรไปรบกวนซ้ำ
-                    ถ้ามีตรงไหนไม่ตรงกับที่นัดกันไว้ โทรบอกได้เลยก่อนกดครับ
+                    {{ __('ทีมงานจะได้รู้ว่าข้อมูลถึงมือคุณแล้ว จะได้ไม่ต้องโทรไปรบกวนซ้ำ ถ้ามีตรงไหนไม่ตรงกับที่นัดกันไว้ โทรบอกได้เลยก่อนกดครับ') }}
                 </div>
                 <form class="ack-form" method="POST" action="{{ route('public.trip-brief.ack', request()->route('token')) }}">
                     @csrf
-                    <button type="submit" class="ack-btn">✓ รับทราบแล้ว</button>
+                    <button type="submit" class="ack-btn">{{ __('✓ รับทราบแล้ว') }}</button>
                 </form>
             @endif
         </div>
@@ -827,23 +819,23 @@
     {{-- ── ช่วยเหลือ ───────────────────────────────────────────── --}}
     <div class="card">
         <div class="sec">
-            <div class="sec-label">ต้องการความช่วยเหลือ</div>
+            <div class="sec-label">{{ __('ต้องการความช่วยเหลือ') }}</div>
             @if($b['support']['phone'])
-                <a class="btn" href="tel:{{ preg_replace('/\D+/', '', $b['support']['phone']) }}">📞 โทรหาทีมงาน {{ $b['support']['phone'] }}</a>
+                <a class="btn" href="tel:{{ preg_replace('/\D+/', '', $b['support']['phone']) }}">{{ __('📞 โทรหาทีมงาน :b', ['b' => $b['support']['phone']]) }}</a>
             @endif
             @if($b['support']['line_url'])
-                <a class="btn ghost" href="{{ $b['support']['line_url'] }}" target="_blank" rel="noopener">💬 ทักไลน์ {{ $b['support']['line_id'] }}</a>
+                <a class="btn ghost" href="{{ $b['support']['line_url'] }}" target="_blank" rel="noopener">{{ __('💬 ทักไลน์ :b', ['b' => $b['support']['line_id']]) }}</a>
             @endif
             @if($b['support']['hours'])
-                <div class="note">เวลาทำการ {{ $b['support']['hours'] }} · ช่วงอยู่ระหว่างทริป โทรหาทีมงานประจำรอบได้ตลอดครับ</div>
+                <div class="note">{{ __('เวลาทำการ :b · ช่วงอยู่ระหว่างทริป โทรหาทีมงานประจำรอบได้ตลอดครับ', ['b' => $b['support']['hours']]) }}</div>
             @endif
         </div>
     </div>
 
     <div class="foot">
-        <b>ลุยเลเขา</b> · ใบเดินทางของ {{ $b['booking']['ref'] }}<br>
-        หน้านี้อัปเดตตัวเองเสมอ เปิดซ้ำได้ตลอดจนจบทริป<br>
-        ส่งต่อให้คนที่บ้านเก็บไว้ได้เลยนะครับ
+        <b>{{ __('ลุยเลเขา') }}</b> {{ __('· ใบเดินทางของ :b', ['b' => $b['booking']['ref']]) }}<br>
+        {{ __('หน้านี้อัปเดตตัวเองเสมอ เปิดซ้ำได้ตลอดจนจบทริป') }}<br>
+        {{ __('ส่งต่อให้คนที่บ้านเก็บไว้ได้เลยนะครับ') }}
     </div>
 
 @endif
@@ -867,9 +859,9 @@
             }
 
             navigator.clipboard.writeText(url).then(function () {
-                el.textContent = '✓ คัดลอกลิงก์แล้ว ส่งต่อได้เลยครับ';
+                el.textContent = @json(__('✓ คัดลอกลิงก์แล้ว ส่งต่อได้เลยครับ'));
             }).catch(function () {
-                window.prompt('คัดลอกลิงก์นี้ไปส่งได้เลยครับ', url);
+                window.prompt(@json(__('คัดลอกลิงก์นี้ไปส่งได้เลยครับ')), url);
             });
         });
     });

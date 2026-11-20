@@ -12,12 +12,11 @@
 
 <div class="step">
     <span class="n">@include('intake.icon', ['name' => 'seat'])</span>
-    <h2>เลือกที่นั่งของคุณ</h2>
+    <h2>{{ __('เลือกที่นั่งของคุณ') }}</h2>
     <span class="rule"></span>
 </div>
 <p class="step-note">
-    เลือกที่นั่งที่ <strong>คุณ</strong> จะนั่ง เพื่อนในกลุ่มเลือกของตัวเองทีละคน
-    ที่นั่งที่มีคนเลือกไว้แล้วจะกดไม่ได้
+    {{ __('เลือกที่นั่งที่') }} <strong>{{ __('คุณ') }}</strong> {{ __('จะนั่ง เพื่อนในกลุ่มเลือกของตัวเองทีละคน ที่นั่งที่มีคนเลือกไว้แล้วจะกดไม่ได้') }}
 </p>
 
 @if ($seatsLeft === 0)
@@ -26,33 +25,32 @@
     <div class="callout callout--warn">
         @include('intake.icon', ['name' => 'alert'])
         <div>
-            <strong>ที่นั่งถูกเลือกไปหมดแล้ว</strong>
-            กรอกข้อมูลส่วนที่เหลือต่อได้เลย ทีมงานจะติดต่อกลับเรื่องที่นั่งที่ว่างหรือรอบอื่นให้คุณ
+            <strong>{{ __('ที่นั่งถูกเลือกไปหมดแล้ว') }}</strong>
+            {{ __('กรอกข้อมูลส่วนที่เหลือต่อได้เลย ทีมงานจะติดต่อกลับเรื่องที่นั่งที่ว่างหรือรอบอื่นให้คุณ') }}
         </div>
     </div>
 @else
     <div class="callout callout--warn">
         @include('intake.icon', ['name' => 'alert'])
         <div>
-            <strong>ที่นั่งนี้ยังไม่ถูกกันไว้ให้</strong>
-            ที่นั่งจะถูกกันให้ตอนกดจองในหน้าถัดไป ระหว่างนี้ถ้ามีคนจองและชำระเงินก่อน
-            ที่นั่งจะเป็นของคนนั้น — อยากได้ที่นั่งนี้ กรอกให้ครบแล้วกดจองและชำระเงินต่อได้เลย
+            <strong>{{ __('ที่นั่งนี้ยังไม่ถูกกันไว้ให้') }}</strong>
+            {{ __('ที่นั่งจะถูกกันให้ตอนกดจองในหน้าถัดไป ระหว่างนี้ถ้ามีคนจองและชำระเงินก่อน ที่นั่งจะเป็นของคนนั้น — อยากได้ที่นั่งนี้ กรอกให้ครบแล้วกดจองและชำระเงินต่อได้เลย') }}
         </div>
     </div>
 @endif
 
 <div class="f">
     <div class="seat-legend">
-        <span><i class="seat-dot seat-dot--free"></i> ว่าง</span>
-        <span><i class="seat-dot seat-dot--mine"></i> ที่นั่งของคุณ</span>
-        <span><i class="seat-dot seat-dot--taken"></i> มีคนเลือก/จองแล้ว</span>
-        <span class="seat-left">เหลือ {{ $seatsLeft }} ที่</span>
+        <span><i class="seat-dot seat-dot--free"></i> {{ __('ว่าง') }}</span>
+        <span><i class="seat-dot seat-dot--mine"></i> {{ __('ที่นั่งของคุณ') }}</span>
+        <span><i class="seat-dot seat-dot--taken"></i> {{ __('มีคนเลือก/จองแล้ว') }}</span>
+        <span class="seat-left">{{ __('เหลือ :seatsleft ที่', ['seatsleft' => $seatsLeft]) }}</span>
     </div>
 
     <div class="seat-vehicle">
         <div class="seat-front">
             <span>{{ $seatMap['front_label'] }}</span>
-            <span class="seat-driver">@include('intake.icon', ['name' => 'wheel']) คนขับ</span>
+            <span class="seat-driver">@include('intake.icon', ['name' => 'wheel']) {{ __('คนขับ') }}</span>
         </div>
 
         <div class="seat-grid" style="grid-template-columns: {{ collect($seatColumns)->map(fn ($column) => $column === '' ? '18px' : 'minmax(0, 1fr)')->implode(' ') }}">
@@ -66,7 +64,7 @@
                             <span class="seat-gap"></span>
                         @else
                             @php($taken = $seat['state'] !== 'available')
-                            <label class="seat @if ($taken) seat--taken @endif" title="{{ $seat['note'] ?: 'ว่าง' }}">
+                            <label class="seat @if ($taken) seat--taken @endif" title="{{ $seat['note'] ?: __('ว่าง') }}">
                                 <input type="radio" name="seat_id" value="{{ $seat['id'] }}"
                                        required @disabled($taken)
                                        @checked($selectedSeat === $seat['id'])>
@@ -87,6 +85,6 @@
     </div>
 
     @if ($seatMap['vehicle_option_label'])
-        <p class="hint">ผังของ {{ $seatMap['vehicle_option_label'] }} — ถ้าทีมงานเปลี่ยนคัน จะแจ้งให้เลือกใหม่</p>
+        <p class="hint">{{ __('ผังของ :seatmap — ถ้าทีมงานเปลี่ยนคัน จะแจ้งให้เลือกใหม่', ['seatmap' => $seatMap['vehicle_option_label']]) }}</p>
     @endif
 </div>

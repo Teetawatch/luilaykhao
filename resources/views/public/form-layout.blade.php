@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="{{ app()->getLocale() === 'en' ? 'en' : 'th' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -57,6 +57,7 @@
     </style>
 </head>
 <body>
+<x-page-lang-switch />
     <div class="wrap">
         @yield('content')
         <div class="footer">

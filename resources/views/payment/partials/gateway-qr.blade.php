@@ -9,10 +9,10 @@
 <div id="beam-live">
     <div class="qr-wrap">
         @if ($qr = data_get($beamPayment->raw_response, 'encodedImage.imageBase64Encoded'))
-            <img src="data:image/png;base64,{{ $qr }}" alt="QR พร้อมเพย์" id="beam-qr">
+            <img src="data:image/png;base64,{{ $qr }}" alt="{{ __('QR พร้อมเพย์') }}" id="beam-qr">
         @endif
         <div class="amount-sub" style="margin-top:8px;">
-            สแกนจ่ายผ่านแอปธนาคาร · จ่ายแล้วระบบยืนยันให้อัตโนมัติ ไม่ต้องแนบสลิป
+            {{ __('สแกนจ่ายผ่านแอปธนาคาร · จ่ายแล้วระบบยืนยันให้อัตโนมัติ ไม่ต้องแนบสลิป') }}
         </div>
         @if ($beamPayment->expires_at)
             <div class="amount-sub" id="beam-countdown" style="margin-top:4px;color:#059669;font-weight:700;"></div>
@@ -20,7 +20,7 @@
     </div>
 
     <div class="alert alert-success" id="beam-pending" style="text-align:center">
-        ⏳ กำลังรอการชำระเงิน — ไม่ต้องปิดหน้านี้
+        {{ __('⏳ กำลังรอการชำระเงิน — ไม่ต้องปิดหน้านี้') }}
     </div>
 
     {{--
@@ -28,9 +28,9 @@
         อยู่หมุนตลอด หน้าจอจึงไม่มีวินาทีไหนที่ดูเหมือนค้าง
     --}}
     <ol class="settle-steps">
-        <li><span class="settle-dot now"></span> สแกน QR ด้วยแอปธนาคาร</li>
-        <li class="todo"><span class="settle-dot todo"></span> รอธนาคารยืนยันว่าเงินเข้า</li>
-        <li class="todo"><span class="settle-dot todo"></span> บันทึกยอดที่ชำระให้อัตโนมัติ</li>
+        <li><span class="settle-dot now"></span> {{ __('สแกน QR ด้วยแอปธนาคาร') }}</li>
+        <li class="todo"><span class="settle-dot todo"></span> {{ __('รอธนาคารยืนยันว่าเงินเข้า') }}</li>
+        <li class="todo"><span class="settle-dot todo"></span> {{ __('บันทึกยอดที่ชำระให้อัตโนมัติ') }}</li>
     </ol>
 
     {{--
@@ -59,8 +59,8 @@
             'wallet' => 'M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z',
         ])
         <div class="checkout-alt">
-            <div class="checkout-or">หรือ</div>
-            <div class="checkout-head">จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet</div>
+            <div class="checkout-or">{{ __('หรือ') }}</div>
+            <div class="checkout-head">{{ __('จ่ายด้วยบัตร · ผ่อนบัตร · e-Wallet') }}</div>
             <div class="checkout-list">
                 @foreach ($methods as $m)
                     @if ($m['on'])
@@ -80,7 +80,7 @@
                                 </span>
                             @endif
                             @unless ($m['on'])
-                                <span class="checkout-tag">ยังไม่ถึงขั้นต่ำ</span>
+                                <span class="checkout-tag">{{ __('ยังไม่ถึงขั้นต่ำ') }}</span>
                             @endunless
                         </span>
                         @if ($m['on'])
@@ -95,11 +95,11 @@
             </div>
             <a class="checkout-btn" id="beam-checkout" href="{{ $checkoutUrl }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
-                ไปหน้าชำระเงิน ฿{{ number_format((float) $beamPayment->amount, 2) }}
+                {{ __('ไปหน้าชำระเงิน ฿:amount', ['amount' => number_format((float) $beamPayment->amount, 2)]) }}
             </a>
             <div class="checkout-trust">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-                <span>กรอกข้อมูลบัตรบนหน้าของ Beam โดยตรง เราไม่เห็นและไม่เก็บเลขบัตรของคุณ</span>
+                <span>{{ __('กรอกข้อมูลบัตรบนหน้าของ Beam โดยตรง เราไม่เห็นและไม่เก็บเลขบัตรของคุณ') }}</span>
             </div>
         </div>
     @endif
@@ -114,33 +114,33 @@
             <span class="settle-face">🏦</span>
         </div>
 
-        <div class="settle-title" id="beam-settle-title">กำลังตรวจสอบการชำระเงิน</div>
+        <div class="settle-title" id="beam-settle-title">{{ __('กำลังตรวจสอบการชำระเงิน') }}</div>
         <div class="settle-sub" id="beam-settle-sub">
-            ระบบกำลังรอผลจากธนาคาร ปกติใช้เวลาไม่เกินครึ่งนาที อย่าปิดหน้านี้และไม่ต้องจ่ายซ้ำ
+            {{ __('ระบบกำลังรอผลจากธนาคาร ปกติใช้เวลาไม่เกินครึ่งนาที อย่าปิดหน้านี้และไม่ต้องจ่ายซ้ำ') }}
         </div>
 
         <ol class="settle-steps">
-            <li class="done"><span class="settle-dot done">✓</span> ส่งรายการชำระเงินให้ธนาคารแล้ว</li>
-            <li><span class="settle-dot now"></span> รอธนาคารยืนยันว่าเงินเข้า</li>
-            <li class="todo"><span class="settle-dot todo"></span> บันทึกยอดที่ชำระให้อัตโนมัติ</li>
+            <li class="done"><span class="settle-dot done">✓</span> {{ __('ส่งรายการชำระเงินให้ธนาคารแล้ว') }}</li>
+            <li><span class="settle-dot now"></span> {{ __('รอธนาคารยืนยันว่าเงินเข้า') }}</li>
+            <li class="todo"><span class="settle-dot todo"></span> {{ __('บันทึกยอดที่ชำระให้อัตโนมัติ') }}</li>
         </ol>
 
-        <div class="settle-elapsed">รอมาแล้ว <span id="beam-settle-elapsed">0 วินาที</span></div>
+        <div class="settle-elapsed">{{ __('รอมาแล้ว') }} <span id="beam-settle-elapsed">{{ __('0 วินาที') }}</span></div>
 
         <button type="button" id="beam-not-yet"
             style="margin-top:16px;background:none;border:none;font-family:inherit;font-size:12.5px;font-weight:700;color:#94a3b8;text-decoration:underline;cursor:pointer">
-            ยังไม่ได้จ่าย · กลับไปสแกน QR
+            {{ __('ยังไม่ได้จ่าย · กลับไปสแกน QR') }}
         </button>
     </div>
 </div>
 
 <div class="alert alert-success" id="beam-paid" style="display:none;text-align:center">
-    ✅ รับชำระเงินเรียบร้อยแล้ว ขอบคุณครับ
+    {{ __('✅ รับชำระเงินเรียบร้อยแล้ว ขอบคุณครับ') }}
 </div>
 
 <div class="alert alert-error" id="beam-expired" style="display:none;text-align:center">
-    QR หมดอายุแล้ว —
-    <a href="" onclick="location.reload();return false;" style="color:#991b1b;font-weight:700">กดที่นี่เพื่อสร้างใหม่</a>
+    {{ __('QR หมดอายุแล้ว —') }}
+    <a href="" onclick="location.reload();return false;" style="color:#991b1b;font-weight:700">{{ __('กดที่นี่เพื่อสร้างใหม่') }}</a>
 </div>
 
 @push('beam-scripts')
@@ -187,7 +187,7 @@
             if (settling) return;
             settling = true;
             seconds = 0;
-            elapsedEl.textContent = '0 วินาที';
+            elapsedEl.textContent = @json(__('0 วินาที'));
             liveEl.style.display = 'none';
             settlingEl.style.display = '';
             poll();
@@ -220,13 +220,13 @@
             if (settling) {
                 seconds++;
                 elapsedEl.textContent = seconds < 60
-                    ? seconds + ' วินาที'
-                    : Math.floor(seconds / 60) + ' นาที ' + String(seconds % 60).padStart(2, '0') + ' วินาที';
+                    ? seconds + @json(__(' วินาที'))
+                    : Math.floor(seconds / 60) + @json(__(' นาที ')) + String(seconds % 60).padStart(2, '0') + @json(__(' วินาที'));
 
                 if (seconds === 45) {
-                    document.getElementById('beam-settle-title').textContent = 'ยังตรวจสอบอยู่ ใช้เวลานานกว่าปกติเล็กน้อย';
+                    document.getElementById('beam-settle-title').textContent = @json(__('ยังตรวจสอบอยู่ ใช้เวลานานกว่าปกติเล็กน้อย'));
                     document.getElementById('beam-settle-sub').textContent =
-                        'ธนาคารบางแห่งส่งผลช้ากว่าปกติ ระบบยังตามผลให้อยู่ หากเงินถูกตัดไปแล้วเราจะบันทึกให้เองเมื่อได้รับผล ไม่ต้องจ่ายซ้ำ';
+                        @json(__('ธนาคารบางแห่งส่งผลช้ากว่าปกติ ระบบยังตามผลให้อยู่ หากเงินถูกตัดไปแล้วเราจะบันทึกให้เองเมื่อได้รับผล ไม่ต้องจ่ายซ้ำ'));
                 }
             }
 
@@ -244,7 +244,7 @@
             if (countdownEl) {
                 var m = String(Math.floor(left / 60)).padStart(2, '0');
                 var s = String(left % 60).padStart(2, '0');
-                countdownEl.textContent = 'QR หมดอายุใน ' + m + ':' + s;
+                countdownEl.textContent = @json(__('QR หมดอายุใน ')) + m + ':' + s;
             }
         };
 

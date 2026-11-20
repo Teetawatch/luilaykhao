@@ -58,7 +58,7 @@ class PublicPaymentController extends Controller
         if ($booking->payment_type === 'deposit') {
             if (! $this->balancePaymentService->hasOutstandingBalance($booking)) {
                 return redirect()->route('public.pay.show', $token)
-                    ->with('status', 'ชำระครบแล้ว');
+                    ->with('status', __('ชำระครบแล้ว'));
             }
 
             $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());
@@ -71,7 +71,7 @@ class PublicPaymentController extends Controller
         $installment = $this->installmentPaymentService->nextDueInstallment($booking);
         if (! $installment) {
             return redirect()->route('public.pay.show', $token)
-                ->with('status', 'ชำระครบทุกงวดแล้ว');
+                ->with('status', __('ชำระครบทุกงวดแล้ว'));
         }
 
         $slipPath = $request->file('slip_image')->store('slips/'.date('Y/m'), MediaDisk::slipDisk());

@@ -1,6 +1,6 @@
 @extends('passenger-fill.layout')
 
-@section('title', $pass ? 'บัตรของ'.$pass['name'] : 'ไม่พบลิงก์')
+@section('title', $pass ? __('บัตรของ:name', ['name' => $pass['name']]) : __('ไม่พบลิงก์'))
 
 @push('styles')
 <style>
@@ -36,14 +36,14 @@
     <div class="card">
         <div class="done">
             <div class="tick">🔗</div>
-            <h1>ลิงก์นี้ใช้ไม่ได้แล้ว</h1>
-            <p>ลิงก์อาจถูกเปลี่ยนใหม่ หรือทริปจบไปแล้ว<br>ขอลิงก์ใหม่จากคนที่จองให้คุณได้เลย</p>
+            <h1>{{ __('ลิงก์นี้ใช้ไม่ได้แล้ว') }}</h1>
+            <p>{{ __('ลิงก์อาจถูกเปลี่ยนใหม่ หรือทริปจบไปแล้ว') }}<br>{{ __('ขอลิงก์ใหม่จากคนที่จองให้คุณได้เลย') }}</p>
         </div>
     </div>
 @else
     <div class="card">
         <div class="card-header">
-            <div class="brand">ลุยเลเขา</div>
+            <div class="brand">{{ __('ลุยเลเขา') }}</div>
             <h1>{{ $pass['trip_title'] }}</h1>
             @if ($pass['departure_label'])
                 <p>{{ $pass['departure_label'] }}</p>
@@ -58,49 +58,49 @@
                 <div class="alert alert-error">{{ session('error') }}</div>
             @endif
 
-            <p class="hello">สวัสดี <strong>{{ $pass['name'] }}</strong> 👋</p>
+            <p class="hello">{{ __('สวัสดี') }} <strong>{{ $pass['name'] }}</strong> 👋</p>
             <p class="lead" style="margin-bottom: 0">
-                นี่คือลิงก์ของคุณสำหรับทริปนี้ เก็บไว้เปิดตอนวันเดินทาง
+                {{ __('นี่คือลิงก์ของคุณสำหรับทริปนี้ เก็บไว้เปิดตอนวันเดินทาง') }}
                 @if ($pass['checked_in'])
-                    <br><span class="pill pill-ok">ขึ้นรถแล้ว {{ $pass['checked_in_label'] }} น.</span>
+                    <br><span class="pill pill-ok">{{ __('ขึ้นรถแล้ว :pass น.', ['pass' => $pass['checked_in_label']]) }}</span>
                 @elseif ($pass['not_going'])
-                    <br><span class="pill pill-warn">แจ้งไว้ว่าไม่ไป</span>
+                    <br><span class="pill pill-warn">{{ __('แจ้งไว้ว่าไม่ไป') }}</span>
                 @elseif (! $pass['confirmed'])
-                    <br><span class="pill pill-muted">รอคนจองชำระเงิน</span>
+                    <br><span class="pill pill-muted">{{ __('รอคนจองชำระเงิน') }}</span>
                 @endif
             </p>
 
             <ul class="facts">
                 @if ($pass['departs_label'])
-                    <li><span class="k">ออกเดินทาง</span><span>{{ $pass['departs_label'] }}</span></li>
+                    <li><span class="k">{{ __('ออกเดินทาง') }}</span><span>{{ $pass['departs_label'] }}</span></li>
                 @endif
                 @if ($pass['pickup_label'])
                     <li>
-                        <span class="k">จุดขึ้นรถ</span>
+                        <span class="k">{{ __('จุดขึ้นรถ') }}</span>
                         <span>
-                            {{ $pass['pickup_label'] }}@if ($pass['pickup_time']) · {{ $pass['pickup_time'] }} น.@endif
+                            {{ $pass['pickup_label'] }}@if ($pass['pickup_time']) {{ __('· :pass น.', ['pass' => $pass['pickup_time']]) }}@endif
                             @if ($pass['pickup_map_url'])
-                                <br><a href="{{ $pass['pickup_map_url'] }}" target="_blank" rel="noopener">เปิดแผนที่</a>
+                                <br><a href="{{ $pass['pickup_map_url'] }}" target="_blank" rel="noopener">{{ __('เปิดแผนที่') }}</a>
                             @endif
                         </span>
                     </li>
                 @endif
                 @if ($pass['trip_location'])
-                    <li><span class="k">สถานที่</span><span>{{ $pass['trip_location'] }}</span></li>
+                    <li><span class="k">{{ __('สถานที่') }}</span><span>{{ $pass['trip_location'] }}</span></li>
                 @endif
             </ul>
 
             {{-- บัตรขึ้นรถ --}}
             @if (! $pass['not_going'] && ($pass['show_qr'] || $pass['qr_pending']))
                 <div class="block" id="pass">
-                    <h2>บัตรขึ้นรถของคุณ</h2>
+                    <h2>{{ __('บัตรขึ้นรถของคุณ') }}</h2>
                     @if ($pass['show_qr'])
-                        <p>ให้ทีมงานสแกน QR นี้ที่จุดขึ้นรถ — เช็คอินเฉพาะคุณ ไม่ต้องรอคนจอง</p>
-                        <div class="qr"><img src="{{ $pass['qr'] }}" alt="QR บัตรขึ้นรถของ {{ $pass['name'] }}"></div>
+                        <p>{{ __('ให้ทีมงานสแกน QR นี้ที่จุดขึ้นรถ — เช็คอินเฉพาะคุณ ไม่ต้องรอคนจอง') }}</p>
+                        <div class="qr"><img src="{{ $pass['qr'] }}" alt="{{ __('QR บัตรขึ้นรถของ :pass', ['pass' => $pass['name']]) }}"></div>
                         <div class="code">{{ $pass['code'] }}</div>
-                        <p class="tiny">แคปหน้าจอเก็บไว้ได้ เผื่อจุดขึ้นรถไม่มีสัญญาณ</p>
+                        <p class="tiny">{{ __('แคปหน้าจอเก็บไว้ได้ เผื่อจุดขึ้นรถไม่มีสัญญาณ') }}</p>
                     @else
-                        <p>QR สำหรับขึ้นรถจะขึ้นที่นี่ตั้งแต่วันก่อนเดินทาง เปิดลิงก์นี้อีกครั้งตอนนั้นได้เลย</p>
+                        <p>{{ __('QR สำหรับขึ้นรถจะขึ้นที่นี่ตั้งแต่วันก่อนเดินทาง เปิดลิงก์นี้อีกครั้งตอนนั้นได้เลย') }}</p>
                     @endif
                 </div>
             @endif
@@ -108,11 +108,11 @@
             {{-- ข้อมูลของตัวเอง --}}
             @if ($pass['needs_fill'])
                 <div class="block">
-                    <h2>กรอกข้อมูลของคุณ</h2>
-                    <p>ชื่อ-นามสกุลจริงสำหรับทำประกัน เบอร์ติดต่อ และเรื่องสุขภาพที่ทีมงานควรรู้ — ใช้เวลาไม่ถึงนาที ไม่ต้องสมัครสมาชิก</p>
+                    <h2>{{ __('กรอกข้อมูลของคุณ') }}</h2>
+                    <p>{{ __('ชื่อ-นามสกุลจริงสำหรับทำประกัน เบอร์ติดต่อ และเรื่องสุขภาพที่ทีมงานควรรู้ — ใช้เวลาไม่ถึงนาที ไม่ต้องสมัครสมาชิก') }}</p>
                     <form method="POST" action="{{ route('public.friend-pass.fill', $pass['token']) }}" style="margin-top: 12px">
                         @csrf
-                        <button type="submit" class="btn">กรอกข้อมูลของฉัน</button>
+                        <button type="submit" class="btn">{{ __('กรอกข้อมูลของฉัน') }}</button>
                     </form>
                 </div>
             @endif
@@ -120,23 +120,23 @@
             {{-- แบบฟอร์มอุทยาน --}}
             @if ($pass['permit'])
                 <div class="block">
-                    <h2>แบบฟอร์มอุทยาน</h2>
+                    <h2>{{ __('แบบฟอร์มอุทยาน') }}</h2>
                     @if ($pass['permit']['signed'])
-                        <p><span class="pill pill-ok">✓ เซ็นแล้ว</span></p>
+                        <p><span class="pill pill-ok">{{ __('✓ เซ็นแล้ว') }}</span></p>
                     @else
-                        <p>อุทยานให้ผู้เดินทางทุกคนเซ็นแบบฟอร์มก่อนลงทะเบียน@if ($pass['permit']['deadline_label']) — <strong>เซ็นภายใน {{ $pass['permit']['deadline_label'] }}</strong>@endif</p>
-                        <a class="btn" href="{{ $pass['permit']['url'] }}" style="margin-top: 12px">อ่านและเซ็นแบบฟอร์ม</a>
+                        <p>{{ __('อุทยานให้ผู้เดินทางทุกคนเซ็นแบบฟอร์มก่อนลงทะเบียน') }}@if ($pass['permit']['deadline_label']) — <strong>{{ __('เซ็นภายใน :pass', ['pass' => $pass['permit']['deadline_label']]) }}</strong>@endif</p>
+                        <a class="btn" href="{{ $pass['permit']['url'] }}" style="margin-top: 12px">{{ __('อ่านและเซ็นแบบฟอร์ม') }}</a>
                     @endif
                 </div>
             @endif
 
             {{-- เข้าแอป --}}
             <div class="block">
-                <h2>ห้องแชทของทริป</h2>
+                <h2>{{ __('ห้องแชทของทริป') }}</h2>
                 @if ($pass['join_url'])
-                    <p>คุยกับทีมงานและเพื่อนร่วมทริป ดูตำแหน่งรถ และรับแจ้งเตือนวันเดินทาง — เข้าร่วมในแอปด้วยชื่อของคุณ</p>
-                    <a class="btn" href="{{ $pass['join_url'] }}" style="margin-top: 12px">เข้าร่วมทริปในแอป</a>
-                    <p class="tiny">ยังไม่มีแอป? โหลดก่อนแล้วกลับมากดปุ่มนี้อีกครั้ง</p>
+                    <p>{{ __('คุยกับทีมงานและเพื่อนร่วมทริป ดูตำแหน่งรถ และรับแจ้งเตือนวันเดินทาง — เข้าร่วมในแอปด้วยชื่อของคุณ') }}</p>
+                    <a class="btn" href="{{ $pass['join_url'] }}" style="margin-top: 12px">{{ __('เข้าร่วมทริปในแอป') }}</a>
+                    <p class="tiny">{{ __('ยังไม่มีแอป? โหลดก่อนแล้วกลับมากดปุ่มนี้อีกครั้ง') }}</p>
                     @if ($pass['ios_url'] || $pass['android_url'])
                         <div class="stores">
                             @if ($pass['ios_url'])<a href="{{ $pass['ios_url'] }}" target="_blank" rel="noopener">App Store</a>@endif
@@ -144,7 +144,7 @@
                         </div>
                     @endif
                 @else
-                    <p>ชื่อนี้เข้าร่วมทริปในแอปแล้ว เปิดแอปลุยเลเขาเพื่อดูห้องแชทและบัตรขึ้นรถได้เลย</p>
+                    <p>{{ __('ชื่อนี้เข้าร่วมทริปในแอปแล้ว เปิดแอปลุยเลเขาเพื่อดูห้องแชทและบัตรขึ้นรถได้เลย') }}</p>
                 @endif
             </div>
 
@@ -152,23 +152,23 @@
             @if ($pass['attendance_open'])
                 <div class="block">
                     @if ($pass['not_going'])
-                        <h2>เปลี่ยนใจ ไปได้แล้ว?</h2>
-                        <p>บอกทีมงานได้จนถึงเวลารถออก</p>
+                        <h2>{{ __('เปลี่ยนใจ ไปได้แล้ว?') }}</h2>
+                        <p>{{ __('บอกทีมงานได้จนถึงเวลารถออก') }}</p>
                         <form method="POST" action="{{ route('public.friend-pass.attendance', $pass['token']) }}" style="margin-top: 12px">
                             @csrf
                             <input type="hidden" name="not_going" value="0">
-                            <button type="submit" class="btn btn-outline">ฉันไปได้</button>
+                            <button type="submit" class="btn btn-outline">{{ __('ฉันไปได้') }}</button>
                         </form>
                     @else
-                        <h2>ไปไม่ได้?</h2>
-                        <p>บอกไว้ก่อน ทีมงานจะได้ไม่ต้องรอคุณที่จุดขึ้นรถ ถ้ามีคนไปแทน ให้คนจองกด “ส่งต่อที่นั่ง” ในแอป ชื่อในประกันจะได้ตรงตัวคน</p>
+                        <h2>{{ __('ไปไม่ได้?') }}</h2>
+                        <p>{{ __('บอกไว้ก่อน ทีมงานจะได้ไม่ต้องรอคุณที่จุดขึ้นรถ ถ้ามีคนไปแทน ให้คนจองกด “ส่งต่อที่นั่ง” ในแอป ชื่อในประกันจะได้ตรงตัวคน') }}</p>
                         <form method="POST" action="{{ route('public.friend-pass.attendance', $pass['token']) }}" style="margin-top: 12px"
-                              onsubmit="return confirm('แจ้งทีมงานว่าคุณไม่ไปทริปนี้?')">
+                              onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('แจ้งทีมงานว่าคุณไม่ไปทริปนี้?')) }})">
                             @csrf
                             <input type="hidden" name="not_going" value="1">
-                            <button type="submit" class="btn btn-quiet">ฉันไปไม่ได้</button>
+                            <button type="submit" class="btn btn-quiet">{{ __('ฉันไปไม่ได้') }}</button>
                         </form>
-                        <p class="tiny">การแจ้งไม่ไปไม่ใช่การยกเลิกการจอง และไม่ได้คืนเงินอัตโนมัติ</p>
+                        <p class="tiny">{{ __('การแจ้งไม่ไปไม่ใช่การยกเลิกการจอง และไม่ได้คืนเงินอัตโนมัติ') }}</p>
                     @endif
                 </div>
             @endif

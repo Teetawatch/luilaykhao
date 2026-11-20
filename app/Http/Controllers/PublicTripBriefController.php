@@ -50,7 +50,7 @@ class PublicTripBriefController extends Controller
         $brief = $this->briefs->forToken($token);
 
         if ($brief === null) {
-            return response('ไม่พบใบเดินทางนี้', 404);
+            return response(__('ไม่พบใบเดินทางนี้'), 404);
         }
 
         return response(TripBriefCalendar::build($brief), 200, [

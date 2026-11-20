@@ -1,6 +1,6 @@
 @extends('passenger-fill.layout')
 
-@section('title', $p ? 'เซ็นแบบฟอร์ม · '.$p['name'] : 'ไม่พบลิงก์')
+@section('title', $p ? __('เซ็นแบบฟอร์ม · :name', ['name' => $p['name']]) : __('ไม่พบลิงก์'))
 
 @push('styles')
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,14 +55,14 @@
     <div class="card">
         <div class="done">
             <div class="tick">🔗</div>
-            <h1>ลิงก์นี้ใช้ไม่ได้แล้ว</h1>
-            <p>ลิงก์อาจถูกเปลี่ยนใหม่ ทริปจบไปแล้ว หรือทริปนี้ไม่ต้องเซ็นแบบฟอร์ม<br>สอบถามคนที่จองให้คุณ หรือทักทีมงานได้เลย</p>
+            <h1>{{ __('ลิงก์นี้ใช้ไม่ได้แล้ว') }}</h1>
+            <p>{{ __('ลิงก์อาจถูกเปลี่ยนใหม่ ทริปจบไปแล้ว หรือทริปนี้ไม่ต้องเซ็นแบบฟอร์ม') }}<br>{{ __('สอบถามคนที่จองให้คุณ หรือทักทีมงานได้เลย') }}</p>
         </div>
     </div>
 @else
     <div class="card">
         <div class="card-header">
-            <div class="brand">ลุยเลเขา · เซ็นแบบฟอร์มอุทยาน</div>
+            <div class="brand">{{ __('ลุยเลเขา · เซ็นแบบฟอร์มอุทยาน') }}</div>
             <h1>{{ $p['name'] }}</h1>
             <p>{{ $p['trip_title'] }} · {{ $p['form_name'] }}</p>
         </div>
@@ -80,35 +80,34 @@
 
             <div class="status">
                 @if ($p['signed'])
-                    <span class="pill pill-ok">✓ เซ็นแล้ว</span>
+                    <span class="pill pill-ok">{{ __('✓ เซ็นแล้ว') }}</span>
                     <small>{{ $p['signed_label'] }}</small>
                 @elseif ($p['deadline_label'])
                     <span class="pill {{ $p['overdue'] ? 'pill-bad' : 'pill-warn' }}">
-                        {{ $p['overdue'] ? 'เลยกำหนดแล้ว' : 'เซ็นภายใน' }} {{ $p['deadline_label'] }}
+                        {{ $p['overdue'] ? __('เลยกำหนดแล้ว') : __('เซ็นภายใน') }} {{ $p['deadline_label'] }}
                     </span>
                 @else
-                    <span class="pill pill-warn">ยังไม่ได้เซ็น</span>
+                    <span class="pill pill-warn">{{ __('ยังไม่ได้เซ็น') }}</span>
                 @endif
             </div>
 
             <p class="muted">
-                {{ $p['intro'] ?? 'อุทยานให้ผู้เดินทางทุกคนยื่นแบบฟอร์มนี้ตอนลงทะเบียนล่วงหน้า เราเติมข้อมูลที่คุณให้ไว้ตอนจองให้แล้ว (ข้อมูลส่วนตัวถูกปิดไว้บางส่วนในหน้านี้)' }}
-                — <strong>อ่านให้ครบ</strong> แล้วเซ็นในกรอบด้านล่าง
-                ช่องที่ยังว่าง ทีมงานจะกรอกให้หรือสอบถามเพิ่มเติม
+                {{ $p['intro'] ?? __('อุทยานให้ผู้เดินทางทุกคนยื่นแบบฟอร์มนี้ตอนลงทะเบียนล่วงหน้า เราเติมข้อมูลที่คุณให้ไว้ตอนจองให้แล้ว (ข้อมูลส่วนตัวถูกปิดไว้บางส่วนในหน้านี้)') }}
+                — <strong>{{ __('อ่านให้ครบ') }}</strong> {{ __('แล้วเซ็นในกรอบด้านล่าง ช่องที่ยังว่าง ทีมงานจะกรอกให้หรือสอบถามเพิ่มเติม') }}
             </p>
 
             @if (! empty($p['missing_profile']))
                 {{-- ฟอร์มของสตาฟเติมจากโปรไฟล์ — ช่องที่ว่างต้องไปกรอกในแอปก่อน --}}
                 <div class="alert alert-error">
-                    โปรไฟล์ของคุณยังขาด: {{ implode(', ', $p['missing_profile']) }} — กรอกในแอป (โปรไฟล์ › แก้ไขข้อมูลส่วนตัว) แล้วเปิดลิงก์นี้ใหม่ ช่องนั้นในแบบฟอร์มจะได้ไม่ว่าง
+                    {{ __('โปรไฟล์ของคุณยังขาด: :p — กรอกในแอป (โปรไฟล์ › แก้ไขข้อมูลส่วนตัว) แล้วเปิดลิงก์นี้ใหม่ ช่องนั้นในแบบฟอร์มจะได้ไม่ว่าง', ['p' => implode(', ', $p['missing_profile'])]) }}
                 </div>
             @endif
 
-            <div class="step">1. อ่านแบบฟอร์ม</div>
+            <div class="step">{{ __('1. อ่านแบบฟอร์ม') }}</div>
             @foreach ($p['pages'] as $i => $page)
-                <a class="zoom" href="{{ $page['url'] }}" target="_blank" rel="noopener">🔍 เปิดหน้า {{ $i + 1 }} แบบเต็มจอ</a>
+                <a class="zoom" href="{{ $page['url'] }}" target="_blank" rel="noopener">{{ __('🔍 เปิดหน้า :i แบบเต็มจอ', ['i' => $i + 1]) }}</a>
                 <div class="pf-page" data-width-mm="{{ $page['width_mm'] }}">
-                    <img src="{{ $page['url'] }}" alt="แบบฟอร์มหน้า {{ $i + 1 }}">
+                    <img src="{{ $page['url'] }}" alt="{{ __('แบบฟอร์มหน้า :i', ['i' => $i + 1]) }}">
                     @foreach ($p['fields'] as $f)
                         @continue($f['page'] !== $i)
                         <div class="pf-f {{ $f['type'] === 'check' ? 'check' : '' }} {{ $f['type'] === 'signature' ? 'sig' : '' }}"
@@ -130,9 +129,9 @@
                         @endphp
                         @if ($ask->isNotEmpty())
                             {{-- ภูมิลำเนา/โทรศัพท์บ้าน/คำถามที่แอดมินตั้ง — อุทยานบังคับ แต่เราไม่เก็บในการจอง จึงถามตรงนี้ --}}
-                            <div class="step">2. กรอกข้อมูลที่อุทยานต้องการ</div>
+                            <div class="step">{{ __('2. กรอกข้อมูลที่อุทยานต้องการ') }}</div>
                             <p class="muted" style="margin-bottom: 12px">
-                                อุทยานบังคับกรอกทุกช่อง — เราใช้ข้อมูลนี้เฉพาะในแบบฟอร์มฉบับนี้ ไม่เก็บไว้ในการจอง และลบทิ้งหลังจบทริป
+                                {{ __('อุทยานบังคับกรอกทุกช่อง — เราใช้ข้อมูลนี้เฉพาะในแบบฟอร์มฉบับนี้ ไม่เก็บไว้ในการจอง และลบทิ้งหลังจบทริป') }}
                             </p>
                             <div id="ask-fields">
                                 @foreach ($ask as $key => $item)
@@ -147,7 +146,7 @@
                                                @if (! empty($item['hint'])) placeholder="{{ $item['hint'] }}" @endif
                                                autocomplete="off" class="ask-input">
                                         @if ($item['allow_none'])
-                                            <label class="none"><input type="checkbox" data-none="{{ $key }}" @checked(old('extra.'.$key) === '-')> ไม่มี</label>
+                                            <label class="none"><input type="checkbox" data-none="{{ $key }}" @checked(old('extra.'.$key) === '-')> {{ __('ไม่มี') }}</label>
                                         @endif
                                     </div>
                                 @endforeach
@@ -156,40 +155,40 @@
                                 @endif
                                 <label class="check" style="margin-top: 4px">
                                     <input type="checkbox" id="remember-address">
-                                    <span>จำ{{ $askAddress ? 'ที่อยู่' : 'ข้อมูล' }}นี้ไว้ในเครื่องนี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)</span>
+                                    <span>{{ __('จำ:askaddressนี้ไว้ในเครื่องนี้ (ไม่ส่งขึ้นเซิร์ฟเวอร์ ใช้กรอกให้ครั้งหน้า)', ['askaddress' => $askAddress ? __('ที่อยู่') : __('ข้อมูล')]) }}</span>
                                 </label>
                             </div>
                         @endif
 
-                        <div class="step">{{ $ask->isNotEmpty() ? '3' : '2' }}. เซ็นชื่อ</div>
-                        <p class="muted" style="margin-bottom: 10px">ลายเซ็นนี้จะไปอยู่ในช่องสีเหลืองของแบบฟอร์ม</p>
+                        <div class="step">{{ __(':isnotempty. เซ็นชื่อ', ['isnotempty' => $ask->isNotEmpty() ? '3' : '2']) }}</div>
+                        <p class="muted" style="margin-bottom: 10px">{{ __('ลายเซ็นนี้จะไปอยู่ในช่องสีเหลืองของแบบฟอร์ม') }}</p>
 
                         <div class="pad-wrap">
                             <canvas id="pad"></canvas>
                             <div class="pad-line"></div>
-                            <div class="pad-hint" id="pad-hint">ใช้นิ้ววาดลายเซ็นตรงนี้</div>
+                            <div class="pad-hint" id="pad-hint">{{ __('ใช้นิ้ววาดลายเซ็นตรงนี้') }}</div>
                         </div>
                         <div class="pad-tools">
-                            <button type="button" class="link-btn" id="pad-clear">ล้างแล้วเซ็นใหม่</button>
+                            <button type="button" class="link-btn" id="pad-clear">{{ __('ล้างแล้วเซ็นใหม่') }}</button>
                         </div>
 
                         <label class="check" style="align-items: flex-start">
                             <input type="checkbox" name="accept" value="1" id="accept" style="margin-top: 2px; flex-shrink: 0">
-                            <span>ข้าพเจ้า {{ $p['name'] }} ได้อ่านข้อความในแบบฟอร์มนี้ครบถ้วนแล้ว และยินยอมให้ใช้ลายเซ็นนี้ลงในแบบฟอร์มฉบับนี้</span>
+                            <span>{{ __('ข้าพเจ้า :p ได้อ่านข้อความในแบบฟอร์มนี้ครบถ้วนแล้ว และยินยอมให้ใช้ลายเซ็นนี้ลงในแบบฟอร์มฉบับนี้', ['p' => $p['name']]) }}</span>
                         </label>
 
-                        <button type="submit" class="btn" id="sign-submit" disabled>ยืนยันลายเซ็น</button>
+                        <button type="submit" class="btn" id="sign-submit" disabled>{{ __('ยืนยันลายเซ็น') }}</button>
                     </form>
-                    <p class="privacy">เราเก็บลายเซ็นไว้เฉพาะเพื่อยื่นแบบฟอร์มนี้กับอุทยาน และลบทิ้งหลังจบทริป</p>
+                    <p class="privacy">{{ __('เราเก็บลายเซ็นไว้เฉพาะเพื่อยื่นแบบฟอร์มนี้กับอุทยาน และลบทิ้งหลังจบทริป') }}</p>
                 </div>
 
                 @if ($p['signed'])
                     <div class="resign">
-                        <button type="button" class="link-btn" id="resign">เซ็นผิด? เซ็นใหม่</button>
+                        <button type="button" class="link-btn" id="resign">{{ __('เซ็นผิด? เซ็นใหม่') }}</button>
                     </div>
                 @endif
             @elseif (! $p['signed'])
-                <p class="muted" style="margin-top: 14px">ตอนนี้เซ็นผ่านลิงก์นี้ไม่ได้แล้ว ทักทีมงานได้เลยครับ</p>
+                <p class="muted" style="margin-top: 14px">{{ __('ตอนนี้เซ็นผ่านลิงก์นี้ไม่ได้แล้ว ทักทีมงานได้เลยครับ') }}</p>
             @endif
         </div>
     </div>
@@ -286,7 +285,7 @@
                 if (!drawn) { e.preventDefault(); return; }
                 document.getElementById('signature-input').value = canvas.toDataURL('image/png');
                 submit.disabled = true;
-                submit.textContent = 'กำลังบันทึก…';
+                submit.textContent = @json(__('กำลังบันทึก…'));
             });
 
             resize();
@@ -352,14 +351,14 @@
                     li.addEventListener('click', function () { choose(r); });
                     results.appendChild(li);
                 });
-                if (!results.children.length) results.innerHTML = '<li><small>ไม่พบ ลองพิมพ์ชื่อตำบลหรืออำเภอ</small></li>';
+                if (!results.children.length) results.innerHTML = @json(__('<li><small>ไม่พบ ลองพิมพ์ชื่อตำบลหรืออำเภอ</small></li>'));
             }
             if (search) {
                 search.addEventListener('focus', function () {
                     if (rows) return;
                     fetch('/api/v1/thai-address').then(function (r) { return r.json(); })
                         .then(function (d) { rows = d.rows; render(); })
-                        .catch(function () { results.innerHTML = '<li><small>โหลดรายชื่อไม่สำเร็จ ลองใหม่อีกครั้ง</small></li>'; rows = null; });
+                        .catch(function () { results.innerHTML = @json(__('<li><small>โหลดรายชื่อไม่สำเร็จ ลองใหม่อีกครั้ง</small></li>')); rows = null; });
                 });
                 search.addEventListener('input', render);
                 if (field('province').value) chosen.textContent = '✓ ' + label([field('sub_district').value, field('district').value, field('province').value, '']);
@@ -389,7 +388,7 @@
                     // หยุดตัวจัดการของแผ่นเซ็นด้วย ไม่งั้นปุ่มค้างเป็น "กำลังบันทึก…"
                     e.preventDefault();
                     e.stopImmediatePropagation();
-                    alert(missing.type === 'hidden' ? 'กรุณาเลือกแขวง/ตำบลจากรายการ' : 'กรุณากรอกข้อมูลให้ครบ (ช่องที่ไม่มีให้ติ๊ก "ไม่มี")');
+                    alert(missing.type === 'hidden' ? @json(__('กรุณาเลือกแขวง/ตำบลจากรายการ')) : @json(__('กรุณากรอกข้อมูลให้ครบ (ช่องที่ไม่มีให้ติ๊ก "ไม่มี")')));
                     (missing.type === 'hidden' ? search : missing).focus();
                     return;
                 }

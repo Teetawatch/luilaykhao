@@ -44,10 +44,10 @@ class PublicAccountClaimController extends Controller
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string', 'min:8'],
         ], [
-            'email.required' => 'กรุณากรอกอีเมล',
-            'email.email' => 'รูปแบบอีเมลไม่ถูกต้อง',
-            'password.required' => 'กรุณาตั้งรหัสผ่าน',
-            'password.min' => 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร',
+            'email.required' => __('กรุณากรอกอีเมล'),
+            'email.email' => __('รูปแบบอีเมลไม่ถูกต้อง'),
+            'password.required' => __('กรุณาตั้งรหัสผ่าน'),
+            'password.min' => __('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'),
         ]);
 
         $email = mb_strtolower(trim($request->input('email')));
@@ -59,7 +59,7 @@ class PublicAccountClaimController extends Controller
             if (! $existing->password || ! Hash::check($request->input('password'), $existing->password)) {
                 return back()
                     ->withInput($request->only('email'))
-                    ->withErrors(['email' => 'อีเมลนี้มีบัญชีอยู่แล้ว กรุณากรอกรหัสผ่านของบัญชีเดิมเพื่อรับการจอง']);
+                    ->withErrors(['email' => __('อีเมลนี้มีบัญชีอยู่แล้ว กรุณากรอกรหัสผ่านของบัญชีเดิมเพื่อรับการจอง')]);
             }
 
             $moved = $this->claims->mergeInto($existing, $shadow);

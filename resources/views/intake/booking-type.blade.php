@@ -4,7 +4,7 @@
      และมันเปลี่ยนสองอย่างตามมาทันที: ราคา กับการมี/ไม่มีจุดขึ้นรถ --}}
 <div class="step">
     <span class="n">@include('intake.icon', ['name' => 'bus'])</span>
-    <h2>เดินทางแบบไหน</h2>
+    <h2>{{ __('เดินทางแบบไหน') }}</h2>
     <span class="rule"></span>
 </div>
 
@@ -14,20 +14,20 @@
             <input type="radio" name="booking_type" value="{{ \App\Models\IntakeLink::TYPE_NORMAL }}"
                    @checked(old('booking_type', \App\Models\IntakeLink::TYPE_NORMAL) !== \App\Models\IntakeLink::TYPE_JOIN)>
             <span class="choice-card">
-                <strong>ไปกับรถของทริป</strong>
-                <span class="choice-note">ขึ้นรถที่จุดนัดหมาย แล้วไป-กลับพร้อมกันทั้งกลุ่ม</span>
+                <strong>{{ __('ไปกับรถของทริป') }}</strong>
+                <span class="choice-note">{{ __('ขึ้นรถที่จุดนัดหมาย แล้วไป-กลับพร้อมกันทั้งกลุ่ม') }}</span>
             </span>
         </label>
         <label class="choice">
             <input type="radio" name="booking_type" value="{{ \App\Models\IntakeLink::TYPE_JOIN }}"
                    @checked(old('booking_type') === \App\Models\IntakeLink::TYPE_JOIN)>
             <span class="choice-card">
-                <strong>จอยทริป — เดินทางไปเอง</strong>
-                <span class="choice-note">ขับรถไปเจอกันที่จุดหมาย ไม่มีรถรับ ราคาคนละแบบกับแบบมีรถ</span>
+                <strong>{{ __('จอยทริป — เดินทางไปเอง') }}</strong>
+                <span class="choice-note">{{ __('ขับรถไปเจอกันที่จุดหมาย ไม่มีรถรับ ราคาคนละแบบกับแบบมีรถ') }}</span>
             </span>
         </label>
     </div>
-    <p class="hint">ยังไม่แน่ใจก็เลือกไว้ก่อนได้ ทีมงานจะยืนยันกับคุณอีกครั้งก่อนจอง</p>
+    <p class="hint">{{ __('ยังไม่แน่ใจก็เลือกไว้ก่อนได้ ทีมงานจะยืนยันกับคุณอีกครั้งก่อนจอง') }}</p>
 </div>
 
 @push('scripts')

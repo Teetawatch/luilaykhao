@@ -67,7 +67,7 @@ class PublicFriendPassController extends Controller
         if ($passenger->self_filled_at !== null) {
             return redirect()
                 ->route('public.friend-pass.show', $token)
-                ->with('notice', 'คุณกรอกข้อมูลไปแล้ว ถ้าต้องแก้ไข บอกคนจองหรือทักทีมงานได้เลย');
+                ->with('notice', __('คุณกรอกข้อมูลไปแล้ว ถ้าต้องแก้ไข บอกคนจองหรือทักทีมงานได้เลย'));
         }
 
         $valid = filled($passenger->self_fill_token)
@@ -99,8 +99,8 @@ class PublicFriendPassController extends Controller
         }
 
         return $back->with('notice', $validated['not_going']
-            ? 'แจ้งทีมงานแล้วว่าคุณไม่ไป ถ้าเปลี่ยนใจ กดปุ่มด้านล่างได้จนถึงเวลารถออก'
-            : 'บันทึกแล้ว เจอกันวันเดินทาง');
+            ? __('แจ้งทีมงานแล้วว่าคุณไม่ไป ถ้าเปลี่ยนใจ กดปุ่มด้านล่างได้จนถึงเวลารถออก')
+            : __('บันทึกแล้ว เจอกันวันเดินทาง'));
     }
 
     /**
@@ -149,7 +149,7 @@ class PublicFriendPassController extends Controller
         return [
             'token' => $passenger->pass_token,
             'name' => $passenger->displayName(),
-            'trip_title' => $trip?->title ?? 'ทริปของคุณ',
+            'trip_title' => $trip?->title ?? __('ทริปของคุณ'),
             'trip_location' => $trip?->location,
             'cover_image' => $trip?->cover_image,
             'departure_label' => $schedule
@@ -160,7 +160,7 @@ class PublicFriendPassController extends Controller
                 : null,
             // departs_at เก็บเวลาไทยในคอลัมน์ UTC — พิมพ์ตัวเลขตรง ๆ ห้ามแปลงโซน
             'departs_label' => $departs
-                ? 'รถออก '.ThaiDate::full($departs).' เวลา '.$departs->format('H:i').' น.'
+                ? __('รถออก ').ThaiDate::full($departs).__(' เวลา ').$departs->format('H:i').__(' น.')
                 : null,
             'pickup_label' => $point ? (trim((string) ($point->pickup_location ?: $point->region_label)) ?: null) : null,
             'pickup_time' => $point?->pickup_time,

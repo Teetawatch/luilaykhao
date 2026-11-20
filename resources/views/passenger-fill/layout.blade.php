@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="{{ app()->getLocale() === 'en' ? 'en' : 'th' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {{-- ลิงก์นี้เป็นความลับส่วนบุคคล ต้องไม่ถูกจัดทำดัชนี --}}
     <meta name="robots" content="noindex, nofollow">
-    <title>@yield('title', 'กรอกข้อมูลผู้เดินทาง') · ลุยเลเขา</title>
+    <title>@yield('title', 'กรอกข้อมูลผู้เดินทาง') {{ __('· ลุยเลเขา') }}</title>
     <link rel="stylesheet" href="{{ asset('fonts/db-heavent/db-heavent.css') }}?v={{ filemtime(public_path('fonts/db-heavent/db-heavent.css')) }}">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -62,9 +62,10 @@
     @stack('styles')
 </head>
 <body>
+<x-page-lang-switch />
     <div class="wrap">
         @yield('content')
-        <div class="footer">&copy; {{ date('Y') }} ลุยเลเขา</div>
+        <div class="footer">{{ __('© :date ลุยเลเขา', ['date' => date('Y')]) }}</div>
     </div>
 </body>
 </html>

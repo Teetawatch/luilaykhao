@@ -1,12 +1,12 @@
 @extends('payment.layout')
 
-@section('title', 'กำลังตรวจสอบการชำระเงิน')
+@section('title', __('กำลังตรวจสอบการชำระเงิน'))
 
 @section('content')
 <div class="card">
     <div class="card-header">
         <div class="brand">LUILAYKHAO</div>
-        <h1 id="headline">{{ $cancelled ? 'ยกเลิกการชำระเงินแล้ว' : 'กำลังตรวจสอบการชำระเงิน' }}</h1>
+        <h1 id="headline">{{ $cancelled ? __('ยกเลิกการชำระเงินแล้ว') : __('กำลังตรวจสอบการชำระเงิน') }}</h1>
         @if ($bookingRef)
             <div class="ref-badge">{{ $bookingRef }}</div>
         @endif
@@ -14,22 +14,22 @@
     <div class="card-body">
         @if (! $payment)
             <div class="alert alert-error">
-                ไม่พบรายการชำระเงินนี้ หากคุณเพิ่งจ่ายเงินไป กรุณาตรวจสอบในแอปหรือหน้าการจองของคุณ
+                {{ __('ไม่พบรายการชำระเงินนี้ หากคุณเพิ่งจ่ายเงินไป กรุณาตรวจสอบในแอปหรือหน้าการจองของคุณ') }}
             </div>
         @elseif ($cancelled)
             <div class="alert alert-error">
-                ยังไม่มีการตัดเงินสำหรับรายการนี้ เลือกวิธีชำระเงินใหม่ได้เลย
+                {{ __('ยังไม่มีการตัดเงินสำหรับรายการนี้ เลือกวิธีชำระเงินใหม่ได้เลย') }}
             </div>
             <div class="amount-box" style="margin-bottom:0">
-                <div class="amount-label">ยอดที่ต้องชำระ</div>
+                <div class="amount-label">{{ __('ยอดที่ต้องชำระ') }}</div>
                 <div class="amount">฿{{ number_format((float) $payment->amount, 0) }}</div>
             </div>
             @if ($backUrl)
                 <a href="{{ $backUrl }}" class="btn" style="display:block;text-align:center;margin-top:20px;text-decoration:none">
-                    กลับไปเลือกวิธีชำระเงิน
+                    {{ __('กลับไปเลือกวิธีชำระเงิน') }}
                 </a>
             @endif
-            <p class="note">ถ้าจ่ายจากแอป ปิดหน้านี้แล้วกลับเข้าแอปได้เลย</p>
+            <p class="note">{{ __('ถ้าจ่ายจากแอป ปิดหน้านี้แล้วกลับเข้าแอปได้เลย') }}</p>
         @else
             <div id="pending-state">
                 <div class="settle">
@@ -40,22 +40,22 @@
                         <span class="settle-face">🏦</span>
                     </div>
 
-                    <div class="settle-title" id="settle-title">กำลังรอผลจากธนาคาร</div>
+                    <div class="settle-title" id="settle-title">{{ __('กำลังรอผลจากธนาคาร') }}</div>
                     <div class="settle-sub" id="settle-sub">
-                        ไม่ต้องปิดหน้านี้ ปกติใช้เวลาไม่เกินครึ่งนาที และไม่ต้องจ่ายซ้ำ
+                        {{ __('ไม่ต้องปิดหน้านี้ ปกติใช้เวลาไม่เกินครึ่งนาที และไม่ต้องจ่ายซ้ำ') }}
                     </div>
 
                     <ol class="settle-steps">
-                        <li class="done"><span class="settle-dot done">✓</span> ส่งรายการชำระเงินให้ธนาคารแล้ว</li>
-                        <li><span class="settle-dot now"></span> รอธนาคารยืนยันว่าเงินเข้า</li>
+                        <li class="done"><span class="settle-dot done">✓</span> {{ __('ส่งรายการชำระเงินให้ธนาคารแล้ว') }}</li>
+                        <li><span class="settle-dot now"></span> {{ __('รอธนาคารยืนยันว่าเงินเข้า') }}</li>
                         <li class="todo"><span class="settle-dot todo"></span> {{ $finalStep }}</li>
                     </ol>
 
-                    <div class="settle-elapsed">รอมาแล้ว <span id="settle-elapsed">0 วินาที</span></div>
+                    <div class="settle-elapsed">{{ __('รอมาแล้ว') }} <span id="settle-elapsed">{{ __('0 วินาที') }}</span></div>
                 </div>
 
                 <div class="amount-box" style="margin-top:20px;margin-bottom:0">
-                    <div class="amount-label">ยอดที่ชำระ</div>
+                    <div class="amount-label">{{ __('ยอดที่ชำระ') }}</div>
                     <div class="amount">฿{{ number_format((float) $payment->amount, 0) }}</div>
                 </div>
             </div>
@@ -63,29 +63,29 @@
             <div id="paid-state" style="display:none">
                 <div class="alert alert-success" style="text-align:center">
                     <div style="font-size:30px;line-height:1.2">✅</div>
-                    รับชำระเงินเรียบร้อยแล้ว<br>
-                    <span style="font-size:13px">ที่นั่งของคุณได้รับการยืนยันแล้ว</span>
+                    {{ __('รับชำระเงินเรียบร้อยแล้ว') }}<br>
+                    <span style="font-size:13px">{{ __('ที่นั่งของคุณได้รับการยืนยันแล้ว') }}</span>
                 </div>
                 @if ($doneUrl)
                     <a href="{{ $doneUrl }}" class="btn" style="display:block;text-align:center;text-decoration:none">
-                        ดูการจองของฉัน
+                        {{ __('ดูการจองของฉัน') }}
                     </a>
                 @endif
             </div>
 
             <div id="unpaid-state" style="display:none">
                 <div class="alert alert-error">
-                    ยังไม่ได้รับการชำระเงินสำหรับรายการนี้ หากคุณกดยกเลิกไป สามารถกลับไปทำรายการใหม่ได้
+                    {{ __('ยังไม่ได้รับการชำระเงินสำหรับรายการนี้ หากคุณกดยกเลิกไป สามารถกลับไปทำรายการใหม่ได้') }}
                 </div>
                 @if ($backUrl)
                     <a href="{{ $backUrl }}" class="btn" style="display:block;text-align:center;text-decoration:none">
-                        กลับไปเลือกวิธีชำระเงิน
+                        {{ __('กลับไปเลือกวิธีชำระเงิน') }}
                     </a>
                 @endif
             </div>
 
             <p class="note" id="hint">
-                ระบบจะอัปเดตหน้านี้ให้เองเมื่อธนาคารแจ้งผลกลับมา
+                {{ __('ระบบจะอัปเดตหน้านี้ให้เองเมื่อธนาคารแจ้งผลกลับมา') }}
             </p>
         @endif
     </div>
@@ -131,14 +131,14 @@
         var elapsedTimer = setInterval(function () {
             seconds++;
             elapsedEl.textContent = seconds < 60
-                ? seconds + ' วินาที'
-                : Math.floor(seconds / 60) + ' นาที ' + String(seconds % 60).padStart(2, '0') + ' วินาที';
+                ? seconds + @json(__(' วินาที'))
+                : Math.floor(seconds / 60) + @json(__(' นาที ')) + String(seconds % 60).padStart(2, '0') + @json(__(' วินาที'));
 
             // ช้ากว่าปกติแล้ว — เปลี่ยนคำพูดก่อนที่ลูกค้าจะเริ่มคิดว่าจ่ายไม่ผ่าน
             if (seconds === 45) {
-                document.getElementById('settle-title').textContent = 'ยังตรวจสอบอยู่ ใช้เวลานานกว่าปกติเล็กน้อย';
+                document.getElementById('settle-title').textContent = @json(__('ยังตรวจสอบอยู่ ใช้เวลานานกว่าปกติเล็กน้อย'));
                 document.getElementById('settle-sub').textContent =
-                    'ธนาคารบางแห่งส่งผลช้ากว่าปกติ ระบบยังตามผลให้อยู่ หากเงินถูกตัดไปแล้วเราจะยืนยันให้เองเมื่อได้รับผล ไม่ต้องจ่ายซ้ำ';
+                    @json(__('ธนาคารบางแห่งส่งผลช้ากว่าปกติ ระบบยังตามผลให้อยู่ หากเงินถูกตัดไปแล้วเราจะยืนยันให้เองเมื่อได้รับผล ไม่ต้องจ่ายซ้ำ'));
             }
         }, 1000);
 
@@ -154,7 +154,7 @@
                 clearInterval(timer);
                 stopClock();
                 document.getElementById('hint').textContent =
-                    'ยังไม่ได้รับผลจากธนาคาร กรุณาตรวจสอบสถานะในหน้าการจองของคุณอีกครั้งในอีกสักครู่';
+                    @json(__('ยังไม่ได้รับผลจากธนาคาร กรุณาตรวจสอบสถานะในหน้าการจองของคุณอีกครั้งในอีกสักครู่'));
                 return;
             }
 
@@ -168,15 +168,15 @@
                 if (data.status === 'succeeded') {
                     clearInterval(timer);
                     stopClock();
-                    document.getElementById('headline').textContent = 'ชำระเงินสำเร็จ';
+                    document.getElementById('headline').textContent = @json(__('ชำระเงินสำเร็จ'));
                     document.getElementById('pending-state').style.display = 'none';
                     document.getElementById('paid-state').style.display = '';
-                    document.getElementById('hint').textContent = 'ถ้าจ่ายจากแอป ปิดหน้านี้แล้วกลับเข้าแอปได้เลย';
-                    if (window.webReturn) window.webReturn(@json($doneUrl), 'กำลังพากลับไปหน้าการจองของคุณ…');
+                    document.getElementById('hint').textContent = @json(__('ถ้าจ่ายจากแอป ปิดหน้านี้แล้วกลับเข้าแอปได้เลย'));
+                    if (window.webReturn) window.webReturn(@json($doneUrl), @json(__('กำลังพากลับไปหน้าการจองของคุณ…')));
                 } else if (data.status === 'failed' || data.status === 'expired') {
                     clearInterval(timer);
                     stopClock();
-                    document.getElementById('headline').textContent = 'ยังไม่ได้รับการชำระเงิน';
+                    document.getElementById('headline').textContent = @json(__('ยังไม่ได้รับการชำระเงิน'));
                     document.getElementById('pending-state').style.display = 'none';
                     document.getElementById('unpaid-state').style.display = '';
                     document.getElementById('hint').textContent = '';

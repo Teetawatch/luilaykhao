@@ -1,12 +1,12 @@
 @extends('public.form-layout')
 
-@section('title', 'เปิดใช้บัญชีเพื่อดูการจอง')
+@section('title', __('เปิดใช้บัญชีเพื่อดูการจอง'))
 
 @section('content')
     <div class="card">
         <div class="card-header">
             <div class="brand">LUILAYKHAO</div>
-            <h1>เปิดใช้บัญชีของคุณ</h1>
+            <h1>{{ __('เปิดใช้บัญชีของคุณ') }}</h1>
         </div>
         <div class="card-body">
             @if ($errors->any())
@@ -19,18 +19,17 @@
                 </div>
             @endif
 
-            <p class="hello">สวัสดีคุณ <strong>{{ $shadow->name ?: 'ลูกค้า' }}</strong> ครับ</p>
+            <p class="hello">{{ __('สวัสดีคุณ') }} <strong>{{ $shadow->name ?: __('ลูกค้า') }}</strong> {{ __('ครับ') }}</p>
             <p class="lead">
-                ทีมงานเปิดการจองให้คุณไว้เรียบร้อยแล้ว
-                ตั้งรหัสผ่านเพียงครั้งเดียว แล้วคุณจะเห็นการจองทั้งหมดในแอปลุยเลเขาได้ทันที
+                {{ __('ทีมงานเปิดการจองให้คุณไว้เรียบร้อยแล้ว ตั้งรหัสผ่านเพียงครั้งเดียว แล้วคุณจะเห็นการจองทั้งหมดในแอปลุยเลเขาได้ทันที') }}
             </p>
 
             @if ($bookings->isNotEmpty())
                 <div class="pax">
-                    <div class="pax-name">การจองที่รออยู่ในบัญชีนี้</div>
+                    <div class="pax-name">{{ __('การจองที่รออยู่ในบัญชีนี้') }}</div>
                     @foreach ($bookings as $booking)
                         <p class="hello" style="margin-bottom:10px">
-                            <strong>{{ $booking->schedule?->trip?->title ?: 'ทริปของคุณ' }}</strong><br>
+                            <strong>{{ $booking->schedule?->trip?->tr('title') ?: __('ทริปของคุณ') }}</strong><br>
                             <span style="font-size:13px;color:#64748b">
                                 {{ $booking->booking_ref }}
                                 @if ($booking->schedule?->departure_date)
@@ -47,27 +46,27 @@
                  ซ่อนไว้จนกว่าจะเปิด CLAIM_OPENS_APP — แอปเก่ากดแล้วไม่เกิดอะไรขึ้น --}}
             @if (config('app.claim_opens_app'))
             <a class="btn" href="luilaykhao://claim/{{ $token }}"
-               style="text-align:center;text-decoration:none;margin-bottom:8px;background:#fff;color:#059669;border:1.5px solid #059669">มีแอปแล้ว เปิดในแอป</a>
-            <p class="note" style="margin:0 0 22px">ในแอปกดรับการจองได้เลย เข้าสู่ระบบด้วย LINE, Google หรืออีเมลก็ได้</p>
+               style="text-align:center;text-decoration:none;margin-bottom:8px;background:#fff;color:#059669;border:1.5px solid #059669">{{ __('มีแอปแล้ว เปิดในแอป') }}</a>
+            <p class="note" style="margin:0 0 22px">{{ __('ในแอปกดรับการจองได้เลย เข้าสู่ระบบด้วย LINE, Google หรืออีเมลก็ได้') }}</p>
 
-            <div class="pax-name" style="font-size:14px">ยังไม่มีแอป? ตั้งรหัสผ่านที่นี่</div>
+            <div class="pax-name" style="font-size:14px">{{ __('ยังไม่มีแอป? ตั้งรหัสผ่านที่นี่') }}</div>
             @endif
 
             <form method="POST" action="{{ route('public.claim.submit', $token) }}">
                 @csrf
-                <label class="field" for="claim-email">อีเมลของคุณ</label>
+                <label class="field" for="claim-email">{{ __('อีเมลของคุณ') }}</label>
                 <input id="claim-email" type="email" name="email" value="{{ old('email') }}"
                        inputmode="email" autocomplete="email" placeholder="you@example.com" required>
 
-                <label class="field" for="claim-password">ตั้งรหัสผ่าน (อย่างน้อย 8 ตัวอักษร)</label>
+                <label class="field" for="claim-password">{{ __('ตั้งรหัสผ่าน (อย่างน้อย 8 ตัวอักษร)') }}</label>
                 <input id="claim-password" type="password" name="password"
                        autocomplete="new-password" minlength="8" required>
-                <p class="hint">ถ้าคุณเคยสมัครในแอปด้วยอีเมลนี้แล้ว ให้กรอกรหัสผ่านเดิม เราจะย้ายการจองไปรวมให้เอง</p>
+                <p class="hint">{{ __('ถ้าคุณเคยสมัครในแอปด้วยอีเมลนี้แล้ว ให้กรอกรหัสผ่านเดิม เราจะย้ายการจองไปรวมให้เอง') }}</p>
 
-                <button type="submit" class="btn">เปิดใช้บัญชี</button>
+                <button type="submit" class="btn">{{ __('เปิดใช้บัญชี') }}</button>
             </form>
 
-            <p class="note">ลิงก์นี้สำหรับคุณเท่านั้น กรุณาอย่าส่งต่อให้ผู้อื่น</p>
+            <p class="note">{{ __('ลิงก์นี้สำหรับคุณเท่านั้น กรุณาอย่าส่งต่อให้ผู้อื่น') }}</p>
         </div>
     </div>
 @endsection

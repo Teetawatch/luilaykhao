@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\SetAppLocale;
+use App\Http\Middleware\SetPublicPageLocale;
 use App\Http\Middleware\TrackApiClient;
 use App\Support\AppLocale;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -38,6 +39,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
+            // ภาษาของหน้าลิงก์ Blade ที่ส่งให้ลูกค้า (/t/ /p/ /f/ /r/ /claim/ /pay/)
+            'page.locale' => SetPublicPageLocale::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

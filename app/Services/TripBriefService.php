@@ -7,8 +7,8 @@ use App\Models\Receipt;
 use App\Models\SchedulePickupPoint;
 use App\Models\TripSchedule;
 use App\Support\AppLinks;
+use App\Support\AppLocale;
 use App\Support\SiteSettings;
-use App\Support\ThaiDate;
 use App\Support\TripDocumentRequirements;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -181,7 +181,7 @@ class TripBriefService
         return $this->cache[$booking->id] = [
             'booking' => $this->bookingBlock($booking),
             'trip' => [
-                'title' => $trip?->title ?? 'ทริปของคุณ',
+                'title' => $trip?->tr('title') ?? __('ทริปของคุณ'),
                 'location' => $trip?->location,
                 'duration_days' => $trip?->duration_days,
                 'cover_image' => $trip?->cover_image,
@@ -225,7 +225,7 @@ class TripBriefService
                 'phone' => SiteSettings::supportPhone() ?: config('company.phone'),
                 'line_url' => SiteSettings::supportLineUrl(),
                 'line_id' => SiteSettings::supportLine(),
-                'hours' => SiteSettings::supportHours(),
+                'hours' => __(SiteSettings::supportHours()),
             ],
         ];
     }
@@ -345,12 +345,12 @@ class TripBriefService
             'start_date' => $departureDate?->toDateString(),
             'end_date' => $schedule->return_date?->toDateString(),
             'departs_on_date' => $departsAt?->toDateString(),
-            'date_label' => ThaiDate::full($departureDate),
-            'range_label' => ThaiDate::range($departureDate, $schedule->return_date),
-            'return_label' => $schedule->return_date ? ThaiDate::full($schedule->return_date) : null,
+            'date_label' => AppLocale::fullDate($departureDate),
+            'range_label' => AppLocale::dateRange($departureDate, $schedule->return_date),
+            'return_label' => $schedule->return_date ? AppLocale::fullDate($schedule->return_date) : null,
             // เวลาที่ไม่เคยถูกตั้งต้องเงียบ ไม่ใช่พิมพ์ 00:00 ออกไป
             'time_label' => $departsAt ? $departsAt->format('H:i') : null,
-            'departs_on_label' => $departsAt ? ThaiDate::full($departsAt) : null,
+            'departs_on_label' => $departsAt ? AppLocale::fullDate($departsAt) : null,
             'night_before' => $nightBefore,
             'days_left' => $this->daysLeft($schedule),
             'countdown_label' => $this->countdownLabel($schedule),
@@ -384,10 +384,10 @@ class TripBriefService
 
         return match (true) {
             $days === null => null,
-            $days < 0 => 'เดินทางไปแล้ว',
-            $days === 0 => 'วันนี้',
-            $days === 1 => 'พรุ่งนี้',
-            default => "อีก {$days} วัน",
+            $days < 0 => __('เดินทางไปแล้ว'),
+            $days === 0 => __('วันนี้'),
+            $days === 1 => __('พรุ่งนี้'),
+            default => __('อีก :days วัน', ['days' => $days]),
         };
     }
 
@@ -498,7 +498,7 @@ class TripBriefService
             'point' => $schedule->meeting_point,
             'map_url' => $schedule->meeting_map_url,
             'time_label' => $meetingAt?->format('H:i'),
-            'date_label' => $meetingAt ? ThaiDate::full($meetingAt) : null,
+            'date_label' => $meetingAt ? AppLocale::fullDate($meetingAt) : null,
             'baggage' => $schedule->baggage_allowance,
             'legs' => $schedule->flightLegs(),
         ];
@@ -570,7 +570,7 @@ class TripBriefService
 
         return $schedule->itineraryItems
             ->map(fn ($item) => [
-                'date_label' => $item->item_date ? ThaiDate::short($item->item_date) : null,
+                'date_label' => $item->item_date ? AppLocale::shortDate($item->item_date) : null,
                 'time' => $item->time ? Str::substr((string) $item->time, 0, 5) : null,
                 'title' => $item->title,
                 'detail' => $item->detail,
@@ -603,8 +603,8 @@ class TripBriefService
                 'category_label' => AnnouncementService::categoryLabel($announcement->category),
                 'is_pinned' => (bool) $announcement->is_pinned,
                 'is_urgent' => $announcement->category === 'urgent',
-                'author_name' => $announcement->author?->nickname ?: $announcement->author?->name ?: 'ทีมงาน',
-                'date_label' => $announcement->created_at ? ThaiDate::short($announcement->created_at) : null,
+                'author_name' => $announcement->author?->nickname ?: $announcement->author?->name ?: __('ทีมงาน'),
+                'date_label' => $announcement->created_at ? AppLocale::shortDate($announcement->created_at) : null,
             ])
             ->values()
             ->all();
@@ -631,10 +631,10 @@ class TripBriefService
         if ($missingPassport->isNotEmpty()) {
             $items[] = [
                 'key' => 'passport',
-                'title' => 'ข้อมูลพาสปอร์ต',
+                'title' => __('ข้อมูลพาสปอร์ต'),
                 'detail' => $this->whoLabel($missingPassport->pluck('name')->all(), $booking)
-                    .' — ต้องใช้ชื่อภาษาอังกฤษ เลขที่พาสปอร์ต และวันหมดอายุ สำหรับออกตั๋วและทำประกัน',
-                'cta' => 'กรอกข้อมูลพาสปอร์ต',
+                    .__(' — ต้องใช้ชื่อภาษาอังกฤษ เลขที่พาสปอร์ต และวันหมดอายุ สำหรับออกตั๋วและทำประกัน'),
+                'cta' => __('กรอกข้อมูลพาสปอร์ต'),
                 'url' => $booking->passportUrl(),
             ];
         }
@@ -644,10 +644,10 @@ class TripBriefService
         if ($missingBirthdate->isNotEmpty()) {
             $items[] = [
                 'key' => 'birthdate',
-                'title' => 'วันเกิดของผู้เดินทาง',
+                'title' => __('วันเกิดของผู้เดินทาง'),
                 'detail' => $this->whoLabel($missingBirthdate->pluck('name')->all(), $booking)
-                    .' — ใช้ทำประกันการเดินทาง กรอกไว้ก่อนวันเดินทางนะครับ',
-                'cta' => 'กรอกวันเกิด',
+                    .__(' — ใช้ทำประกันการเดินทาง กรอกไว้ก่อนวันเดินทางนะครับ'),
+                'cta' => __('กรอกวันเกิด'),
                 'url' => $booking->birthdateUrl(),
             ];
         }
@@ -660,7 +660,7 @@ class TripBriefService
                     .($requirement['note'] ? ' — '.$requirement['note'] : ''),
                 // บัตรประชาชนของ Border Pass แนบได้ที่หน้าเอกสารเดินทาง (ไม่ต้องล็อกอิน)
                 // ส่วนเอกสารอื่นยังไม่มีหน้าอัปโหลดแบบไม่ต้องล็อกอิน ทางที่ไปถึงทีมงานได้จริงคือทักไลน์
-                'cta' => TripDocumentRequirements::isBorderPassKey($requirement['key']) ? 'แนบรูปบัตรประชาชน' : null,
+                'cta' => TripDocumentRequirements::isBorderPassKey($requirement['key']) ? __('แนบรูปบัตรประชาชน') : null,
                 'url' => TripDocumentRequirements::isBorderPassKey($requirement['key']) ? $booking->passportUrl() : null,
             ];
         }
@@ -679,11 +679,11 @@ class TripBriefService
         $total = $booking->passengers->count();
 
         if ($names === [] || (count($names) === $total && $total > 1)) {
-            return 'ผู้เดินทางทุกท่าน';
+            return __('ผู้เดินทางทุกท่าน');
         }
 
         if (count($names) > 3) {
-            return 'ผู้เดินทาง '.count($names).' ท่าน';
+            return __('ผู้เดินทาง ').count($names).__(' ท่าน');
         }
 
         return implode(', ', $names);
@@ -729,7 +729,7 @@ class TripBriefService
                 'show' => false,
                 'checked_in' => true,
                 'checked_in_label' => $booking->checked_in_at?->copy()->timezone(self::TIMEZONE)->format('H:i'),
-                'aboard_label' => $passengers->count() > 1 ? "ขึ้นรถแล้ว {$aboard}/{$expected} คน" : null,
+                'aboard_label' => $passengers->count() > 1 ? __('ขึ้นรถแล้ว :aboard/:expected คน', ['aboard' => $aboard, 'expected' => $expected]) : null,
             ];
         }
 
@@ -743,7 +743,7 @@ class TripBriefService
             'checked_in' => false,
             'checked_in_label' => null,
             'aboard_label' => $booking->checked_in && $passengers->count() > 1
-                ? "ขึ้นรถแล้ว {$aboard}/{$expected} คน"
+                ? __('ขึ้นรถแล้ว :aboard/:expected คน', ['aboard' => $aboard, 'expected' => $expected])
                 : null,
             'code' => $show ? $booking->qr_code : null,
             'qr' => $show ? $this->qrCodes->svgDataUri($booking->qr_code, 220) : null,
@@ -801,7 +801,7 @@ class TripBriefService
         return [
             'show' => $passengers->isNotEmpty(),
             'form_name' => $form->name,
-            'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
+            'deadline_label' => $deadline ? AppLocale::fullDate($deadline) : null,
             'overdue' => $deadline !== null && $deadline->toDateString() < now(self::TIMEZONE)->toDateString(),
             'signed_count' => $passengers->filter(fn ($p) => $p->hasCompletedPermitForm($form))->count(),
             'total' => $passengers->count(),
@@ -889,7 +889,7 @@ class TripBriefService
             'paid' => $paid,
             'outstanding' => $outstanding,
             'is_settled' => $outstanding <= 0,
-            'due_label' => $dueAt ? ThaiDate::full($dueAt) : null,
+            'due_label' => $dueAt ? AppLocale::fullDate($dueAt) : null,
             'is_overdue' => $dueAt ? $dueAt->copy()->endOfDay()->isPast() : false,
             'installment_no' => $nextInstallment?->installment_no,
         ];

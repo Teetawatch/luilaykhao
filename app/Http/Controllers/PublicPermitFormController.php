@@ -51,13 +51,13 @@ class PublicPermitFormController extends Controller
         return response()->view('friend-permit', ['p' => [
             'action' => route('public.friend-permit.sign', $token),
             'name' => $passenger->displayName(),
-            'trip_title' => $booking->schedule?->trip?->title ?? 'ทริปของคุณ',
+            'trip_title' => $booking->schedule?->trip?->title ?? __('ทริปของคุณ'),
             'form_name' => $form->name,
             'open' => $this->signatures->isOpen($booking),
             'signed' => $passenger->hasCompletedPermitForm($form),
             'signed_label' => $passenger->hasCompletedPermitForm($form)
                 ? ThaiDate::full($passenger->permit_signed_at->copy()->timezone('Asia/Bangkok'))
-                    .' เวลา '.$passenger->permit_signed_at->copy()->timezone('Asia/Bangkok')->format('H:i').' น.'
+                    .__(' เวลา ').$passenger->permit_signed_at->copy()->timezone('Asia/Bangkok')->format('H:i').__(' น.')
                 : null,
             'deadline_label' => $deadline ? ThaiDate::full($deadline) : null,
             'overdue' => $deadline !== null && $deadline->toDateString() < now('Asia/Bangkok')->toDateString(),
@@ -80,8 +80,8 @@ class PublicPermitFormController extends Controller
             'extra' => ['sometimes', 'array'],
             'extra.*' => ['nullable', 'string', 'max:'.PermitFormFields::ASK_MAX_LENGTH],
         ], [
-            'signature.required' => 'ยังไม่ได้เซ็น วาดลายเซ็นในกรอบก่อนกดยืนยัน',
-            'accept.accepted' => 'กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น',
+            'signature.required' => __('ยังไม่ได้เซ็น วาดลายเซ็นในกรอบก่อนกดยืนยัน'),
+            'accept.accepted' => __('กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น'),
         ]);
 
         try {
@@ -94,7 +94,7 @@ class PublicPermitFormController extends Controller
             return $back->withInput($request->except('signature'))->with('error', $e->getMessage());
         }
 
-        return $back->with('notice', 'เซ็นแบบฟอร์มเรียบร้อยแล้ว ขอบคุณครับ ทีมงานจะนำไปลงทะเบียนกับอุทยานให้');
+        return $back->with('notice', __('เซ็นแบบฟอร์มเรียบร้อยแล้ว ขอบคุณครับ ทีมงานจะนำไปลงทะเบียนกับอุทยานให้'));
     }
 
     /**
@@ -116,17 +116,17 @@ class PublicPermitFormController extends Controller
         return response()->view('friend-permit', ['p' => [
             'action' => route('public.staff-permit.sign', $token),
             'name' => $preview['passenger']['name'],
-            'trip_title' => ($schedule->trip?->title ?? 'ทริป').' · '.$schedule->departureLabelThai(),
+            'trip_title' => ($schedule->trip?->title ?? __('ทริป')).' · '.$schedule->departureLabelThai(),
             'form_name' => $form->name,
             'open' => $preview['open'],
             'signed' => $preview['signed'],
             'signed_label' => $preview['signed'] && $signedAt
-                ? ThaiDate::full($signedAt).' เวลา '.$signedAt->format('H:i').' น.'
+                ? ThaiDate::full($signedAt).__(' เวลา ').$signedAt->format('H:i').__(' น.')
                 : null,
             'deadline_label' => $preview['deadline_label'],
             'overdue' => $preview['overdue'],
-            'intro' => 'อุทยานลงทะเบียนทีมงานทุกคนที่เข้าพื้นที่ด้วย แบบฟอร์มนี้เติมข้อมูลจากโปรไฟล์ของคุณในแอปแล้ว'
-                .' (ข้อมูลส่วนตัวถูกปิดไว้บางส่วนในหน้านี้)',
+            'intro' => __('อุทยานลงทะเบียนทีมงานทุกคนที่เข้าพื้นที่ด้วย แบบฟอร์มนี้เติมข้อมูลจากโปรไฟล์ของคุณในแอปแล้ว')
+                .__(' (ข้อมูลส่วนตัวถูกปิดไว้บางส่วนในหน้านี้)'),
             'missing_profile' => $preview['missing_profile'],
             'ask' => $preview['ask'],
             'pages' => $preview['pages'],
@@ -147,8 +147,8 @@ class PublicPermitFormController extends Controller
             'extra' => ['sometimes', 'array'],
             'extra.*' => ['nullable', 'string', 'max:'.PermitFormFields::ASK_MAX_LENGTH],
         ], [
-            'signature.required' => 'ยังไม่ได้เซ็น วาดลายเซ็นในกรอบก่อนกดยืนยัน',
-            'accept.accepted' => 'กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น',
+            'signature.required' => __('ยังไม่ได้เซ็น วาดลายเซ็นในกรอบก่อนกดยืนยัน'),
+            'accept.accepted' => __('กรุณาติ๊กยอมรับข้อความในแบบฟอร์มก่อนเซ็น'),
         ]);
 
         try {
@@ -161,7 +161,7 @@ class PublicPermitFormController extends Controller
             return $back->withInput($request->except('signature'))->with('error', $e->getMessage());
         }
 
-        return $back->with('notice', 'เซ็นแบบฟอร์มเรียบร้อยแล้ว ขอบคุณครับ');
+        return $back->with('notice', __('เซ็นแบบฟอร์มเรียบร้อยแล้ว ขอบคุณครับ'));
     }
 
     public function staffSignature(int $row): BaseResponse
