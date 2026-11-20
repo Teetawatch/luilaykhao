@@ -7,6 +7,7 @@ use App\Models\StayBooking;
 use App\Models\StayExperience;
 use App\Models\StayReview;
 use App\Models\StayRoomType;
+use App\Support\ContentLocale;
 use App\Support\MediaDisk;
 
 /**
@@ -24,13 +25,13 @@ class StayPresenter
         return [
             'id' => $stay->id,
             'slug' => $stay->slug,
-            'name' => $stay->name,
+            'name' => $stay->tr('name'),
             'type' => $stay->type,
-            'type_label' => $stay->typeLabel(),
-            'community_name' => $stay->community_name,
-            'province' => $stay->province,
-            'district' => $stay->district,
-            'summary' => $stay->summary,
+            'type_label' => __($stay->typeLabel()),
+            'community_name' => $stay->tr('community_name'),
+            'province' => $stay->tr('province'),
+            'district' => $stay->tr('district'),
+            'summary' => $stay->tr('summary'),
             'cover_image' => $stay->coverUrl(),
             'booking_mode' => $stay->booking_mode,
             'price_from' => $rooms->isNotEmpty() ? (float) $rooms->min('price_per_night') : null,
@@ -47,10 +48,10 @@ class StayPresenter
         $reviews = $stay->reviews()->where('is_hidden', false)->with('user:id,name,nickname,avatar')->latest()->limit(20)->get();
 
         return self::card($stay) + [
-            'description' => $stay->description,
-            'community_story' => $stay->community_story,
-            'highlights' => array_values($stay->highlights ?? []),
-            'house_rules' => $stay->house_rules,
+            'description' => $stay->tr('description'),
+            'community_story' => $stay->tr('community_story'),
+            'highlights' => array_values($stay->tr('highlights', $stay->highlights ?? [])),
+            'house_rules' => $stay->tr('house_rules'),
             'address' => $stay->address,
             'latitude' => $stay->latitude,
             'longitude' => $stay->longitude,
@@ -59,7 +60,7 @@ class StayPresenter
             'check_out_time' => $stay->check_out_time,
             'gallery' => $stay->galleryUrls(),
             'license_type' => $stay->license_type,
-            'license_label' => $stay->license_type ? (Stay::LICENSE_TYPES[$stay->license_type] ?? null) : null,
+            'license_label' => $stay->license_type && isset(Stay::LICENSE_TYPES[$stay->license_type]) ? __(Stay::LICENSE_TYPES[$stay->license_type]) : null,
             'license_no' => $stay->license_no,
             'cancellation_policy' => self::policy($stay->cancellation_policy),
             'room_types' => $stay->roomTypes->where('is_active', true)->map(fn (StayRoomType $r) => self::room($r))->values()->all(),
@@ -67,7 +68,7 @@ class StayPresenter
             'trips' => $stay->trips->where('status', 'active')->map(fn ($t) => [
                 'id' => $t->id,
                 'slug' => $t->slug,
-                'title' => $t->title,
+                'title' => $t->tr('title'),
                 'cover_image' => MediaDisk::url($t->cover_image),
                 'distance_note' => $t->pivot?->distance_note,
             ])->values()->all(),
@@ -80,8 +81,8 @@ class StayPresenter
     {
         return [
             'id' => $room->id,
-            'name' => $room->name,
-            'description' => $room->description,
+            'name' => $room->tr('name'),
+            'description' => $room->tr('description'),
             'units' => (int) $room->units,
             'base_guests' => (int) $room->base_guests,
             'max_guests' => (int) $room->max_guests,
@@ -97,17 +98,17 @@ class StayPresenter
     {
         return [
             'id' => $e->id,
-            'title' => $e->title,
-            'description' => $e->description,
+            'title' => $e->tr('title'),
+            'description' => $e->tr('description'),
             'price_per_person' => (float) $e->price_per_person,
-            'duration_label' => $e->duration_label,
+            'duration_label' => $e->tr('duration_label'),
             'image' => $e->imageUrl(),
         ];
     }
 
     public static function review(StayReview $r): array
     {
-        $name = trim((string) ($r->user?->nickname ?: $r->user?->name ?: 'ผู้เข้าพัก'));
+        $name = trim((string) ($r->user?->nickname ?: $r->user?->name ?: __('ผู้เข้าพัก')));
 
         return [
             'id' => $r->id,
@@ -125,15 +126,15 @@ class StayPresenter
         $policy = (array) config('stays.policies.'.$key, []);
         $tiers = collect($policy['tiers'] ?? [])->sortByDesc('days')->values();
 
-        $lines = $tiers->map(fn ($t) => "ยกเลิกก่อนเข้าพัก {$t['days']} วันขึ้นไป คืน {$t['percent']}%")->all();
+        $lines = $tiers->map(fn ($t) => __('ยกเลิกก่อนเข้าพัก :days วันขึ้นไป คืน :percent%', ['days' => $t['days'], 'percent' => $t['percent']]))->all();
         $last = $tiers->last();
         if ($last) {
-            $lines[] = "น้อยกว่า {$last['days']} วัน ไม่คืนเงิน";
+            $lines[] = __('น้อยกว่า :days วัน ไม่คืนเงิน', ['days' => $last['days']]);
         }
 
         return [
             'key' => $key,
-            'label' => $policy['label'] ?? $key,
+            'label' => __($policy['label'] ?? $key),
             'lines' => $lines,
         ];
     }
@@ -148,10 +149,10 @@ class StayPresenter
             'stay' => $stay ? [
                 'id' => $stay->id,
                 'slug' => $stay->slug,
-                'name' => $stay->name,
+                'name' => $stay->tr('name'),
                 'cover_image' => $stay->coverUrl(),
-                'province' => $stay->province,
-                'community_name' => $stay->community_name,
+                'province' => $stay->tr('province'),
+                'community_name' => $stay->tr('community_name'),
                 'check_in_time' => $stay->check_in_time,
                 'check_out_time' => $stay->check_out_time,
                 'community_share_percent' => round(100 - (float) $b->commission_percent, 2),
@@ -260,7 +261,8 @@ class StayPresenter
             'status_label' => $b->statusLabel(),
             'booking_mode' => $b->booking_mode,
             'room_type_id' => $b->room_type_id,
-            'room_name' => $b->room_name,
+            // ชื่อห้องที่แช่ไว้ในใบจองเป็นไทย — หน้าอังกฤษหาคำแปลจากแบบห้อง (หน้าไทยไม่โหลดอะไรเพิ่ม)
+            'room_name' => ContentLocale::active() && $b->roomType ? $b->roomType->tr('name', $b->room_name) : $b->room_name,
             'check_in' => $b->check_in?->toDateString(),
             'check_out' => $b->check_out?->toDateString(),
             'nights' => (int) $b->nights,
@@ -284,7 +286,7 @@ class StayPresenter
 
         return collect($keys ?? [])
             ->filter(fn ($k) => isset($known[$k]))
-            ->map(fn ($k) => ['key' => $k, 'label' => $known[$k][0], 'icon' => $known[$k][1]])
+            ->map(fn ($k) => ['key' => $k, 'label' => __($known[$k][0]), 'icon' => $known[$k][1]])
             ->values()
             ->all();
     }

@@ -58,6 +58,10 @@ class ContentTranslationService
         'announcement' => ScheduleAnnouncement::class,
         'sale-campaign' => SaleCampaign::class,
         'review' => Review::class,
+        'place' => \App\Models\Place::class,
+        'stay' => \App\Models\Stay::class,
+        'stay-room' => \App\Models\StayRoomType::class,
+        'stay-experience' => \App\Models\StayExperience::class,
         // หน้าเนื้อหาที่แอดมินแก้ได้ (FAQ วิธีจอง เช็คลิสต์ …) — ไม่มีตาราง ดู PageContentDocument
         'page' => PageContentDocument::class,
     ];

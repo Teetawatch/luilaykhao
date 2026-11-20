@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasContentTranslations;
 use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class Place extends Model
 {
+    use HasContentTranslations;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['name', 'park', 'province', 'summary', 'description', 'highlights', 'know_before', 'season_note', 'closure_note'];
+
     /** ประเภทสถานที่ที่ระบบรู้จัก (คีย์ => ป้ายภาษาไทย) */
     public const TYPES = [
         'mountain' => 'ภูเขา / ยอดดอย',

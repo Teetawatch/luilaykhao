@@ -286,33 +286,33 @@ class PassportService
 
         $badges = [
             // จำนวนทริป
-            $threshold('first_summit', 'ก้าวแรก', 'จบทริปแรกกับเรา', '🥾', $tripsCount, 1, $reach($tripMetric, 1)),
-            $threshold('explorer_5', 'นักสำรวจ', 'จบทริปครบ 5 ทริป', '🧭', $tripsCount, 5, $reach($tripMetric, 5)),
-            $threshold('hunter_10', 'นักล่า 10 ยอดดอย', 'จบทริปครบ 10 ทริป', '⛰️', $tripsCount, 10, $reach($tripMetric, 10)),
-            $threshold('legend_20', 'ตำนานนักเดิน', 'จบทริปครบ 20 ทริป', '👑', $tripsCount, 20, $reach($tripMetric, 20)),
+            $threshold('first_summit', __('ก้าวแรก'), __('จบทริปแรกกับเรา'), '🥾', $tripsCount, 1, $reach($tripMetric, 1)),
+            $threshold('explorer_5', __('นักสำรวจ'), __('จบทริปครบ 5 ทริป'), '🧭', $tripsCount, 5, $reach($tripMetric, 5)),
+            $threshold('hunter_10', __('นักล่า 10 ยอดดอย'), __('จบทริปครบ 10 ทริป'), '⛰️', $tripsCount, 10, $reach($tripMetric, 10)),
+            $threshold('legend_20', __('ตำนานนักเดิน'), __('จบทริปครบ 20 ทริป'), '👑', $tripsCount, 20, $reach($tripMetric, 20)),
 
             // ระยะทางสะสม
-            $threshold('dist_100', '100 กิโลแรก', 'เดินสะสมครบ 100 กม.', '📍', $totalDistance, 100, $reach($distanceMetric, 100)),
-            $threshold('dist_500', 'นักเดินทางไกล', 'เดินสะสมครบ 500 กม.', '🛤️', $totalDistance, 500, $reach($distanceMetric, 500)),
-            $threshold('dist_1000', 'พันกิโลเมตร', 'เดินสะสมครบ 1,000 กม.', '🏅', $totalDistance, 1000, $reach($distanceMetric, 1000)),
+            $threshold('dist_100', __('100 กิโลแรก'), __('เดินสะสมครบ 100 กม.'), '📍', $totalDistance, 100, $reach($distanceMetric, 100)),
+            $threshold('dist_500', __('นักเดินทางไกล'), __('เดินสะสมครบ 500 กม.'), '🛤️', $totalDistance, 500, $reach($distanceMetric, 500)),
+            $threshold('dist_1000', __('พันกิโลเมตร'), __('เดินสะสมครบ 1,000 กม.'), '🏅', $totalDistance, 1000, $reach($distanceMetric, 1000)),
 
             // ความสูงสะสม
-            $threshold('elev_inthanon', 'พิชิตอินทนนท์', 'ไต่สะสมครบความสูงดอยอินทนนท์ (2,565 ม.)', '🏔️', $totalElevation, self::DOI_INTHANON_M, $reach($elevationMetric, self::DOI_INTHANON_M)),
-            $threshold('elev_everest', 'สูงเท่าเอเวอเรสต์', 'ไต่สะสมครบ 8,849 ม.', '🗻', $totalElevation, 8849, $reach($elevationMetric, 8849)),
+            $threshold('elev_inthanon', __('พิชิตอินทนนท์'), __('ไต่สะสมครบความสูงดอยอินทนนท์ (2,565 ม.)'), '🏔️', $totalElevation, self::DOI_INTHANON_M, $reach($elevationMetric, self::DOI_INTHANON_M)),
+            $threshold('elev_everest', __('สูงเท่าเอเวอเรสต์'), __('ไต่สะสมครบ 8,849 ม.'), '🗻', $totalElevation, 8849, $reach($elevationMetric, 8849)),
 
             // ภูมิภาค
-            $threshold('region_3', 'นักสะสมภูมิภาค', 'เดินทางครบ 3 ภูมิภาค', '🗺️', $regionsCount, 3, $reachRegions(3)),
-            $threshold('region_5', 'ทั่วไทย', 'เดินทางครบ 5 ภูมิภาค', '🇹🇭', $regionsCount, 5, $reachRegions(5)),
+            $threshold('region_3', __('นักสะสมภูมิภาค'), __('เดินทางครบ 3 ภูมิภาค'), '🗺️', $regionsCount, 3, $reachRegions(3)),
+            $threshold('region_5', __('ทั่วไทย'), __('เดินทางครบ 5 ภูมิภาค'), '🇹🇭', $regionsCount, 5, $reachRegions(5)),
 
             // ต่างประเทศ
-            $threshold('passport_stamp', 'ประทับตราแรก', 'จบทริปต่างประเทศทริปแรก', '🛂', $foreignCountriesCount, 1, $reachCountries(1)),
-            $threshold('country_3', 'ข้ามพรมแดน', 'เดินทางครบ 3 ประเทศ', '✈️', $foreignCountriesCount, 3, $reachCountries(3)),
-            $threshold('country_5', 'นักเดินทางโลก', 'เดินทางครบ 5 ประเทศ', '🌏', $foreignCountriesCount, 5, $reachCountries(5)),
+            $threshold('passport_stamp', __('ประทับตราแรก'), __('จบทริปต่างประเทศทริปแรก'), '🛂', $foreignCountriesCount, 1, $reachCountries(1)),
+            $threshold('country_3', __('ข้ามพรมแดน'), __('เดินทางครบ 3 ประเทศ'), '✈️', $foreignCountriesCount, 3, $reachCountries(3)),
+            $threshold('country_5', __('นักเดินทางโลก'), __('เดินทางครบ 5 ประเทศ'), '🌏', $foreignCountriesCount, 5, $reachCountries(5)),
 
             // พิเศษ
-            $flag('hardcore', 'สายโหด', 'จบทริประดับความยากสูงสุด', '🔥', $firstMatch(fn (array $t) => $t['trip']->difficulty === 'hard')),
-            $flag('rainy_soul', 'สายหน้าฝน', 'ออกเดินทางในช่วงหน้าฝน', '🌧️', $firstMatch(fn (array $t) => in_array($t['month'], self::RAINY_MONTHS, true))),
-            $flag('winter_soul', 'สายลมหนาว', 'ออกเดินทางในช่วงหน้าหนาว', '❄️', $firstMatch(fn (array $t) => in_array($t['month'], self::WINTER_MONTHS, true))),
+            $flag('hardcore', __('สายโหด'), __('จบทริประดับความยากสูงสุด'), '🔥', $firstMatch(fn (array $t) => $t['trip']->difficulty === 'hard')),
+            $flag('rainy_soul', __('สายหน้าฝน'), __('ออกเดินทางในช่วงหน้าฝน'), '🌧️', $firstMatch(fn (array $t) => in_array($t['month'], self::RAINY_MONTHS, true))),
+            $flag('winter_soul', __('สายลมหนาว'), __('ออกเดินทางในช่วงหน้าหนาว'), '❄️', $firstMatch(fn (array $t) => in_array($t['month'], self::WINTER_MONTHS, true))),
         ];
 
         // เรียงตราที่ปลดล็อกแล้วขึ้นก่อน (คงลำดับเดิมภายในกลุ่ม)

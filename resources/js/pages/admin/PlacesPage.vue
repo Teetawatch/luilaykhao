@@ -88,6 +88,9 @@
                   >
                     <span class="material-symbols-rounded">open_in_new</span>
                   </a>
+                  <button class="btn-icon" title="คำแปลภาษาอังกฤษ" @click="translating = place">
+                    <span class="material-symbols-rounded">translate</span>
+                  </button>
                   <button class="btn-icon" title="แก้ไข" @click="openEdit(place)">
                     <span class="material-symbols-rounded">edit</span>
                   </button>
@@ -272,12 +275,25 @@
         </form>
       </div>
     </div>
+    <!-- คำแปลภาษาอังกฤษ (เว็บ /en) -->
+    <div class="modal-overlay" v-if="translating" @click.self="translating = null">
+      <div class="modal-card" style="max-width:860px">
+        <div class="modal-header">
+          <h2>English · {{ translating.name }}</h2>
+          <button class="modal-close" @click="translating = null"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div class="modal-body">
+          <AdminContentTranslationPanel type="place" :id="translating.id" />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import api from '../../lib/axios';
+import AdminContentTranslationPanel from '../../components/AdminContentTranslationPanel.vue';
 import { useToast } from '../../lib/toast';
 import { useSwal } from '../../lib/swal';
 import { THAI_MONTHS_SHORT } from '../../lib/thaiDate';
@@ -310,6 +326,8 @@ const toast = useToast();
 const swal = useSwal();
 
 const loading = ref(true);
+// แถวที่กำลังเปิดดูคำแปลภาษาอังกฤษ (null = ปิด)
+const translating = ref(null);
 const saving = ref(false);
 const places = ref([]);
 const trips = ref([]);

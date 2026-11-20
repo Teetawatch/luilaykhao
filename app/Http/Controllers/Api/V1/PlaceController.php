@@ -82,14 +82,14 @@ class PlaceController extends Controller
 
             $months[] = [
                 'month' => $month,
-                'label' => self::MONTH_LABELS[$month - 1],
+                'label' => __(self::MONTH_LABELS[$month - 1]),
                 'season' => self::seasonOf($month),
-                'season_label' => self::SEASON_LABELS[self::seasonOf($month)],
+                'season_label' => __(self::SEASON_LABELS[self::seasonOf($month)]),
                 'best' => $best->map(fn (Place $p) => PlacePresenter::card($p))->values()->all(),
                 'closed' => $closed->map(fn (Place $p) => [
-                    'name' => $p->name,
+                    'name' => $p->tr('name'),
                     'slug' => $p->slug,
-                    'closure_note' => $p->closure_note,
+                    'closure_note' => $p->tr('closure_note'),
                 ])->values()->all(),
             ];
         }
@@ -125,7 +125,7 @@ class PlaceController extends Controller
     private static function options(array $map): array
     {
         return collect($map)
-            ->map(fn (string $label, string $key) => ['key' => $key, 'label' => $label])
+            ->map(fn (string $label, string $key) => ['key' => $key, 'label' => __($label)])
             ->values()
             ->all();
     }

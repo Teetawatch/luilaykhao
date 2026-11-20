@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasContentTranslations;
 use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,11 @@ use Illuminate\Support\Str;
  */
 class Stay extends Model
 {
+    use HasContentTranslations;
+
+    /** ช่องที่ระบบแปลให้ลูกค้าต่างชาติ (ดู ContentTranslationService) */
+    protected array $translatableContent = ['name', 'community_name', 'province', 'district', 'summary', 'description', 'community_story', 'highlights', 'house_rules'];
+
     public const TYPES = [
         'homestay' => 'โฮมสเตย์',
         'resort' => 'รีสอร์ต',

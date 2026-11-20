@@ -134,6 +134,19 @@ class AppLocaleTest extends TestCase
         );
     }
 
+    public function test_sms_templates_keep_their_sprintf_arguments_in_order(): void
+    {
+        // แม่แบบ SMS เป็น sprintf — คำแปลต้องมี %s/%d ครบและเรียงเหมือนต้นฉบับ
+        // ไม่งั้นชื่อทริปไปโผล่ตรงยอดเงิน
+        $translations = json_decode(file_get_contents(lang_path('en.json')), true);
+
+        foreach ($translations as $thai => $english) {
+            preg_match_all('/%[sd]/', $thai, $expected);
+            preg_match_all('/%[sd]/', $english, $actual);
+            $this->assertSame($expected[0], $actual[0], $thai);
+        }
+    }
+
     public function test_every_translation_keeps_its_placeholders(): void
     {
         // คำแปลที่ทำ :placeholder หาย จะโชว์ค่าว่างหรือ ":seat" ดิบ ๆ ให้ลูกค้า

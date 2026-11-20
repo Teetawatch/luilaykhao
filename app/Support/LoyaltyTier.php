@@ -34,8 +34,8 @@ class LoyaltyTier
         return [
             [
                 'code' => self::FRIEND,
-                'label' => 'เพื่อนร่วมทาง',
-                'tagline' => 'ยินดีที่ได้ออกเดินทางด้วยกัน',
+                'label' => __('เพื่อนร่วมทาง'),
+                'tagline' => __('ยินดีที่ได้ออกเดินทางด้วยกัน'),
                 'min_trips' => 0,
                 'point_multiplier' => 1.0,
                 'seat_lock_bonus_minutes' => 0,
@@ -45,8 +45,8 @@ class LoyaltyTier
             ],
             [
                 'code' => self::FREQUENT,
-                'label' => 'ขาประจำ',
-                'tagline' => 'กลับมาอีกแล้ว ดีใจที่ได้เจอกัน',
+                'label' => __('ขาประจำ'),
+                'tagline' => __('กลับมาอีกแล้ว ดีใจที่ได้เจอกัน'),
                 'min_trips' => 2,
                 'point_multiplier' => 1.1,
                 'seat_lock_bonus_minutes' => 5,
@@ -56,8 +56,8 @@ class LoyaltyTier
             ],
             [
                 'code' => self::COMRADE,
-                'label' => 'สหายนักเดิน',
-                'tagline' => 'ไปด้วยกันมาหลายเส้นทางแล้ว',
+                'label' => __('สหายนักเดิน'),
+                'tagline' => __('ไปด้วยกันมาหลายเส้นทางแล้ว'),
                 'min_trips' => 5,
                 'point_multiplier' => 1.25,
                 'seat_lock_bonus_minutes' => 10,
@@ -67,8 +67,8 @@ class LoyaltyTier
             ],
             [
                 'code' => self::INSIDER,
-                'label' => 'คนกันเอง',
-                'tagline' => 'สนิทกับเราจนเป็นครอบครัวเดียวกัน',
+                'label' => __('คนกันเอง'),
+                'tagline' => __('สนิทกับเราจนเป็นครอบครัวเดียวกัน'),
                 'min_trips' => 10,
                 'point_multiplier' => 1.5,
                 'seat_lock_bonus_minutes' => 15,

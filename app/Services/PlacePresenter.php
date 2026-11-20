@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Place;
 use App\Models\Trip;
 use App\Support\MediaDisk;
-use App\Support\ThaiDate;
+use App\Support\AppLocale;
 
 /**
  * รูปร่าง JSON ของสถานที่ที่ใช้ร่วมกันทุก endpoint (list / detail / ปฏิทินฤดูกาล)
@@ -18,22 +18,22 @@ class PlacePresenter
     {
         return [
             'id' => $place->id,
-            'name' => $place->name,
+            'name' => $place->tr('name'),
             'slug' => $place->slug,
             'type' => $place->type,
-            'type_label' => $place->typeLabel(),
+            'type_label' => __($place->typeLabel()),
             'region' => $place->region,
-            'region_label' => $place->regionLabel(),
-            'province' => $place->province,
-            'park' => $place->park,
+            'region_label' => $place->regionLabel() ? __($place->regionLabel()) : null,
+            'province' => $place->tr('province'),
+            'park' => $place->tr('park'),
             'elevation_m' => $place->elevation_m,
             'trail_distance_km' => $place->trail_distance_km !== null ? (float) $place->trail_distance_km : null,
             'elevation_gain_m' => $place->elevation_gain_m,
             'difficulty' => $place->difficulty,
-            'difficulty_label' => $place->difficultyLabel(),
+            'difficulty_label' => $place->difficultyLabel() ? __($place->difficultyLabel()) : null,
             'best_months' => array_values($place->best_months ?? []),
             'closed_months' => array_values($place->closed_months ?? []),
-            'summary' => $place->summary,
+            'summary' => $place->tr('summary'),
             'cover_image' => $place->coverUrl(),
             'latitude' => $place->latitude,
             'longitude' => $place->longitude,
@@ -52,11 +52,11 @@ class PlacePresenter
                 ->orderBy('departure_date')])]);
 
         return array_merge(self::card($place), [
-            'description' => $place->description,
-            'highlights' => array_values($place->highlights ?? []),
-            'know_before' => array_values($place->know_before ?? []),
-            'season_note' => $place->season_note,
-            'closure_note' => $place->closure_note,
+            'description' => $place->tr('description'),
+            'highlights' => array_values($place->tr('highlights', $place->highlights ?? [])),
+            'know_before' => array_values($place->tr('know_before', $place->know_before ?? [])),
+            'season_note' => $place->tr('season_note'),
+            'closure_note' => $place->tr('closure_note'),
             'gallery' => $place->galleryUrls(),
             'views_count' => $place->views_count,
             'trips' => $place->trips->map(fn (Trip $trip) => self::tripCard($trip))->values()->all(),
@@ -70,7 +70,7 @@ class PlacePresenter
 
         return [
             'id' => $trip->id,
-            'title' => $trip->title,
+            'title' => $trip->tr('title'),
             'slug' => $trip->slug,
             'duration_days' => $trip->duration_days,
             'cover_image' => MediaDisk::url($trip->thumbnail_image ?: $trip->cover_image),
@@ -80,7 +80,7 @@ class PlacePresenter
             'upcoming_count' => $upcoming->count(),
             'next_departure' => $next?->departure_date?->toDateString(),
             'next_departure_label' => $next?->departure_date
-                ? ThaiDate::short($next->departure_date)
+                ? AppLocale::shortDate($next->departure_date)
                 : null,
         ];
     }

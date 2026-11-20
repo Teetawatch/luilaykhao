@@ -99,7 +99,7 @@ class LoyaltyController extends Controller
         $account = LoyaltyAccount::forUser($request->user()->id);
 
         if ($account->points < $reward->points_required) {
-            return $this->error('แต้มไม่เพียงพอ (ต้องการ '.$reward->points_required.' แต้ม)', 422);
+            return $this->error(__('แต้มไม่เพียงพอ (ต้องการ :points แต้ม)', ['points' => $reward->points_required]), 422);
         }
 
         try {
@@ -110,7 +110,7 @@ class LoyaltyController extends Controller
 
                 if ($locked->stock !== null) {
                     if ($locked->stock <= 0) {
-                        throw new \Exception('ของรางวัลหมดแล้ว');
+                        throw new \Exception(__('ของรางวัลหมดแล้ว'));
                     }
                     $locked->decrement('stock');
                 }
@@ -142,7 +142,7 @@ class LoyaltyController extends Controller
             'reward' => $this->formatReward($reward->fresh()),
             'expires_at' => $redemption->expires_at?->toISOString(),
             'points_remaining' => LoyaltyAccount::forUser($request->user()->id)->points,
-        ], 'แลกของรางวัลสำเร็จ', 201);
+        ], __('แลกของรางวัลสำเร็จ'), 201);
     }
 
     public function myCoupons(Request $request): JsonResponse
@@ -239,7 +239,7 @@ class LoyaltyController extends Controller
             'recipient_name' => $this->transfers->maskedName($recipient),
             'points_remaining' => (int) LoyaltyAccount::forUser($request->user()->id)->points,
             'limits' => $this->transfers->limitsFor($request->user()),
-        ], 'โอนแต้มสำเร็จ', 201);
+        ], __('โอนแต้มสำเร็จ'), 201);
     }
 
     /**
@@ -257,7 +257,7 @@ class LoyaltyController extends Controller
             $perks[] = [
                 'key' => 'point_multiplier',
                 'value' => $tier['point_multiplier'],
-                'label' => 'สะสมแต้ม ×'.rtrim(rtrim(number_format($tier['point_multiplier'], 2), '0'), '.'),
+                'label' => __('สะสมแต้ม ×:x', ['x' => rtrim(rtrim(number_format($tier['point_multiplier'], 2), '0'), '.')]),
             ];
         }
 
@@ -265,7 +265,7 @@ class LoyaltyController extends Controller
             $perks[] = [
                 'key' => 'early_access_hours',
                 'value' => $tier['early_access_hours'],
-                'label' => 'เปิดจองรอบใหม่ก่อนใคร '.$tier['early_access_hours'].' ชม.',
+                'label' => __('เปิดจองรอบใหม่ก่อนใคร :hours ชม.', ['hours' => $tier['early_access_hours']]),
             ];
         }
 
@@ -273,7 +273,7 @@ class LoyaltyController extends Controller
             $perks[] = [
                 'key' => 'seat_lock_bonus_minutes',
                 'value' => $tier['seat_lock_bonus_minutes'],
-                'label' => 'จองที่นั่งได้นานขึ้น '.$tier['seat_lock_bonus_minutes'].' นาที',
+                'label' => __('จองที่นั่งได้นานขึ้น :minutes นาที', ['minutes' => $tier['seat_lock_bonus_minutes']]),
             ];
         }
 
@@ -281,7 +281,7 @@ class LoyaltyController extends Controller
             $perks[] = [
                 'key' => 'deposit_discount_percent',
                 'value' => $tier['deposit_discount_percent'],
-                'label' => 'มัดจำน้อยลง '.$tier['deposit_discount_percent'].'%',
+                'label' => __('มัดจำน้อยลง :percent%', ['percent' => $tier['deposit_discount_percent']]),
             ];
         }
 
@@ -289,7 +289,7 @@ class LoyaltyController extends Controller
             $perks[] = [
                 'key' => 'birthday_coupon_baht',
                 'value' => $tier['birthday_coupon_baht'],
-                'label' => 'ส่วนลดวันเกิด '.number_format($tier['birthday_coupon_baht']).' บาท',
+                'label' => __('ส่วนลดวันเกิด :amount บาท', ['amount' => number_format($tier['birthday_coupon_baht'])]),
             ];
         }
 
@@ -297,7 +297,7 @@ class LoyaltyController extends Controller
             $perks[] = [
                 'key' => 'waitlist_priority',
                 'value' => 1,
-                'label' => 'ได้คิวรอที่นั่งก่อน',
+                'label' => __('ได้คิวรอที่นั่งก่อน'),
             ];
         }
 
@@ -326,11 +326,11 @@ class LoyaltyController extends Controller
         $value = (float) $r->discount_value;
 
         return match ($r->type) {
-            LoyaltyReward::TYPE_DISCOUNT_PERCENT => 'ลด '.rtrim(rtrim(number_format($value, 2), '0'), '.').'%',
+            LoyaltyReward::TYPE_DISCOUNT_PERCENT => __('ลด :value%', ['value' => rtrim(rtrim(number_format($value, 2), '0'), '.')]),
             LoyaltyReward::TYPE_FREE_RENTAL => $value > 0
-                ? 'เช่าอุปกรณ์ฟรี มูลค่าไม่เกิน '.number_format($value).' บาท'
-                : 'เช่าอุปกรณ์ฟรีทั้งหมดในการจองนี้',
-            default => 'ลด '.number_format($value).' บาท',
+                ? __('เช่าอุปกรณ์ฟรี มูลค่าไม่เกิน :amount บาท', ['amount' => number_format($value)])
+                : __('เช่าอุปกรณ์ฟรีทั้งหมดในการจองนี้'),
+            default => __('ลด :amount บาท', ['amount' => number_format($value)]),
         };
     }
 }
