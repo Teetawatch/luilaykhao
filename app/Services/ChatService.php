@@ -6,12 +6,14 @@ use App\Events\ChatMessageSent;
 use App\Events\ChatMessageUpdated;
 use App\Models\Booking;
 use App\Models\BookingMember;
+use App\Models\BookingPassenger;
 use App\Models\ChatMessage;
 use App\Models\ChatReaction;
 use App\Models\ChatRead;
 use App\Models\ChatRoomPreference;
 use App\Models\TripSchedule;
 use App\Models\User;
+use App\Support\Countries;
 use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -137,6 +139,41 @@ class ChatService
         $staffIds = $schedule->staff()->pluck('users.id');
 
         return $customerIds->merge($memberIds)->merge($staffIds)->unique()->values();
+    }
+
+    /**
+     * ผู้ชมคนนี้น่าจะเป็นลูกค้าต่างชาติไหม — แอปขึ้นป้าย "ทีมงานพูดไทย" ให้ทำใจ
+     * ไว้ก่อนว่าสตาฟสื่อสารภาษาไทยเป็นหลัก และชี้ไปที่ปุ่มแปลข้อความ
+     *
+     * ไม่ดูภาษาของเครื่อง: คนไทยจำนวนมากตั้งมือถือเป็นภาษาอังกฤษ ดูจากสิ่งที่
+     * ลูกค้าบอกเราเอง — ภาษาแอป, สัญชาติในบัญชี, หรือมีผู้เดินทางสัญชาติอื่น
+     * ในใบจองของรอบนี้ที่เขาเป็นเจ้าของ/สมาชิก
+     */
+    public function viewerLikelyForeign(User $user, TripSchedule $schedule): bool
+    {
+        $locale = strtolower(trim((string) $user->locale));
+        if ($locale !== '' && $locale !== 'th') {
+            return true;
+        }
+
+        $nationality = strtoupper(trim((string) $user->nationality));
+        if ($nationality !== '' && $nationality !== Countries::HOME) {
+            return true;
+        }
+
+        return BookingPassenger::query()
+            ->whereNotNull('nationality')
+            ->where('nationality', '!=', '')
+            ->where('nationality', '!=', Countries::HOME)
+            ->whereHas('booking', fn (Builder $q) => $q
+                ->where('schedule_id', $schedule->id)
+                ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+                ->where(fn (Builder $q) => $q
+                    ->where('user_id', $user->id)
+                    ->orWhereHas('members', fn (Builder $m) => $m
+                        ->where('user_id', $user->id)
+                        ->where('status', BookingMember::STATUS_ACTIVE))))
+            ->exists();
     }
 
     /**

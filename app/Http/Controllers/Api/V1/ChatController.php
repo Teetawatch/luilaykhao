@@ -861,6 +861,9 @@ class ChatController extends Controller
             'suggest_quiet' => $notifyLevel === ChatRoomPreference::LEVEL_ALL
                 && ! $this->chatService->canModerate($user, $schedule)
                 && $this->daysUntil($schedule) > self::SUGGEST_QUIET_AFTER_DAYS,
+            // ลูกค้าต่างชาติ: ป้าย "ทีมงานพูดไทย" + ชี้ปุ่มแปล (ทีมงานเองไม่ต้องเห็น)
+            'staff_speak_thai_note' => ! $this->chatService->canModerate($user, $schedule)
+                && $this->chatService->viewerLikelyForeign($user, $schedule),
             // คำขอแวะห้องน้ำ: ตัวเลขรวม (ทีมงานใช้ขึ้นแถบ) + ฉันขอค้างอยู่ไหม — ไม่มีชื่อใคร
             'stop_requests' => $this->restStops->requestSummary($schedule),
             'my_stop_request' => $this->restStops->hasPendingRequest($user, $schedule),
