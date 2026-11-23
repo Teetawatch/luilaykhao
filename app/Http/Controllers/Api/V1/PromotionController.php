@@ -386,8 +386,9 @@ class PromotionController extends Controller
 
         [$type, $previewValue] = match ($redemption->rewardType()) {
             LoyaltyReward::TYPE_DISCOUNT_PERCENT => ['percent', $value],
-            // หักได้เฉพาะค่าเช่าอุปกรณ์ ซึ่งหน้าจองไม่ได้ส่งมา — โชว์ 0 ไว้ก่อนดีกว่า
-            // โชว์ส่วนลดเกินจริง แล้วให้ BookingService หักยอดจริงตอนยืนยัน
+            // หักได้เฉพาะค่าเช่าอุปกรณ์ ซึ่งที่นี่ไม่รู้ยอด — ส่ง fixed 0 ไว้ให้แอปรุ่นเก่า
+            // ส่วนหน้าจองรุ่นใหม่อ่าน coupon_type + rental_cap แล้วคิด min(ค่าเช่า, เพดาน)
+            // เอง (กติกาเดียวกับ LoyaltyRedemption::discountFor ที่ BookingService ใช้)
             LoyaltyReward::TYPE_FREE_RENTAL => ['fixed', 0],
             default => ['fixed', $value],
         };
@@ -403,6 +404,8 @@ class PromotionController extends Controller
                 'value' => $previewValue,
                 'is_coupon' => true,
                 'coupon_type' => $redemption->rewardType(),
+                // เพดานค่าเช่าที่คูปองเช่าฟรียกเว้นให้ (บาท) — 0 = ฟรีทั้งหมดไม่จำกัด
+                'rental_cap' => $redemption->rewardType() === LoyaltyReward::TYPE_FREE_RENTAL ? $value : null,
                 'expires_at' => $redemption->expires_at?->toIso8601String(),
             ],
         ]);

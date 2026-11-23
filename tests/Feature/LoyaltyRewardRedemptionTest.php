@@ -248,4 +248,28 @@ class LoyaltyRewardRedemptionTest extends TestCase
             $this->actingAs($user)->getJson('/api/v1/loyalty/transfers')->json('data.member_code'),
         );
     }
+
+    public function test_validating_a_rental_coupon_tells_the_screen_its_cap(): void
+    {
+        // หน้าจองคิดส่วนลดตัวอย่างเองจาก coupon_type + rental_cap — เดิมได้แค่ fixed 0
+        // ลูกค้าเลยเห็นส่วนลด 0 บาททั้งที่จองจริงหักค่าเช่าให้
+        $reward = LoyaltyReward::create([
+            'name' => 'เช่าอุปกรณ์ฟรี ไม่เกิน 300 บาท', 'type' => LoyaltyReward::TYPE_FREE_RENTAL,
+            'points_required' => 70, 'discount_value' => 300, 'is_active' => true,
+        ]);
+        $user = $this->userWithPoints(100);
+        $code = $this->redeem($user, $reward);
+        $schedule = $this->makeSchedule();
+
+        $promotion = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/promotions/validate', ['code' => $code, 'trip_id' => $schedule->trip_id])
+            ->assertOk()
+            ->json('promotion');
+
+        $this->assertSame(LoyaltyReward::TYPE_FREE_RENTAL, $promotion['coupon_type']);
+        $this->assertEquals(300, $promotion['rental_cap']);
+        // แอปรุ่นเก่าที่ไม่รู้จัก coupon_type ยังเห็นส่วนลด 0 ไม่ใช่ลดเกินจริง
+        $this->assertSame('fixed', $promotion['type']);
+        $this->assertEquals(0, $promotion['value']);
+    }
 }

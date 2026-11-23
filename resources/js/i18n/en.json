@@ -2677,6 +2677,7 @@
   "ได้รับจาก": "Received from",
   "ได้รับสลิปแล้ว ทีมงานกำลังตรวจยอดโอน จะยืนยันห้องให้เร็วที่สุดครับ": "Slip received. Our team is checking the transfer and will confirm your room as soon as possible.",
   "ได้รับส่วนลด ฿{toLocaleString}": "You save ฿{toLocaleString}",
+  "คูปองนี้ลดค่าเช่าอุปกรณ์ เลือกอุปกรณ์ที่จะเช่าก่อนจึงจะเห็นส่วนลด": "This coupon covers equipment rental. Pick the gear you want to rent to see the discount.",
   "ได้รับอนุญาตให้นำเที่ยวได้ทั้งในประเทศและต่างประเทศ โดยกรมการท่องเที่ยว กระทรวงการท่องเที่ยวและกีฬา": "Licensed for domestic and outbound tours by the Department of Tourism, Ministry of Tourism and Sports",
   "ได้แต้มจากทุกทริปที่เดินทางจริง ใช้เป็นส่วนลดทริปถัดไปได้": "Earn points on every trip you travel, and use them as a discount on your next one.",
   "ไต่ {Number} ม.": "{Number} m climb",

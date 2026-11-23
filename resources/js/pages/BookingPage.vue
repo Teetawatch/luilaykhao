@@ -1347,6 +1347,7 @@
                         <span class="font-bold text-accent-mid text-sm">{{ $t('โค้ด {promotionCode} ถูกใช้งานแล้ว', { promotionCode }) }}</span>
                       </div>
                       <p class="text-xs text-accent font-medium">{{ $t('ได้รับส่วนลด ฿{toLocaleString}', { toLocaleString: discountAmount.toLocaleString() }) }}</p>
+                      <p v-if="promotionData?.coupon_type === 'free_rental' && discountAmount <= 0" class="text-xs text-gray-500 mt-1">{{ $t('คูปองนี้ลดค่าเช่าอุปกรณ์ เลือกอุปกรณ์ที่จะเช่าก่อนจึงจะเห็นส่วนลด') }}</p>
                     </div>
                     <button @click="removePromotion" class="text-gray-400 hover:text-red-500 transition-colors p-2">
                       <span class="material-symbols-rounded text-xl">close</span>
@@ -2962,11 +2963,18 @@ const hasVariedPickupPrices = computed(() => {
 const subtotalAmount = computed(() => passengersSubtotal.value + addonsTotal.value + rentalsTotal.value);
 
 const discountAmount = computed(() => {
-  if (!promotionData.value) return 0;
-  if (promotionData.value.type === 'percent') {
-    return subtotalAmount.value * (promotionData.value.value / 100);
+  const promo = promotionData.value;
+  if (!promo) return 0;
+  // คูปองเช่าอุปกรณ์ฟรี: API ไม่รู้ยอดค่าเช่า ส่งเพดานมาให้คิดเอง (0 = ไม่จำกัด)
+  // กติกาเดียวกับ LoyaltyRedemption::discountFor — เดิมโชว์ส่วนลด 0 บาท
+  if (promo.coupon_type === 'free_rental') {
+    const cap = Number(promo.rental_cap) || 0;
+    return cap > 0 ? Math.min(cap, rentalsTotal.value) : rentalsTotal.value;
   }
-  return Number(promotionData.value.value);
+  const raw = promo.type === 'percent'
+    ? subtotalAmount.value * (Number(promo.value) / 100)
+    : Number(promo.value);
+  return Math.min(Math.max(raw || 0, 0), subtotalAmount.value);
 });
 
 const totalAmount = computed(() => Math.max(0, subtotalAmount.value - discountAmount.value));
