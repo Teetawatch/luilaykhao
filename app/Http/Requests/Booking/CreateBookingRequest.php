@@ -7,6 +7,7 @@ use App\Models\TripSchedule;
 use App\Rules\ThaiName;
 use App\Support\AppLocale;
 use App\Support\Countries;
+use App\Support\PersonName;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -28,6 +29,7 @@ class CreateBookingRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->normalisePassengerNationality();
+        $this->composePassengerNames();
 
         $addons = $this->input('selected_addons');
         if (! is_array($addons)) {
@@ -79,6 +81,46 @@ class CreateBookingRequest extends FormRequest
                 $passenger['nationality'] = filled($nationality)
                     ? strtoupper((string) $nationality)
                     : Countries::HOME;
+
+                return $passenger;
+            }, $passengers),
+        ]);
+    }
+
+    /**
+     * แอป/เว็บรุ่นใหม่ส่งชื่อ + นามสกุลแยกช่อง — ประกอบเป็นชื่อเต็มก่อนตรวจ
+     *
+     * กฎเดิมทุกข้อ (ThaiName ต้องมีนามสกุล, ชื่ออังกฤษตามพาสปอร์ต) จึงตรวจ
+     * `name` / `name_en` ตัวเดิมได้เหมือนเดิม ช่องทางที่ยังส่งชื่อช่องเดียว
+     * (แอปรุ่นเก่า, LIFF) ไม่มีคีย์พวกนี้และไม่ถูกแตะ
+     */
+    private function composePassengerNames(): void
+    {
+        $passengers = $this->input('passengers');
+        if (! is_array($passengers)) {
+            return;
+        }
+
+        $this->merge([
+            'passengers' => array_map(function ($passenger) {
+                if (! is_array($passenger)) {
+                    return $passenger;
+                }
+
+                foreach ([['name', 'first_name', 'last_name'], ['name_en', 'first_name_en', 'last_name_en']] as [$full, $first, $last]) {
+                    if (! array_key_exists($first, $passenger) && ! array_key_exists($last, $passenger)) {
+                        continue;
+                    }
+
+                    $firstValue = PersonName::normalize(is_string($passenger[$first] ?? null) ? $passenger[$first] : '');
+                    $lastValue = PersonName::normalize(is_string($passenger[$last] ?? null) ? $passenger[$last] : '');
+                    $passenger[$first] = $firstValue !== '' ? $firstValue : null;
+                    $passenger[$last] = $lastValue !== '' ? $lastValue : null;
+
+                    if ($firstValue !== '' || $lastValue !== '') {
+                        $passenger[$full] = PersonName::join($firstValue, $lastValue);
+                    }
+                }
 
                 return $passenger;
             }, $passengers),
@@ -170,6 +212,11 @@ class CreateBookingRequest extends FormRequest
             'passengers' => ['required', 'array', 'min:1'],
             'passengers.*.title' => [$passengerRequired, 'string', 'max:50'],
             'passengers.*.name' => ['required', 'string', 'max:255'],
+            // ช่องแยก (ไม่บังคับ — แอปรุ่นเก่าส่งแค่ name) ส่งชื่อมาแล้วต้องมีนามสกุล
+            'passengers.*.first_name' => ['nullable', 'string', 'max:120'],
+            'passengers.*.last_name' => ['nullable', 'required_with:passengers.*.first_name', 'string', 'max:120'],
+            'passengers.*.first_name_en' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z\s.\'-]+$/'],
+            'passengers.*.last_name_en' => ['nullable', 'required_with:passengers.*.first_name_en', 'string', 'max:120', 'regex:/^[A-Za-z\s.\'-]+$/'],
             'passengers.*.nickname' => [$passengerRequired, 'string', 'max:100'],
             // เลขบัตรประชาชนบังคับเฉพาะคนสัญชาติไทย — ชาวต่างชาติที่ร่วมทริป
             // ยืนยันตัวด้วยพาสปอร์ตแทน (prepareForValidation เติม TH ให้เสมอ
@@ -250,6 +297,10 @@ class CreateBookingRequest extends FormRequest
             'passengers.*.birth_date.required' => 'กรุณาระบุวัน/เดือน/ปีเกิดของผู้เดินทาง',
             'passengers.*.birth_date.before' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',
             'passengers.*.id_card.required_if' => 'กรุณากรอกเลขบัตรประชาชน 13 หลัก',
+            'passengers.*.last_name.required_with' => 'กรุณากรอกนามสกุล',
+            'passengers.*.last_name_en.required_with' => 'กรุณากรอกนามสกุลภาษาอังกฤษตามพาสปอร์ต',
+            'passengers.*.first_name_en.regex' => 'ชื่อภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น',
+            'passengers.*.last_name_en.regex' => 'นามสกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น',
             'passengers.*.name_en.required' => 'กรุณากรอกชื่อ-สกุลภาษาอังกฤษให้ตรงกับหน้าพาสปอร์ต',
             'passengers.*.name_en.regex' => 'ชื่อ-สกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น',
             'passengers.*.passport_no.required' => 'กรุณากรอกเลขที่พาสปอร์ต',

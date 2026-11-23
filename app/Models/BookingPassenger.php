@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNameParts;
 use App\Services\BookingDocumentService;
 use App\Services\PermitSignatureService;
 use App\Support\PermitFormFields;
@@ -13,11 +14,13 @@ use Illuminate\Support\Str;
 
 class BookingPassenger extends Model
 {
+    use HasNameParts;
+
     public $timestamps = false;
 
     protected $fillable = [
-        'booking_id', 'title', 'name', 'nickname', 'id_card', 'birth_date', 'phone', 'email', 'health_notes',
-        'name_en', 'nationality', 'passport_no', 'passport_expires_at', 'travel_document',
+        'booking_id', 'title', 'name', 'first_name', 'last_name', 'nickname', 'id_card', 'birth_date', 'phone', 'email', 'health_notes',
+        'name_en', 'first_name_en', 'last_name_en', 'nationality', 'passport_no', 'passport_expires_at', 'travel_document',
         'emergency_contact', 'emergency_relation', 'emergency_phone',
         'dive_cert_level', 'cert_number', 'weight',
         'blood_group', 'allergies', 'halal_food', 'pickup_point_id',

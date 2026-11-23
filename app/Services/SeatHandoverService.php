@@ -55,9 +55,9 @@ class SeatHandoverService
 
     /** ช่องข้อมูลส่วนตัวที่คนรับกรอกเอง — ทุกช่องถูกเขียนทับ ไม่มีของคนเดิมเหลือ */
     private const PERSONAL_FIELDS = [
-        'title', 'name', 'nickname', 'nationality', 'id_card', 'birth_date',
+        'title', 'name', 'first_name', 'last_name', 'nickname', 'nationality', 'id_card', 'birth_date',
         'phone', 'email', 'blood_group', 'allergies', 'health_notes', 'halal_food',
-        'emergency_contact', 'emergency_relation', 'emergency_phone', 'name_en', 'passport_no', 'passport_expires_at',
+        'emergency_contact', 'emergency_relation', 'emergency_phone', 'name_en', 'first_name_en', 'last_name_en', 'passport_no', 'passport_expires_at',
         'travel_document',
     ];
 

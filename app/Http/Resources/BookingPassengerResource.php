@@ -13,10 +13,15 @@ class BookingPassengerResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'name' => $this->name,
+            // ชื่อ/นามสกุลแยกช่อง — ใบเก่าที่กรอกช่องเดียวแยกจากช่องว่างแรกให้
+            'first_name' => $this->nameParts()[0],
+            'last_name' => $this->nameParts()[1],
             'nickname' => $this->nickname,
             'id_card' => $this->id_card,
             // เอกสารเดินทาง — ว่างทั้งชุดสำหรับทริปในประเทศ
             'name_en' => $this->name_en,
+            'first_name_en' => $this->name_en ? $this->nameEnParts()[0] : null,
+            'last_name_en' => $this->name_en ? $this->nameEnParts()[1] : null,
             'nationality' => $this->nationality,
             'passport_no' => $this->passport_no,
             'passport_expires_at' => $this->passport_expires_at?->toDateString(),

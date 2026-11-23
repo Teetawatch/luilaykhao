@@ -870,18 +870,28 @@
                       <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'title') }}
                     </p>
                   </div>
-                  <div class="col-span-12 md:col-span-9">
-                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ชื่อ-นามสกุล') }} <span class="text-red-500">*</span></label>
-                    <input v-model="p.name" type="text" required :placeholder="isThaiTraveller(p) ? $t('ชื่อจริง นามสกุล ภาษาไทย') : $t('กรอกชื่อ-นามสกุล')" :autocomplete="`section-traveller${i} name`"
+                  <!-- ชื่อ / นามสกุลแยกช่อง — p.name (ชื่อเต็ม) ประกอบจากสองช่องนี้ใน syncName() -->
+                  <div class="col-span-12 sm:col-span-6 md:col-span-4">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ชื่อ') }} <span class="text-red-500">*</span></label>
+                    <input v-model="p.first_name" @input="syncName(p)" type="text" required :placeholder="isThaiTraveller(p) ? $t('ชื่อจริง ภาษาไทย') : $t('ชื่อตามพาสปอร์ต')" :autocomplete="`section-traveller${i} given-name`"
                       class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
-                      :class="showErr(i, 'name') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
-                    <p v-if="showErr(i, 'name')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
-                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'name') }}
-                    </p>
-                    <p v-else-if="isThaiTraveller(p)" class="text-xs text-gray-400 font-medium mt-2">
-                      {{ $t('ภาษาไทยตามบัตรประชาชน ใช้ส่งทำประกันการเดินทาง') }}
+                      :class="showErr(i, 'first_name') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                    <p v-if="showErr(i, 'first_name')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'first_name') }}
                     </p>
                   </div>
+                  <div class="col-span-12 sm:col-span-6 md:col-span-5">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('นามสกุล') }} <span class="text-red-500">*</span></label>
+                    <input v-model="p.last_name" @input="syncName(p)" type="text" required :placeholder="isThaiTraveller(p) ? $t('นามสกุล ภาษาไทย') : $t('นามสกุลตามพาสปอร์ต')" :autocomplete="`section-traveller${i} family-name`"
+                      class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-gray-50/50 hover:bg-gray-50 focus:bg-white"
+                      :class="showErr(i, 'last_name') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                    <p v-if="showErr(i, 'last_name')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'last_name') }}
+                    </p>
+                  </div>
+                  <p v-if="isThaiTraveller(p) && !showErr(i, 'first_name') && !showErr(i, 'last_name')" class="col-span-12 -mt-2 text-xs text-gray-400 font-medium">
+                    {{ $t('ภาษาไทยตามบัตรประชาชน ใช้ส่งทำประกันการเดินทาง') }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ชื่อเล่น') }} <span class="text-red-500">*</span></label>
@@ -970,15 +980,27 @@
                   </div>
 
                   <template v-if="needsPassport(p) && (!canChooseBorderPass(p) || p.travel_document === 'passport')">
-                  <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ชื่อ-สกุลภาษาอังกฤษ (ตามพาสปอร์ต)') }} <span class="text-red-500">*</span></label>
-                    <input v-model="p.name_en" type="text" required placeholder="SOMCHAI JAIDEE"
-                      @input="p.name_en = p.name_en.toUpperCase()"
-                      class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 uppercase focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-white"
-                      :class="showErr(i, 'name_en') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
-                    <p v-if="showErr(i, 'name_en')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
-                      <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'name_en') }}
-                    </p>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('ชื่อภาษาอังกฤษ (ตามพาสปอร์ต)') }} <span class="text-red-500">*</span></label>
+                      <input v-model="p.first_name_en" type="text" required placeholder="SOMCHAI"
+                        @input="p.first_name_en = p.first_name_en.toUpperCase(); syncNameEn(p)"
+                        class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 uppercase focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-white"
+                        :class="showErr(i, 'first_name_en') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                      <p v-if="showErr(i, 'first_name_en')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                        <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'first_name_en') }}
+                      </p>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-bold text-gray-700 mb-2">{{ $t('นามสกุลภาษาอังกฤษ (ตามพาสปอร์ต)') }} <span class="text-red-500">*</span></label>
+                      <input v-model="p.last_name_en" type="text" required placeholder="JAIDEE"
+                        @input="p.last_name_en = p.last_name_en.toUpperCase(); syncNameEn(p)"
+                        class="w-full border-2 rounded-2xl px-4 py-3.5 text-sm text-gray-900 uppercase focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all placeholder:text-gray-400 bg-white"
+                        :class="showErr(i, 'last_name_en') ? 'border-red-300 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200'" />
+                      <p v-if="showErr(i, 'last_name_en')" class="field-error text-xs text-red-500 font-bold mt-2 flex items-center gap-1">
+                        <span class="material-symbols-rounded text-[14px]">error</span>{{ showErr(i, 'last_name_en') }}
+                      </p>
+                    </div>
                   </div>
 
                   <div>
@@ -2212,7 +2234,7 @@ const rentalOptions = computed(() => {
 });
 
 const passengers = ref([{
-  title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: DEFAULT_NATIONALITY, passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
+  title: '', name: '', first_name: '', last_name: '', nickname: '', id_card: '', name_en: '', first_name_en: '', last_name_en: '', nationality: DEFAULT_NATIONALITY, passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
   health_notes: '', emergency_contact: '', emergency_relation: '', emergency_phone: '',
   dive_cert_level: '', cert_number: '', weight: null, halal_food: null, pickup_point_id: null
 }]);
@@ -2320,7 +2342,8 @@ function restoreFormData() {
 function applyFormData(data) {
   if (data.passengers && Array.isArray(data.passengers) && data.passengers.length > 0) {
     // ร่างจาก localStorage ไม่มีเลขบัตร/เลขพาสปอร์ต — เติมช่องว่างให้ครบรูปทรงเดิม
-    passengers.value = data.passengers.map(p => ({ id_card: '', passport_no: '', ...p }));
+    // ร่างที่บันทึกก่อนมีช่องชื่อ/นามสกุลแยก — แยกจากชื่อเต็มให้
+    passengers.value = data.passengers.map(p => ({ id_card: '', passport_no: '', ...p, ...nameFields(p), ...nameEnFields(p) }));
     passengers.value.forEach(syncBirthParts);
     passengerCount.value = data.passengerCount ?? data.passengers.length;
   }
@@ -2405,7 +2428,7 @@ watch(passengerCount, (n) => {
   seatsStore.updateBookingDuration(n);
   while (passengers.value.length < n) {
     passengers.value.push({
-      title: '', name: '', nickname: '', id_card: '', name_en: '', nationality: DEFAULT_NATIONALITY, passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
+      title: '', name: '', first_name: '', last_name: '', nickname: '', id_card: '', name_en: '', first_name_en: '', last_name_en: '', nationality: DEFAULT_NATIONALITY, passport_no: '', passport_expires_at: '', travel_document: '', birth_date: '', birth_day: '', birth_month: '', birth_year: '', phone: '', email: '', blood_group: '', allergies: '',
       health_notes: '', emergency_contact: '', emergency_relation: '', emergency_phone: '',
       dive_cert_level: '', cert_number: '', weight: null, halal_food: null,
       pickup_point_id: selectedPickup.value?.id ?? null
@@ -2434,10 +2457,10 @@ function autoFillFromProfile(index) {
   passengers.value[index] = {
     ...passengers.value[index],
     title: (isFemaleTrip && isMaleTitle) ? '' : (user.title || ''),
-    name: user.name || '',
+    ...nameFields(user),
     nickname: user.nickname || '',
     id_card: user.id_card || '',
-    name_en: user.name_en || '',
+    ...nameEnFields(user),
     nationality: user.nationality || DEFAULT_NATIONALITY,
     passport_no: user.passport_no || '',
     passport_expires_at: user.passport_expires_at || '',
@@ -2513,10 +2536,10 @@ function applySavedTraveller(traveller) {
   passengers.value[index] = {
     ...passengers.value[index],
     title: titleAllowed ? (traveller.title || '') : '',
-    name: traveller.name || '',
+    ...nameFields(traveller),
     nickname: traveller.nickname || '',
     id_card: traveller.id_card || '',
-    name_en: traveller.name_en || '',
+    ...nameEnFields(traveller),
     nationality: traveller.nationality || DEFAULT_NATIONALITY,
     passport_no: traveller.passport_no || '',
     passport_expires_at: traveller.passport_expires_at || '',
@@ -2608,13 +2631,46 @@ function isValidThaiId(value) {
 
 // ชื่อคนไทยไปทำประกัน ซึ่งรับเฉพาะชื่อไทยตามบัตร — ตรรกะเดียวกับ
 // App\Rules\ThaiName ฝั่ง backend (ข้อความต้องตรงกันด้วย)
+// ตรวจทีละช่อง (ชื่อ / นามสกุล) — "ต้องมีนามสกุล" คือช่องนามสกุลห้ามว่าง
 const THAI_NAME_NOT_THAI = $t('กรุณากรอกชื่อ-นามสกุลเป็นภาษาไทยตามบัตรประชาชน (ใช้ส่งทำประกันการเดินทาง)');
-const THAI_NAME_NO_SURNAME = $t('กรุณากรอกทั้งชื่อและนามสกุล เว้นวรรคระหว่างชื่อกับนามสกุล');
 function thaiNameError(value) {
-  const name = String(value || '').replace(/\s+/g, ' ').trim();
+  const name = normalizeName(value);
   if (!/^[\u0E00-\u0E7F .\-]+$/.test(name) || !/[\u0E01-\u0E2E]/.test(name)) return THAI_NAME_NOT_THAI;
-  if (!name.includes(' ')) return THAI_NAME_NO_SURNAME;
   return '';
+}
+
+// ── ชื่อ / นามสกุลแยกช่อง ────────────────────────────────────────────
+// p.name / p.name_en (ชื่อเต็ม) ยังเป็นค่าที่ทั้งหน้าอ่าน (หัวการ์ด สรุป ร่าง)
+// จึงประกอบจากสองช่องทุกครั้งที่พิมพ์ ข้อมูลที่มาเป็นชื่อเต็มช่องเดียว (โปรไฟล์
+// ร่างเก่า) แยกจากช่องว่างแรก — กฎเดียวกับ App\Support\PersonName::split
+function normalizeName(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+function joinName(first, last) {
+  return normalizeName(`${normalizeName(first)} ${normalizeName(last)}`);
+}
+function splitName(full) {
+  const text = normalizeName(full);
+  const space = text.indexOf(' ');
+  return space < 0 ? [text, ''] : [text.slice(0, space), text.slice(space + 1)];
+}
+function nameFields(src) {
+  const first = normalizeName(src?.first_name);
+  const last = normalizeName(src?.last_name);
+  const [f, l] = first || last ? [first, last] : splitName(src?.name);
+  return { first_name: f, last_name: l, name: joinName(f, l) };
+}
+function nameEnFields(src) {
+  const first = normalizeName(src?.first_name_en);
+  const last = normalizeName(src?.last_name_en);
+  const [f, l] = first || last ? [first, last] : splitName(src?.name_en);
+  return { first_name_en: f, last_name_en: l, name_en: joinName(f, l) };
+}
+function syncName(p) {
+  p.name = joinName(p.first_name, p.last_name);
+}
+function syncNameEn(p) {
+  p.name_en = joinName(p.first_name_en, p.last_name_en);
 }
 
 // คนไทยกรอกเบอร์/เลขบัตรแบบไทย ส่วนคนต่างชาติใช้รูปแบบสากลและพาสปอร์ต — ทุกทริป
@@ -2750,11 +2806,10 @@ function computePassengerErrors(p, i) {
   const womenOnly = schedule.value?.trip?.is_women_only;
   if (!p.title) errors.title = $t('กรุณาเลือกคำนำหน้า');
   else if (womenOnly && !['นาง', 'นางสาว'].includes(p.title)) errors.title = $t('ทริปนี้สำหรับผู้หญิงเท่านั้น');
-  if (!hasText(p.name)) errors.name = $t('กรุณากรอกชื่อ-นามสกุล');
-  else if (isThaiTraveller(p)) {
-    const nameError = thaiNameError(p.name);
-    if (nameError) errors.name = nameError;
-  }
+  if (!hasText(p.first_name)) errors.first_name = $t('กรุณากรอกชื่อ');
+  else if (isThaiTraveller(p) && thaiNameError(p.first_name)) errors.first_name = THAI_NAME_NOT_THAI;
+  if (!hasText(p.last_name)) errors.last_name = $t('กรุณากรอกนามสกุล');
+  else if (isThaiTraveller(p) && thaiNameError(p.last_name)) errors.last_name = THAI_NAME_NOT_THAI;
   if (!hasText(p.nickname)) errors.nickname = $t('กรุณากรอกชื่อเล่น');
   if (!p.nationality) errors.nationality = $t('กรุณาเลือกสัญชาติ');
   // ชาวต่างชาติยืนยันตัวด้วยพาสปอร์ตแทนบัตรประชาชนไทย
@@ -2766,8 +2821,13 @@ function computePassengerErrors(p, i) {
   if (canChooseBorderPass(p) && !p.travel_document) {
     errors.travel_document = $t('กรุณาเลือกว่ามีพาสปอร์ต หรือให้ทีมงานทำ Border Pass');
   } else if (needsPassport(p)) {
-    if (!hasText(p.name_en)) errors.name_en = $t('กรุณากรอกชื่อ-สกุลภาษาอังกฤษตามพาสปอร์ต');
-    else if (!/^[A-Za-z\s.'-]+$/.test(p.name_en)) errors.name_en = $t('กรอกได้เฉพาะตัวอักษรภาษาอังกฤษ');
+    for (const [field, empty] of [
+      ['first_name_en', $t('กรุณากรอกชื่อภาษาอังกฤษตามพาสปอร์ต')],
+      ['last_name_en', $t('กรุณากรอกนามสกุลภาษาอังกฤษตามพาสปอร์ต')],
+    ]) {
+      if (!hasText(p[field])) errors[field] = empty;
+      else if (!/^[A-Za-z\s.'-]+$/.test(p[field])) errors[field] = $t('กรอกได้เฉพาะตัวอักษรภาษาอังกฤษ');
+    }
     if (!hasText(p.passport_no)) errors.passport_no = $t('กรุณากรอกเลขที่พาสปอร์ต');
     else if (!/^[A-Za-z0-9]{5,20}$/.test(p.passport_no)) errors.passport_no = $t('เลขที่พาสปอร์ตไม่ถูกต้อง');
     if (!collectsPassport.value) {
@@ -2833,7 +2893,7 @@ function showErr(i, field) {
   if (liveErrorFields.includes(field) && hasText(passengers.value[i]?.[field])) return message;
   // พิมพ์ชื่ออังกฤษเตือนทันที แต่ "ยังไม่มีนามสกุล" รอให้กดถัดไปก่อน —
   // ไม่งั้นจะขึ้นแดงระหว่างที่ลูกค้ายังพิมพ์ชื่อต้นอยู่
-  if (field === 'name' && message === THAI_NAME_NOT_THAI && hasText(passengers.value[i]?.name)) return message;
+  if (['first_name', 'last_name'].includes(field) && message === THAI_NAME_NOT_THAI && hasText(passengers.value[i]?.[field])) return message;
   return '';
 }
 const seatCount = computed(() => hasSeatMap.value ? seatsStore.selectedSeats.length || 1 : passengers.value.length);
@@ -3136,11 +3196,16 @@ async function createBooking() {
       consent_channel: 'web',
       passengers: passengers.value.map(p => ({
         title: p.title || null,
-        name: String(p.name || '').trim(),
+        name: joinName(p.first_name, p.last_name) || String(p.name || '').trim(),
+        // ช่องแยก — backend ประกอบ name จากสองช่องนี้
+        first_name: normalizeName(p.first_name) || null,
+        last_name: normalizeName(p.last_name) || null,
         nickname: String(p.nickname || '').trim(),
         // digitsOnly ใช้ได้เฉพาะกับเบอร์ไทย — เบอร์ต่างประเทศมี + นำหน้าที่ตัดทิ้งไม่ได้
         id_card: isThaiTraveller(p) ? digitsOnly(p.id_card) : null,
-        name_en: needsPassport(p) ? String(p.name_en || '').trim().toUpperCase() : null,
+        name_en: needsPassport(p) ? (joinName(p.first_name_en, p.last_name_en) || String(p.name_en || '').trim()).toUpperCase() : null,
+        first_name_en: needsPassport(p) ? normalizeName(p.first_name_en).toUpperCase() || null : null,
+        last_name_en: needsPassport(p) ? normalizeName(p.last_name_en).toUpperCase() || null : null,
         nationality: p.nationality || 'TH',
         passport_no: needsPassport(p) ? String(p.passport_no || '').trim().toUpperCase() : null,
         passport_expires_at: collectsPassport.value && needsPassport(p) ? (p.passport_expires_at || null) : null,

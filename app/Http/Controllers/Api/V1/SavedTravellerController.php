@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\SavedTraveller;
 use App\Rules\ThaiName;
 use App\Support\Countries;
+use App\Support\PersonName;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -121,11 +122,15 @@ class SavedTravellerController extends Controller
                 'user_id' => $request->user()->id,
                 'title' => $passenger->title,
                 'name' => $name,
+                'first_name' => $passenger->first_name,
+                'last_name' => $passenger->last_name,
                 'nickname' => $passenger->nickname,
                 'phone' => $passenger->phone,
                 'email' => $passenger->email,
                 'id_card' => $passenger->id_card,
                 'name_en' => $passenger->name_en,
+                'first_name_en' => $passenger->first_name_en,
+                'last_name_en' => $passenger->last_name_en,
                 'nationality' => $passenger->nationality,
                 'passport_no' => $passenger->passport_no,
                 'passport_expires_at' => $passenger->passport_expires_at?->toDateString(),
@@ -171,6 +176,16 @@ class SavedTravellerController extends Controller
 
     private function validated(Request $request): array
     {
+        // ชื่อ + นามสกุลแยกช่อง (แอป/เว็บรุ่นใหม่) → ประกอบชื่อเต็มก่อนตรวจกฎชื่อไทย
+        foreach ([['name', 'first_name', 'last_name'], ['name_en', 'first_name_en', 'last_name_en']] as [$full, $first, $last]) {
+            if ($request->hasAny([$first, $last])) {
+                $joined = PersonName::join($request->input($first), $request->input($last));
+                if ($joined !== '') {
+                    $request->merge([$full => $joined]);
+                }
+            }
+        }
+
         // เก็บชื่ออังกฤษไว้ในสมุด = เติมผิดให้ทุกการจองต่อจากนี้ — คนไทยต้องเป็นชื่อไทยตามบัตร
         $isThai = strtoupper((string) ($request->input('nationality') ?: Countries::HOME)) === Countries::HOME;
 
@@ -178,12 +193,16 @@ class SavedTravellerController extends Controller
             'label' => ['nullable', 'string', 'max:50'],
             'title' => ['nullable', 'string', 'max:20'],
             'name' => ['required', 'string', 'max:120', ...($isThai ? [new ThaiName] : [])],
+            'first_name' => ['nullable', 'string', 'max:120'],
+            'last_name' => ['nullable', 'required_with:first_name', 'string', 'max:120'],
             'nickname' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:20'],
             'email' => ['nullable', 'email', 'max:120'],
             'id_card' => ['nullable', 'string', 'max:20'],
             // เอกสารเดินทาง — เก็บไว้เพื่อไม่ต้องพิมพ์ซ้ำทุกทริปต่างประเทศ
             'name_en' => ['nullable', 'string', 'max:255'],
+            'first_name_en' => ['nullable', 'string', 'max:120'],
+            'last_name_en' => ['nullable', 'string', 'max:120'],
             'nationality' => ['nullable', 'string', 'size:2'],
             'passport_no' => ['nullable', 'string', 'max:20'],
             'passport_expires_at' => ['nullable', 'date'],

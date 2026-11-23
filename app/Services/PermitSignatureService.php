@@ -503,7 +503,7 @@ class PermitSignatureService
             return $nickname;
         }
 
-        return PermitFormFields::splitName($passenger->name)[0] ?: 'ผู้เดินทาง';
+        return $passenger->nameParts()[0] ?: 'ผู้เดินทาง';
     }
 
     /** เตือนไปแล้ววันนี้ (เวลาไทย) หรือยัง — ปุ่มแอดมินกดได้วันละครั้งต่อใบ */

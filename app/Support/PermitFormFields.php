@@ -375,7 +375,8 @@ class PermitFormFields
     {
         $today ??= Carbon::now('Asia/Bangkok');
         $title = trim((string) $passenger->title);
-        [$first, $last] = self::splitName($passenger->name);
+        // ชื่อ/นามสกุลที่ลูกค้ากรอกแยกไว้ก่อน — ใบเก่าค่อยแยกจากช่องว่างแรก
+        [$first, $last] = $passenger->nameParts();
         [$emergencyFirst, $emergencyLast] = self::splitName($passenger->emergency_contact);
 
         $start = $schedule->departure_date;
@@ -477,9 +478,7 @@ class PermitFormFields
      */
     public static function splitName(?string $name): array
     {
-        $parts = preg_split('/\s+/u', trim((string) $name), 2) ?: [];
-
-        return [$parts[0] ?? '', $parts[1] ?? ''];
+        return PersonName::split($name);
     }
 
     private static function ageOn(?CarbonInterface $birth, ?CarbonInterface $on): string

@@ -265,8 +265,9 @@ class PermitFormTest extends TestCase
         $v = PermitFormFields::values($passenger, $schedule->fresh('trip'), 7, Carbon::parse('2026-10-28'));
 
         $this->assertSame('สมหญิง', $v['first_name']);
-        $this->assertSame('ณ  อยุธยา', $v['last_name']);
-        $this->assertSame('นางสาวสมหญิง ณ  อยุธยา', $v['title_full_name']);
+        // ช่องว่างซ้อนที่ลูกค้าพิมพ์เผลอยุบเหลือช่องเดียว (PersonName::split)
+        $this->assertSame('ณ อยุธยา', $v['last_name']);
+        $this->assertSame('นางสาวสมหญิง ณ อยุธยา', $v['title_full_name']);
         $this->assertSame('31', $v['age'], 'age on departure day, birthday is the day after');
         $this->assertSame('1103700123456', $v['id_card']);
         $this->assertSame('ไทย', $v['nationality']);

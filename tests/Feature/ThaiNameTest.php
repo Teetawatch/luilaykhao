@@ -96,8 +96,10 @@ class ThaiNameTest extends TestCase
             $source = file_get_contents(base_path($file));
 
             $this->assertStringContainsString(ThaiName::NOT_THAI, $source, $file);
-            $this->assertStringContainsString(ThaiName::NO_SURNAME, $source, $file);
         }
+
+        // หน้าเว็บแยกช่องนามสกุลแล้ว ("กรุณากรอกนามสกุล" แทน) — LIFF ยังช่องเดียว
+        $this->assertStringContainsString(ThaiName::NO_SURNAME, file_get_contents(base_path('public/liff/booking.js')));
     }
 
     public function test_the_admin_manifest_flags_old_bookings_with_an_english_name(): void
