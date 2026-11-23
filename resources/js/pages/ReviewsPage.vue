@@ -301,55 +301,20 @@
       </main>
     </div>
 
-    <!-- ══════════════════════════════════════════
-         LIGHTBOX
-    ══════════════════════════════════════════ -->
-    <Teleport to="body">
-      <Transition name="lightbox">
-        <div
-          v-if="lightbox"
-          class="lightbox"
-          role="dialog"
-          aria-modal="true"
-          :aria-label="$t('รูปและวิดีโอจากรีวิว')"
-          @click.self="closeLightbox"
-          @touchstart.passive="onTouchStart"
-          @touchend="onTouchEnd"
-        >
-          <div class="lightbox-top">
-            <span class="truncate">{{ lightbox.author }}</span>
-            <span v-if="lightbox.items.length > 1" class="tabular-nums shrink-0">{{ lightbox.index + 1 }} / {{ lightbox.items.length }}</span>
-            <button ref="lightboxClose" type="button" class="lightbox-btn ml-auto" :aria-label="$t('ปิด')" @click="closeLightbox">
-              <span class="material-symbols-rounded">close</span>
-            </button>
-          </div>
-
-          <button v-if="lightbox.items.length > 1" type="button" class="lightbox-btn lightbox-prev" :aria-label="$t('ก่อนหน้า')" @click.stop="stepMedia(-1)">
-            <span class="material-symbols-rounded">chevron_left</span>
-          </button>
-
-          <div class="lightbox-figure" @click.self="closeLightbox">
-            <img v-if="currentMedia.type === 'image'" :key="`img-${lightbox.index}`" :src="currentMedia.url" alt="" class="lightbox-media" />
-            <video v-else :key="`vid-${lightbox.index}`" :src="currentMedia.url" class="lightbox-media lightbox-video" controls autoplay playsinline></video>
-          </div>
-
-          <button v-if="lightbox.items.length > 1" type="button" class="lightbox-btn lightbox-next" :aria-label="$t('ถัดไป')" @click.stop="stepMedia(1)">
-            <span class="material-symbols-rounded">chevron_right</span>
-          </button>
-        </div>
-      </Transition>
-    </Teleport>
+    <ReviewMediaLightbox v-model="lightbox" />
   </div>
 </template>
 
 <script setup>
 import { $t } from '@/i18n';
-import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, defineComponent, h, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../lib/axios';
 import { thaiShort } from '../lib/thaiDate';
 import PageHero from '../components/PageHero.vue';
 import TierBadge from '../components/TierBadge.vue';
+import ReviewMediaLightbox from '../components/ReviewMediaLightbox.vue';
+import { reviewMedia, reviewMediaUrl } from '../lib/reviewMedia';
 import { useReviewTranslation } from '../composables/useReviewTranslation';
 
 const route = useRoute();
@@ -519,11 +484,8 @@ async function fetchReviews() {
 function normalizeReview(review) {
   return {
     ...review,
-    avatar: mediaUrl(review.user_avatar || review.user?.avatar_url || ''),
-    media: [
-      ...(review.images || []).map((url) => ({ type: 'image', url: mediaUrl(url) })),
-      ...(review.videos || []).map((url) => ({ type: 'video', url: mediaUrl(url) })),
-    ].filter((item) => item.url),
+    avatar: reviewMediaUrl(review.user_avatar || review.user?.avatar_url || ''),
+    media: reviewMedia(review),
     categories: CATEGORY_META
       .map((c) => ({ ...c, value: review[`rating_${c.key}`] }))
       .filter((c) => c.value != null && c.value > 0),
@@ -550,54 +512,12 @@ watch(
 
 // ─── Lightbox ───
 const lightbox = ref(null);
-const lightboxClose = ref(null);
-const currentMedia = computed(() => lightbox.value?.items[lightbox.value.index] || {});
-let lastFocused = null;
 
-async function openLightbox(review, index) {
-  lastFocused = document.activeElement;
+function openLightbox(review, index) {
   lightbox.value = { items: review.media, index, author: review.user_name };
-  document.body.style.overflow = 'hidden';
-  await nextTick();
-  lightboxClose.value?.focus();
-}
-
-function closeLightbox() {
-  lightbox.value = null;
-  document.body.style.overflow = '';
-  lastFocused?.focus?.();
-}
-
-function stepMedia(delta) {
-  const total = lightbox.value.items.length;
-  lightbox.value.index = (lightbox.value.index + delta + total) % total;
-}
-
-function onKeydown(e) {
-  if (!lightbox.value) return;
-  if (e.key === 'Escape') closeLightbox();
-  else if (e.key === 'ArrowLeft') stepMedia(-1);
-  else if (e.key === 'ArrowRight') stepMedia(1);
-}
-
-let touchX = null;
-function onTouchStart(e) {
-  touchX = e.touches[0]?.clientX ?? null;
-}
-function onTouchEnd(e) {
-  if (touchX === null || !lightbox.value || lightbox.value.items.length < 2) return;
-  const dx = (e.changedTouches[0]?.clientX ?? touchX) - touchX;
-  touchX = null;
-  if (Math.abs(dx) > 50) stepMedia(dx < 0 ? 1 : -1);
 }
 
 // ─── Helpers ───
-function mediaUrl(value) {
-  if (!value) return '';
-  const raw = String(value);
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  return `${window.location.origin}/${raw.replace(/^\/+/, '')}`;
-}
 
 function scrollToList() {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -623,12 +543,6 @@ function relativeDate(value) {
 
 onMounted(() => {
   fetchStats();
-  window.addEventListener('keydown', onKeydown);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeydown);
-  document.body.style.overflow = '';
 });
 </script>
 
@@ -742,73 +656,4 @@ onBeforeUnmount(() => {
 .scrollbar-none { scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
 
-/* Lightbox */
-.lightbox {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 72px 16px 24px;
-  background: rgba(8, 12, 10, 0.94);
-}
-.lightbox-top {
-  position: absolute;
-  top: 0;
-  inset-inline: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 12px 16px 12px 20px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-  font-weight: 700;
-}
-.lightbox-figure {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-.lightbox-media {
-  max-width: min(1100px, 100%);
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 0.75rem;
-}
-.lightbox-video {
-  width: min(900px, 100%);
-  background: #000;
-}
-.lightbox-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 9999px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  transition: background 0.2s ease;
-}
-.lightbox-btn:hover { background: rgba(255, 255, 255, 0.24); }
-.lightbox-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-.lightbox-btn .material-symbols-rounded { font-size: 26px; }
-.lightbox-prev,
-.lightbox-next {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-}
-.lightbox-prev { left: 16px; }
-.lightbox-next { right: 16px; }
-@media (max-width: 640px) {
-  .lightbox-prev,
-  .lightbox-next { display: none; } /* มือถือปัดซ้าย/ขวาแทน */
-}
-
-.lightbox-enter-active, .lightbox-leave-active { transition: opacity 0.2s ease; }
-.lightbox-enter-from, .lightbox-leave-to { opacity: 0; }
 </style>

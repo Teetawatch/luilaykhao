@@ -1359,19 +1359,29 @@
                   {{ reviewTranslation.isLoading(review) ? $t('กำลังแปล…') : reviewTranslation.isShowingTranslation(review) ? $t('ดูต้นฉบับภาษาไทย') : reviewTranslation.hasFailed(review) ? $t('แปลไม่สำเร็จ ลองอีกครั้ง') : $t('แปลเป็นภาษาอังกฤษ') }}
                 </button>
 
-                <!-- Review Images -->
-                <div v-if="review.images && review.images.length > 0" class="flex flex-wrap gap-3 mb-5">
-                  <div
-                    v-for="(img, idx) in review.images"
+                <!-- Review Images + Videos -->
+                <div v-if="review.images?.length || review.videos?.length" class="flex flex-wrap gap-3 mb-5">
+                  <button
+                    v-for="(item, idx) in reviewMedia(review)"
                     :key="idx"
-                    @click="openReviewImage(review.images, idx)"
-                    class="relative w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-gray-100 cursor-pointer group"
+                    type="button"
+                    @click="openReviewMedia(review, idx)"
+                    :aria-label="item.type === 'video' ? $t('เล่นวิดีโอรีวิว') : $t('ดูรูปที่ {p}', { p: idx + 1 })"
+                    class="relative w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-gray-100 cursor-pointer group bg-[var(--color-sand)]"
                   >
-                    <img :src="img" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
-                      <span class="material-symbols-rounded text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">zoom_in</span>
-                    </div>
-                  </div>
+                    <template v-if="item.type === 'image'">
+                      <img :src="item.url" alt="" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
+                        <span class="material-symbols-rounded text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">zoom_in</span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <video :src="`${item.url}#t=0.1`" class="w-full h-full object-cover pointer-events-none" muted playsinline preload="metadata"></video>
+                      <span class="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/40 transition-colors duration-300">
+                        <span class="material-symbols-rounded text-white text-[30px]" style="font-variation-settings:'FILL' 1">play_circle</span>
+                      </span>
+                    </template>
+                  </button>
                 </div>
 
                 <!-- Admin Reply -->
@@ -2034,6 +2044,8 @@
         </div>
       </Transition>
     </Teleport>
+
+    <ReviewMediaLightbox v-model="reviewLightbox" />
   </div>
 </template>
 
@@ -2054,6 +2066,8 @@ import PickupVehicleGuide from '../components/PickupVehicleGuide.vue';
 import WaitlistJoinCard from '../components/WaitlistJoinCard.vue';
 import TripReadinessCard from '../components/TripReadinessCard.vue';
 import GroupPlanCreateCard from '../components/GroupPlanCreateCard.vue';
+import ReviewMediaLightbox from '../components/ReviewMediaLightbox.vue';
+import { reviewMedia } from '../lib/reviewMedia';
 import { useReviewTranslation } from '../composables/useReviewTranslation';
 import { useWishlistStore } from '../stores/wishlist';
 import {
@@ -3242,6 +3256,12 @@ async function fetchMonthPhotos() {
     console.error('Failed to fetch same-month review photos:', error);
     monthPhotos.value = [];
   }
+}
+
+// รูป/วิดีโอจากรีวิว — ใช้ตัวดูร่วมกับหน้ารีวิว (เล่นวิดีโอได้); ภาพแผนการเดินทาง/อัลบั้มยังใช้ตัวดูภาพเดิม
+const reviewLightbox = ref(null);
+function openReviewMedia(review, index) {
+  reviewLightbox.value = { items: reviewMedia(review), index, author: review.user_name };
 }
 
 function openReviewImage(images, index) {

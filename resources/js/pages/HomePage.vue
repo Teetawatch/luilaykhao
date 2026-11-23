@@ -320,7 +320,41 @@
                 </span>
               </div>
 
-              <p class="text-[var(--color-text-mid)] text-[15px] font-medium leading-relaxed mb-7 line-clamp-4">“{{ review.comment || $t('ไม่มีความคิดเห็น') }}”</p>
+              <p
+                class="text-[var(--color-text-mid)] text-[15px] font-medium leading-relaxed"
+                :class="review.media.length ? 'mb-4 line-clamp-3' : 'mb-7 line-clamp-4'"
+              >“{{ review.comment || $t('ไม่มีความคิดเห็น') }}”</p>
+
+              <!-- รูป/วิดีโอที่ลูกค้าแนบมา — กดดูเต็มจอ -->
+              <div v-if="review.media.length" class="grid grid-cols-4 gap-2 mb-6">
+                <button
+                  v-for="(item, mIdx) in review.media.slice(0, REVIEW_MEDIA_PREVIEW)"
+                  :key="mIdx"
+                  type="button"
+                  class="review-media-thumb group/thumb relative aspect-square rounded-lg overflow-hidden bg-[var(--color-sand)]"
+                  :aria-label="item.type === 'video' ? $t('เล่นวิดีโอรีวิว') : $t('ดูรูปที่ {p}', { p: mIdx + 1 })"
+                  @click="openReviewMedia(review, mIdx)"
+                >
+                  <img
+                    v-if="item.type === 'image'"
+                    :src="item.url"
+                    alt=""
+                    loading="lazy"
+                    class="w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
+                    @error="(e) => e.target.style.visibility = 'hidden'"
+                  />
+                  <template v-else>
+                    <video :src="`${item.url}#t=0.1`" class="w-full h-full object-cover pointer-events-none" muted playsinline preload="metadata"></video>
+                    <span class="absolute inset-0 flex items-center justify-center bg-black/25">
+                      <span class="material-symbols-rounded text-white text-[26px]" style="font-variation-settings:'FILL' 1">play_circle</span>
+                    </span>
+                  </template>
+                  <span
+                    v-if="mIdx === REVIEW_MEDIA_PREVIEW - 1 && review.media.length > REVIEW_MEDIA_PREVIEW"
+                    class="absolute inset-0 flex items-center justify-center bg-black/55 text-white text-base font-extrabold"
+                  >+{{ review.media.length - REVIEW_MEDIA_PREVIEW + 1 }}</span>
+                </button>
+              </div>
 
               <div class="mt-auto flex items-center gap-3.5 pt-5 border-t border-[var(--color-sand-dark)]">
                 <div class="relative w-12 h-12 bg-[var(--color-sand)] rounded-full flex items-center justify-center text-[var(--color-accent)] font-black text-lg overflow-hidden border-2 border-white ring-2 ring-[var(--color-accent)]/15 shrink-0">
@@ -350,6 +384,8 @@
         </div>
       </div>
     </section>
+
+    <ReviewMediaLightbox v-model="reviewLightbox" />
 
     <!-- ══════════════════════════════════════════
          WHY US SECTION
@@ -456,6 +492,8 @@ import LatestArticles from '../components/LatestArticles.vue';
 import HeroSearchBar from '../components/HeroSearchBar.vue';
 import TrustStrip from '../components/TrustStrip.vue';
 import SectionTitle from '../components/SectionTitle.vue';
+import ReviewMediaLightbox from '../components/ReviewMediaLightbox.vue';
+import { reviewMedia } from '../lib/reviewMedia';
 import DepartureBoard from '../components/home/DepartureBoard.vue';
 import TripShowcase from '../components/home/TripShowcase.vue';
 import PopularDestinations from '../components/home/PopularDestinations.vue';
@@ -826,6 +864,13 @@ const animateStats = () => {
 
 const reviews = ref([]);
 
+// รูป/วิดีโอบนการ์ดรีวิว: โชว์ 4 ช่อง ช่องสุดท้ายบอก +N ที่เหลือ
+const REVIEW_MEDIA_PREVIEW = 4;
+const reviewLightbox = ref(null);
+function openReviewMedia(review, index) {
+  reviewLightbox.value = { items: review.media, index, author: review.user_name };
+}
+
 // Duplicate the list so the marquee can loop seamlessly; with very few
 // reviews we repeat more times to keep the track wide enough to fill the screen.
 const marqueeReviews = computed(() => {
@@ -912,7 +957,7 @@ onMounted(async () => {
     allTrips.value = allTripsRes.data.data || [];
     featuredTrips.value = featuredRes.data.data || [];
     startSliderIfIdle();
-    reviews.value = reviewsRes.data.data || [];
+    reviews.value = (reviewsRes.data.data || []).map((r) => ({ ...r, media: reviewMedia(r) }));
     tripCategories.value = categoriesRes.data.data || [];
     
     // Update stats — ใช้สถิติจริงของชุมชน (ระยะทาง/ความสูงสะสม) แทนตัวเลขโฆษณา
@@ -1324,6 +1369,11 @@ onMounted(async () => {
 /* Pause when the user hovers, so they can read a card */
 .reviews-marquee.group:hover .reviews-marquee__track {
   animation-play-state: paused;
+}
+
+.review-media-thumb:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .reviews-marquee__card {
