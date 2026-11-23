@@ -47,6 +47,9 @@ class LoyaltyController extends Controller
         return $this->success([
             'points' => $account->points,
             'lifetime_points' => $account->lifetime_points,
+            // บัตรสมาชิกในแอป: รหัสเดียวกับที่เพื่อนใช้โอนแต้มให้ และปีที่เริ่มเป็นสมาชิก
+            'member_code' => $this->transfers->memberCodeFor($request->user()),
+            'member_since' => $request->user()->created_at?->toISOString(),
             // จำนวนทริปสะสม — ตัวเลขที่ใช้ตัดสินระดับ (แต้มมีไว้แลกของรางวัลเท่านั้น)
             'lifetime_trips' => (int) $account->lifetime_trips,
             // แต้มมีอายุ 24 เดือน — บอกก้อนที่ใกล้หมดอายุเพื่อให้หน้าจอเตือนได้เอง
@@ -154,9 +157,14 @@ class LoyaltyController extends Controller
             ->map(fn ($r) => [
                 'id' => $r->id,
                 'coupon_code' => $r->coupon_code,
-                'reward_name' => $r->reward?->name,
-                'reward_type' => $r->reward?->type,
-                'discount_value' => $r->reward?->discount_value,
+                // คูปองวันเกิดไม่มีของรางวัลผูก มูลค่าอยู่บนตัวคูปองเอง — อ่านผ่าน
+                // rewardValue()/rewardType() ไม่งั้นแอปเห็นแค่ "คูปอง" ไม่มีมูลค่า
+                'source' => $r->source ?? LoyaltyRedemption::SOURCE_REWARD,
+                'reward_name' => $r->reward?->name
+                    ?? ($r->source === LoyaltyRedemption::SOURCE_BIRTHDAY ? __('ของขวัญวันเกิด') : null),
+                'reward_type' => $r->rewardType(),
+                'discount_value' => $r->rewardValue(),
+                'value_label' => $this->valueLabel($r->rewardType(), $r->rewardValue()),
                 'points_used' => $r->points_used,
                 'is_used' => $r->is_used,
                 'expires_at' => $r->expires_at?->toISOString(),
@@ -323,9 +331,12 @@ class LoyaltyController extends Controller
 
     private function rewardValueLabel(LoyaltyReward $r): string
     {
-        $value = (float) $r->discount_value;
+        return $this->valueLabel((string) $r->type, (float) $r->discount_value);
+    }
 
-        return match ($r->type) {
+    private function valueLabel(string $type, float $value): string
+    {
+        return match ($type) {
             LoyaltyReward::TYPE_DISCOUNT_PERCENT => __('ลด :value%', ['value' => rtrim(rtrim(number_format($value, 2), '0'), '.')]),
             LoyaltyReward::TYPE_FREE_RENTAL => $value > 0
                 ? __('เช่าอุปกรณ์ฟรี มูลค่าไม่เกิน :amount บาท', ['amount' => number_format($value)])

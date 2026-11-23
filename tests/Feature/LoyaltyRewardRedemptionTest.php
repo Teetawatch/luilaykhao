@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\LoyaltyAccount;
+use App\Models\LoyaltyRedemption;
 use App\Models\LoyaltyReward;
 use App\Models\Trip;
 use App\Models\TripSchedule;
@@ -203,5 +204,48 @@ class LoyaltyRewardRedemptionTest extends TestCase
         )->pluck('value_label');
 
         $this->assertContains('เช่าอุปกรณ์ฟรี มูลค่าไม่เกิน 300 บาท', $labels);
+    }
+
+    public function test_a_birthday_coupon_lists_its_own_value_in_my_coupons(): void
+    {
+        // คูปองวันเกิดไม่มีของรางวัลผูก มูลค่าอยู่บนตัวคูปอง — เดิมแอปเห็นแค่ "คูปอง" เปล่า ๆ
+        $user = User::factory()->create();
+        LoyaltyRedemption::create([
+            'user_id' => $user->id,
+            'reward_id' => null,
+            'source' => LoyaltyRedemption::SOURCE_BIRTHDAY,
+            'points_used' => 0,
+            'discount_value' => 200,
+            'coupon_code' => 'TRD-BDAY0001',
+            'expires_at' => now()->addDays(30),
+        ]);
+
+        $coupon = $this->actingAs($user)->getJson('/api/v1/loyalty/coupons')
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertSame('birthday', $coupon['source']);
+        $this->assertSame('ของขวัญวันเกิด', $coupon['reward_name']);
+        $this->assertSame(LoyaltyReward::TYPE_DISCOUNT_FIXED, $coupon['reward_type']);
+        $this->assertEquals(200, $coupon['discount_value']);
+        $this->assertSame('ลด 200 บาท', $coupon['value_label']);
+    }
+
+    public function test_the_account_carries_what_the_member_card_prints(): void
+    {
+        $user = $this->userWithPoints(120);
+
+        $data = $this->actingAs($user)->getJson('/api/v1/loyalty/account')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertNotEmpty($data['member_code']);
+        $this->assertNotEmpty($data['member_since']);
+        $this->assertCount(4, $data['tiers']);
+        // รหัสบนบัตรต้องเป็นรหัสเดียวกับหน้าโอนแต้ม ไม่งั้นเพื่อนสแกนแล้วโอนไม่ได้
+        $this->assertSame(
+            $data['member_code'],
+            $this->actingAs($user)->getJson('/api/v1/loyalty/transfers')->json('data.member_code'),
+        );
     }
 }

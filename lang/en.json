@@ -807,6 +807,7 @@
     "เช่าอุปกรณ์ฟรี มูลค่าไม่เกิน :amount บาท": "Free equipment rental up to :amount baht",
     "เช่าอุปกรณ์ฟรีทั้งหมดในการจองนี้": "Free equipment rental for this whole booking",
     "ลด :amount บาท": ":amount baht off",
+    "ของขวัญวันเกิด": "Birthday gift",
     "ยืนยันที่นั่งแล้ว %s %s %s ขอบคุณครับ ดูกำหนดการและจุดขึ้นรถ %s": "Seats confirmed %s %s %s. Thank you! Schedule and pickup: %s",
     "รับชำระงวดที่ %d จำนวน %s บาท สำหรับ booking %s แล้ว%s": "Instalment %d of %s baht received for booking %s%s",
     "เหตุผล: :reason": "Reason: :reason",
