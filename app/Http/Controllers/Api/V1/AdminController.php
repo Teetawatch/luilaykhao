@@ -490,7 +490,7 @@ class AdminController extends Controller
         Trip::loadListStats($rounds->pluck('trip')->filter()->unique('id'));
 
         // ทุกหน้าที่ใช้รายการนี้อ่านแค่ชื่อ/รูป/พิกัดของทริป — ไม่ส่งเนื้อหายาวซ้ำทุกรอบ
-        return $this->paginated($schedules->through(fn ($s) => (new TripScheduleResource($s))->briefTrip()));
+        return $this->paginated($schedules->through(fn ($s) => (new TripScheduleResource($s))->briefTrip()->withDriverContact()));
     }
 
     public function storeSchedule(StoreScheduleRequest $request): JsonResponse
@@ -518,7 +518,7 @@ class AdminController extends Controller
             : 'สร้างรอบเดินทางสำเร็จ';
 
         return $this->success(
-            new TripScheduleResource($schedule->load('trip', 'vehicle', 'pickupPoints', 'vehicleOptions')),
+            (new TripScheduleResource($schedule->load('trip', 'vehicle', 'pickupPoints', 'vehicleOptions')))->withDriverContact(),
             $message,
             201,
         );
@@ -635,7 +635,7 @@ class AdminController extends Controller
         }
 
         return $this->success(
-            new TripScheduleResource($schedule->fresh()->load('trip', 'vehicle')),
+            (new TripScheduleResource($schedule->fresh()->load('trip', 'vehicle')))->withDriverContact(),
             'อัปเดตรอบเดินทางสำเร็จ',
         );
     }
@@ -3362,7 +3362,7 @@ class AdminController extends Controller
         $joinTripPassengersCount = $passengers->where('is_join_trip', true)->count();
 
         return $this->success([
-            'schedule' => new TripScheduleResource($schedule),
+            'schedule' => (new TripScheduleResource($schedule))->withDriverContact(),
             'passengers' => $passengers,
             'total_passengers' => $passengers->count(),
             'regular_passengers_count' => $regularPassengersCount,

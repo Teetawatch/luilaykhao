@@ -382,6 +382,44 @@ class VehicleLocationService
     }
 
     /**
+     * ช่วงที่ "ลูกค้า" เห็นแผนที่ติดตามรถ (เวลาไทย) — แคบกว่า [sharingWindow]
+     *
+     * กรอบรับพิกัดเปิดกว้าง 12 ชม. ก่อนต้นวันเดินทาง ซึ่งเอามาบอกลูกค้าไม่ได้:
+     * รอบออก 04:00 จะขึ้นว่า "ติดตามได้ตั้งแต่ 12:00 เมื่อวาน" ทั้งที่แผนที่ว่าง
+     * ไปอีกครึ่งวัน ลูกค้าจึงเห็นตั้งแต่มือถือสตาฟเริ่มแชร์เอง (เวลารถออกจริง
+     * − AUTO_START_BEFORE_MINUTES) แต่ถ้าสตาฟเปิดแชร์เองก่อนหน้านั้นและมีพิกัด
+     * เข้ามาแล้ว ก็เปิดให้ดูทันที — มีรถให้ดูจริงก็ไม่ควรขวาง
+     *
+     * รอบที่ไม่ได้กรอกเวลารถออก: ต้นวันเดินทาง (เดาเวลาไม่ได้ ไม่บอกเวลาที่ไม่จริง)
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public function viewerWindow(TripSchedule $schedule, ?Carbon $now = null): array
+    {
+        [$serverStart, $end] = $this->sharingWindow($schedule);
+        $now ??= $this->nowThai();
+
+        $opens = ($this->autoShareStartsAt($schedule)
+            ?? $schedule->departure_date?->copy()->startOfDay()
+            ?? $serverStart)->max($serverStart);
+
+        if (
+            $schedule->vehicle_id
+            && $now->lt($opens)
+            && $now->gte($serverStart)
+            // กรอบเป็นนาฬิกาไทย ส่วน recorded_at เป็น UTC จริง
+            && $this->latestPoint(
+                (int) $schedule->vehicle_id,
+                Carbon::parse($serverStart->format('Y-m-d H:i:s'), self::TIMEZONE)->utc(),
+            )
+        ) {
+            $opens = $serverStart;
+        }
+
+        return [$opens, $end];
+    }
+
+    /**
      * โหมดการแชร์ที่ควรเป็นตอนนี้ของรอบนี้ — null = ไม่ต้องแชร์
      *
      * แยกจาก [withinSharingWindow] ตั้งใจ: กรอบนั้นคือ "เซิร์ฟเวอร์ยอมรับพิกัด

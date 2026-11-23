@@ -418,10 +418,10 @@ class VehicleTrackingController extends Controller
 
         $arrival = app(PickupArrivalService::class)->freshArrivalFor($booking);
 
-        // ช่วงที่รถของรอบนี้มีตำแหน่งให้ดู (กรอบเดียวกับที่เซิร์ฟเวอร์รับพิกัด) —
-        // แอปเปิดแผนที่เฉพาะในช่วงนี้ นอกช่วงขึ้นหน้า "รอวันเดินทาง" แทน
+        // ช่วงที่ลูกค้าดูรถได้ — นับจากเวลารถออกจริง (ไม่ใช่กรอบรับพิกัดที่เปิดกว้าง
+        // 12 ชม.) แอปเปิดแผนที่เฉพาะในช่วงนี้ นอกช่วงขึ้นหน้า "รอวันเดินทาง" แทน
         // ไม่ต้องโหลดแผนที่ที่ไม่มีรถให้ดูอยู่แล้ว
-        [$opensAt, $closesAt] = $schedule ? $this->locations->sharingWindow($schedule) : [null, null];
+        [$opensAt, $closesAt] = $schedule ? $this->locations->viewerWindow($schedule) : [null, null];
 
         $data = [
             'id' => $booking->id,
@@ -672,7 +672,7 @@ class VehicleTrackingController extends Controller
                 'license_plate' => $v->license_plate,
                 'color' => $v->color,
                 'driver_name' => $v->driver_name,
-                'driver_phone' => $v->driver_phone,
+                // endpoint นี้ไม่ต้องล็อกอิน — ไม่ส่งเบอร์คนขับออกไปให้ใครก็ได้ดึงทั้งกองรถ
                 'driver_photo' => $v->driver_photo,
                 'images' => $v->images ?? [],
             ];

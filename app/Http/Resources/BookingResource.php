@@ -55,7 +55,7 @@ class BookingResource extends JsonResource
                     'is_shadow' => (bool) $this->user->is_shadow,
                 ];
             }),
-            'schedule' => (new TripScheduleResource($this->whenLoaded('schedule')))->briefTrip($this->forStaffList),
+            'schedule' => (new TripScheduleResource($this->whenLoaded('schedule')))->briefTrip($this->forStaffList)->withDriverContact(),
             'assigned_staff' => $this->when(
                 $this->relationLoaded('schedule') && $this->schedule?->relationLoaded('staff'),
                 fn () => $this->schedule->staff->map(fn ($staff) => [

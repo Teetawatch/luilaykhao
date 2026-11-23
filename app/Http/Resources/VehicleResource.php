@@ -7,6 +7,20 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class VehicleResource extends JsonResource
 {
+    /**
+     * เบอร์คนขับ + ข้อมูลทะเบียนคนขับ ส่งเฉพาะผู้ที่มีสิทธิ์ (แอดมิน / เจ้าของการจอง)
+     * ค่าเริ่มต้นเปิดไว้ให้หน้าแอดมินที่เรียกตรง ๆ — รอบที่ออกทางหน้าสาธารณะ
+     * (หน้าทริป / รายการรอบ) ปิดผ่าน TripScheduleResource เสมอ
+     */
+    protected bool $withDriverContact = true;
+
+    public function withDriverContact(bool $on = true): static
+    {
+        $this->withDriverContact = $on;
+
+        return $this;
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -21,11 +35,12 @@ class VehicleResource extends JsonResource
             'driver_id' => $this->driver_id,
             // ข้อมูลคนขับทั้งใบจากทะเบียน — หน้ายานพาหนะจะได้แสดงครบโดยไม่ต้องยิงซ้ำ
             // และไม่ต้องให้แอดมินกรอกอะไรของ "คน" ซ้ำอีกเลย
-            'driver' => $this->whenLoaded('driver', fn () => $this->driver
+            'driver' => $this->when($this->withDriverContact, fn () => $this->whenLoaded('driver', fn () => $this->driver
                 ? new DriverResource($this->driver)
-                : null),
+                : null)),
             'driver_name' => $this->driver_name,
-            'driver_phone' => $this->driver_phone,
+            // หน้าทริปเปิดให้ใครก็ได้ดู — เบอร์คนขับต้องไม่หลุดไปถึงคนที่ยังไม่ได้จอง
+            'driver_phone' => $this->withDriverContact ? $this->driver_phone : null,
             'driver_user_id' => $this->driver_user_id,
             // whenLoaded() คืน null ทันทีที่ relation ถูกโหลดแล้วได้ค่าว่าง ทำให้ค่านี้เคยเป็น
             // null แทน false ในรถที่ยังไม่มีบัญชีคนขับ — เช็คเองเพื่อให้เป็น boolean เสมอ

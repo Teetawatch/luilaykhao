@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleLocation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -223,19 +224,50 @@ class VehicleEtaTest extends TestCase
             ->assertJsonPath('data.pickup_point_id', $first->id);
     }
 
-    public function test_the_booking_tracking_payload_carries_the_sharing_window(): void
+    public function test_the_booking_tracking_window_opens_from_the_real_departure_time(): void
     {
+        // รอบออก 04:00 — เคยขึ้นว่า "ติดตามได้ตั้งแต่ 12:00 เมื่อวาน" (กรอบรับพิกัด 12 ชม.
+        // ก่อนต้นวัน) ทั้งที่แผนที่ว่างไปอีกครึ่งวัน ต้องนับจากเวลารถออกจริงแทน
+        $this->travelTo(Carbon::parse('2026-11-27 13:00:00', 'Asia/Bangkok'));
         [$schedule, , , $customer, $booking] = $this->scenario();
+        $schedule->update([
+            'departure_date' => '2026-11-28',
+            'return_date' => '2026-11-29',
+            'departs_at' => '2026-11-28 04:00:00',
+        ]);
+        // scenario() มีพิกัดรถให้แล้ว — เริ่มจากรถที่ยังไม่มีใครแชร์
+        VehicleLocation::query()->delete();
 
-        // แอปเปิดแผนที่เฉพาะในกรอบนี้ — ต้องเป็นกรอบเดียวกับที่เซิร์ฟเวอร์รับพิกัด
-        $schedule->update(['departs_at' => now('Asia/Bangkok')->toDateString().' 06:00:00']);
-        $today = now('Asia/Bangkok')->startOfDay();
+        $url = "/api/v1/bookings/{$booking->booking_ref}/tracking";
+        $this->actingAs($customer, 'sanctum')
+            ->getJson($url)
+            ->assertOk()
+            ->assertJsonPath('data.tracking_opens_at', '2026-11-28 02:30:00')
+            ->assertJsonPath('data.tracking_closes_at', '2026-11-30 05:59:59');
+
+        // สตาฟเปิดแชร์เองก่อนเวลา (ยังอยู่ในกรอบรับพิกัด) — มีรถให้ดูจริงก็เปิดให้ดูเลย
+        VehicleLocation::create([
+            'vehicle_id' => $schedule->vehicle_id,
+            'latitude' => 13.92,
+            'longitude' => 100.65,
+            'recorded_at' => now(),
+        ]);
+        $this->getJson($url)
+            ->assertOk()
+            ->assertJsonPath('data.tracking_opens_at', '2026-11-27 12:00:00');
+    }
+
+    public function test_a_round_without_a_departure_time_opens_at_the_start_of_the_day(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-27 13:00:00', 'Asia/Bangkok'));
+        [$schedule, , , $customer, $booking] = $this->scenario();
+        $schedule->update(['departure_date' => '2026-11-28', 'return_date' => '2026-11-29', 'departs_at' => null]);
+        VehicleLocation::query()->delete();
 
         $this->actingAs($customer, 'sanctum')
             ->getJson("/api/v1/bookings/{$booking->booking_ref}/tracking")
             ->assertOk()
-            ->assertJsonPath('data.tracking_opens_at', $today->copy()->subHours(12)->format('Y-m-d H:i:s'))
-            ->assertJsonPath('data.tracking_closes_at', $today->copy()->addDay()->endOfDay()->addHours(6)->format('Y-m-d H:i:s'));
+            ->assertJsonPath('data.tracking_opens_at', '2026-11-28 00:00:00');
     }
 
     private function fakeRoutes(): void

@@ -34,6 +34,20 @@ class TripScheduleResource extends JsonResource
     }
 
     /**
+     * ส่งเบอร์คนขับในบล็อก vehicle — ปิดเป็นค่าเริ่มต้นเพราะรอบส่วนใหญ่ออกทาง
+     * endpoint สาธารณะ (trips/{slug}, trips/{slug}/schedules, schedules/{id})
+     * เปิดเฉพาะใบจองของลูกค้าเอง (BookingResource) และหน้าแอดมิน
+     */
+    protected bool $withDriverContact = false;
+
+    public function withDriverContact(bool $on = true): static
+    {
+        $this->withDriverContact = $on;
+
+        return $this;
+    }
+
+    /**
      * นำเสนอชื่อผู้ร่วมเดินทางแบบสั้น: ชื่อเล่นถ้ามี ไม่งั้นใช้ชื่อต้นคำเดียว
      * เพื่อไม่เปิดเผยชื่อ-นามสกุลเต็มของลูกค้าคนอื่นในรอบ
      */
@@ -130,7 +144,7 @@ class TripScheduleResource extends JsonResource
                     'legs' => $this->flightLegs(),
                 ],
             ),
-            'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
+            'vehicle' => (new VehicleResource($this->whenLoaded('vehicle')))->withDriverContact($this->withDriverContact),
             'status' => $this->status,
             // เวลาที่ "ผู้ชมคนนี้" เริ่มจองได้ (สมาชิกระดับสูงได้ก่อนตามชั่วโมงของระดับ)
             // แอปใช้ปิดปุ่มจองไว้จนถึงเวลา ไม่งั้นลูกค้ากรอกฟอร์มจนจบแล้วค่อยโดน
