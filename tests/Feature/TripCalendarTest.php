@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ContentTranslation;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Services\TripCalendarService;
@@ -167,6 +168,42 @@ class TripCalendarTest extends TestCase
         $this->assertCount(0, $this->calendar()['days']);
     }
 
+    // ── ภาษาอังกฤษ (/en/calendar) ───────────────────────────────────────────
+
+    public function test_english_requests_get_english_labels_and_trip_names(): void
+    {
+        $trip = $this->trip(['title' => 'ภูกระดึง', 'location' => 'เลย']);
+        foreach (['title' => 'Phu Kradueng', 'location' => 'Loei'] as $path => $text) {
+            ContentTranslation::create([
+                'translatable_type' => 'trip', 'translatable_id' => $trip->id, 'locale' => 'en',
+                'path' => $path, 'source_hash' => ContentTranslation::hash($trip->{$path}),
+                'source_text' => $trip->{$path}, 'text' => $text, 'is_manual' => true,
+            ]);
+        }
+        $this->schedule($trip, ['departure_date' => '2026-09-18', 'return_date' => '2026-09-20', 'booked_seats' => 8]);
+        $this->schedule($trip, ['departure_date' => '2026-09-26', 'return_date' => '2026-09-27', 'status' => 'full', 'booked_seats' => 10]);
+
+        $data = $this->getJson('/api/v1/trips/calendar', ['X-App-Language' => 'en'])->assertOk()->json('data');
+
+        $this->assertSame('September 2026', $data['month_label']);
+        $this->assertSame('September', $data['months'][0]['short_label']);
+        $this->assertSame('18 Sep 2026', $data['days'][0]['date_label']);
+        $this->assertSame('Fri', $data['days'][0]['weekday']);
+
+        $soon = $data['days'][0]['rounds'][0];
+        $this->assertSame('Phu Kradueng', $soon['trip']['title']);
+        $this->assertSame('Loei', $soon['trip']['location']);
+        $this->assertSame('18 – 20 September 2026', $soon['date_label']);
+        $this->assertSame('2 left', $soon['status_label']);
+        $this->assertSame('Full · join the waitlist', $data['days'][1]['rounds'][0]['status_label']);
+        $this->assertSame('In 3 days', $data['hot'][0]['days_left_label']);
+
+        // หน้าไทยยังเป็นภาษาไทยเหมือนเดิม
+        $thai = $this->calendar();
+        $this->assertSame('กันยายน 2569', $thai['month_label']);
+        $this->assertSame('ภูกระดึง', $thai['days'][0]['rounds'][0]['trip']['title']);
+    }
+
     // ── ไฟไหม้ ───────────────────────────────────────────────────────────────
 
     public function test_hot_is_near_departure_with_seats_left(): void
@@ -303,6 +340,20 @@ class TripCalendarTest extends TestCase
         $html = $this->get('/calendar/2026-12')->getContent();
 
         $this->assertStringContainsString('ยังไม่มีรอบเดินทางเปิดจองในเดือนธันวาคม 2569', $html);
+    }
+
+    public function test_the_english_page_previews_in_english_and_links_stay_english(): void
+    {
+        $trip = $this->trip(['title' => 'ภูกระดึง', 'slug' => 'phu-kradueng']);
+        $this->schedule($trip, ['departure_date' => '2026-10-10', 'return_date' => '2026-10-11']);
+
+        $html = $this->get('/en/calendar/2026-10')->assertOk()->getContent();
+
+        $this->assertStringContainsString('Trips in October 2026 | All open departures', $html);
+        $this->assertStringContainsString('1 trips · 1 departures · from ฿4,500', $html);
+        $this->assertStringContainsString('10 Oct 2026', $html);
+        $this->assertStringContainsString(url('/en/trips/phu-kradueng?schedule='), $html);
+        $this->assertStringNotContainsString('ทริปเดือน', $html);
     }
 
     public function test_the_sitemap_lists_the_months_worth_crawling(): void

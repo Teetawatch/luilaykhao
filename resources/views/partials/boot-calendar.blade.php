@@ -10,7 +10,7 @@
     <p class="llk-trip__lede">{{ $shell['summary'] }}</p>
 
     @if ($shell['hot'])
-        <h2 class="llk-trip__h2">ทริปไฟไหม้ ใกล้ออกเดินทาง</h2>
+        <h2 class="llk-trip__h2">{{ \App\Support\SiteLocale::text('ทริปไฟไหม้ ใกล้ออกเดินทาง') }}</h2>
         <ul class="llk-boot__list">
             @foreach ($shell['hot'] as $round)
                 <li><a href="{{ $round['url'] }}">{{ $round['label'] }}</a></li>

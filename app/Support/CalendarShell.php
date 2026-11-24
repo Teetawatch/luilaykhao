@@ -47,16 +47,14 @@ final class CalendarShell
         $summary = $calendar['summary'];
 
         return [
-            'heading' => 'ทริปเดือน'.$calendar['month_label'],
-            'summary' => $summary['round_count'] > 0
-                ? $summary['trip_count'].' ทริป '.$summary['round_count'].' รอบ'
-                    .($summary['min_price'] ? ' เริ่มต้น '.self::baht($summary['min_price']) : '')
-                : 'ยังไม่มีรอบเปิดจองในเดือนนี้ ลองดูเดือนถัดไปได้เลย',
+            // ป้ายทุกตัวใน $calendar มาในภาษาของหน้าแล้ว (TripCalendarService) เหลือแค่ข้อความเชื่อม
+            'heading' => SiteLocale::text('ทริปเดือน{p}', ['p' => $calendar['month_label']]),
+            'summary' => self::summary($summary),
             'hot' => collect($calendar['hot'])
                 ->map(fn (array $round) => [
                     'label' => $round['trip']['title'].' · '.$round['date_label']
                         .' · '.self::baht($round['price']).' ('.$round['days_left_label'].')',
-                    'url' => url($round['url']),
+                    'url' => SiteLocale::url($round['url']),
                 ])
                 ->all(),
             'days' => collect($calendar['days'])
@@ -69,15 +67,33 @@ final class CalendarShell
                                 .($round['trip']['location'] ? ' · '.$round['trip']['location'] : '')
                                 .' · '.self::baht($round['price'])
                                 .' · '.$round['status_label'],
-                            'url' => url($round['url']),
+                            'url' => SiteLocale::url($round['url']),
                         ])
                         ->all(),
                 ])
                 ->all(),
             'more' => count($calendar['days']) > self::DAY_LIMIT
-                ? 'และอีก '.(count($calendar['days']) - self::DAY_LIMIT).' วันในเดือนนี้'
+                ? SiteLocale::text('และอีก {count} วันในเดือนนี้', ['count' => count($calendar['days']) - self::DAY_LIMIT])
                 : null,
         ];
+    }
+
+    /** @param  array<string, mixed>  $summary */
+    private static function summary(array $summary): string
+    {
+        if ($summary['round_count'] <= 0) {
+            return SiteLocale::text('ยังไม่มีรอบเปิดจองในเดือนนี้ ลองดูเดือนถัดไปได้เลย');
+        }
+
+        $params = [
+            'trip_count' => $summary['trip_count'],
+            'round_count' => $summary['round_count'],
+            'price' => self::baht($summary['min_price']),
+        ];
+
+        return $summary['min_price']
+            ? SiteLocale::text('{trip_count} ทริป {round_count} รอบ เริ่มต้น {price}', $params)
+            : SiteLocale::text('{trip_count} ทริป {round_count} รอบ', $params);
     }
 
     private static function baht(float|int|null $amount): string

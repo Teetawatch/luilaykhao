@@ -1281,6 +1281,8 @@
     "ว่าง": "Free",
     "มีคนเลือก/จองแล้ว": "Taken",
     "เหลือ :seatsleft ที่": ":seatsleft left",
+    "ว่าง :seats ที่": ":seats seats open",
+    "เต็มแล้ว · จองคิวรอได้": "Full · join the waitlist",
     "ผังของ :seatmap — ถ้าทีมงานเปลี่ยนคัน จะแจ้งให้เลือกใหม่": "Seat map for :seatmap — if we change the vehicle, we'll ask you to choose again",
     "เรียบร้อยแล้ว 🎉": "All done 🎉",
     "ย้ายการจอง :result รายการไปที่บัญชีของคุณแล้ว": "Moved :result booking(s) to your account",

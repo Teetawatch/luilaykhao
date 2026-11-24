@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\TripSchedule;
+use App\Support\AppLocale;
 use App\Support\ThaiDate;
+use App\Support\TranslationStore;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -14,6 +16,9 @@ use Illuminate\Support\Collection;
  * ทำรูปโปรโมท") หน้านี้ตอบคำถามของลูกค้า ("เดือนหน้าไปไหนได้บ้าง จองยังไง") จึง
  * เรียงตามวันไม่ใช่ตามทริป ตัดราคาย่อยทุกแบบทิ้ง เหลือราคาเริ่มต้นกับที่ว่าง
  * และทุกแถวมีปลายทางที่กดต่อได้
+ *
+ * ป้ายทุกตัว (เดือน วันที่ สถานะที่นั่ง ชื่อทริป) ออกตามภาษาของ request —
+ * หน้า /en/calendar และแอปภาษาอังกฤษวาดป้ายจากเซิร์ฟเวอร์ตรง ๆ ไม่แปลเอง
  *
  * รอบเหมาลำและรอบที่ยกเลิกไม่เคยอยู่ในหน้านี้ ส่วนรอบที่เต็มแล้วยังอยู่ —
  * "เต็มแล้ว" เป็นคำตอบของคำถามที่ลูกค้าถาม และยังพาไปจองคิวรอได้
@@ -67,7 +72,7 @@ class TripCalendarService
 
         return [
             'month' => $target->format('Y-m'),
-            'month_label' => ThaiDate::monthYear($target),
+            'month_label' => $this->monthYear($target),
             'is_current_month' => $target->isSameMonth($today),
             'months' => $this->monthOptions($today, $target),
             'days' => $days,
@@ -116,8 +121,8 @@ class TripCalendarService
         return $options
             ->map(fn (CarbonImmutable $month) => [
                 'value' => $month->format('Y-m'),
-                'label' => ThaiDate::monthYear($month),
-                'short_label' => ThaiDate::monthName($month->month),
+                'label' => $this->monthYear($month),
+                'short_label' => AppLocale::isEnglish() ? $month->format('F') : ThaiDate::monthName($month->month),
                 'is_current' => $month->isSameMonth($today),
                 'is_selected' => $month->isSameMonth($selected),
             ])
@@ -144,7 +149,9 @@ class TripCalendarService
             ->get()
             // ทริปที่ถูกปิดไปแล้วไม่ควรมีรอบโผล่ในปฏิทินสาธารณะ
             ->filter(fn (TripSchedule $s) => $s->trip !== null && $s->trip->status === 'active')
-            ->values();
+            ->values()
+            // คำแปลชื่อทริปของทั้งเดือนในคิวรีเดียว (หน้าไทยไม่ทำอะไร)
+            ->tap(fn (Collection $rows) => app(TranslationStore::class)->primeTree($rows));
     }
 
     /**
@@ -159,7 +166,7 @@ class TripCalendarService
             ->groupBy(fn (TripSchedule $s) => $s->departure_date->toDateString())
             ->map(fn (Collection $rows, string $date) => [
                 'date' => $date,
-                'date_label' => ThaiDate::short(CarbonImmutable::parse($date)),
+                'date_label' => AppLocale::shortDate(CarbonImmutable::parse($date)),
                 'weekday' => $this->weekday(CarbonImmutable::parse($date)),
                 'rounds' => $rows->map(fn (TripSchedule $s) => $this->round($s))->values()->all(),
             ])
@@ -209,9 +216,9 @@ class TripCalendarService
             'id' => $schedule->id,
             'trip' => [
                 'id' => $trip->id,
-                'title' => $trip->title,
+                'title' => $trip->tr('title'),
                 'slug' => $trip->slug,
-                'location' => $trip->location,
+                'location' => $trip->tr('location'),
                 'duration_days' => $trip->duration_days,
                 'cover_image' => $trip->cover_image,
                 'type' => $trip->type,
@@ -224,7 +231,7 @@ class TripCalendarService
             'departs_at' => $schedule->departs_at?->format('Y-m-d H:i:s'),
             'departs_before_trip_day' => $schedule->departsBeforeTripDay(),
             'return_date' => $schedule->return_date?->toDateString(),
-            'date_label' => ThaiDate::range($schedule->departure_date, $schedule->return_date),
+            'date_label' => AppLocale::dateRange($schedule->departure_date, $schedule->return_date),
             'price' => $price,
             'original_price' => $original > $price ? $original : null,
             'on_flash_sale' => $schedule->flashSaleActive(),
@@ -251,14 +258,14 @@ class TripCalendarService
     private function statusLabel(TripSchedule $schedule, int $seats, bool $isFull): string
     {
         if ($isFull) {
-            return 'เต็มแล้ว · จองคิวรอได้';
+            return __('เต็มแล้ว · จองคิวรอได้');
         }
 
         if ($seats <= self::LOW_SEATS) {
-            return 'เหลือ '.$seats.' ที่';
+            return __('เหลือ :seatsleft ที่', ['seatsleft' => $seats]);
         }
 
-        return 'ว่าง '.$seats.' ที่';
+        return __('ว่าง :seats ที่', ['seats' => $seats]);
     }
 
     private function daysLeft(CarbonImmutable $today, TripSchedule $schedule): int
@@ -272,15 +279,23 @@ class TripCalendarService
     private function daysLeftLabel(CarbonImmutable $today, TripSchedule $schedule): string
     {
         return match ($days = $this->daysLeft($today, $schedule)) {
-            0 => 'วันนี้',
-            1 => 'พรุ่งนี้',
-            default => 'อีก '.$days.' วัน',
+            0 => __('วันนี้'),
+            1 => __('พรุ่งนี้'),
+            default => __('อีก :days วัน', ['days' => $days]),
         };
     }
 
     private function weekday(CarbonImmutable $date): string
     {
-        return $date->locale('th')->isoFormat('dd');
+        return AppLocale::isEnglish()
+            ? $date->locale('en')->isoFormat('ddd')
+            : $date->locale('th')->isoFormat('dd');
+    }
+
+    /** "กรกฎาคม 2569" หรือ "July 2026" */
+    private function monthYear(CarbonImmutable $month): string
+    {
+        return AppLocale::isEnglish() ? $month->format('F Y') : ThaiDate::monthYear($month);
     }
 
     /**

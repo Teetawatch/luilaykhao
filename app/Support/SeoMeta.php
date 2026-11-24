@@ -243,9 +243,10 @@ class SeoMeta
     private static function calendar(array $calendar, string $path): array
     {
         $summary = $calendar['summary'];
+        // ป้ายเดือนมาจาก TripCalendarService ในภาษาของหน้าอยู่แล้ว ("กันยายน 2569" / "September 2026")
         $monthLabel = $calendar['month_label'];
-        $canonical = url($path);
-        $title = 'ทริปเดือน'.$monthLabel.' | รอบที่เปิดจองทั้งหมด';
+        $canonical = SiteLocale::url($path);
+        $title = SiteLocale::text('ทริปเดือน{month_label} | รอบที่เปิดจองทั้งหมด', ['month_label' => $monthLabel]);
 
         $firstTrip = collect($calendar['hot'])->first()
             ?? collect($calendar['days'])->first()['rounds'][0] ?? null;
@@ -257,12 +258,12 @@ class SeoMeta
             'description' => self::calendarDescription($calendar, $summary, $monthLabel),
             'canonical' => $canonical,
             'image' => $image,
-            'image_alt' => 'ทริปเดือน'.$monthLabel.' - ลุยเลเขา',
+            'image_alt' => SiteLocale::text('ทริปเดือน{month_label} - ลุยเลเขา', ['month_label' => $monthLabel]),
             'type' => 'website',
             'json_ld' => [self::breadcrumbJsonLd([
-                'หน้าแรก' => url('/'),
-                'ค้นหาทริปทั้งหมด' => url('/trips'),
-                'ทริปเดือน'.$monthLabel => $canonical,
+                SiteLocale::text('หน้าแรก') => SiteLocale::url('/'),
+                SiteLocale::text('ค้นหาทริปทั้งหมด') => SiteLocale::url('/trips'),
+                SiteLocale::text('ทริปเดือน{p}', ['p' => $monthLabel]) => $canonical,
             ])],
         ]);
     }
@@ -274,8 +275,10 @@ class SeoMeta
     private static function calendarDescription(array $calendar, array $summary, string $monthLabel): string
     {
         if (($summary['round_count'] ?? 0) === 0) {
-            return 'ยังไม่มีรอบเดินทางเปิดจองในเดือน'.$monthLabel
-                .' ดูเดือนถัดไปหรือทริปทั้งหมดของลุยเลเขาได้ที่นี่';
+            return SiteLocale::text(
+                'ยังไม่มีรอบเดินทางเปิดจองในเดือน{month_label} ดูเดือนถัดไปหรือทริปทั้งหมดของลุยเลเขาได้ที่นี่',
+                ['month_label' => $monthLabel],
+            );
         }
 
         $names = collect($calendar['days'])
@@ -285,10 +288,17 @@ class SeoMeta
             ->take(4)
             ->implode(' ');
 
-        $price = $summary['min_price'] ? ' เริ่มต้น '.number_format((float) $summary['min_price']).' บาท' : '';
+        $params = [
+            'month_label' => $monthLabel,
+            'trip_count' => $summary['trip_count'],
+            'round_count' => $summary['round_count'],
+            'price' => number_format((float) $summary['min_price']),
+            'names' => $names,
+        ];
 
-        return 'ทริปเดือน'.$monthLabel.' ของลุยเลเขา '.$summary['trip_count'].' ทริป '
-            .$summary['round_count'].' รอบ'.$price.' — '.$names.' ดูวันว่างและจองออนไลน์ได้เลย';
+        return $summary['min_price']
+            ? SiteLocale::text('ทริปเดือน{month_label} ของลุยเลเขา {trip_count} ทริป {round_count} รอบ เริ่มต้น {price} บาท — {names} ดูวันว่างและจองออนไลน์ได้เลย', $params)
+            : SiteLocale::text('ทริปเดือน{month_label} ของลุยเลเขา {trip_count} ทริป {round_count} รอบ — {names} ดูวันว่างและจองออนไลน์ได้เลย', $params);
     }
 
     private static function staticPage(string $path): array
