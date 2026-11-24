@@ -308,6 +308,88 @@ class TripLiveActivityTest extends TestCase
         }
     }
 
+    public function test_the_card_uses_the_chosen_pickup_points_time(): void
+    {
+        // รถออกต้นทาง 04:00 แต่จุดที่ลูกค้าเลือกรถมารับ 05:30 — การ์ดต้องพูดเวลาของ
+        // จุดนั้น ไม่ใช่เวลารถออก และนับถอยหลังไปหาเวลารับ
+        Carbon::setTestNow(Carbon::parse('2026-09-05 20:00:00', 'Asia/Bangkok'));
+
+        try {
+            $this->schedule->update([
+                'departure_date' => '2026-09-06',
+                'departs_at' => '2026-09-06 04:00:00',
+                'return_date' => '2026-09-07',
+            ]);
+            $point = $this->pickupPointAt('05:30');
+            $this->booking->update(['pickup_point_id' => $point->id]);
+
+            $state = app(TripActivityService::class)
+                ->stateFor($this->booking->fresh(['schedule', 'pickupPoint']));
+
+            $this->assertSame('countdown', $state['stage']);
+            $this->assertSame('อีก 10 ชั่วโมงออกเดินทาง', $state['headline']);
+            $this->assertSame('ขึ้นรถ 05:30 น. · จุดรับ ปั๊ม ปตท. รังสิต', $state['detail']);
+
+            // 03:00 — ยังเหลือชั่วโมงกว่ารถออก แต่ 2 ชม. ครึ่งก่อนรถมารับ = เตรียมตัว
+            Carbon::setTestNow(Carbon::parse('2026-09-06 03:00:00', 'Asia/Bangkok'));
+            $state = app(TripActivityService::class)
+                ->stateFor($this->booking->fresh(['schedule', 'pickupPoint']));
+
+            $this->assertSame('preparing', $state['stage']);
+            $this->assertSame('รถมารับเวลา 05:30 น.', $state['headline']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_a_pickup_after_midnight_counts_toward_the_next_day(): void
+    {
+        // รอบที่ออกสี่ทุ่มแล้วแวะจุดสุดท้ายตีครึ่ง — 00:30 คือของคืนนั้น ไม่ใช่เช้าวันเดียวกัน
+        Carbon::setTestNow(Carbon::parse('2026-09-05 18:00:00', 'Asia/Bangkok'));
+
+        try {
+            $this->schedule->update([
+                'departure_date' => '2026-09-05',
+                'departs_at' => '2026-09-05 22:00:00',
+                'return_date' => '2026-09-07',
+            ]);
+            $point = $this->pickupPointAt('00:30');
+            $this->booking->update(['pickup_point_id' => $point->id]);
+
+            $state = app(TripActivityService::class)
+                ->stateFor($this->booking->fresh(['schedule', 'pickupPoint']));
+
+            $this->assertSame('อีก 7 ชั่วโมงออกเดินทาง', $state['headline']);
+            $this->assertStringContainsString('ขึ้นรถ 00:30 น.', $state['detail']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_a_pickup_point_without_a_time_falls_back_to_the_departure_time(): void
+    {
+        $point = $this->pickupPointAt(null);
+        $this->booking->update(['pickup_point_id' => $point->id]);
+
+        $state = app(TripActivityService::class)
+            ->stateFor($this->booking->fresh(['schedule', 'pickupPoint']));
+
+        $this->assertSame('preparing', $state['stage']);
+        $this->assertStringContainsString('รถออกเวลา', $state['headline']);
+    }
+
+    private function pickupPointAt(?string $time): SchedulePickupPoint
+    {
+        return SchedulePickupPoint::create([
+            'schedule_id' => $this->schedule->id,
+            'region' => 'central',
+            'region_label' => 'ภาคกลาง',
+            'price' => 2500,
+            'pickup_location' => 'ปั๊ม ปตท. รังสิต',
+            'pickup_time' => $time,
+        ]);
+    }
+
     public function test_checked_in_flips_the_card_to_onboard(): void
     {
         $this->booking->update(['checked_in' => true, 'checked_in_at' => now()]);

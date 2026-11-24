@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\BookingMember;
 use App\Models\FcmToken;
 use App\Models\LiveActivity;
 use App\Models\ScheduleAnnouncement;
@@ -15,6 +16,7 @@ use App\Support\MediaDisk;
 use App\Support\SiteSettings;
 use App\Support\ThaiDate;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -49,6 +51,17 @@ class TripActivityService
 
     /** Live Activity เริ่มแสดงล่วงหน้ากี่ชั่วโมงก่อนรถออก */
     private const START_BEFORE_HOURS = 18;
+
+    /**
+     * เพดานของ ActivityKit — การ์ดที่เปิดมาครบเท่านี้ถูกระบบหยุดรับอัปเดต (ชั่วโมง)
+     */
+    private const IOS_ACTIVE_HOURS = 8;
+
+    /** เปิดใบใหม่แทนก่อนชนเพดานเท่านี้ (นาที) — เผื่อรอบซิงก์ที่พลาดไปสักสองสามรอบ */
+    private const ROTATE_AFTER_MINUTES = 450;
+
+    /** เปิดการ์ดให้เอง (push-to-start) ล่วงหน้ากี่ชั่วโมงก่อนเวลารถมารับ */
+    private const PUSH_TO_START_HOURS = 6;
 
     /** ถึงเวลานี้แล้วยังไม่มีอะไรเปลี่ยน ก็ยิงซ้ำกันหน้าจอค้างข้อมูลเก่า (นาที) */
     private const HEARTBEAT_MINUTES = 20;
@@ -147,18 +160,6 @@ class TripActivityService
     }
 
     /**
-     * อีกกี่ชั่วโมงรถจะออก (ติดลบ = ออกไปแล้ว) — คืน null เมื่อรอบไม่ได้ระบุเวลาออก
-     */
-    public function hoursUntilDeparture(TripSchedule $schedule): ?float
-    {
-        $departsAt = $schedule->effectiveDepartsAt();
-
-        return $departsAt === null
-            ? null
-            : $this->nowThai()->diffInHours($departsAt, false);
-    }
-
-    /**
      * "ตอนนี้" ในรูปแบบเดียวกับที่ `departs_at` ถูกเก็บ
      *
      * departs_at เก็บเป็นตัวเลขนาฬิกาไทยตรง ๆ (ไม่เคยถูกแปลง) แต่ timezone ของแอป
@@ -179,7 +180,7 @@ class TripActivityService
      *
      * @return array<string, mixed>|null
      */
-    public function stateFor(Booking $booking): ?array
+    public function stateFor(Booking $booking, ?int $userId = null): ?array
     {
         $schedule = $booking->schedule;
         if (! $schedule || ! in_array($booking->status, ['confirmed', 'pending'], true)) {
@@ -192,6 +193,13 @@ class TripActivityService
             return null;
         }
 
+        // การ์ดเป็นของ "คน" ไม่ใช่ของใบจอง — จุดรับและการขึ้นรถของคนที่ถือเครื่องนี้
+        // (ดู TripActivityViewer) ทั้งกลุ่มแจ้งไม่ไป = ไม่มีการ์ด
+        $viewer = TripActivityViewer::resolve($booking, $userId, app(PickupArrivalService::class));
+        if (! $viewer) {
+            return null;
+        }
+
         $departsAt = $schedule->effectiveDepartsAt();
 
         // รอบที่บินไปไม่มีทั้งจุดรับและ GPS รถ ขั้นที่ขับเคลื่อนด้วยตำแหน่งรถ
@@ -199,11 +207,11 @@ class TripActivityService
         // ค้างอยู่ที่ "อีก N ชั่วโมงออกเดินทาง · จุดรับของคุณ" แล้วกระโดดไป onboard
         // — ไทม์ไลน์ของสนามบินเดินด้วยเวลานัดพบกับเวลาเครื่องออกแทน
         if ($schedule->isFlight()) {
-            return $this->flightStateFor($booking, $schedule, $departsAt);
+            return $this->flightStateFor($booking, $viewer, $schedule, $departsAt);
         }
 
-        $pickupCoords = $this->pickupCoords($booking);
-        $pickupName = $this->pickupName($booking);
+        $pickupCoords = $viewer->coords();
+        $pickupName = $viewer->name();
         $location = $schedule->vehicle_id ? $this->vehicleLocation((int) $schedule->vehicle_id) : null;
 
         $etaMinutes = null;
@@ -217,29 +225,37 @@ class TripActivityService
                 $pickupCoords['lng'],
             );
             // ETA ร่วมจาก Google ก่อน — การ์ดหน้าจอล็อกกับจอติดตามรถต้องพูดเลขเดียวกัน
-            $etaMinutes = $this->sharedEtaMinutes($booking)
+            $etaMinutes = $this->sharedEtaMinutes($booking, $viewer)
                 ?? $this->etaMinutes(
                     $distanceKm,
                     isset($location['speed']) ? (float) $location['speed'] : null,
                 );
         }
 
+        // เวลาของ "คนนี้" คือเวลารถมารับที่จุดที่เขาเลือก ไม่ใช่เวลารถออกจากต้นทาง —
+        // คนที่ขึ้นจุดที่สามอาจต้องยืนรอช้ากว่าเวลารถออกเป็นชั่วโมง การ์ดจึงนับถอยหลัง
+        // และพิมพ์เวลาของจุดรับเมื่อจุดนั้นตั้ง pickup_time ไว้ ไม่มีก็ถอยไปใช้เวลารถออก
+        $pickupAt = $viewer->point?->pickupAt($schedule);
+        $anchor = $pickupAt ?? $departsAt;
         $departTime = $this->departTimeLabel($schedule);
-        $stage = $this->stage($booking, $departsAt, $departTime !== null, $distanceKm, $etaMinutes);
-        $copy = $this->copyFor($stage, $departsAt, $departTime, $etaMinutes, $pickupName, $booking);
-        $progress = $this->progress($stage, $departsAt, $etaMinutes);
+        $pickupTime = $pickupAt ? $pickupAt->format('H:i').' น.' : null;
+        $timeKnown = $pickupTime !== null || $departTime !== null;
+
+        $stage = $this->stage($viewer, $schedule, $anchor, $timeKnown, $distanceKm, $etaMinutes);
+        $copy = $this->copyFor($stage, $anchor, $departTime, $pickupTime, $etaMinutes, $pickupName, $booking, $viewer);
+        $progress = $this->progress($stage, $anchor, $etaMinutes);
 
         if ($stage === 'onboard') {
             // ส่งถึงจุดส่งมาพักหนึ่งแล้ว — ทริปจบจริง เก็บการ์ดออกจากหน้าจอล็อก
             // แทนที่จะแช่ "ถึงจุดส่งแล้ว" ไว้จนเที่ยงคืน
-            if ($this->returnFinished($booking)) {
+            if ($this->returnFinished($booking, $viewer)) {
                 return null;
             }
 
             // ETA ไปจุดรับไม่มีความหมายแล้วหลังขึ้นรถ อย่าให้ Dynamic Island โชว์เลขค้าง
             [$etaMinutes, $distanceKm] = [null, null];
 
-            if ($leg = $this->afterBoarding($booking, $schedule, $pickupCoords, $pickupName, $location)) {
+            if ($leg = $this->afterBoarding($booking, $viewer, $schedule, $pickupCoords, $pickupName, $location)) {
                 [$stage, $copy, $progress, $etaMinutes, $distanceKm] = [
                     $leg['stage'], $leg, $leg['progress'], $leg['eta_minutes'] ?? null, $leg['distance_km'] ?? null,
                 ];
@@ -254,6 +270,8 @@ class TripActivityService
             'distance_km' => $distanceKm !== null ? round($distanceKm, 2) : null,
             'progress' => $progress,
             'departs_at' => $departsAt?->toIso8601String(),
+            // เวลารถมารับที่จุดของคนนี้ — null เมื่อจุดไม่ได้ตั้งเวลา (ใช้ตัดสินช่วง push-to-start)
+            'pickup_at' => $pickupAt?->toIso8601String(),
             'pickup_name' => $pickupName,
             'trip_title' => $schedule->trip?->title ?? 'ทริปของคุณ',
             'booking_ref' => $booking->booking_ref,
@@ -278,14 +296,14 @@ class TripActivityService
      *
      * @return array<string, mixed>
      */
-    private function flightStateFor(Booking $booking, TripSchedule $schedule, ?Carbon $departsAt): array
+    private function flightStateFor(Booking $booking, TripActivityViewer $viewer, TripSchedule $schedule, ?Carbon $departsAt): array
     {
         $meetingAt = $schedule->meetingAt();
         $meetingPoint = trim((string) $schedule->meeting_point) ?: null;
         $flightLabel = $this->flightLabel($schedule);
         $departTime = $this->departTimeLabel($schedule);
 
-        $stage = $this->flightStage($booking, $meetingAt, $departsAt, $departTime !== null);
+        $stage = $this->flightStage($viewer, $meetingAt, $departsAt, $departTime !== null);
 
         // นับถอยหลังไปหา "สิ่งที่ต้องทำอันถัดไป" — ก่อนเจอทีมงานคือเวลานัดพบ
         // หลังจากนั้นคือเวลาเครื่องออก ตัวเลขบนการ์ดจึงเป็นตัวเลขที่ยังต้องรออยู่จริง
@@ -302,7 +320,7 @@ class TripActivityService
 
         // ลงเครื่องแล้วกำหนดการก็เดินต่อเหมือนกัน — ไทม์ไลน์สนามบินจบที่ขึ้นเครื่อง
         // ไม่ใช่จบที่ทริป (ไม่มีรถตู้พากลับจุดส่ง ขากลับจึงไม่มีให้ตาม)
-        if ($stage === 'onboard' && ($leg = $this->afterBoarding($booking, $schedule, null, null, null))) {
+        if ($stage === 'onboard' && ($leg = $this->afterBoarding($booking, $viewer, $schedule, null, null, null))) {
             [$stage, $copy, $progress, $etaMinutes] = [$leg['stage'], $leg, $leg['progress'], null];
         }
 
@@ -331,9 +349,9 @@ class TripActivityService
 
     private const FLIGHT_PREPARING_HOURS = 6;
 
-    private function flightStage(Booking $booking, ?Carbon $meetingAt, ?Carbon $departsAt, bool $timeKnown): string
+    private function flightStage(TripActivityViewer $viewer, ?Carbon $meetingAt, ?Carbon $departsAt, bool $timeKnown): string
     {
-        if ($booking->checked_in) {
+        if ($viewer->boarded) {
             return 'onboard';
         }
 
@@ -468,6 +486,9 @@ class TripActivityService
      *
      * เครื่องเดิมเปิด Activity ใหม่ = token ใหม่เสมอ ของเก่าจึงถูกปิดทิ้งเพื่อไม่ให้
      * ยิงไปหา Activity ที่ตายแล้วทุกนาทีจนกว่า APNs จะบอกว่า token เสีย
+     *
+     * แอปฝาก token เดิมซ้ำทุกครั้งที่เปิดขึ้นมาใหม่ — `started_at` ต้องไม่ถูกรีเซ็ต
+     * ตอนนั้น เพราะมันคือนาฬิกาที่นับเพดาน 8 ชั่วโมงของ iOS ([outlived]/[rotate])
      */
     public function register(Booking $booking, int $userId, string $pushToken, ?string $activityId, string $platform = 'ios'): LiveActivity
     {
@@ -477,59 +498,142 @@ class TripActivityService
             ->where('push_token', '!=', $pushToken)
             ->update(['ended_at' => now()]);
 
-        return LiveActivity::updateOrCreate(
-            ['push_token' => $pushToken],
-            [
-                'user_id' => $userId,
-                'booking_id' => $booking->id,
-                'schedule_id' => $booking->schedule_id,
-                'platform' => $platform,
-                'activity_id' => $activityId,
-                'state' => $this->stateFor($booking),
-                'stage' => null,
-                'started_at' => now(),
-                'ended_at' => null,
-            ],
-        );
+        // การ์ดที่เซิร์ฟเวอร์สั่งเปิดไว้ฝาก token มาแล้ว — จากนี้แถวนี้คือความจริง
+        Cache::forget($this->pendingKey((int) $booking->id, $userId));
+
+        $activity = LiveActivity::firstOrNew(['push_token' => $pushToken]);
+        $sameCard = $activity->exists
+            && $activity->ended_at === null
+            && (int) $activity->booking_id === (int) $booking->id
+            && $activity->started_at !== null;
+
+        $activity->fill([
+            'user_id' => $userId,
+            'booking_id' => $booking->id,
+            'schedule_id' => $booking->schedule_id,
+            'platform' => $platform,
+            'activity_id' => $activityId ?? $activity->activity_id,
+            'state' => $this->stateFor($booking, $userId),
+            'stage' => $sameCard ? $activity->stage : null,
+            'started_at' => $sameCard ? $activity->started_at : now(),
+            'ended_at' => null,
+        ])->save();
+
+        return $activity;
     }
 
     /**
-     * ซิงก์ทุก Activity ของรอบเดินทางหนึ่งรอบ — นี่คือสิ่งที่ scheduler เรียกทุกนาที
+     * ผู้ใช้ทุกคนที่ควรมีการ์ดของใบจองนี้ — เจ้าของ กับเพื่อนที่ตอบรับคำเชิญแล้ว
+     * (เกณฑ์เดียวกับที่ LiveActivityController ให้สิทธิ์ดูการ์ด)
+     *
+     * @return array<int, int>
+     */
+    public function viewerIds(Booking $booking): array
+    {
+        $members = $booking->relationLoaded('members')
+            ? $booking->members
+            : $booking->members()->get();
+
+        return collect([$booking->user_id])
+            ->merge($members->where('status', BookingMember::STATUS_ACTIVE)->pluck('user_id'))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * ผู้ใช้ปัดการ์ดทิ้งเอง — เคารพไปจนจบวัน: ไม่เปิดใบใหม่ให้เอง ไม่ต่ออายุใบเดิม
+     * (วันถัดไปของทริปหลายวันคือเรื่องใหม่ เช่นขากลับ จึงเปิดให้ได้อีก)
+     */
+    public function markDismissed(int $bookingId, int $userId): void
+    {
+        $now = $this->nowThai();
+
+        Cache::put($this->dismissedKey($bookingId, $userId), true, max(60, (int) $now->diffInSeconds($now->copy()->endOfDay())));
+    }
+
+    private function wasDismissed(int $bookingId, int $userId): bool
+    {
+        return Cache::has($this->dismissedKey($bookingId, $userId));
+    }
+
+    private function dismissedKey(int $bookingId, int $userId): string
+    {
+        return "trip_activity_dismissed:{$bookingId}:{$userId}";
+    }
+
+    /**
+     * ซิงก์ทุกการ์ดของรอบเดินทางหนึ่งรอบ — นี่คือสิ่งที่ scheduler เรียกทุกนาที
+     *
+     * เดินทีละใบจอง ไม่ใช่ทีละแถวใน live_activities: การ์ด Android ไม่มีแถว
+     * (มันคือ ongoing notification ที่แอปวาดเอง) เดิมจึงได้อัปเดตเฉพาะใบจองที่
+     * บังเอิญมีการ์ด iOS เปิดอยู่ด้วย ETA บน Android เลยไม่เคยขยับเอง
      *
      * @return int จำนวนที่ยิงออกไปจริง
      */
     public function syncSchedule(TripSchedule $schedule): int
     {
-        $activities = LiveActivity::live()
+        $liveBookingIds = LiveActivity::live()
             ->where('schedule_id', $schedule->id)
-            ->with(['booking.schedule.trip', 'booking.pickupPoint'])
+            ->pluck('booking_id');
+
+        $bookings = Booking::with($this->relations())
+            ->where('schedule_id', $schedule->id)
+            ->where(fn ($q) => $q
+                ->whereIn('status', ['confirmed', 'pending'])
+                ->orWhereIn('id', $liveBookingIds))
             ->get();
+
+        $androidUsers = $this->androidUserIds(
+            $bookings->flatMap(fn (Booking $b) => $this->viewerIds($b))->unique()->values()->all()
+        );
 
         $pushed = 0;
 
-        foreach ($activities as $activity) {
-            $booking = $activity->booking;
-            if (! $booking) {
-                $activity->forceFill(['ended_at' => now()])->save();
-
-                continue;
-            }
-
-            if ($this->sync($booking, $activity)) {
+        foreach ($bookings as $booking) {
+            if ($this->sync($booking, androidUsers: $androidUsers)) {
                 $pushed++;
             }
         }
 
+        LiveActivity::live()
+            ->where('schedule_id', $schedule->id)
+            ->whereNotIn('booking_id', $bookings->pluck('id'))
+            ->update(['ended_at' => now()]);
+
         return $pushed;
+    }
+
+    /** ความสัมพันธ์ที่ stateFor ต้องใช้ — โหลดทีเดียวทั้งรอบ ไม่ใช่ทีละใบ */
+    public function relations(): array
+    {
+        return [
+            'schedule.trip', 'schedule.vehicle', 'schedule.pickupPoints', 'pickupPoint',
+            'passengers:'.PickupArrivalService::PASSENGER_PICKUP_COLUMNS,
+            'members',
+        ];
     }
 
     /**
      * ซิงก์ใบจองหนึ่งใบ — เรียกได้จากทั้ง scheduler และจากเหตุการณ์ที่เกิดทันที
      * (เช่นสตาฟสแกนเช็คอิน ซึ่งต้องเห็นบนหน้าจอล็อกเดี๋ยวนั้น ไม่ใช่รออีกนาที)
+     *
+     * การ์ดแต่ละใบได้ state ของคนที่ถือเครื่อง ([stateFor] กับ user id ของแถวนั้น)
+     *
+     * @param  array<int, int>|null  $androidUsers  ผู้ใช้ที่มีเครื่อง Android (null = ถามเอง)
      */
-    public function sync(Booking $booking, ?LiveActivity $only = null): bool
+    public function sync(Booking $booking, ?LiveActivity $only = null, ?array $androidUsers = null): bool
     {
-        $state = $this->stateFor($booking);
+        $states = [];
+        $stateOf = function (?int $userId) use (&$states, $booking): ?array {
+            $key = $userId ?? 0;
+
+            return array_key_exists($key, $states)
+                ? $states[$key]
+                : $states[$key] = $this->stateFor($booking, $userId);
+        };
 
         $activities = $only
             ? collect([$only])
@@ -538,8 +642,23 @@ class TripActivityService
         $pushed = false;
 
         foreach ($activities as $activity) {
+            $state = $stateOf($activity->user_id ? (int) $activity->user_id : null);
+
             if ($state === null) {
                 $this->apns->end($activity, $this->endState($activity));
+                $pushed = true;
+
+                continue;
+            }
+
+            // iOS หยุดรับอัปเดตการ์ดที่อายุครบ 8 ชม. แล้ว — ยิงไปก็ไม่ขึ้น
+            if ($this->outlived($activity)) {
+                $activity->forceFill(['ended_at' => now()])->save();
+
+                continue;
+            }
+
+            if ($this->rotate($booking, $activity, $state)) {
                 $pushed = true;
 
                 continue;
@@ -562,8 +681,18 @@ class TripActivityService
             ])->save();
         }
 
-        if ($this->pushToAndroid($booking, $state)) {
-            $pushed = true;
+        // ซิงก์การ์ดใบเดียว (แอปเพิ่งฝาก token) ไม่ต้องไปแตะเครื่อง Android ของใคร
+        if ($only !== null) {
+            return $pushed;
+        }
+
+        $viewers = $this->viewerIds($booking);
+        $androidUsers ??= $this->androidUserIds($viewers);
+
+        foreach (array_intersect($viewers, $androidUsers) as $userId) {
+            if ($this->pushToAndroid($booking, $userId, $stateOf($userId))) {
+                $pushed = true;
+            }
         }
 
         return $pushed;
@@ -573,36 +702,201 @@ class TripActivityService
      * เปิด Live Activity จากฝั่งเซิร์ฟเวอร์ให้เครื่องที่ยังไม่มี (iOS 17.2+)
      *
      * นี่คือส่วนที่ทำให้ "ตื่นมาแล้วมันอยู่บนจอแล้ว" เป็นจริง — ลูกค้าที่จองไว้เมื่อ
-     * เดือนที่แล้วแล้วไม่ได้เปิดแอปอีกเลย ก็ยังได้เห็น
+     * เดือนที่แล้วแล้วไม่ได้เปิดแอปอีกเลย ก็ยังได้เห็น ทั้งเจ้าของและเพื่อนในใบจอง
+     *
+     * เปิดให้เองเฉพาะช่วงที่การ์ดมีค่าจริง ([startPhase]) ช่วงละครั้งต่อคน — ช่วง
+     * รอรถมารับ กับช่วงขากลับ (ทริปหลายวันการ์ดของเช้าวันแรกหมดอายุไปนานแล้ว)
      *
      * @return int จำนวนเครื่องที่สั่งเปิดไป
      */
     public function pushToStart(Booking $booking): int
     {
-        $state = $this->stateFor($booking);
-        if ($state === null || ! $booking->user_id) {
-            return 0;
-        }
-
-        // มีอยู่แล้วบนเครื่องไหนก็ไม่ต้องเปิดซ้ำ — ปล่อยให้ sync() ดูแลต่อ
-        if (LiveActivity::live()->where('booking_id', $booking->id)->exists()) {
-            return 0;
-        }
-
-        $tokens = FcmToken::where('user_id', $booking->user_id)
-            ->where('is_active', true)
-            ->whereNotNull('live_activity_start_token')
-            ->pluck('live_activity_start_token')
-            ->unique();
-
         $started = 0;
+
+        foreach ($this->viewerIds($booking) as $userId) {
+            if ($this->wasDismissed((int) $booking->id, $userId)) {
+                continue;
+            }
+
+            // เพิ่งสั่งเปิดไป แต่เครื่องยังไม่ส่ง token กลับมา (แอปยังไม่ได้ตื่น) — ถ้า
+            // ไม่รอ นาทีถัดไปจะเปิดซ้อนอีกใบ
+            if (Cache::has($this->pendingKey((int) $booking->id, $userId))) {
+                continue;
+            }
+
+            // มีอยู่แล้วบนเครื่องไหนก็ไม่ต้องเปิดซ้ำ — ปล่อยให้ sync() ดูแลต่อ
+            $hasCard = LiveActivity::live()
+                ->where('booking_id', $booking->id)
+                ->where('user_id', $userId)
+                ->exists();
+            if ($hasCard) {
+                continue;
+            }
+
+            $tokens = $this->startTokens($userId);
+            if ($tokens->isEmpty()) {
+                continue;
+            }
+
+            $state = $this->stateFor($booking, $userId);
+            $phase = $state ? $this->startPhase($state) : null;
+            if ($phase === null) {
+                continue;
+            }
+
+            // push-to-start ที่ไม่สำเร็จ (ผู้ใช้ปิด Live Activity ในตั้งค่า) จะไม่มีวัน
+            // สำเร็จในรอบถัดไปเช่นกัน — ลองครั้งเดียวต่อช่วง
+            $key = "trip_activity_started:{$booking->id}:{$userId}:{$phase}";
+            if (Cache::has($key)) {
+                continue;
+            }
+            Cache::put($key, true, now()->addHours(12));
+
+            $started += $this->startOn($booking, $userId, $tokens, $state);
+        }
+
+        return $started;
+    }
+
+    /**
+     * สั่งเปิดการ์ดบนทุกเครื่องของผู้ใช้คนหนึ่ง แล้วจำไว้ว่า "มีการ์ดที่ยังไม่ได้ฝาก
+     * token" อยู่ตลอดอายุของมัน — การ์ดที่เปิดจากเซิร์ฟเวอร์จะมีแถวใน live_activities
+     * ก็ต่อเมื่อแอปตื่นมาส่ง token ให้ ซึ่งอาจไม่เกิดเลย
+     *
+     * @param  Collection<int, string>  $tokens
+     */
+    private function startOn(Booking $booking, int $userId, $tokens, array $state): int
+    {
+        $started = 0;
+
         foreach ($tokens as $token) {
             if ($this->apns->start($token, $this->attributesFor($booking), $this->contentState($state))) {
                 $started++;
             }
         }
 
+        if ($started > 0) {
+            Cache::put($this->pendingKey((int) $booking->id, $userId), true, now()->addHours(self::IOS_ACTIVE_HOURS));
+        }
+
         return $started;
+    }
+
+    private function pendingKey(int $bookingId, int $userId): string
+    {
+        return "trip_activity_pending:{$bookingId}:{$userId}";
+    }
+
+    /**
+     * แอป iOS ควรเปิดการ์ดตอนนี้ไหม (ลูกค้าเปิดแอปเอง)
+     *
+     * การ์ดของ ActivityKit อยู่ได้ 8 ชม. — เปิดตอนสองทุ่มคืนก่อนเดินทาง = การ์ดหยุด
+     * อัปเดตตีสี่ ตอนรถเพิ่งออกพอดี เครื่องที่ต่ำกว่า iOS 17.2 ต่ออายุไม่ได้ ([rotate])
+     * จึงรอให้ใกล้เวลารถมารับก่อน ส่วนช่วงหลังขึ้นรถเปิดได้เสมอ
+     */
+    public function shouldOpenOnIos(array $state): bool
+    {
+        return $state['stage'] !== 'countdown' || $this->startPhase($state) !== null;
+    }
+
+    /**
+     * ช่วงที่ควรเปิดการ์ดให้เองโดยไม่มีใครขอ — null = ตอนนี้ไม่ใช่
+     *
+     *   pickup  ภายใน 6 ชม. ก่อนเวลารถมารับ (หรือรถออก) จนถึงขึ้นรถ
+     *   return  รถกำลังพากลับจุดส่ง
+     */
+    private function startPhase(array $state): ?string
+    {
+        $stage = $state['stage'];
+
+        if (in_array($stage, ['returning', 'dropoff_soon'], true)) {
+            return 'return';
+        }
+
+        if (in_array($stage, ['preparing', 'enroute', 'approaching', 'arriving', 'arrived', 'meetup', 'boarding'], true)) {
+            return 'pickup';
+        }
+
+        if ($stage === 'countdown') {
+            $anchor = $state['pickup_at'] ?? $state['departs_at'] ?? null;
+
+            return $anchor && $this->nowThai()->diffInHours(Carbon::parse($anchor), false) <= self::PUSH_TO_START_HOURS
+                ? 'pickup'
+                : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * การ์ด iOS ใบนี้เลยเพดาน 8 ชั่วโมงของ ActivityKit แล้ว — ระบบหยุดรับอัปเดต
+     * (ค้างบนจอล็อกต่ออีกราว 4 ชม. ด้วยข้อความสุดท้าย) เซิร์ฟเวอร์ต้องเลิกนับว่า
+     * มันยังเปิดอยู่ ไม่งั้น [pushToStart] จะไม่มีวันเปิดใบใหม่ให้
+     */
+    private function outlived(LiveActivity $activity): bool
+    {
+        return $activity->platform === 'ios'
+            && $activity->started_at !== null
+            && $activity->started_at->lte(now()->subHours(self::IOS_ACTIVE_HOURS));
+    }
+
+    /**
+     * ต่ออายุการ์ดก่อนชนเพดาน 8 ชม. — ActivityKit ไม่มี API ต่ออายุ แต่เปิดใบใหม่
+     * ด้วย push-to-start แล้วปิดใบเก่าทันทีได้ ลูกค้าเห็นการ์ดใบเดิมเดินต่อ
+     *
+     * คนที่ไม่มี start token (iOS ต่ำกว่า 17.2) ต่ออายุไม่ได้ ปล่อยให้แอปเปิดใบใหม่
+     * ตอนเขากลับเข้าแอป ([outlived] ทำให้เซิร์ฟเวอร์ยอมรับใบนั้น)
+     */
+    private function rotate(Booking $booking, LiveActivity $activity, array $state): bool
+    {
+        if ($activity->platform !== 'ios'
+            || $activity->started_at === null
+            || $activity->started_at->gt(now()->subMinutes(self::ROTATE_AFTER_MINUTES))
+            || ! $activity->user_id
+            || $this->wasDismissed((int) $booking->id, (int) $activity->user_id)
+        ) {
+            return false;
+        }
+
+        $tokens = $this->startTokens((int) $activity->user_id);
+        if ($tokens->isEmpty() || $this->startOn($booking, (int) $activity->user_id, $tokens, $state) === 0) {
+            return false;
+        }
+
+        // ปิดใบเก่าแบบไม่มีคำว่า "จบการเดินทาง" — ข้อความเดียวกับใบใหม่ แล้วหายไปเลย
+        $this->apns->end($activity, $this->contentState($state), dismissAfterMinutes: 0);
+
+        return true;
+    }
+
+    /** @return Collection<int, string> */
+    private function startTokens(int $userId)
+    {
+        return FcmToken::where('user_id', $userId)
+            ->where('is_active', true)
+            ->whereNotNull('live_activity_start_token')
+            ->pluck('live_activity_start_token')
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * @param  array<int, int>  $userIds
+     * @return array<int, int>
+     */
+    private function androidUserIds(array $userIds): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        return FcmToken::whereIn('user_id', $userIds)
+            ->where('is_active', true)
+            ->where('platform', 'android')
+            ->distinct()
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     /**
@@ -616,7 +910,23 @@ class TripActivityService
             $this->apns->end($activity, $this->endState($activity, $reason));
         }
 
-        $this->pushToAndroid($booking, null);
+        foreach (array_intersect($this->viewerIds($booking), $this->androidUserIds($this->viewerIds($booking))) as $userId) {
+            $this->pushToAndroid($booking, $userId, null, force: true);
+        }
+    }
+
+    /**
+     * เก็บการ์ด Android ของรอบที่จบไปแล้ว — เฉพาะเครื่องที่เซิร์ฟเวอร์เคยส่งการ์ดไป
+     * และยังไม่เคยสั่งเก็บ ([pushToAndroid] จำไว้) รอบที่หลุดออกจากชุด "กำลังเดินทาง"
+     * ตอนเที่ยงคืนจะไม่มีใครแตะมันอีก ถ้าไม่เก็บตรงนี้ การ์ดค้างบนแถบแจ้งเตือนไปเรื่อย ๆ
+     */
+    public function retireAndroid(Booking $booking): void
+    {
+        $viewers = $this->viewerIds($booking);
+
+        foreach (array_intersect($viewers, $this->androidUserIds($viewers)) as $userId) {
+            $this->pushToAndroid($booking, $userId, null, retire: true);
+        }
     }
 
     /**
@@ -634,48 +944,46 @@ class TripActivityService
             $this->apns->end($activity, $this->endState($activity, $reason), dismissAfterMinutes: 0);
         }
 
-        $hasAndroid = FcmToken::where('user_id', $userId)
-            ->where('is_active', true)
-            ->where('platform', 'android')
-            ->exists();
-
-        if (! $hasAndroid) {
-            return;
-        }
-
-        try {
-            $this->fcm->sendDataToUser($userId, [
-                'type' => 'trip_activity',
-                'event' => 'end',
-                'booking_ref' => (string) $booking->booking_ref,
-                'state' => json_encode([], JSON_UNESCAPED_UNICODE),
-            ], platform: 'android');
-        } catch (\Throwable $e) {
-            Log::warning('Trip activity android end failed', ['message' => $e->getMessage()]);
+        if ($this->androidUserIds([$userId]) !== []) {
+            $this->pushToAndroid($booking, $userId, null, force: true);
         }
     }
 
     /**
      * Android ไม่มี ActivityKit — ส่ง state ก้อนเดิมไปเป็น data message แล้วให้แอป
      * วาด ongoing notification เอง (state === null แปลว่า "เก็บการ์ดออก")
+     *
+     * ไม่มีแถวใน live_activities ให้จำว่าส่งอะไรไปแล้ว จึงจำใน cache แทน — ยิงเมื่อ
+     * ข้อความเปลี่ยน หรือเงียบนานเกิน heartbeat เหมือนฝั่ง iOS ([shouldPush])
      */
-    private function pushToAndroid(Booking $booking, ?array $state): bool
+    private function pushToAndroid(Booking $booking, int $userId, ?array $state, bool $force = false, bool $retire = false): bool
     {
-        if (! $booking->user_id) {
+        $key = "trip_activity_android:{$booking->id}:{$userId}";
+        $fingerprint = $state === null
+            ? 'end'
+            : md5(json_encode([
+                $state['stage'], $state['eta_minutes'], $state['headline'], $state['detail'],
+                $state['vehicle_summary'] ?? null, $state['driver_photo_url'] ?? null,
+            ], JSON_UNESCAPED_UNICODE));
+
+        $last = Cache::get($key);
+        $fresh = is_array($last)
+            && $last['fp'] === $fingerprint
+            && ($fingerprint === 'end' || $last['at'] > now()->subMinutes(self::HEARTBEAT_MINUTES)->timestamp);
+
+        if ($fresh && ! $force) {
             return false;
         }
 
-        $hasAndroid = FcmToken::where('user_id', $booking->user_id)
-            ->where('is_active', true)
-            ->where('platform', 'android')
-            ->exists();
-
-        if (! $hasAndroid) {
+        // ไม่เคยส่งการ์ดให้ใบนี้เลย ก็ไม่มีอะไรให้ปิด — ยกเว้นใบที่ถูกยกเลิก ซึ่งแอป
+        // อาจวาดการ์ดไว้เองตอนเปิดแอป (ยังไม่เคยผ่านเซิร์ฟเวอร์)
+        if ($state === null && ! $force && $last === null
+            && ($retire || in_array($booking->status, ['confirmed', 'pending'], true))) {
             return false;
         }
 
         try {
-            $this->fcm->sendDataToUser($booking->user_id, [
+            $this->fcm->sendDataToUser($userId, [
                 'type' => 'trip_activity',
                 'event' => $state === null ? 'end' : 'update',
                 'booking_ref' => (string) $booking->booking_ref,
@@ -686,6 +994,8 @@ class TripActivityService
 
             return false;
         }
+
+        Cache::put($key, ['fp' => $fingerprint, 'at' => now()->timestamp], now()->addDays(2));
 
         return true;
     }
@@ -787,16 +1097,16 @@ class TripActivityService
         ];
     }
 
-    private function stage(Booking $booking, ?Carbon $departsAt, bool $timeKnown, ?float $distanceKm, ?int $etaMinutes): string
+    private function stage(TripActivityViewer $viewer, TripSchedule $schedule, ?Carbon $departsAt, bool $timeKnown, ?float $distanceKm, ?int $etaMinutes): string
     {
-        if ($booking->checked_in) {
+        if ($viewer->boarded) {
             return 'onboard';
         }
 
         // สตาฟที่นั่งมากับรถกดยืนยันว่าจอดถึงจุดนี้แล้ว — ชนะทุกอย่างที่คำนวณจาก
         // GPS รวมถึงกรณีไม่มีพิกัดเลย ซึ่งเคยทำให้การ์ดค้างที่ "เตรียมตัว" ทั้งที่
         // รถจอดอยู่ตรงหน้าลูกค้า (หน้าจอในแอปเชื่อสตาฟอยู่แล้ว การ์ดต้องพูดตรงกัน)
-        if ($this->arrivedPickupPoint($booking) !== null) {
+        if ($this->arrivedPickupPoint($viewer, $schedule) !== null) {
             return 'arrived';
         }
 
@@ -827,15 +1137,16 @@ class TripActivityService
     /**
      * @return array{headline: string, detail: string}
      */
-    private function copyFor(string $stage, ?Carbon $departsAt, ?string $departTime, ?int $etaMinutes, ?string $pickupName, Booking $booking): array
+    private function copyFor(string $stage, ?Carbon $departsAt, ?string $departTime, ?string $pickupTime, ?int $etaMinutes, ?string $pickupName, Booking $booking, TripActivityViewer $viewer): array
     {
+        $timeKnown = $pickupTime !== null || $departTime !== null;
         $place = $pickupName ? "จุดรับ $pickupName" : 'จุดรับของคุณ';
 
         // ตอนรถถึงแล้ว คำถามเปลี่ยนจาก "อีกนานไหม" เป็น "คันไหน" — ป้ายทะเบียน
         // เคยอยู่แค่มุมบนขวาของการ์ด iOS ตัวเล็กจาง ๆ และไม่มีเลยบนแอนดรอยด์
         // ย้ายมาอยู่ในบรรทัดที่ทั้งสองฝั่งวาดแน่ ๆ
         $plate = $this->plateLabel($booking);
-        $parked = $this->parkingNote($booking);
+        $parked = $this->parkingNote($viewer, $booking->schedule);
 
         return match ($stage) {
             'arrived' => [
@@ -865,14 +1176,20 @@ class TripActivityService
                 'detail' => 'เดินทางปลอดภัย แล้วเจอกันที่ปลายทาง 🎒',
             ],
             'preparing' => [
-                'headline' => $departTime ? "รถออกเวลา $departTime" : 'ถึงวันเดินทางแล้ว',
+                'headline' => match (true) {
+                    $pickupTime !== null => "รถมารับเวลา $pickupTime",
+                    $departTime !== null => "รถออกเวลา $departTime",
+                    default => 'ถึงวันเดินทางแล้ว',
+                },
                 'detail' => "เตรียมตัวไปที่$place",
             ],
             default => [
-                'headline' => $this->countdownLabel($departsAt, $departTime !== null),
-                'detail' => $departTime
-                    ? "ออกเดินทาง $departTime · $place"
-                    : $place,
+                'headline' => $this->countdownLabel($departsAt, $timeKnown),
+                'detail' => match (true) {
+                    $pickupTime !== null => "ขึ้นรถ $pickupTime · $place",
+                    $departTime !== null => "ออกเดินทาง $departTime · $place",
+                    default => $place,
+                },
             ],
         };
     }
@@ -922,15 +1239,6 @@ class TripActivityService
         };
     }
 
-    private function pickupName(Booking $booking): ?string
-    {
-        if ($booking->pickupPoint?->pickup_location) {
-            return $booking->pickupPoint->pickup_location;
-        }
-
-        return $booking->custom_pickup_label ?: null;
-    }
-
     /**
      * หลังเช็คอิน — การ์ดต้องมีอะไรให้ดูต่อเสมอ ไม่แช่ "ขึ้นรถเรียบร้อยแล้ว" จนจบทริป
      *
@@ -948,16 +1256,16 @@ class TripActivityService
      * @param  array<string, mixed>|null  $location
      * @return array<string, mixed>|null
      */
-    private function afterBoarding(Booking $booking, TripSchedule $schedule, ?array $pickupCoords, ?string $pickupName, ?array $location): ?array
+    private function afterBoarding(Booking $booking, TripActivityViewer $viewer, TripSchedule $schedule, ?array $pickupCoords, ?string $pickupName, ?array $location): ?array
     {
         // เพิ่งสแกนตั๋วเสร็จ ปล่อยให้ "ขึ้นรถเรียบร้อยแล้ว" ค้างไว้ก่อน — มันคือคำ
         // ยืนยันที่คนเพิ่งยื่นโทรศัพท์ให้ทีมงานกำลังมองหา
-        $checkedInAt = $booking->checked_in_at;
+        $checkedInAt = $viewer->checkedInAt;
         if ($checkedInAt && $checkedInAt->gt(now()->subMinutes(self::ONBOARD_MINUTES))) {
             return null;
         }
 
-        return $this->returnLeg($booking, $schedule, $pickupCoords, $pickupName, $location)
+        return $this->returnLeg($booking, $viewer, $schedule, $pickupCoords, $pickupName, $location)
             ?? $this->itineraryLeg($schedule)
             ?? $this->tripDayLeg($schedule, $pickupName);
     }
@@ -1239,13 +1547,13 @@ class TripActivityService
      * @param  array<string, mixed>|null  $location
      * @return array<string, mixed>|null
      */
-    private function returnLeg(Booking $booking, TripSchedule $schedule, ?array $pickupCoords, ?string $pickupName, ?array $location): ?array
+    private function returnLeg(Booking $booking, TripActivityViewer $viewer, TripSchedule $schedule, ?array $pickupCoords, ?string $pickupName, ?array $location): ?array
     {
         if (! $pickupCoords || ! $schedule->vehicle_id || ! $this->isLastTripDay($schedule)) {
             return null;
         }
 
-        $checkedInAt = $booking->checked_in_at;
+        $checkedInAt = $viewer->checkedInAt;
         if (! $checkedInAt || $checkedInAt->gt(now()->subHours(self::RETURN_AFTER_CHECKIN_HOURS))) {
             return null;
         }
@@ -1259,7 +1567,7 @@ class TripActivityService
             )
             : null;
 
-        $key = $this->returnKey($booking);
+        $key = $this->returnKey($booking, $viewer);
         $leg = Cache::get($key);
 
         if (! is_array($leg)) {
@@ -1347,22 +1655,23 @@ class TripActivityService
     }
 
     /** ส่งถึงจุดส่งมานานพอแล้วหรือยัง — ถึงแล้วการ์ดของใบจองนี้ควรปิด */
-    private function returnFinished(Booking $booking): bool
+    private function returnFinished(Booking $booking, TripActivityViewer $viewer): bool
     {
-        if (! $booking->checked_in) {
+        if (! $viewer->boarded) {
             return false;
         }
 
-        $leg = Cache::get($this->returnKey($booking));
+        $leg = Cache::get($this->returnKey($booking, $viewer));
 
         return is_array($leg)
             && ($leg['dropped_at'] ?? null) !== null
             && now()->timestamp - (int) $leg['dropped_at'] >= self::DROPOFF_LINGER_MINUTES * 60;
     }
 
-    private function returnKey(Booking $booking): string
+    /** ต่อจุดส่ง ไม่ใช่ต่อใบจอง — คนในใบเดียวกันลงคนละจุดได้ */
+    private function returnKey(Booking $booking, TripActivityViewer $viewer): string
     {
-        return "trip_return_leg:{$booking->id}:".$this->nowThai()->toDateString();
+        return "trip_return_leg:{$booking->id}:{$viewer->dropoffKey()}:".$this->nowThai()->toDateString();
     }
 
     private function isLastTripDay(TripSchedule $schedule): bool
@@ -1549,37 +1858,6 @@ class TripActivityService
     }
 
     /**
-     * พิกัดจุดรับของใบจองนี้ — จุดรับของรอบก่อน แล้วค่อยหมุดที่ลูกค้าปักเอง
-     *
-     * หมุดที่ปักเองมีพิกัดอยู่บนใบจองอยู่แล้ว ([Booking::custom_pickup_lat]) การไม่
-     * อ่านมันแปลว่าคนกลุ่มนี้เห็นการ์ดค้างอยู่ที่ "เตรียมตัว" ตลอดเช้า ทั้งที่รถ
-     * กำลังวิ่งมาหาเขาจริง ๆ เกณฑ์ "ยังไม่ถูกปฏิเสธ" ใช้ชุดเดียวกับที่แอปคนขับใช้
-     * ตัดสินว่าจุดนี้ต้องแวะไหม
-     *
-     * @return array{lat: float, lng: float}|null
-     */
-    private function pickupCoords(Booking $booking): ?array
-    {
-        $point = $booking->pickupPoint;
-        if ($point && $point->latitude !== null && $point->longitude !== null) {
-            return ['lat' => (float) $point->latitude, 'lng' => (float) $point->longitude];
-        }
-
-        if ($booking->pickup_point_id === null
-            && $booking->custom_pickup_lat !== null
-            && $booking->custom_pickup_lng !== null
-            && $booking->custom_pickup_status !== 'rejected'
-        ) {
-            return [
-                'lat' => (float) $booking->custom_pickup_lat,
-                'lng' => (float) $booking->custom_pickup_lng,
-            ];
-        }
-
-        return null;
-    }
-
-    /**
      * "23:30 น." — หรือ null เมื่อรอบนี้ไม่ได้กรอกเวลารถออกไว้
      *
      * [TripSchedule::effectiveDepartsAt] เติมเที่ยงคืนให้รอบที่ไม่มี `departs_at`
@@ -1612,17 +1890,20 @@ class TripActivityService
      * สิ่งที่สตาฟพิมพ์ไว้ตอนกดว่ารถถึงจุดนี้ ("จอดตรงข้าม 7-11") — ของแบบนี้
      * พิกัดบอกไม่ได้ และเป็นประโยคที่มีค่าที่สุดบนหน้าจอล็อก ณ นาทีนั้น
      */
-    private function parkingNote(Booking $booking): ?string
+    private function parkingNote(TripActivityViewer $viewer, ?TripSchedule $schedule): ?string
     {
-        $note = trim((string) $this->arrivedPickupPoint($booking)?->arrival_note);
+        $note = $schedule ? trim((string) $this->arrivedPickupPoint($viewer, $schedule)?->arrival_note) : '';
 
         return $note !== '' ? $note : null;
     }
 
     /** กติกา "รถถึงจุดนี้แล้วจริงไหม" อยู่ที่ PickupArrivalService ที่เดียว */
-    private function arrivedPickupPoint(Booking $booking): ?SchedulePickupPoint
+    private function arrivedPickupPoint(TripActivityViewer $viewer, TripSchedule $schedule): ?SchedulePickupPoint
     {
-        return app(PickupArrivalService::class)->freshArrivalFor($booking);
+        // หมุดที่ปักเองไม่มีปุ่ม "รถถึงจุดนี้แล้ว" ให้สตาฟกด
+        return $viewer->pin === null
+            ? app(PickupArrivalService::class)->freshArrivalOf($viewer->point, (int) $schedule->id)
+            : null;
     }
 
     private function vehicleLabel(TripSchedule $schedule): ?string
@@ -1748,14 +2029,14 @@ class TripActivityService
     }
 
     /** ETA ของจุดรับประจำใบจองจาก VehicleEtaService — null = ไม่มี/ไม่สด/ปักหมุดเอง */
-    private function sharedEtaMinutes(Booking $booking): ?int
+    private function sharedEtaMinutes(Booking $booking, TripActivityViewer $viewer): ?int
     {
-        if (! $booking->pickup_point_id || $booking->custom_pickup_lat !== null) {
+        if (! ($pointId = $viewer->routePointId())) {
             return null;
         }
 
         try {
-            return app(VehicleEtaService::class)->minutesFor((int) $booking->schedule_id, (int) $booking->pickup_point_id);
+            return app(VehicleEtaService::class)->minutesFor((int) $booking->schedule_id, $pointId);
         } catch (\Throwable) {
             return null;
         }

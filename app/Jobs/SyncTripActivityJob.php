@@ -22,7 +22,7 @@ class SyncTripActivityJob implements ShouldQueue
 
     public function handle(TripActivityService $activities): void
     {
-        $booking = Booking::with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
+        $booking = Booking::with($activities->relations())
             ->find($this->bookingId);
 
         if (! $booking) {

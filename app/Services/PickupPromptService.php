@@ -33,12 +33,6 @@ class PickupPromptService
     /** จุดรับที่ไม่ได้ตั้งเวลา: นับจากเวลารถออกของรอบ ถามต่อได้นานกว่า เพราะไม่รู้ว่าจุดนี้ลำดับที่เท่าไหร่ */
     public const DEPARTS_CLOSES_AFTER_MINUTES = 180;
 
-    /**
-     * pickup_time ที่เช้ากว่าเวลารถออกเกินนี้ = เป็นของวันถัดไป (รอบที่ออกสี่ทุ่ม
-     * แล้วแวะจุดสุดท้ายตีครึ่ง) — ไม่มีจุดไหนรับก่อนรถออกครึ่งวัน
-     */
-    private const NEXT_DAY_THRESHOLD_HOURS = 6;
-
     public function __construct(
         private PickupStatusService $status,
         private PickupArrivalService $arrivals,
@@ -83,7 +77,7 @@ class PickupPromptService
             'booking_ref' => $booking->booking_ref,
             'point_id' => $point?->id,
             'point_label' => $point ? $this->arrivals->label($point) : null,
-            'pickup_time' => $point && $this->parseTime($point->pickup_time) ? trim((string) $point->pickup_time) : null,
+            'pickup_time' => $point?->pickupTimeParts() ? trim((string) $point->pickup_time) : null,
             'status' => $status,
             'status_label' => PickupStatusService::label($status, $eta),
             'eta_minutes' => $eta,
@@ -108,13 +102,9 @@ class PickupPromptService
         $date = Carbon::parse($date->format('Y-m-d'));
         $departsAt = $schedule->departs_at ? Carbon::parse($schedule->departs_at->format('Y-m-d H:i:s')) : null;
 
-        if ($point && ($time = $this->parseTime($point->pickup_time))) {
-            $pickupAt = $date->copy()->setTime($time[0], $time[1]);
-
-            if ($departsAt && $pickupAt->lt($departsAt->copy()->subHours(self::NEXT_DAY_THRESHOLD_HOURS))) {
-                $pickupAt->addDay();
-            }
-
+        // กติกา "จุดนี้รับกี่โมง วันไหน" อยู่ที่ SchedulePickupPoint::pickupAt() ที่เดียว
+        // (การ์ด Live Activity ใช้ตัวเดียวกัน)
+        if ($point && ($pickupAt = $point->pickupAt($schedule))) {
             return [
                 'opens' => $pickupAt->copy()->subMinutes(self::OPENS_BEFORE_MINUTES),
                 'closes' => $pickupAt->copy()->addMinutes(self::CLOSES_AFTER_MINUTES),
@@ -200,19 +190,6 @@ class PickupPromptService
         }
 
         return [0, 0];
-    }
-
-    /** @return array{0: int, 1: int}|null */
-    private function parseTime(?string $time): ?array
-    {
-        if (! preg_match('/^\s*(\d{1,2})[:.](\d{2})\s*$/', (string) $time, $m)) {
-            return null;
-        }
-
-        $h = (int) $m[1];
-        $i = (int) $m[2];
-
-        return $h < 24 && $i < 60 ? [$h, $i] : null;
     }
 
     /** @return array<int, int> */

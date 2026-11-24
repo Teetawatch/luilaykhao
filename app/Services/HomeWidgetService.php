@@ -53,7 +53,7 @@ class HomeWidgetService
         return [
             'version' => self::SNAPSHOT_VERSION,
             'generated_at' => now(self::TIMEZONE)->toIso8601String(),
-            'trip' => $booking ? $this->tripBlock($booking) : null,
+            'trip' => $booking ? $this->tripBlock($booking, $userId) : null,
             'payment' => $this->paymentBlock($userId),
         ];
     }
@@ -78,7 +78,7 @@ class HomeWidgetService
                 $query->where('status', '!=', 'cancelled')
                     ->whereDate('return_date', '>=', $today);
             })
-            ->with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
+            ->with($this->tripActivity->relations())
             ->get();
 
         return $bookings
@@ -101,12 +101,13 @@ class HomeWidgetService
      *
      * @return array<string, mixed>
      */
-    private function tripBlock(Booking $booking): array
+    private function tripBlock(Booking $booking, int $userId): array
     {
         $schedule = $booking->schedule;
-        $departsAt = $schedule->effectiveDepartsAt();
         $days = $this->daysUntilDeparture($schedule);
-        $live = $this->tripActivity->stateFor($booking);
+        $live = $this->tripActivity->stateFor($booking, $userId);
+        $viewer = TripActivityViewer::resolve($booking, $userId, app(PickupArrivalService::class));
+        $moment = $this->meetMoment($schedule, $viewer);
 
         return [
             'booking_ref' => (string) $booking->booking_ref,
@@ -117,10 +118,12 @@ class HomeWidgetService
             // ทริปจะได้ไม่เห็น "กำลังอยู่ระหว่างทริป" ค้างอยู่บนหน้าโฮม
             'valid_until' => ($schedule->return_date ?? $schedule->departure_date)?->toDateString(),
             'date_label' => ThaiDate::short($schedule->departure_date),
-            'depart_time' => $departsAt?->format('H:i'),
+            // เวลาที่คนนี้ต้องไปถึงจุดรับ (ไม่มี = เวลารถออก) — null เมื่อรอบไม่ได้ตั้งเวลา
+            // ไม่ใช่ 00:00 ที่ effectiveDepartsAt() เติมให้
+            'depart_time' => $moment?->format('H:i'),
             'countdown_days' => $days,
             'headline' => $live['headline'] ?? $this->countdownHeadline($days),
-            'detail' => $live['detail'] ?? $this->countdownDetail($booking, $schedule, $departsAt, $days),
+            'detail' => $live['detail'] ?? $this->countdownDetail($booking, $schedule, $viewer, $moment, $days),
             'stage' => $live['stage'] ?? 'countdown',
             'eta_minutes' => $live['eta_minutes'] ?? null,
             'progress' => (float) ($live['progress'] ?? 0.0),
@@ -253,12 +256,25 @@ class HomeWidgetService
     }
 
     /**
-     * บรรทัดรอง — วันที่ · เวลารถออก · จุดรับ เท่าที่รอบนั้นมีข้อมูล
+     * เวลาที่คนนี้ต้องไปอยู่ที่จุดรับ — เวลารถมารับของจุดที่เขาเลือก (การ์ดหน้าจอล็อก
+     * ใช้ตัวเดียวกัน) ไม่มีก็เวลารถออก ไม่มีทั้งคู่ = null (ห้ามพิมพ์เที่ยงคืนที่ถูกเติม)
+     */
+    private function meetMoment(TripSchedule $schedule, ?TripActivityViewer $viewer): ?Carbon
+    {
+        if (! $schedule->isFlight() && ($pickupAt = $viewer?->point?->pickupAt($schedule))) {
+            return $pickupAt;
+        }
+
+        return $schedule->departs_at?->copy();
+    }
+
+    /**
+     * บรรทัดรอง — วันที่ · เวลารถมารับ · จุดรับ เท่าที่รอบนั้นมีข้อมูล
      *
      * ใบที่ยังไม่ยืนยันเอาสถานะขึ้นก่อน เพราะ "จ่ายแล้วหรือยังไม่จ่าย" สำคัญกว่า
      * รายละเอียดจุดรับสำหรับคนที่ยังรอผลตรวจสลิป
      */
-    private function countdownDetail(Booking $booking, TripSchedule $schedule, ?Carbon $departsAt, int $days): string
+    private function countdownDetail(Booking $booking, TripSchedule $schedule, ?TripActivityViewer $viewer, ?Carbon $moment, int $days): string
     {
         if ($booking->status === 'pending') {
             return 'รอตรวจสอบการชำระเงิน · '.ThaiDate::short($schedule->departure_date);
@@ -266,15 +282,16 @@ class HomeWidgetService
 
         $parts = [];
 
-        // ยังอีกไกล: วันที่มีความหมายกว่าเวลารถออก — ใกล้แล้ว: กลับกัน
+        // ยังอีกไกล: วันที่มีความหมายกว่าเวลา — ใกล้แล้ว: กลับกัน วันที่ต้องเป็นวันของ
+        // เวลาที่พิมพ์ด้วย (จุดที่รับตีครึ่งของรอบที่ออกสี่ทุ่ม คือวันถัดไป)
         if ($days !== 0) {
-            $parts[] = ThaiDate::short($schedule->departure_date);
+            $parts[] = ThaiDate::short($moment ?? $schedule->departure_date);
         }
-        if ($departsAt) {
-            $parts[] = $departsAt->format('H:i').' น.';
+        if ($moment) {
+            $parts[] = $moment->format('H:i').' น.';
         }
 
-        $pickup = $this->pickupName($booking, $schedule);
+        $pickup = $this->pickupName($schedule, $viewer);
         if ($pickup !== null) {
             $parts[] = $pickup;
         }
@@ -285,14 +302,13 @@ class HomeWidgetService
     /**
      * จุดที่ต้องไปยืนรอ — รอบที่บินไปไม่มีจุดรับ มีแต่จุดนัดพบที่สนามบิน
      */
-    private function pickupName(Booking $booking, TripSchedule $schedule): ?string
+    private function pickupName(TripSchedule $schedule, ?TripActivityViewer $viewer): ?string
     {
         if ($schedule->isFlight()) {
             return trim((string) $schedule->meeting_point) ?: null;
         }
 
-        return $booking->pickupPoint?->pickup_location
-            ?: ($booking->custom_pickup_label ?: null);
+        return $viewer?->name();
     }
 
     private function daysUntilDeparture(TripSchedule $schedule): int

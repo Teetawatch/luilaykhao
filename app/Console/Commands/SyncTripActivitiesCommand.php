@@ -7,7 +7,6 @@ use App\Models\LiveActivity;
 use App\Models\TripSchedule;
 use App\Services\TripActivityService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * ทำให้การ์ด "วันเดินทาง" บนหน้าจอล็อกตรงกับความจริง — ทุกนาที
@@ -22,9 +21,6 @@ class SyncTripActivitiesCommand extends Command
     protected $signature = 'trip-activity:sync';
 
     protected $description = 'Push Live Activity / ongoing-notification updates for trips happening now.';
-
-    /** เริ่มพยายามเปิดการ์ดให้เองล่วงหน้ากี่ชั่วโมงก่อนรถออก */
-    private const PUSH_TO_START_HOURS = 6;
 
     public function handle(TripActivityService $activities): int
     {
@@ -42,6 +38,7 @@ class SyncTripActivitiesCommand extends Command
         )->unique('id');
 
         $this->closeFinished($activities, $schedules->pluck('id')->all());
+        $this->retireAndroidCards($activities);
 
         $started = 0;
         $pushed = 0;
@@ -59,41 +56,35 @@ class SyncTripActivitiesCommand extends Command
     }
 
     /**
-     * เปิดการ์ดให้ใบจองที่ยังไม่มีบนเครื่องไหนเลย
+     * เปิดการ์ดให้คนที่ยังไม่มีบนเครื่องไหนเลย — ทุกคนในใบจอง ไม่ใช่แค่เจ้าของ
      *
-     * กันยิงซ้ำด้วย cache รายใบจอง เพราะ push-to-start ที่ไม่สำเร็จ (เครื่อง iOS 16,
-     * ผู้ใช้ปิด Live Activity ในตั้งค่า) จะไม่มีวันสำเร็จในรอบถัดไปเช่นกัน
+     * จะเปิดเมื่อไหร่ (ช่วงรอรถมารับ / ขากลับ) และกันยิงซ้ำอย่างไร ตัดสินใน
+     * [TripActivityService::pushToStart] ที่เดียว เพราะต้องรู้ state ของแต่ละคน
      */
     private function openMissing(TripSchedule $schedule, TripActivityService $activities): int
     {
-        $hoursAway = $activities->hoursUntilDeparture($schedule);
-        if ($hoursAway === null || $hoursAway > self::PUSH_TO_START_HOURS) {
-            return 0;
-        }
-
-        $bookings = Booking::with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
+        $bookings = Booking::with($activities->relations())
             ->where('schedule_id', $schedule->id)
             ->where('status', 'confirmed')
             ->whereNotNull('user_id')
             ->get();
 
-        $started = 0;
+        return $bookings->sum(fn (Booking $booking) => $activities->pushToStart($booking));
+    }
 
-        foreach ($bookings as $booking) {
-            $key = "trip_activity_started:{$booking->id}";
-            if (Cache::has($key)) {
-                continue;
-            }
+    /**
+     * การ์ด Android ไม่มีแถวใน live_activities ให้ [closeFinished] กวาด — รอบที่
+     * กลับเมื่อวานจึงต้องสั่งเก็บแยก ส่งครั้งเดียวต่อเครื่อง (TripActivityService จำไว้)
+     */
+    private function retireAndroidCards(TripActivityService $activities): void
+    {
+        $yesterday = today('Asia/Bangkok')->subDay()->toDateString();
 
-            $count = $activities->pushToStart($booking);
-            if ($count > 0) {
-                $started += $count;
-            }
-
-            Cache::put($key, true, now()->addHours(12));
-        }
-
-        return $started;
+        Booking::with($activities->relations())
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->whereHas('schedule', fn ($q) => $q->whereDate('return_date', $yesterday))
+            ->get()
+            ->each(fn (Booking $booking) => $activities->retireAndroid($booking));
     }
 
     /**
@@ -108,7 +99,7 @@ class SyncTripActivitiesCommand extends Command
     private function closeFinished(TripActivityService $activities, array $activeScheduleIds): void
     {
         $stale = LiveActivity::live()
-            ->with(['booking.schedule.trip', 'booking.pickupPoint'])
+            ->with(collect($activities->relations())->map(fn ($r) => "booking.{$r}")->all())
             ->when($activeScheduleIds, fn ($query) => $query->whereNotIn('schedule_id', $activeScheduleIds))
             ->get();
 

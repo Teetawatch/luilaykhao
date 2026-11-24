@@ -52,7 +52,7 @@ class LiveActivityController extends Controller
 
         return $this->success([
             'id' => $activity->id,
-            'state' => $this->activities->stateFor($booking),
+            'state' => $activity->state,
             'attributes' => $this->activities->attributesFor($booking),
         ], 'เปิดการ์ดวันเดินทางแล้ว');
     }
@@ -68,28 +68,48 @@ class LiveActivityController extends Controller
             return $this->error('ไม่พบการจองนี้ในบัญชีของคุณ', 404);
         }
 
+        // การ์ดของคนที่ถามเอง — เพื่อนที่ขึ้นจุดอื่นเห็นจุดและการขึ้นรถของตัวเอง
+        $state = $this->activities->stateFor($booking, (int) $request->user()->id);
+
         return $this->success([
-            'state' => $this->activities->stateFor($booking),
+            'state' => $state,
             'attributes' => $this->activities->attributesFor($booking),
+            // iOS: ยังเร็วไป เปิดตอนนี้การ์ดจะหมดอายุก่อนรถมารับ (Android ไม่สนค่านี้)
+            'open_on_ios' => $state !== null && $this->activities->shouldOpenOnIos($state),
         ]);
     }
 
     /**
-     * ผู้ใช้ปัดการ์ดทิ้ง / แอปปิด Activity เอง — เลิกยิงไปหา token นี้
+     * ผู้ใช้ปัดการ์ดทิ้ง / แอปปิด Activity เอง / iOS เก็บไปเอง — เลิกยิงไปหา token นี้
      *
      * ไม่ต้องส่ง end push กลับไป เพราะฝั่งเครื่องปิดไปแล้ว การยิงซ้ำมีแต่จะได้
      * BadDeviceToken กลับมา
+     *
+     * `reason`:
+     *   dismissed  ผู้ใช้ปัดทิ้งเอง → ไม่เปิดใบใหม่ให้เองจนจบวัน
+     *   ended      ระบบปิด (ครบ 8 ชม. ฯลฯ) → เปิดใบใหม่ได้ตามปกติ
+     *   (ไม่ส่ง)   แอปเวอร์ชันเก่า / ออกจากระบบ — ทำแบบเดิม
      */
     public function destroy(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'push_token' => ['required', 'string', 'max:512'],
+            'reason' => ['nullable', 'string', 'in:dismissed,ended'],
         ]);
 
-        LiveActivity::live()
-            ->where('user_id', $request->user()->id)
+        $userId = (int) $request->user()->id;
+        $rows = LiveActivity::live()
+            ->where('user_id', $userId)
             ->where('push_token', $validated['push_token'])
-            ->update(['ended_at' => now()]);
+            ->get(['id', 'booking_id']);
+
+        if (($validated['reason'] ?? null) === 'dismissed') {
+            foreach ($rows->pluck('booking_id')->unique() as $bookingId) {
+                $this->activities->markDismissed((int) $bookingId, $userId);
+            }
+        }
+
+        LiveActivity::whereIn('id', $rows->pluck('id'))->update(['ended_at' => now()]);
 
         return $this->success(null, 'ปิดการ์ดวันเดินทางแล้ว');
     }
@@ -100,7 +120,7 @@ class LiveActivityController extends Controller
      */
     private function resolveBooking(Request $request, string $ref): ?Booking
     {
-        $booking = Booking::with(['schedule.trip', 'schedule.vehicle', 'pickupPoint'])
+        $booking = Booking::with($this->activities->relations())
             ->where('booking_ref', $ref)
             ->first();
 

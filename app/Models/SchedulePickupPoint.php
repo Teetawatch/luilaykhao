@@ -6,6 +6,7 @@ use App\Jobs\ResolvePickupPointCoordinates;
 use App\Models\Concerns\HasContentTranslations;
 use App\Support\GoogleMapsUrl;
 use App\Support\MediaDisk;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -39,6 +40,48 @@ class SchedulePickupPoint extends Model
     public function schedule(): BelongsTo
     {
         return $this->belongsTo(TripSchedule::class, 'schedule_id');
+    }
+
+    /**
+     * pickup_time ที่เช้ากว่าเวลารถออกของรอบเกินนี้ = เป็นของวันถัดไป (รอบที่ออก
+     * สี่ทุ่มแล้วแวะจุดสุดท้ายตีครึ่ง) — ไม่มีจุดไหนรับก่อนรถออกครึ่งวัน
+     */
+    public const NEXT_DAY_THRESHOLD_HOURS = 6;
+
+    /** [ชั่วโมง, นาที] ของ pickup_time — null เมื่อไม่ได้ตั้งหรือกรอกมาผิดรูป */
+    public function pickupTimeParts(): ?array
+    {
+        if (! preg_match('/^\s*(\d{1,2})[:.](\d{2})\s*$/', (string) $this->pickup_time, $m)) {
+            return null;
+        }
+
+        $h = (int) $m[1];
+        $i = (int) $m[2];
+
+        return $h < 24 && $i < 60 ? [$h, $i] : null;
+    }
+
+    /**
+     * เวลารถมารับที่จุดนี้จริง (ตัวเลขนาฬิกาไทยในกรอบ UTC แบบเดียวกับ departs_at)
+     * — null เมื่อจุดนี้ไม่ได้ตั้งเวลา หรือรอบไม่มีวันเดินทาง
+     */
+    public function pickupAt(TripSchedule $schedule): ?Carbon
+    {
+        $time = $this->pickupTimeParts();
+        $date = $schedule->effectiveDepartureDate();
+
+        if (! $time || ! $date) {
+            return null;
+        }
+
+        $pickupAt = Carbon::parse($date->format('Y-m-d'))->setTime($time[0], $time[1]);
+        $departsAt = $schedule->departs_at ? Carbon::parse($schedule->departs_at->format('Y-m-d H:i:s')) : null;
+
+        if ($departsAt && $pickupAt->lt($departsAt->copy()->subHours(self::NEXT_DAY_THRESHOLD_HOURS))) {
+            $pickupAt->addDay();
+        }
+
+        return $pickupAt;
     }
 
     /** สตาฟที่กดว่ารถถึงจุดนี้แล้ว */

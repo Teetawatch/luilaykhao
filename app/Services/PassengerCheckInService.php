@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SyncTripActivityJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use Illuminate\Support\Carbon;
@@ -69,7 +70,7 @@ class PassengerCheckInService
      */
     public function checkIn(Booking $booking, ?array $passengerIds, Carbon $at): array
     {
-        return DB::transaction(function () use ($booking, $passengerIds, $at) {
+        $result = DB::transaction(function () use ($booking, $passengerIds, $at) {
             // ล็อกใบจองไว้ — สตาฟสองคนสแกนคนละคนในใบเดียวกันพร้อมกันได้ (QR รายคน)
             $locked = Booking::whereKey($booking->id)->lockForUpdate()->first();
             $passengers = BookingPassenger::where('booking_id', $booking->id)->orderBy('id')->get();
@@ -109,6 +110,14 @@ class PassengerCheckInService
 
             return ['checked_in_ids' => $newIds, 'booking_flipped' => $shouldFlip];
         });
+
+        // การ์ดวันเดินทางเป็นรายคนแล้ว — เพื่อนที่ขึ้นทีหลังคนแรกต้องเห็นการ์ดพลิกเดี๋ยวนั้น
+        // เหมือนกัน (คนแรกถูก BookingObserver ดันให้อยู่แล้วตอนใบจองพลิก)
+        if ($result['checked_in_ids'] !== [] && ! $result['booking_flipped']) {
+            SyncTripActivityJob::dispatch($booking->id);
+        }
+
+        return $result;
     }
 
     /**

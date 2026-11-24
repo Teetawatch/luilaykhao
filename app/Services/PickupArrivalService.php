@@ -133,9 +133,13 @@ class PickupArrivalService
      */
     public function freshArrivalFor(Booking $booking): ?SchedulePickupPoint
     {
-        $point = $booking->pickupPoint;
+        return $this->freshArrivalOf($booking->pickupPoint, (int) $booking->schedule_id);
+    }
 
-        if (! $point || (int) $point->schedule_id !== (int) $booking->schedule_id) {
+    /** กติกาเดียวกับ [freshArrivalFor] สำหรับจุดที่ไม่ใช่จุดของใบจอง (จุดรายคน) */
+    public function freshArrivalOf(?SchedulePickupPoint $point, int $scheduleId): ?SchedulePickupPoint
+    {
+        if (! $point || (int) $point->schedule_id !== $scheduleId) {
             return null;
         }
 
