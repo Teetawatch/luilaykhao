@@ -47,16 +47,24 @@ class ContentTranslationTest extends TestCase
         'ปั๊ม ปตท. วิภาวดี' => 'PTT Station, Vibhavadi',
     ];
 
+    /** @var array<string, string> คำตอบรอบขอแปลใหม่ (ช่องที่ส่ง must_keep_numbers มา) */
+    private array $retryDictionary = [];
+
+    /** @var list<list<array<string, mixed>>> segment ที่ส่งไปแต่ละครั้ง ครบทุกคีย์ */
+    private array $askedSegments = [];
+
     private function fakeClaude(): void
     {
         Http::fake(['api.anthropic.com/*' => function (HttpRequest $request) {
             $content = $request->data()['messages'][0]['content'];
             $payload = json_decode(substr($content, strpos($content, '{"segments"')), true);
             $this->asked[] = array_column($payload['segments'], 'text');
+            $this->askedSegments[] = $payload['segments'];
 
             $translations = array_map(fn (array $segment) => [
                 'id' => $segment['id'],
-                'text' => $this->dictionary[$segment['text']] ?? 'EN '.$segment['text'],
+                'text' => (isset($segment['must_keep_numbers']) ? ($this->retryDictionary[$segment['text']] ?? null) : null)
+                    ?? $this->dictionary[$segment['text']] ?? 'EN '.$segment['text'],
             ], $payload['segments']);
 
             return Http::response([
@@ -130,6 +138,33 @@ class ContentTranslationTest extends TestCase
         // ปี พ.ศ. → ค.ศ. ได้ แต่เลขอื่นห้ามเปลี่ยน
         $this->assertTrue(ContentText::numbersPreserved('ออก 25 ก.ค. 2569', 'Departs 25 Jul 2026'));
         $this->assertFalse(ContentText::numbersPreserved('ออก 25 ก.ค. 2569', 'Departs 25 Jul 2027'));
+    }
+
+    public function test_numbers_written_as_words_or_rama_numerals_still_count(): void
+    {
+        $this->assertTrue(ContentText::numbersPreserved('ทริป 2 วัน 1 คืน', 'A two-day, one-night trip'));
+        $this->assertTrue(ContentText::numbersPreserved('ยอดเขาสูงอันดับ 3 ของไทย', "Thailand's third-highest peak"));
+        $this->assertTrue(ContentText::numbersPreserved('พระตำหนักสมัย ร.9', 'a residence from the reign of King Rama IX'));
+        $this->assertFalse(ContentText::numbersPreserved('พระตำหนักสมัย ร.9', 'a residence from the reign of King Rama X'));
+        $this->assertSame(['22', '0'], ContentText::missingNumbers('ออก 22.00 น. ราคา 1,500 บาท', 'Leaves 10 p.m., 1,500 baht'));
+    }
+
+    public function test_a_description_that_loses_a_number_is_asked_again_and_used(): void
+    {
+        $thai = "ออกเดินทาง 22.00 น. ถึงยอดเขา 1,500 ม.\nพัก 2 คืน";
+        $this->dictionary[$thai] = "Leave at 10 p.m., reach the 1,500 m summit\nStay 2 nights";
+        $this->retryDictionary[$thai] = "Leave at 22.00, reach the 1,500 m summit\nStay 2 nights";
+
+        $trip = $this->makeTrip(['description' => $thai]);
+
+        $retry = collect($this->askedSegments)->flatten(1)->firstWhere('must_keep_numbers');
+        $this->assertSame($thai, $retry['text']);
+        $this->assertSame(['22', '0'], $retry['must_keep_numbers']);
+        // รอบขอใหม่ส่งเฉพาะช่องที่พลาด ไม่ใช่ทั้งทริป
+        $this->assertSame([$thai], end($this->asked));
+
+        $this->getJson("/api/v1/trips/{$trip->slug}", ['X-App-Language' => 'en'])
+            ->assertJsonPath('data.description', "Leave at 22.00, reach the 1,500 m summit\nStay 2 nights");
     }
 
     public function test_saving_a_trip_translates_it_and_english_requests_get_the_translation(): void

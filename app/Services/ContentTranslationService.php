@@ -7,11 +7,15 @@ use App\Models\ContentTranslation;
 use App\Models\HeroSlide;
 use App\Models\PageContentDocument;
 use App\Models\PickupVehicleClass;
+use App\Models\Place;
 use App\Models\Review;
 use App\Models\SaleCampaign;
 use App\Models\ScheduleAnnouncement;
 use App\Models\SchedulePickupPoint;
 use App\Models\ScheduleVehicleOption;
+use App\Models\Stay;
+use App\Models\StayExperience;
+use App\Models\StayRoomType;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
@@ -58,10 +62,10 @@ class ContentTranslationService
         'announcement' => ScheduleAnnouncement::class,
         'sale-campaign' => SaleCampaign::class,
         'review' => Review::class,
-        'place' => \App\Models\Place::class,
-        'stay' => \App\Models\Stay::class,
-        'stay-room' => \App\Models\StayRoomType::class,
-        'stay-experience' => \App\Models\StayExperience::class,
+        'place' => Place::class,
+        'stay' => Stay::class,
+        'stay-room' => StayRoomType::class,
+        'stay-experience' => StayExperience::class,
         // หน้าเนื้อหาที่แอดมินแก้ได้ (FAQ วิธีจอง เช็คลิสต์ …) — ไม่มีตาราง ดู PageContentDocument
         'page' => PageContentDocument::class,
     ];
@@ -441,9 +445,10 @@ class ContentTranslationService
 
     /**
      * @param  array<string, string>  $chunk
+     * @param  array<string, list<string>>  $mustKeep  รอบขอแปลใหม่: path => เลขที่คำแปลรอบก่อนทำหาย
      * @return array<string, string>
      */
-    private function askModel(array $chunk, string $locale, string $apiKey, ?Model $context): array
+    private function askModel(array $chunk, string $locale, string $apiKey, ?Model $context, array $mustKeep = []): array
     {
         $paths = array_keys($chunk);
         $items = [];
@@ -453,10 +458,15 @@ class ContentTranslationService
                 // ชื่อช่องช่วยให้รู้ว่าเป็นหัวข้อสั้น ๆ หรือย่อหน้า (ไม่ส่งเลขลำดับไปให้สับสน)
                 'field' => preg_replace('/\.\d+/', '', $path),
                 'text' => $chunk[$path],
-            ];
+            ] + (isset($mustKeep[$path]) ? ['must_keep_numbers' => $mustKeep[$path]] : []);
         }
 
         $about = $context instanceof Trip ? "\nThe content belongs to the trip \"{$context->title}\" ({$context->location})." : '';
+        if ($mustKeep !== []) {
+            $about .= "\nYour previous translation of these segments dropped or changed numbers. Each segment lists must_keep_numbers:"
+                .' every one of them must appear in your translation, written in digits exactly as in the Thai'
+                .' (24-hour times stay 24-hour: "22.00 น." = "22.00", never "10 p.m.").';
+        }
 
         $answer = ClaudeJson::ask(
             apiKey: $apiKey,
@@ -490,6 +500,7 @@ class ContentTranslationService
         );
 
         $results = [];
+        $dropped = [];
         foreach ($answer['translations'] ?? [] as $item) {
             $index = (int) ($item['id'] ?? 0) - 1;
             $path = $paths[$index] ?? null;
@@ -501,15 +512,31 @@ class ContentTranslationService
 
             // ราคา/เวลา/จำนวนในคำแปลต้องตรงต้นฉบับ — ผิดแม้ตัวเดียวก็ไม่ใช้ ลูกค้า
             // เห็นไทยต่อไปจนกว่าจะแปลใหม่หรือแอดมินแก้เอง ดีกว่าเห็นราคาผิด
-            if (! ContentText::numbersPreserved($chunk[$path], $text)) {
-                Log::warning('ContentTranslation: numbers changed, translation dropped', [
-                    'path' => $path, 'source' => $chunk[$path], 'text' => $text,
-                ]);
+            $missing = ContentText::missingNumbers($chunk[$path], $text);
+            if ($missing !== []) {
+                $dropped[$path] = $missing;
+                if ($mustKeep !== []) {
+                    Log::warning('ContentTranslation: numbers changed, translation dropped', [
+                        'path' => $path, 'source' => $chunk[$path], 'text' => $text, 'missing' => $missing,
+                    ]);
+                }
 
                 continue;
             }
 
             $results[$path] = $text;
+        }
+
+        // ช่องที่ทำเลขหายได้อีกโอกาสหนึ่ง พร้อมบอกว่าเลขไหนต้องอยู่ — คำอธิบายทริปยาว ๆ
+        // มีเลขหลายตัว หลุดตัวเดียวทั้งย่อหน้าก็เป็นไทยค้างไว้ เพราะไม่มีงานไหนมาแปลซ้ำให้
+        if ($dropped !== [] && $mustKeep === []) {
+            try {
+                $results += $this->askModel(array_intersect_key($chunk, $dropped), $locale, $apiKey, $context, $dropped);
+            } catch (\Throwable $e) {
+                Log::warning('ContentTranslation: retry after changed numbers failed', [
+                    'paths' => array_keys($dropped), 'message' => $e->getMessage(),
+                ]);
+            }
         }
 
         return $results;
@@ -525,7 +552,7 @@ You receive JSON segments {id, field, text}. Return one translation per id, ever
 Rules:
 - Natural, clear, friendly travel English. Translate the meaning; never add, drop or soften information (prices, what is included, rules, warnings).
 - Place names: write them in the usual romanised English spelling, e.g. ดอยอินทนนท์ = Doi Inthanon, เขาใหญ่ = Khao Yai, เกาะหลีเป๊ะ = Koh Lipe, ภูกระดึง = Phu Kradueng. Translate the generic part when it helps: น้ำตก = Waterfall, อุทยานแห่งชาติ = National Park, วัด = temple. In longer text (descriptions, itinerary details, answers) you may add a short explanation in parentheses the first time a name would mean nothing to a foreigner, e.g. "Wat Phra That Doi Suthep (the hilltop temple above Chiang Mai)". Titles and short labels: just the name, no explanation.
-- Keep every number exactly as written: prices, amounts, times, dates, years, distances, counts, phone numbers. Keep times in the same notation ("08.00 น." = "08.00", "13:30" = "13:30"). Buddhist-era years (25xx) may be written as Gregorian years (subtract 543), e.g. 2569 = 2026. บาท = baht ("500 บาท" = "500 baht").
+- Keep every number exactly as written, in digits (never spell it out as a word): prices, amounts, times, dates, years, distances, counts, phone numbers. "2 วัน 1 คืน" = "2 days 1 night". Keep times in the same notation, never convert 24-hour times to a.m./p.m. ("08.00 น." = "08.00", "13:30" = "13:30"). Buddhist-era years (25xx) may be written as Gregorian years (subtract 543), e.g. 2569 = 2026. บาท = baht ("500 บาท" = "500 baht").
 - Keep emoji, URLs, e-mail addresses, HTML tags, markdown, bullet characters and line breaks exactly where they are.
 - Trip words: รถตู้ = van, จุดรับ/จุดขึ้นรถ = pickup point, ลูกทริป = travellers, สตาฟ/ทีมงาน = staff, ไกด์ = guide, จอยทริป = join trip (no transport), มัดจำ = deposit, เต็นท์ = tent, ถุงนอน = sleeping bag, ลูกหาบ = porter, ค่าเข้าอุทยาน = national park entrance fee.
 - field tells you where the text appears (title, highlights.title, faqs.answer, itinerary.items.stops.detail, pickup_location, notification.title/body for app notifications …) — keep titles short like titles. Notifications: short, friendly, keep the same tone.

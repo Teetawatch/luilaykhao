@@ -75,15 +75,30 @@ class ContentText
     }
 
     /**
-     * ตัวเลขทุกตัวในต้นฉบับยังอยู่ในคำแปลไหม — ราคา เวลา วันที่ ต้องไม่หายหรือ
-     * ถูกแต่งเพิ่ม (เลขไทย ๑๒๓ เทียบเป็นเลขอารบิก, คอมมาหลักพันไม่นับ)
+     * ตัวเลขทุกตัวในต้นฉบับยังอยู่ในคำแปลไหม — ราคา เวลา วันที่ ต้องไม่หาย
+     * (เลขไทย ๑๒๓ เทียบเป็นเลขอารบิก, คอมมาหลักพันไม่นับ)
      */
     public static function numbersPreserved(string $source, string $translation): bool
     {
+        return self::missingNumbers($source, $translation) === [];
+    }
+
+    /**
+     * ตัวเลขในต้นฉบับที่หาไม่เจอในคำแปล — ว่าง = ใช้คำแปลได้ ไม่ว่าง = บอกโมเดล
+     * ตอนขอแปลใหม่ว่าต้องใส่เลขไหนกลับ
+     *
+     * คำแปลเขียนเลขเป็นคำได้ ("1 คืน" = "one night", "อันดับ 3" = "third") และเลข
+     * รัชกาลเป็นเลขโรมันได้ ("ร.9" = "King Rama IX") — คำอธิบายทริปยาว ๆ เคยถูกทิ้ง
+     * ทั้งย่อหน้าเพราะแบบนี้ แต่เวลายังห้ามเปลี่ยนรูป: 13.00 ต้องเป็น 13 ไม่ใช่ 1 p.m.
+     *
+     * @return list<string>
+     */
+    public static function missingNumbers(string $source, string $translation): array
+    {
         $missing = array_count_values(self::numbers($source));
 
-        foreach (self::numbers($translation) as $number) {
-            if (isset($missing[$number])) {
+        foreach (self::translatedNumbers($translation) as $number) {
+            if (($missing[$number] ?? 0) > 0) {
                 $missing[$number]--;
 
                 continue;
@@ -95,7 +110,62 @@ class ContentText
             }
         }
 
-        return array_sum(array_map(fn (int $left) => max(0, $left), $missing)) === 0;
+        $left = [];
+        foreach ($missing as $number => $count) {
+            for ($i = 0; $i < $count; $i++) {
+                $left[] = (string) $number;
+            }
+        }
+
+        return $left;
+    }
+
+    /** คำภาษาอังกฤษที่แทนเลขได้ตรงตัว */
+    private const NUMBER_WORDS = [
+        'zero' => 0, 'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5,
+        'six' => 6, 'seven' => 7, 'eight' => 8, 'nine' => 9, 'ten' => 10, 'eleven' => 11,
+        'twelve' => 12, 'thirteen' => 13, 'fourteen' => 14, 'fifteen' => 15, 'sixteen' => 16,
+        'seventeen' => 17, 'eighteen' => 18, 'nineteen' => 19, 'twenty' => 20, 'thirty' => 30,
+        'forty' => 40, 'fifty' => 50, 'sixty' => 60, 'seventy' => 70, 'eighty' => 80, 'ninety' => 90,
+        'first' => 1, 'second' => 2, 'third' => 3, 'fourth' => 4, 'fifth' => 5,
+        'sixth' => 6, 'seventh' => 7, 'eighth' => 8, 'ninth' => 9, 'tenth' => 10,
+        'once' => 1, 'twice' => 2,
+    ];
+
+    /** @return list<string> เลขในคำแปล รวมเลขที่เขียนเป็นคำ และเลขรัชกาลแบบโรมัน */
+    private static function translatedNumbers(string $text): array
+    {
+        $numbers = self::numbers($text);
+
+        preg_match_all('/\bRama\s+([IVXL]+)\b/', $text, $roman);
+        foreach ($roman[1] as $numeral) {
+            $numbers[] = (string) self::romanValue($numeral);
+        }
+
+        preg_match_all('/\b[a-z]+\b/i', $text, $words);
+        foreach ($words[0] as $word) {
+            $value = self::NUMBER_WORDS[strtolower($word)] ?? null;
+            if ($value !== null) {
+                $numbers[] = (string) $value;
+            }
+        }
+
+        return $numbers;
+    }
+
+    private static function romanValue(string $numeral): int
+    {
+        $values = ['I' => 1, 'V' => 5, 'X' => 10, 'L' => 50];
+        $chars = str_split($numeral);
+        $total = 0;
+
+        foreach ($chars as $i => $char) {
+            $value = $values[$char];
+            $next = $values[$chars[$i + 1] ?? ''] ?? 0;
+            $total += $value < $next ? -$value : $value;
+        }
+
+        return $total;
     }
 
     /** @return list<string> */
