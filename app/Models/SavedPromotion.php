@@ -8,7 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** คูปองที่ลูกค้าเก็บไว้ — ดู PromotionController::saved() */
 class SavedPromotion extends Model
 {
-    protected $fillable = ['user_id', 'promotion_id'];
+    protected $fillable = ['user_id', 'promotion_id', 'claimed_at'];
+
+    /** มีค่า = แถวนี้ถือใบจากโควตาของคูปองแจกจำนวนจำกัดแล้ว */
+    protected $casts = ['claimed_at' => 'datetime'];
 
     public function user(): BelongsTo
     {

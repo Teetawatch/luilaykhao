@@ -473,42 +473,33 @@ class BookingService
 
                 $totalAmount -= $discountAmount;
             } elseif ($promotionCode) {
-                $promotion = Promotion::where('code', $promotionCode)->where('is_active', true)->lockForUpdate()->first();
-                if ($promotion) {
-                    $isValid = true;
-                    if ($promotion->start_date && now()->startOfDay()->lt($promotion->start_date)) {
-                        $isValid = false;
-                    }
-                    if ($promotion->end_date && now()->startOfDay()->gt($promotion->end_date)) {
-                        $isValid = false;
-                    }
-                    if ($promotion->max_uses && $promotion->used_count >= $promotion->max_uses) {
-                        $isValid = false;
-                    }
-                    if ($promotion->trip_ids && is_array($promotion->trip_ids) && ! in_array($schedule->trip_id, $promotion->trip_ids)) {
-                        $isValid = false;
-                    }
-
-                    if ($isValid) {
-                        $promotionId = $promotion->id;
-                        if ($promotion->type === 'percent') {
-                            $discountAmount = ($totalAmount * $promotion->value) / 100;
-                        } else {
-                            $discountAmount = $promotion->value;
-                        }
-
-                        if ($discountAmount > $totalAmount) {
-                            $discountAmount = $totalAmount;
-                        }
-
-                        $totalAmount -= $discountAmount;
-                        $promotion->increment('used_count');
-                    } else {
-                        throw new \Exception('โค้ดส่วนลดไม่สามารถใช้งานได้');
-                    }
-                } else {
+                // ล็อกแถวก่อนตรวจ — คนจองพร้อมกันจึงไม่ใช้เกิน max_uses / ไม่เก็บเกิน
+                // จำนวนใบที่แจก กติกาทั้งหมดอยู่ใน PromotionService ที่เดียวกับปุ่มใช้โค้ด
+                $promotion = Promotion::where('code', $promotionCode)->lockForUpdate()->first();
+                if (! $promotion) {
                     throw new \Exception('ไม่พบโค้ดส่วนลดนี้');
                 }
+
+                $promotions = app(PromotionService::class);
+                $problem = $promotions->problemFor($promotion, $userId, (int) $schedule->trip_id);
+                if ($problem !== null) {
+                    throw new \Exception($problem);
+                }
+
+                // คูปองแจกจำนวนจำกัดที่กรอกโค้ดมาโดยยังไม่ได้เก็บ (เว็บ/LIFF) — เก็บ
+                // ให้ตอนนี้ ใบจองนี้ถูกยกเลิกทีหลัง ใบยังอยู่กับลูกค้าให้ใช้ใหม่ได้
+                if ($promotion->isClaimLimited() && ! $promotions->holdsClaim($promotion, $userId)) {
+                    $promotions->claim($promotion, $userId);
+                }
+
+                $promotionId = $promotion->id;
+                $discountAmount = $promotion->type === 'percent'
+                    ? ($totalAmount * $promotion->value) / 100
+                    : (float) $promotion->value;
+                $discountAmount = min($discountAmount, $totalAmount);
+
+                $totalAmount -= $discountAmount;
+                $promotion->increment('used_count');
             }
 
             // Coin จากการรีวิว — เป็นส่วนลด (ต้นทุนการตลาด ไม่ใช่เงินที่จ่ายมาแล้ว)

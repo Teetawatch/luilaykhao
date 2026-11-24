@@ -9,6 +9,7 @@ use App\Models\LoyaltyReward;
 use App\Models\Promotion;
 use App\Models\SavedPromotion;
 use App\Models\Trip;
+use App\Services\PromotionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\Validator;
 
 class PromotionController extends Controller
 {
+    public function __construct(private PromotionService $promotions) {}
+
     public function index()
     {
         $promotions = Promotion::orderBy('id', 'desc')->get();
@@ -23,9 +26,27 @@ class PromotionController extends Controller
         return response()->json($promotions);
     }
 
-    public function publicActive()
+    /**
+     * คูปองแจกจำนวนจำกัดที่เก็บครบแล้วไม่โชว์ให้คนทั่วไป — แต่คนที่ถือใบยังเห็น
+     * (แอปเอารายการนี้ไปจับคู่กับคูปองที่เก็บไว้ตอนจอง ถ้าหายไป ชิปก็หายด้วย)
+     */
+    public function publicActive(Request $request)
     {
-        return response()->json(['data' => $this->presentPublic($this->activePromotions()->get())]);
+        $viewer = $request->user('sanctum');
+        $promotions = $this->activePromotions()->get();
+        $claimed = $viewer
+            ? SavedPromotion::where('user_id', $viewer->id)
+                ->whereIn('promotion_id', $promotions->pluck('id'))
+                ->whereNotNull('claimed_at')
+                ->pluck('promotion_id')
+                ->flip()
+            : collect();
+
+        $visible = $promotions->filter(
+            fn (Promotion $p) => ! $p->isClaimLimited() || $p->claimsLeft() > 0 || $claimed->has($p->id)
+        );
+
+        return response()->json(['data' => $this->presentPublic($visible, $claimed)]);
     }
 
     /**
@@ -52,7 +73,8 @@ class PromotionController extends Controller
                 'promotions.id', 'promotions.code', 'promotions.name', 'promotions.type',
                 'promotions.value', 'promotions.start_date', 'promotions.end_date',
                 'promotions.max_uses', 'promotions.used_count', 'promotions.is_flash_sale',
-                'promotions.ends_at', 'promotions.trip_ids'
+                'promotions.ends_at', 'promotions.trip_ids',
+                'promotions.claim_limit', 'promotions.claimed_count', 'promotions.per_user_limit'
             )
             // Surface flash sales first so the urgency is front and centre.
             ->orderByDesc('promotions.is_flash_sale')
@@ -66,8 +88,11 @@ class PromotionController extends Controller
      *
      * `trip_types` = หมวดทริป (trips.type = categories.slug) ของทริปที่โค้ดใช้ได้
      * ให้แอปจัดคูปองเป็นหมวดแบบร้านค้าออนไลน์ — null เมื่อใช้ได้ทุกทริป
+     *
+     * `claims_left` = ใบที่ยังเก็บได้ (null = ไม่จำกัด) / `is_claimed` = คนดูถือใบอยู่
+     * ([promotion_id => …] ใน `$claimed`)
      */
-    private function presentPublic(Collection $promotions): Collection
+    private function presentPublic(Collection $promotions, ?Collection $claimed = null): Collection
     {
         $idsOf = function (Promotion $promotion): array {
             $ids = $promotion->trip_ids;
@@ -80,12 +105,14 @@ class PromotionController extends Controller
         $typeByTrip = Trip::whereIn('id', $promotions->flatMap($idsOf)->unique()->values())
             ->pluck('type', 'id');
 
-        return $promotions->each(function (Promotion $promotion) use ($idsOf, $typeByTrip) {
+        return $promotions->each(function (Promotion $promotion) use ($idsOf, $typeByTrip, $claimed) {
             $ids = $idsOf($promotion);
             $types = collect($ids)->map(fn ($id) => $typeByTrip[$id] ?? null)
                 ->filter()->unique()->values()->all();
             $promotion->setAttribute('trip_ids', $ids === [] ? null : $ids);
             $promotion->setAttribute('trip_types', $ids === [] ? null : $types);
+            $promotion->setAttribute('claims_left', $promotion->claimsLeft());
+            $promotion->setAttribute('is_claimed', (bool) $claimed?->has($promotion->id));
         })->values();
     }
 
@@ -98,15 +125,29 @@ class PromotionController extends Controller
      */
     public function saved(Request $request)
     {
+        $userId = $request->user()->id;
         $promotions = $this->activePromotions()
             ->join('saved_promotions', 'saved_promotions.promotion_id', '=', 'promotions.id')
-            ->where('saved_promotions.user_id', $request->user()->id)
+            ->where('saved_promotions.user_id', $userId)
+            ->addSelect('saved_promotions.claimed_at as saved_claimed_at')
             ->reorder()
             ->orderByDesc('saved_promotions.updated_at')
             ->orderByDesc('saved_promotions.id')
             ->get();
 
-        return response()->json(['data' => $this->presentPublic($promotions)]);
+        // ใช้ครบสิทธิ์ของตัวเองแล้ว / คูปองจำนวนจำกัดที่ไม่ได้ถือใบและเต็มแล้ว —
+        // ใช้ไม่ได้แน่ ไม่ส่งกลับ (ใบจองยกเลิกแล้วสิทธิ์คืน มันก็กลับมาเอง)
+        $uses = $this->promotions->usesByMany($userId, $promotions->pluck('id'));
+        $claimed = $promotions->filter(fn ($p) => $p->saved_claimed_at !== null)->pluck('id')->flip();
+        $usable = $promotions->filter(function (Promotion $p) use ($uses, $claimed) {
+            if ($p->per_user_limit && ($uses[$p->id] ?? 0) >= $p->per_user_limit) {
+                return false;
+            }
+
+            return ! $p->isClaimLimited() || $claimed->has($p->id) || $p->claimsLeft() > 0;
+        })->each(fn (Promotion $p) => $p->offsetUnset('saved_claimed_at'));
+
+        return response()->json(['data' => $this->presentPublic($usable, $claimed)]);
     }
 
     /**
@@ -133,7 +174,11 @@ class PromotionController extends Controller
             foreach (array_reverse($request->input('codes')) as $code) {
                 $promotion = $this->activePromotions()->where('promotions.code', Promotion::normalizeCode($code))->first();
                 if ($promotion) {
-                    $this->remember($userId, $promotion);
+                    try {
+                        $this->promotions->claim($promotion, $userId);
+                    } catch (\RuntimeException) {
+                        // คูปองจำนวนจำกัดที่แขกเก็บไว้ในเครื่อง แต่ระหว่างนั้นมีคนเก็บครบ
+                    }
                 }
             }
             $this->trimSaved($userId);
@@ -150,24 +195,33 @@ class PromotionController extends Controller
             ], 404);
         }
 
-        $this->remember($userId, $promotion);
+        // ใช้ครบสิทธิ์ของตัวเองแล้ว เก็บไปก็ใช้ไม่ได้ — บอกตรง ๆ ดีกว่าให้ไปเจอตอนจอง
+        if ($promotion->per_user_limit
+            && $this->promotions->usesBy($promotion, $userId) >= $promotion->per_user_limit) {
+            return response()->json(['message' => __('คุณใช้โค้ดส่วนลดนี้ครบสิทธิ์แล้ว')], 409);
+        }
+
+        try {
+            // เก็บซ้ำ = ดันขึ้นเป็นตัวล่าสุด (เรียงตาม updated_at ลำดับเดียวกับที่แอปแสดง)
+            $this->promotions->claim($promotion, $userId);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
+        }
         $this->trimSaved($userId);
 
-        return response()->json(['data' => $this->presentPublic(collect([$promotion]))->first()], 201);
+        $claimed = $promotion->isClaimLimited() ? collect([$promotion->id => true]) : collect();
+
+        return response()->json(['data' => $this->presentPublic(collect([$promotion]), $claimed)->first()], 201);
     }
 
-    /** เก็บซ้ำ = ดันขึ้นเป็นตัวล่าสุด (เรียงตาม updated_at ลำดับเดียวกับที่แอปแสดง) */
-    private function remember(int $userId, Promotion $promotion): void
-    {
-        $row = SavedPromotion::firstOrCreate(['user_id' => $userId, 'promotion_id' => $promotion->id]);
-        if (! $row->wasRecentlyCreated) {
-            $row->touch();
-        }
-    }
-
+    /**
+     * เกินเพดานแล้วตัวเก่าสุดหลุด — ยกเว้นใบที่ได้จากโควตาคูปองจำนวนจำกัด ซึ่งมี
+     * ค่า (ลบทิ้งเงียบ ๆ = ลูกค้าเสียสิทธิ์ที่แย่งมาได้)
+     */
     private function trimSaved(int $userId): void
     {
         $overflow = SavedPromotion::where('user_id', $userId)
+            ->whereNull('claimed_at')
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->skip(self::SAVED_LIMIT)
@@ -183,7 +237,9 @@ class PromotionController extends Controller
         $promotionIds = Promotion::where('code', Promotion::normalizeCode($code))->pluck('id');
         SavedPromotion::where('user_id', $request->user()->id)
             ->whereIn('promotion_id', $promotionIds)
-            ->delete();
+            ->get()
+            // ใบจากโควตาที่ยังไม่ได้ใช้ คืนให้คนอื่นเก็บต่อ
+            ->each(fn (SavedPromotion $row) => $this->promotions->release($row));
 
         return response()->json(['data' => null]);
     }
@@ -212,20 +268,46 @@ class PromotionController extends Controller
             'trip_ids' => 'nullable|array',
             'trip_ids.*' => 'integer|exists:trips,id',
             'max_uses' => 'nullable|integer|min:1',
+            'claim_limit' => 'nullable|integer|min:1',
+            'per_user_limit' => 'nullable|integer|min:1',
             'is_active' => 'boolean',
             'is_flash_sale' => 'boolean',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'ends_at' => 'nullable|date',
-        ]);
+        ], $this->ruleMessages());
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationError($validator);
         }
 
         $promotion = Promotion::create($validator->validated());
 
         return response()->json($promotion, 201);
+    }
+
+    /** หน้าแอดมินอ่าน `message` — ส่งข้อแรกเป็นภาษาคนพร้อม errors ทั้งชุด */
+    private function validationError(\Illuminate\Contracts\Validation\Validator $validator)
+    {
+        return response()->json([
+            'message' => $validator->errors()->first(),
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    private function ruleMessages(?Promotion $promotion = null): array
+    {
+        return [
+            'code.unique' => 'รหัสส่วนลดนี้มีอยู่แล้ว',
+            'end_date.after_or_equal' => 'วันสิ้นสุดต้องไม่ก่อนวันที่เริ่ม',
+            'claim_limit.min' => $promotion && $promotion->claimed_count > 0
+                ? "ลูกค้าเก็บคูปองไปแล้ว {$promotion->claimed_count} ใบ ตั้งจำนวนใบต่ำกว่านี้ไม่ได้"
+                : 'จำนวนคูปองที่แจกต้องมีอย่างน้อย 1 ใบ',
+            'max_uses.min' => $promotion && $promotion->used_count > 0
+                ? "โค้ดนี้ถูกใช้ไปแล้ว {$promotion->used_count} ครั้ง ตั้งจำนวนต่ำกว่านี้ไม่ได้"
+                : 'จำนวนครั้งที่ใช้ได้ต้องมีอย่างน้อย 1',
+            'per_user_limit.min' => 'จำนวนครั้งต่อคนต้องมีอย่างน้อย 1',
+        ];
     }
 
     public function show($id)
@@ -246,16 +328,19 @@ class PromotionController extends Controller
             'value' => 'required|numeric|min:0',
             'trip_ids' => 'nullable|array',
             'trip_ids.*' => 'integer|exists:trips,id',
-            'max_uses' => 'nullable|integer|min:1',
+            'max_uses' => 'nullable|integer|min:'.max(1, (int) $promotion->used_count),
+            // ลดจำนวนใบต่ำกว่าที่ลูกค้าเก็บไปแล้วไม่ได้ — ใบที่แจกไปแล้วต้องใช้ได้จริง
+            'claim_limit' => 'nullable|integer|min:'.max(1, (int) $promotion->claimed_count),
+            'per_user_limit' => 'nullable|integer|min:1',
             'is_active' => 'boolean',
             'is_flash_sale' => 'boolean',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'ends_at' => 'nullable|date',
-        ]);
+        ], $this->ruleMessages($promotion));
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationError($validator);
         }
 
         $promotion->update($validator->validated());
@@ -267,17 +352,18 @@ class PromotionController extends Controller
     {
         $promotion = Promotion::findOrFail($id);
 
-        // Prevent deletion if already used, instead deactivate
-        if ($promotion->used_count > 0) {
+        // ถูกใช้แล้ว (ใบจองอ้างถึง) หรือมีคนเก็บไว้แล้ว — ปิดแทนลบ เก็บประวัติไว้
+        // ลบจริงจะพาคูปองที่ลูกค้าเก็บไว้หายไปด้วยแบบไม่มีร่องรอย
+        if ($promotion->used_count > 0 || $promotion->claimed_count > 0 || $promotion->bookings()->exists()) {
             $promotion->is_active = false;
             $promotion->save();
 
-            return response()->json(['message' => 'Promotion is already used, so it has been deactivated instead of deleted.']);
+            return response()->json(['message' => 'โปรโมชั่นนี้มีการใช้งานหรือมีลูกค้าเก็บไว้แล้ว จึงปิดใช้งานแทนการลบ', 'deactivated' => true]);
         }
 
         $promotion->delete();
 
-        return response()->json(['message' => 'Promotion deleted successfully']);
+        return response()->json(['message' => 'ลบโปรโมชั่นแล้ว', 'deactivated' => false]);
     }
 
     public function validateCode(Request $request)
@@ -306,33 +392,16 @@ class PromotionController extends Controller
             }
         }
 
-        $promotion = Promotion::where('code', Promotion::normalizeCode($request->code))->where('is_active', true)->first();
+        $promotion = Promotion::where('code', Promotion::normalizeCode($request->code))->first();
 
-        if (! $promotion) {
-            return response()->json(['valid' => false, 'message' => 'Promotion code not found or inactive'], 404);
+        if (! $promotion || ! $promotion->is_active) {
+            return response()->json(['valid' => false, 'message' => __('ไม่พบโค้ดส่วนลดนี้ หรือโค้ดถูกปิดใช้งานแล้ว')], 404);
         }
 
-        if ($promotion->start_date && now()->startOfDay()->lt($promotion->start_date)) {
-            return response()->json(['valid' => false, 'message' => 'Promotion has not started yet'], 400);
-        }
-
-        if ($promotion->end_date && now()->startOfDay()->gt($promotion->end_date)) {
-            return response()->json(['valid' => false, 'message' => 'Promotion has expired'], 400);
-        }
-
-        // Flash sales lapse at a precise time, not just end-of-day.
-        if ($promotion->ends_at && now()->gt($promotion->ends_at)) {
-            return response()->json(['valid' => false, 'message' => 'Promotion has expired'], 400);
-        }
-
-        if ($promotion->max_uses && $promotion->used_count >= $promotion->max_uses) {
-            return response()->json(['valid' => false, 'message' => 'Promotion has reached its usage limit'], 400);
-        }
-
-        if ($promotion->trip_ids && is_array($promotion->trip_ids)) {
-            if (! in_array($request->trip_id, $promotion->trip_ids)) {
-                return response()->json(['valid' => false, 'message' => 'Promotion is not applicable for this trip'], 400);
-            }
+        // กติกาเดียวกับตอนจองจริง (BookingService) — ปุ่มใช้โค้ดผ่าน แต่จองแล้วตก ไม่ได้
+        $problem = $this->promotions->problemFor($promotion, $request->user()?->id, (int) $request->trip_id);
+        if ($problem !== null) {
+            return response()->json(['valid' => false, 'message' => $problem], 400);
         }
 
         return response()->json([

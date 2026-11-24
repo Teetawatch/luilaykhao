@@ -33,10 +33,20 @@
               <td class="font-bold">{{ p.name }}</td>
               <td>{{ p.type === 'percent' ? 'เปอร์เซ็นต์ (%)' : 'จำนวนเงิน (บาท)' }}</td>
               <td>{{ p.type === 'percent' ? p.value + '%' : formatCurrency(p.value) }}</td>
-              <td>
+              <td class="usage-cell">
+                <template v-if="p.claim_limit">
+                  <div class="text-sm">
+                    เก็บแล้ว <strong>{{ p.claimed_count || 0 }}</strong> / {{ p.claim_limit }} ใบ
+                    <span v-if="claimsLeft(p) === 0" class="usage-full">ครบแล้ว</span>
+                  </div>
+                  <div class="usage-bar"><span :style="{ width: claimPercent(p) + '%' }"></span></div>
+                </template>
                 <div class="text-sm">
-                  ใช้ไป: <strong>{{ p.used_count }}</strong>
-                  <span v-if="p.max_uses">/ {{ p.max_uses }}</span>
+                  ใช้จองไป <strong>{{ p.used_count }}</strong>
+                  <span v-if="p.max_uses">/ {{ p.max_uses }}</span> ครั้ง
+                </div>
+                <div class="text-xs text-gray-500">
+                  {{ p.per_user_limit ? `คนละ ${p.per_user_limit} ครั้ง` : 'ใช้ซ้ำได้ไม่จำกัด' }}
                 </div>
               </td>
               <td>
@@ -140,8 +150,37 @@
             </div>
 
             <div class="form-group full-width">
-              <label>จำกัดจำนวนครั้งที่ใช้ได้ (รวมทั้งหมด) (ไม่บังคับ)</label>
+              <div class="form-section-title">
+                <span class="material-symbols-rounded">confirmation_number</span> จำนวนคูปองและสิทธิ์
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>จำนวนคูปองที่แจก (ใบ)</label>
+              <input v-model.number="form.claim_limit" type="number" :min="Math.max(1, editing?.claimed_count || 0)" placeholder="ไม่จำกัด" />
+              <small class="text-gray-500 mt-1 block">
+                ลูกค้ากด "เก็บ" ได้คนละ 1 ใบ จนครบจำนวน คนที่เก็บไว้ใช้ได้จนหมดอายุ
+                <template v-if="editing?.claimed_count"> · เก็บไปแล้ว {{ editing.claimed_count }} ใบ</template>
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label>ใช้ได้คนละกี่ครั้ง</label>
+              <input v-model.number="form.per_user_limit" type="number" min="1" placeholder="ไม่จำกัด" />
+              <small class="text-gray-500 mt-1 block">นับเฉพาะการจองที่ไม่ถูกยกเลิก — ยกเลิกแล้วได้สิทธิ์คืน</small>
+            </div>
+
+            <div class="form-group full-width">
+              <label>จำกัดจำนวนครั้งที่ใช้จองได้ (รวมทุกคน) (ไม่บังคับ)</label>
               <input v-model.number="form.max_uses" type="number" min="1" placeholder="ปล่อยว่างหากไม่จำกัด" />
+              <small class="text-gray-500 mt-1 block" v-if="form.claim_limit">
+                ถ้าแจกเป็นจำนวนใบแล้ว ส่วนใหญ่ไม่ต้องกรอกช่องนี้ — ไม่งั้นคนที่เก็บไว้อาจใช้ไม่ได้เมื่อครบจำนวนครั้ง
+              </small>
+            </div>
+
+            <div class="form-group full-width claim-summary" v-if="form.claim_limit || form.per_user_limit">
+              <span class="material-symbols-rounded">info</span>
+              <span>{{ claimSummary }}</span>
             </div>
 
             <div class="form-group full-width">
@@ -180,8 +219,9 @@
         </div>
         <div class="modal-body">
           <p class="confirm-text">คุณต้องการลบโปรโมชั่น <strong>{{ deleting?.code }}</strong> ใช่หรือไม่?</p>
-          <p class="text-sm mt-2 text-gray-600" v-if="deleting?.used_count > 0">
-            *โปรโมชั่นนี้ถูกใช้ไปแล้ว {{ deleting.used_count }} ครั้ง หากลบ ระบบจะทำการเปลี่ยนสถานะเป็น "ปิดใช้งาน" แทนเพื่อเก็บประวัติ
+          <p class="text-sm mt-2 text-gray-600" v-if="deleting?.used_count > 0 || deleting?.claimed_count > 0">
+            *โปรโมชั่นนี้<template v-if="deleting.used_count > 0">ถูกใช้ไปแล้ว {{ deleting.used_count }} ครั้ง</template><template v-if="deleting.used_count > 0 && deleting.claimed_count > 0"> และ</template><template v-if="deleting.claimed_count > 0">มีลูกค้าเก็บไว้ {{ deleting.claimed_count }} ใบ</template>
+            หากลบ ระบบจะเปลี่ยนสถานะเป็น "ปิดใช้งาน" แทนเพื่อเก็บประวัติ
           </p>
         </div>
         <div class="modal-footer">
@@ -194,7 +234,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import api from '../../../js/lib/axios';
 
 const promotions = ref([]);
@@ -215,11 +255,25 @@ const form = reactive({
   value: null,
   trip_ids: [],
   max_uses: null,
+  claim_limit: null,
+  per_user_limit: 1,
   is_active: true,
   is_flash_sale: false,
   start_date: '',
   end_date: '',
   ends_at: '',
+});
+
+const claimsLeft = (p) => (p.claim_limit ? Math.max(0, p.claim_limit - (p.claimed_count || 0)) : null);
+const claimPercent = (p) => (p.claim_limit ? Math.min(100, Math.round(((p.claimed_count || 0) / p.claim_limit) * 100)) : 0);
+
+// อ่านทวนให้แอดมินเห็นว่าตั้งแบบนี้แล้วลูกค้าจะเจออะไร
+const claimSummary = computed(() => {
+  const parts = [];
+  if (form.claim_limit) parts.push(`แจก ${form.claim_limit} ใบ ให้ลูกค้ากดเก็บไว้ใช้ (เก็บครบแล้วคูปองหายจากหน้าแอปสำหรับคนที่ยังไม่ได้เก็บ)`);
+  parts.push(form.per_user_limit ? `ใช้ได้คนละ ${form.per_user_limit} ครั้ง` : 'คนเดียวใช้ซ้ำได้ไม่จำกัด');
+  if (form.end_date) parts.push(`ใช้ได้ถึง ${formatDate(form.end_date)}`);
+  return parts.join(' · ');
 });
 
 const formatCurrency = (value) => {
@@ -283,6 +337,8 @@ const openForm = (p = null) => {
       value: p.value,
       trip_ids: p.trip_ids || [],
       max_uses: p.max_uses,
+      claim_limit: p.claim_limit,
+      per_user_limit: p.per_user_limit,
       is_active: !!p.is_active,
       is_flash_sale: !!p.is_flash_sale,
       start_date: p.start_date ? p.start_date.split('T')[0] : '',
@@ -297,6 +353,8 @@ const openForm = (p = null) => {
       value: null,
       trip_ids: [],
       max_uses: null,
+      claim_limit: null,
+      per_user_limit: 1,
       is_active: true,
       is_flash_sale: false,
       start_date: '',
@@ -315,6 +373,8 @@ const submitForm = async () => {
   try {
     const payload = { ...form };
     if (!payload.max_uses) payload.max_uses = null;
+    if (!payload.claim_limit) payload.claim_limit = null;
+    if (!payload.per_user_limit) payload.per_user_limit = null;
     if (!payload.start_date) payload.start_date = null;
     if (!payload.end_date) payload.end_date = null;
     // Send the flash deadline as an unambiguous UTC instant; clear it when the
@@ -346,8 +406,9 @@ const confirmDelete = (p) => {
 const doDelete = async () => {
   submitting.value = true;
   try {
-    await api.delete(`/admin/promotions/${deleting.value.id}`);
+    const res = await api.delete(`/admin/promotions/${deleting.value.id}`);
     showDeleteConfirm.value = false;
+    if (res.data?.deactivated) alert(res.data.message);
     fetchPromotions();
   } catch (e) {
     alert(e.response?.data?.message || 'ไม่สามารถลบได้');
@@ -390,6 +451,49 @@ onMounted(() => {
   background: #fef2f2;
   color: #ef4444;
 }
+
+.usage-cell { min-width: 150px; }
+.usage-full {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 700;
+}
+.usage-bar {
+  height: 4px;
+  margin: 4px 0 6px;
+  border-radius: 4px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+.usage-bar span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}
+.form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #e5e7eb;
+  font-weight: 700;
+}
+.form-section-title .material-symbols-rounded { font-size: 18px; }
+.claim-summary {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f0f9ff;
+  color: #0c4a6e;
+  font-size: 13px;
+}
+.claim-summary .material-symbols-rounded { font-size: 18px; }
 
 .pill-flash {
   background: #fff7ed;

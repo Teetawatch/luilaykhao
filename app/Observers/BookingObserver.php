@@ -13,6 +13,7 @@ use App\Services\CustomerIntakeService;
 use App\Services\GiftVoucherService;
 use App\Services\LoyaltyService;
 use App\Services\PartnerService;
+use App\Services\PromotionService;
 use App\Support\ClientChannel;
 use Carbon\Carbon;
 
@@ -45,6 +46,7 @@ class BookingObserver
         private GiftVoucherService $giftVoucherService,
         private PartnerService $partnerService,
         private CoinService $coinService,
+        private PromotionService $promotionService,
     ) {}
 
     /**
@@ -130,6 +132,14 @@ class BookingObserver
             // คอมพาร์ทเนอร์คิดจากทริปที่เดินทางจริงเท่านั้น
             if ($booking->partner_id) {
                 $this->partnerService->handleBookingEnded($booking);
+            }
+
+            // โค้ดส่วนลดที่ใบนี้ใช้ไป คืนจำนวนครั้งให้คนอื่นใช้ต่อได้ — ครั้งเดียวตอน
+            // เพิ่งเข้าสถานะยกเลิก (ยกเลิก → คืนเงิน ไม่คืนซ้ำ) สิทธิ์ต่อคนคืนเองเพราะ
+            // PromotionService นับเฉพาะใบที่ยังไม่ถูกยกเลิก
+            if ($booking->promotion_id
+                && ! in_array($booking->getOriginal('status'), self::REVERSING_STATUSES, true)) {
+                $this->promotionService->restoreForBooking($booking);
             }
         }
 

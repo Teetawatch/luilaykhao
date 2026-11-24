@@ -1484,5 +1484,13 @@
     "ชำระส่วนของคุณแล้ว": "Your share is paid",
     "อีก :days วัน": "In :days days",
     "ขึ้นรถแล้ว :aboard/:expected คน": ":aboard/:expected on board",
-    "ธนาคารกสิกรไทย": "Kasikornbank"
+    "ธนาคารกสิกรไทย": "Kasikornbank",
+    "ไม่พบโค้ดส่วนลดนี้ หรือโค้ดถูกปิดใช้งานแล้ว": "This discount code doesn't exist or has been turned off.",
+    "โค้ดส่วนลดนี้ยังไม่เริ่มใช้งาน": "This discount code isn't active yet.",
+    "โค้ดส่วนลดนี้หมดอายุแล้ว": "This discount code has expired.",
+    "โค้ดส่วนลดนี้ถูกใช้ครบจำนวนแล้ว": "This discount code has been fully used.",
+    "โค้ดส่วนลดนี้ใช้กับทริปนี้ไม่ได้": "This discount code can't be used for this trip.",
+    "กรุณาเข้าสู่ระบบก่อนใช้โค้ดส่วนลดนี้": "Please sign in to use this discount code.",
+    "คุณใช้โค้ดส่วนลดนี้ครบสิทธิ์แล้ว": "You've already used this discount code.",
+    "คูปองนี้ถูกเก็บครบจำนวนแล้ว": "All of these coupons have been claimed."
 }
