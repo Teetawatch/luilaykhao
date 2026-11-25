@@ -178,6 +178,7 @@
 
 <script setup>
 import { $t } from '@/i18n';
+import { addBaseTiles } from '../lib/mapTiles';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../lib/axios';
@@ -227,10 +228,7 @@ async function drawMap() {
   map = L.map(mapEl.value, { zoomControl: false, attributionControl: true, scrollWheelZoom: false })
     .setView([p.latitude, p.longitude], 11);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '&copy; OpenStreetMap',
-  }).addTo(map);
+  addBaseTiles(L, map, { maxZoom: 18 });
 
   L.circleMarker([p.latitude, p.longitude], {
     radius: 9,

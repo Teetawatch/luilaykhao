@@ -134,6 +134,7 @@
 
 <script setup>
 import { $t } from '@/i18n';
+import { addBaseTiles } from '../lib/mapTiles';
 import { DATE_LOCALE } from '@/i18n';
 import PageHeader from '../components/PageHeader.vue';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
@@ -242,10 +243,7 @@ async function drawRoute(el) {
 
   map = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false });
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '&copy; OpenStreetMap',
-  }).addTo(map);
+  addBaseTiles(L, map, { maxZoom: 18 });
 
   L.polyline(points, { color: '#047857', weight: 4 }).addTo(map);
   L.circleMarker(points[0], { radius: 6, color: '#fff', weight: 2, fillColor: '#0F3D3E', fillOpacity: 1 }).addTo(map);

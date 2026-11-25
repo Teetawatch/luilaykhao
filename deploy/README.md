@@ -182,6 +182,23 @@ event สดที่ล้มไปแล้วหมดความหมา�
 3. ตั้ง restriction ของทั้งสองคีย์ตามตารางด้านบน แล้วทดสอบบนเซิร์ฟเวอร์: `php artisan maps:check`
    (ยิงคำขอจริง 1 ครั้ง ถ้าใช้ไม่ได้จะบอกสาเหตุ — ไม่มีคีย์, config cache เก่า, IP ไม่ตรง, ยังไม่เปิด Routes API, ยังไม่ผูก billing)
 
+## แผนที่พื้นหลังของเว็บ (CARTO)
+
+ทุกแผนที่ Leaflet บนเว็บ (`resources/js/lib/mapTiles.js`) และหน้าแชร์ติดตามรถ `/track/{token}`
+ใช้ CARTO Voyager ตัวเดียวกับแอป — **ห้ามกลับไปดึง `tile.openstreetmap.org`** ตรง ๆ (กติกา OSM
+ไม่ให้เว็บเชิงพาณิชย์ใช้ โดนบล็อกได้ทั้งเว็บ)
+
+- ใส่ `CARTO_API_KEY=` ใน `.env` บนเซิร์ฟเวอร์ — **คีย์เว็บ แยกจากคีย์แอป** (`CARTO_API_KEY` ใน
+  `luilaykhao-app/dart_defines/secrets.json`) แล้ว `bash deploy/deploy.sh` (ต้อง build เว็บใหม่
+  เพราะ `VITE_CARTO_API_KEY` ถูกฝังตอน build)
+- ตั้งคีย์เว็บที่ CARTO: เปิดแค่ **Restrict to specific websites** = `luilaykhao.com` + `www.luilaykhao.com`
+  (ชื่อโดเมนเท่านั้น ไม่มี `https://` หรือ `/`); **ปิด** Restrict to mobile apps และ origin IPs —
+  CARTO บังคับ *ทุก* เงื่อนไขที่เปิดพร้อมกัน เปิด mobile apps ด้วย = เบราว์เซอร์ไม่ผ่าน แผนที่หาย
+- เป็นคีย์ฝั่งเบราว์เซอร์โดยตั้งใจ — ป้องกันด้วยการจำกัดโดเมนที่ CARTO (โดเมนอื่น/localhost ได้ 403)
+- ไม่มีคีย์ = เว็บถอยไปใช้ OSM แบบเดิม (ไม่พัง) — ใช้ได้บนเครื่อง dev
+- โควตาฟรีเชิงพาณิชย์ 1M tile/เดือน **ใช้ร่วมกับแอป** — ดูยอดใน dashboard ของ CARTO
+- ต้องโชว์เครดิต "© OpenStreetMap contributors © CARTO" มุมแผนที่ (เงื่อนไขของ CARTO) — อย่าปิด `attributionControl`
+
 ## Log
 
 `storage/logs/laravel.log` หมุนทุกวันด้วย logrotate เก็บ 14 ไฟล์ (บีบอัด)

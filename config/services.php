@@ -43,6 +43,12 @@ return [
         'route_matrix_url' => 'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',
     ],
 
+    // แผนที่พื้นหลัง CARTO ของเว็บ (Leaflet) — คีย์เว็บ (แยกจากคีย์แอป) จำกัดโดเมน luilaykhao.com
+    // เป็นคีย์ฝั่งเบราว์เซอร์โดยตั้งใจ (อยู่ใน VITE_CARTO_API_KEY และหน้า /track ด้วย)
+    'carto' => [
+        'key' => env('CARTO_API_KEY'),
+    ],
+
     'weather' => [
         'provider' => env('WEATHER_PROVIDER', 'openweather'),
         'api_key' => env('OPENWEATHER_API_KEY'),

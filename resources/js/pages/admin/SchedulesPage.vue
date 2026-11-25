@@ -2395,6 +2395,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { addBaseTiles } from '../../lib/mapTiles';
 import { useRoute } from 'vue-router';
 import { useAdminStore } from '../../stores/admin';
 import api from '../../lib/axios';
@@ -4250,9 +4251,7 @@ function initRouteMap() {
   destroyRouteMap();
 
   routeMap = L.map(routeMapEl.value, { center: [13.7563, 100.5018], zoom: 6 });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(routeMap);
+  addBaseTiles(L, routeMap);
 
   // หมุดอ้างอิง (จุดรับ + ปลายทางทริป) — ไว้เล็งตอนวาด ไม่ใช่ส่วนหนึ่งของเส้น
   const refPts = [];

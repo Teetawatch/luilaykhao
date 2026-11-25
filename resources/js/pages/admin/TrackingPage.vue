@@ -342,6 +342,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { addBaseTiles } from '../../lib/mapTiles';
 import api from '../../lib/axios';
 import { vehicleTypeIcon, vehicleTypeLabel, VEHICLE_TYPES } from '../../lib/vehicleDisplay';
 
@@ -568,10 +569,7 @@ function getVehicleIcon(type) {
 function initMap() {
   if (!L || !mapContainer.value || map) return;
   map = L.map(mapContainer.value, { center: [13.7563, 100.5018], zoom: 10 });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19,
-  }).addTo(map);
+  addBaseTiles(L, map, { maxZoom: 19 });
 }
 
 function createIcon(vehicle, online) {

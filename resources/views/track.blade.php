@@ -287,11 +287,18 @@
         iconSize: [30, 30], iconAnchor: [15, 30],
     });
 
+    @php($cartoKey = trim((string) config('services.carto.key')))
     function initMap(lat, lng) {
-        map = L.map('map', { zoomControl: false, attributionControl: false })
+        // CARTO Voyager แบบเดียวกับเว็บ/แอป (resources/js/lib/mapTiles.js) — เครดิต
+        // แผนที่ต้องโชว์ตามเงื่อนไขของ OSM/CARTO; ไม่มีคีย์ = OSM แบบเดิม
+        map = L.map('map', { zoomControl: false })
             .setView([lat, lng], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer(@json($cartoKey
+            ? 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key='.rawurlencode($cartoKey)
+            : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'), {
             maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+                + @json($cartoKey ? ' &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>' : ''),
         }).addTo(map);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
     }

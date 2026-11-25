@@ -104,6 +104,7 @@
 
 <script setup>
 import { $t } from '@/i18n';
+import { addBaseTiles } from '../lib/mapTiles';
 import { DATE_LOCALE } from '@/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import api from '../lib/axios';
@@ -223,10 +224,7 @@ async function init() {
   map = L.map(mapEl.value, { zoomControl: false, attributionControl: true })
     .setView(THAILAND_CENTER, THAILAND_ZOOM);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '&copy; OpenStreetMap',
-  }).addTo(map);
+  addBaseTiles(L, map, { maxZoom: 18 });
 
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 

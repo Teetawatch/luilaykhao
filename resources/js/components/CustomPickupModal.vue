@@ -115,6 +115,7 @@
 
 <script setup>
 import { $t } from '@/i18n';
+import { addBaseTiles } from '../lib/mapTiles';
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 
 const props = defineProps({
@@ -275,10 +276,7 @@ onMounted(async () => {
     [start.lat, start.lng],
     coords.value ? 15 : 11,
   );
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19,
-  }).addTo(map);
+  addBaseTiles(L, map, { maxZoom: 19 });
   syncCenter();
   // อัปเดตพิกัดตามจุดกึ่งกลางขณะเลื่อนแผนที่
   map.on('move', syncCenter);
