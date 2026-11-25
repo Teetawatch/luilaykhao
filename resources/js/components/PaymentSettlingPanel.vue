@@ -32,29 +32,8 @@
       </p>
     </template>
 
-    <!-- แถวที่กำลังทำงานอยู่หมุนเสมอ — หน้าจอจึงไม่มีวินาทีไหนที่ดูเหมือนค้าง -->
-    <ol class="text-left" :class="isSettling ? 'mt-6 space-y-2.5' : 'space-y-2'">
-      <li v-for="(step, i) in steps" :key="step.label"
-        class="flex items-center gap-3 rounded-2xl border transition-colors"
-        :class="[
-          isSettling ? 'px-4 py-3' : 'px-3.5 py-2.5',
-          i < activeIndex ? 'bg-accent-tint/70 border-accent/15'
-            : i === activeIndex ? 'bg-white border-accent/15'
-              : 'bg-gray-50/60 border-gray-100',
-        ]">
-        <span v-if="i < activeIndex"
-          class="w-6 h-6 rounded-full bg-accent flex items-center justify-center shrink-0">
-          <span class="material-symbols-rounded text-white text-[15px]">check</span>
-        </span>
-        <span v-else-if="i === activeIndex"
-          class="w-6 h-6 rounded-full border-[3px] border-accent/15 border-t-accent animate-spin shrink-0"></span>
-        <span v-else class="w-6 h-6 rounded-full bg-gray-200/70 shrink-0"></span>
-
-        <span class="text-xs font-bold" :class="i > activeIndex ? 'text-gray-400' : 'text-gray-800'">
-          {{ step.label }}
-        </span>
-      </li>
-    </ol>
+    <!-- ขั้นที่กำลังทำงานอยู่เต้นเสมอ — หน้าจอจึงไม่มีวินาทีไหนที่ดูเหมือนค้าง -->
+    <PayTimeline :class="isSettling ? 'mt-6' : ''" :steps="steps" :current="activeIndex" />
 
     <div v-if="isSettling" class="mt-6 flex items-center justify-center gap-2 text-[11px] font-bold text-gray-400">
       <span class="w-1.5 h-1.5 rounded-full bg-accent-light animate-pulse"></span>
@@ -73,6 +52,7 @@
 <script setup>
 import { $t } from '@/i18n';
 import { computed } from 'vue';
+import PayTimeline from './PayTimeline.vue';
 
 const props = defineProps({
   /**
@@ -100,10 +80,13 @@ const isSettling = computed(() => props.stage === 'settling');
 /** ขั้นที่กำลังทำอยู่ — ยังไม่จ่ายคือขั้นแรก จ่ายแล้วคือขั้น "รอธนาคารยืนยัน" */
 const activeIndex = computed(() => (isSettling.value ? 1 : 0));
 
+// จ่ายแล้ว ขั้นแรกคือ "ส่งให้ธนาคารแล้ว" ไม่ว่าจะจ่ายด้วย QR หรือแอปธนาคาร (ชุดเดียวกับแอป)
 const steps = computed(() => [
-  { label: props.firstStep },
-  { label: $t('รอธนาคารยืนยันว่าเงินเข้า') },
-  { label: props.finalStep },
+  isSettling.value
+    ? { title: $t('ส่งรายการชำระเงินให้ธนาคารแล้ว') }
+    : { title: props.firstStep, hint: $t('เปิดแอปธนาคาร เลือกสแกน แล้วส่องที่ QR นี้') },
+  { title: $t('รอธนาคารยืนยันว่าเงินเข้า'), hint: $t('ส่วนใหญ่ใช้เวลาไม่กี่วินาที ไม่ต้องแนบสลิป') },
+  { title: props.finalStep, hint: $t('หน้านี้จะเปลี่ยนให้เองเมื่อเงินเข้า') },
 ]);
 
 const elapsedText = computed(() => {

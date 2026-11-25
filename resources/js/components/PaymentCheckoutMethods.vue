@@ -8,14 +8,15 @@
     โลโก้อยู่ที่ public/images/pay (ไฟล์ชุดเดียวกับในแอป)
   -->
   <PayMethodRow v-for="row in rows" :key="row.key"
-    trail="chevron"
+    :trail="selectable ? 'radio' : 'chevron'"
+    :selected="selectable && selected === row.key"
     :icon="row.icon"
     :badge="row.badge"
     :title="row.title"
     :subtitle="row.caption"
     :available="row.available"
     :disabled="loading"
-    :busy="loading && pending === row.key"
+    :busy="!selectable && loading && pending === row.key"
     @select="open(row)">
     <template v-if="row.brands.length || !row.available" #below>
       <span v-if="row.brands.length" class="flex flex-wrap gap-1.5">
@@ -40,8 +41,14 @@ const props = defineProps({
   // ผ่อนบัตรมีขั้นต่ำ (ตั้งใน Lighthouse) — ยอดไม่ถึง หน้าของ Beam ไม่มีให้เลือก อย่าสัญญา
   installmentMin: { type: Number, default: 0 },
   loading: { type: Boolean, default: false },
+  /**
+   * แถวเลือกได้ (radio) แทนลูกศรไปต่อทันที — BeamPayPanel ให้ลูกค้าเลือกช่องทางก่อนแล้ว
+   * ค่อยกดปุ่มชำระปุ่มเดียว แบบเดียวกับแอป · ส่ง select(key) แทน open
+   */
+  selectable: { type: Boolean, default: false },
+  selected: { type: String, default: '' },
 });
-const emit = defineEmits(['open']);
+const emit = defineEmits(['open', 'select']);
 
 const BRAND_NAMES = {
   visa: 'Visa',
@@ -106,6 +113,10 @@ const rows = computed(() => [
 
 function open(row) {
   if (!row.available || props.loading) return;
+  if (props.selectable) {
+    emit('select', row.key);
+    return;
+  }
   pending.value = row.key;
   emit('open');
 }

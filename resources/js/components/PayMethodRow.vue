@@ -15,7 +15,7 @@
       <!-- ป้าย: โลโก้จาก public/images/pay หรือไอคอนบนพื้นเขียวอ่อน -->
       <img v-if="badge" :src="badgeSrc" alt="" width="46" height="30"
         class="pay-badge shrink-0 w-[46px] h-[30px]" />
-      <span v-else class="pay-badge shrink-0 w-[46px] h-[30px] flex items-center justify-center"
+      <span v-else aria-hidden="true" class="pay-badge shrink-0 w-[46px] h-[30px] flex items-center justify-center"
         :class="available && !muted ? 'bg-accent-tint text-accent' : 'bg-gray-100 text-gray-400'">
         <span class="material-symbols-rounded icon-18" style="font-variation-settings:'FILL' 1">{{ icon }}</span>
       </span>

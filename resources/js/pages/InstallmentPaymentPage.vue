@@ -109,53 +109,21 @@
         <!-- ช่องทางชำระ — รายการแถวเดียวกับหน้าจ่ายเงินหลักและแอป แถวที่เลือกกางรายละเอียดข้างใต้ -->
         <div class="mb-6">
           <p class="text-sm font-black text-gray-700">{{ $t('ช่องทางชำระ') }}</p>
-          <div class="divide-y divide-gray-100 border-b border-gray-100" role="radiogroup" :aria-label="$t('ช่องทางชำระ')">
+          <!-- เกตเวย์: เลือกช่องทางก่อนแล้วกดชำระ ถึงออก QR งวดนี้ — ชุดเดียวกับหน้าจ่ายเงินหลักและแอป -->
+          <BeamPayPanel v-if="useBeam"
+            :beam="beam"
+            :amount="Number(nextInstallment.amount)"
+            :methods="gateway.methods || []"
+            :installment-min="Number(gateway.installment_min_amount || 0)"
+            :qr-subtitle="$t('จ่ายแล้วระบบตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป')"
+            :final-step="$t('ตัดงวดที่ชำระให้อัตโนมัติ')"
+            @create="createBeamCharge" />
+
+          <div v-else class="divide-y divide-gray-100 border-b border-gray-100" role="radiogroup" :aria-label="$t('ช่องทางชำระ')">
             <PayMethodRow badge="thaiqr.png" title="QR PromptPay"
-              :subtitle="useBeam ? $t('จ่ายแล้วระบบตัดงวดให้อัตโนมัติ ไม่ต้องแนบสลิป') : $t('สแกนจ่ายผ่านแอปธนาคารหรือ e-Wallet')"
-              :selected="useBeam || paymentMethod === 'promptpay'" @select="paymentMethod = 'promptpay'">
-              <!-- จ่ายแล้วแต่ผลยังไม่กลับมา — เก็บ QR ไปก่อน หน้าจอต้องบอกว่ากำลังรออะไรอยู่ -->
-              <div v-if="useBeam && beamSettling">
-                <PaymentSettlingPanel :seconds="beamSettlingSeconds" :slow="beamSlow" :final-step="$t('ตัดงวดที่ชำระให้อัตโนมัติ')">
-                  <template #actions>
-                    <button @click="resumeBeamWaiting"
-                      class="mt-5 text-[11px] font-bold text-gray-400 hover:text-gray-600 underline underline-offset-4"> {{ $t('ยังไม่ได้จ่าย · กลับไปสแกน QR') }} </button>
-                  </template>
-                </PaymentSettlingPanel>
-              </div>
-
-              <!-- QR จากเกตเวย์ — จ่ายแล้วระบบตัดงวดให้เอง ไม่ต้องแนบสลิป -->
-              <div v-else-if="useBeam" class="flex flex-col items-center gap-4 py-6 px-4 bg-gray-50 rounded-2xl">
-                <div class="relative p-2 bg-white rounded-2xl border border-gray-100 w-full max-w-[260px] aspect-square flex items-center justify-center">
-                  <img v-if="beamQrSrc && !beamExpired" :src="beamQrSrc" :alt="$t('QR พร้อมเพย์')"
-                    class="block rounded-xl w-full h-auto mx-auto" />
-
-                  <div v-if="beamLoading" class="absolute inset-0 flex items-center justify-center bg-white/90 rounded-2xl">
-                    <div class="w-9 h-9 rounded-full border-4 border-accent-tint border-t-accent animate-spin"></div>
-                  </div>
-
-                  <div v-else-if="beamExpired" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 rounded-2xl px-6 text-center">
-                    <p class="text-sm font-bold text-gray-900">{{ $t('QR หมดอายุแล้ว') }}</p>
-                    <button @click="createBeamCharge()"
-                      class="px-5 py-2.5 bg-accent text-white text-xs font-black rounded-xl hover:bg-accent-mid active:scale-95 transition-all"> {{ $t('สร้าง QR ใหม่') }} </button>
-                  </div>
-                </div>
-
-                <p class="text-sm font-bold text-gray-700">{{ $t('ยอดงวดนี้') }} <span class="text-accent tabular-nums">฿{{ Number(nextInstallment.amount).toLocaleString() }}</span></p>
-                <div v-if="beamPayment && !beamExpired" class="flex items-center gap-2">
-                  <div class="w-2 h-2 rounded-full bg-accent-light animate-pulse"></div>
-                  <p class="text-xs font-bold text-gray-600"> {{ $t('รอชำระ · QR หมดอายุใน') }} <span class="text-accent tabular-nums">{{ beamCountdownText }}</span>
-                  </p>
-                </div>
-
-                <!-- ขั้นตอนอยู่ตรงนี้ตั้งแต่ยังไม่จ่าย แล้วเลื่อนไปขั้นถัดไปเองเมื่อลูกค้ากลับเข้ามา -->
-                <div v-if="beamPayment && !beamExpired" class="w-full">
-                  <PaymentSettlingPanel stage="waiting" :final-step="$t('ตัดงวดที่ชำระให้อัตโนมัติ')" />
-                </div>
-
-                <p v-if="beamError" class="text-xs font-bold text-red-600 text-center">{{ beamError }}</p>
-              </div>
-
-              <div v-else class="flex flex-col items-center gap-3 py-6 px-4 bg-gray-50 rounded-2xl">
+              :subtitle="$t('สแกนจ่ายผ่านแอปธนาคารหรือ e-Wallet')"
+              :selected="paymentMethod === 'promptpay'" @select="paymentMethod = 'promptpay'">
+              <div class="flex flex-col items-center gap-3 py-6 px-4 bg-gray-50 rounded-2xl">
                 <div class="relative p-2 bg-white rounded-2xl border border-gray-100 w-full max-w-[280px]">
                   <canvas ref="qrCanvas" class="block rounded-xl w-full h-auto mx-auto"></canvas>
                 </div>
@@ -164,7 +132,7 @@
               </div>
             </PayMethodRow>
 
-            <PayMethodRow v-if="!useBeam" badge="kbank" :title="$t('โอนผ่านบัญชีธนาคาร')"
+            <PayMethodRow badge="kbank" :title="$t('โอนผ่านบัญชีธนาคาร')"
               :subtitle="$t('กสิกรไทย · โอนแล้วแนบสลิปด้านล่าง')"
               :selected="paymentMethod === 'mobile_banking'" @select="paymentMethod = 'mobile_banking'">
               <div class="bg-gray-50 rounded-2xl p-4 space-y-2.5">
@@ -189,12 +157,6 @@
               </div>
             </PayMethodRow>
 
-            <!-- ไม่สะดวกสแกน — ไปหน้าชำระเงินของ Beam สำหรับงวดเดียวกัน -->
-            <PaymentCheckoutMethods v-if="checkoutAvailable"
-              :amount="Number(nextInstallment.amount)"
-              :installment-min="Number(gateway.installment_min_amount || 0)"
-              :loading="beamLoading"
-              @open="createBeamCharge('CHECKOUT')" />
           </div>
         </div>
 
@@ -259,12 +221,11 @@
 <script setup>
 import { $t } from '@/i18n';
 import { DATE_LOCALE } from '@/i18n';
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import QRCode from 'qrcode';
 import api from '../lib/axios';
-import PaymentSettlingPanel from '../components/PaymentSettlingPanel.vue';
-import PaymentCheckoutMethods from '../components/PaymentCheckoutMethods.vue';
+import BeamPayPanel from '../components/BeamPayPanel.vue';
 import PayMethodRow from '../components/PayMethodRow.vue';
 import { useBeamCharge } from '../composables/useBeamCharge';
 
@@ -290,27 +251,17 @@ const nextInstallment = computed(() => installments.value.find(i => i.status !==
 // ── Beam Checkout ────────────────────────────────────────────
 const gateway = computed(() => booking.value?.payment_gateway || { provider: 'manual' });
 const useBeam = computed(() => gateway.value.provider === 'beam');
-const checkoutAvailable = computed(() => useBeam.value && gateway.value.methods?.includes('CHECKOUT'));
-// ผ่อนบัตรมีขั้นต่ำ — ค่างวดส่วนใหญ่ต่ำกว่านั้น PaymentCheckoutMethods บอกขั้นต่ำแทนการสัญญาว่าผ่อนได้
+// ผ่อนบัตรมีขั้นต่ำ — ค่างวดส่วนใหญ่ต่ำกว่านั้น BeamPayPanel บอกขั้นต่ำแทนการสัญญาว่าผ่อนได้
 
-const {
-  payment: beamPayment,
-  loading: beamLoading,
-  error: beamError,
-  qrSrc: beamQrSrc,
-  expired: beamExpired,
-  settling: beamSettling,
-  settlingSeconds: beamSettlingSeconds,
-  slow: beamSlow,
-  countdownText: beamCountdownText,
-  resumeWaiting: resumeBeamWaiting,
-  create: createBeamPayment,
-} = useBeamCharge(async () => {
-  // จ่ายงวดนี้แล้ว โหลดการจองใหม่เพื่อเลื่อนไปงวดถัดไป (หรือขึ้นหน้า "ครบแล้ว")
+const beamCharge = useBeamCharge(async () => {
+  // จ่ายงวดนี้แล้ว โหลดการจองใหม่เพื่อเลื่อนไปงวดถัดไป (หรือขึ้นหน้า "ครบแล้ว") — งวดถัดไป
+  // ไม่ออก QR ให้เอง กลับไปหน้าเลือกช่องทาง ลูกค้าอาจยังไม่อยากจ่ายต่อตอนนี้
   const res = await api.get(`/bookings/${booking.value.booking_ref}`);
   booking.value = res.data.data;
-  if (nextInstallment.value) createBeamCharge();
+  beamCharge.reset();
 });
+const beam = reactive(beamCharge);
+const createBeamPayment = beamCharge.create;
 
 function createBeamCharge(methodType = 'QR_PROMPT_PAY') {
   if (!booking.value || !nextInstallment.value) return;
@@ -489,6 +440,6 @@ onMounted(async () => {
     loading.value = false;
   }
 
-  if (useBeam.value && nextInstallment.value) createBeamCharge();
+  // เกตเวย์ไม่ออก QR ตอนเปิดหน้า — ลูกค้าเลือกช่องทางแล้วกดชำระก่อน (BeamPayPanel)
 });
 </script>

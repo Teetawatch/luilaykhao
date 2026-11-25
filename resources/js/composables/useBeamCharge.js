@@ -50,6 +50,12 @@ export function useBeamCharge(onPaid) {
   let expiryTimer = null;
   let awayAt = 0;
 
+  /**
+   * QR กำลังโชว์ให้ลูกค้าเห็นอยู่ไหม — false ระหว่างที่ลูกค้ายังเลือกช่องทาง (QR ใบเก่ายัง
+   * รอเงินอยู่เบื้องหลัง) ตอนนั้นสลับแท็บไปเฉยๆ ไม่ใช่การไปจ่าย อย่าเข้าโหมดรอผล
+   */
+  let presenting = true;
+
   const qrSrc = computed(() =>
     payment.value?.qr_image_base64 ? `data:image/png;base64,${payment.value.qr_image_base64}` : null
   );
@@ -137,7 +143,7 @@ export function useBeamCharge(onPaid) {
    * หน้านี้เลย) ก็ยังจบด้วย webhook ตามปกติ แค่ไม่เห็นจอ "กำลังตรวจสอบ" ระหว่างทาง
    */
   function onVisibilityChange() {
-    if (!payment.value || settling.value || expired.value) return;
+    if (!payment.value || settling.value || expired.value || !presenting) return;
 
     if (document.hidden) {
       awayAt = Date.now();
@@ -160,6 +166,25 @@ export function useBeamCharge(onPaid) {
     settling.value = false;
     settlingSeconds.value = 0;
     restartPolling(POLL_IDLE_MS);
+  }
+
+  /** BeamPayPanel บอกว่า QR อยู่บนจอหรือยัง (ดู presenting) */
+  function present(on) {
+    presenting = !!on;
+    if (!presenting) awayAt = 0;
+  }
+
+  /**
+   * ทิ้งใบที่ถืออยู่ กลับไปหน้าเลือกช่องทาง — ยอดที่ต้องจ่ายเปลี่ยน (เปลี่ยนรูปแบบ/จำนวนงวด)
+   * QR ใบเดิมใช้ไม่ได้แล้ว แต่ก็ยังไม่ควรออกใบใหม่จนกว่าลูกค้าจะกดเอง
+   */
+  function reset() {
+    stop();
+    payment.value = null;
+    error.value = '';
+    settling.value = false;
+    settlingSeconds.value = 0;
+    secondsLeft.value = 0;
   }
 
   /**
@@ -229,5 +254,7 @@ export function useBeamCharge(onPaid) {
     markSettling,
     resumeWaiting,
     stop,
+    reset,
+    present,
   };
 }
