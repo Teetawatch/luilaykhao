@@ -1597,6 +1597,7 @@
   "ระดับท้าทาย": "Challenging",
   "ระดับปานกลาง": "Moderate",
   "ระดับสมาชิก": "Membership tier",
+  "{level} จาก {count}": "{level} of {count}",
   "ระดับสมาชิกทั้งหมด": "All tiers",
   "ระดับสูงสุด": "Top tier",
   "ระดับเริ่มต้น": "Beginner",

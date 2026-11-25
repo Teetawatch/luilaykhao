@@ -59,12 +59,16 @@ class LoyaltyController extends Controller
             'tier' => $account->tier,
             'tier_label' => $tier['label'],
             'tier_tagline' => $tier['tagline'],
+            // "ระดับ 2 จาก 4" บนบัตรสมาชิก — ให้ลำดับอ่านออกได้โดยไม่ต้องรู้ความหมายของชื่อ
+            'tier_level' => LoyaltyTier::level($account->tier),
+            'tier_count' => LoyaltyTier::count(),
             'perks' => $this->perksFor($tier),
             'next_tier' => LoyaltyTier::next($account->tier, (int) $account->lifetime_trips),
             // ส่งบันไดทั้งชุดไปด้วย เพื่อให้เว็บและแอปวาดตารางระดับได้เองโดยไม่ต้อง
             // ฮาร์ดโค้ดชื่อหรือเกณฑ์ซ้ำอีกฝั่ง (ต้นเหตุที่เคยเรียกชื่อไม่ตรงกัน)
             'tiers' => collect(LoyaltyTier::all())->map(fn ($t) => [
                 'code' => $t['code'],
+                'level' => LoyaltyTier::level($t['code']),
                 'label' => $t['label'],
                 'tagline' => $t['tagline'],
                 'min_trips' => $t['min_trips'],

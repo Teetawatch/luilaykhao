@@ -113,7 +113,7 @@ class LoyaltyTierPerksTest extends TestCase
     public function test_an_unknown_tier_code_falls_back_instead_of_breaking(): void
     {
         // ข้อมูลเก่าที่ยังไม่ถูกย้าย ต้องไม่ทำให้หน้าจอพัง
-        $this->assertSame('เพื่อนร่วมทาง', LoyaltyTier::label('silver'));
+        $this->assertSame('นักสำรวจ', LoyaltyTier::label('silver'));
         $this->assertSame(0, LoyaltyTier::rank('gold'));
     }
 
@@ -125,15 +125,38 @@ class LoyaltyTierPerksTest extends TestCase
             ->getJson('/api/v1/loyalty/account')
             ->assertOk()
             ->assertJsonPath('data.tier', 'comrade')
-            ->assertJsonPath('data.tier_label', 'สหายนักเดิน')
+            ->assertJsonPath('data.tier_label', 'นักสำรวจระดับทอง')
+            ->assertJsonPath('data.tier_level', 3)
+            ->assertJsonPath('data.tier_count', 4)
             ->assertJsonPath('data.lifetime_trips', 6)
-            ->assertJsonPath('data.next_tier.label', 'คนกันเอง')
+            ->assertJsonPath('data.next_tier.label', 'นักสำรวจระดับแพลทินัม')
             // เหลืออีก 4 ทริปถึงจะครบ 10 ทริปของระดับคนกันเอง
             ->assertJsonPath('data.next_tier.trips_needed', 4);
 
         // ส่งบันไดทั้งชุดไปด้วย เพื่อให้ทั้งสองฝั่งไม่ต้องฮาร์ดโค้ดชื่อเอง
         $this->assertCount(4, $response->json('data.tiers'));
         $this->assertNotEmpty($response->json('data.perks'));
+        $this->assertSame([1, 2, 3, 4], array_column($response->json('data.tiers'), 'level'));
+    }
+
+    public function test_foreign_customers_see_the_same_explorer_ladder_in_english(): void
+    {
+        $user = $this->userAtTier(LoyaltyTier::COMRADE, 350, trips: 6);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->withHeaders(['X-App-Language' => 'en'])
+            ->getJson('/api/v1/loyalty/account')
+            ->assertOk()
+            ->assertJsonPath('data.tier_label', 'Gold Explorer')
+            ->assertJsonPath('data.next_tier.label', 'Platinum Explorer');
+
+        $this->assertSame(
+            ['Explorer', 'Silver Explorer', 'Gold Explorer', 'Platinum Explorer'],
+            array_column($response->json('data.tiers'), 'label'),
+        );
+        foreach (array_column($response->json('data.tiers'), 'tagline') as $tagline) {
+            $this->assertDoesNotMatchRegularExpression('/\p{Thai}/u', $tagline);
+        }
     }
 
     public function test_every_advertised_perk_has_something_enforcing_it(): void
@@ -306,7 +329,7 @@ class LoyaltyTierPerksTest extends TestCase
         $badge = $author->fresh()->tierBadge();
 
         $this->assertSame(LoyaltyTier::INSIDER, $badge['tier']);
-        $this->assertSame('คนกันเอง', $badge['tier_label']);
+        $this->assertSame('นักสำรวจระดับแพลทินัม', $badge['tier_label']);
     }
 
     public function test_a_user_without_a_loyalty_account_still_has_a_badge(): void

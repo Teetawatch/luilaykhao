@@ -13,6 +13,11 @@ namespace App\Support;
  * กลับมาบ่อย ไม่ใช่คนที่จ่ายแพง เกณฑ์แบบยอดเงินเดิมยังลำเอียงเข้าข้างคนที่จอง
  * ทริปราคาสูงหรือจองให้คนทั้งกลุ่มด้วย ส่วนแต้ม (points) ยังคิดจากยอดเงินเหมือน
  * เดิม เพราะมันคือสกุลเงินไว้แลกของรางวัล คนละเรื่องกับระดับความสนิท
+ *
+ * ชื่อระดับเป็นชุด "Explorer + โลหะ" (นักสำรวจ / เงิน / ทอง / แพลทินัม) เพื่อให้
+ * ทั้งคนไทยและต่างชาติดูลำดับออกทันที และไม่ผูกกับกิจกรรมเดียว (เดินป่า ดำน้ำ
+ * เที่ยวทั่วไป) โค้ดระดับ (friend/frequent/comrade/insider) ยังเป็นชื่อเดิม
+ * เพราะถูกเก็บในฐานข้อมูลและแอปรุ่นเก่าอ่านอยู่ — เปลี่ยนเฉพาะสิ่งที่ลูกค้าเห็น
  */
 class LoyaltyTier
 {
@@ -34,8 +39,8 @@ class LoyaltyTier
         return [
             [
                 'code' => self::FRIEND,
-                'label' => __('เพื่อนร่วมทาง'),
-                'tagline' => __('ยินดีที่ได้ออกเดินทางด้วยกัน'),
+                'label' => __('นักสำรวจ'),
+                'tagline' => __('เริ่มสะสมแต้มได้ตั้งแต่ทริปแรก'),
                 'min_trips' => 0,
                 'point_multiplier' => 1.0,
                 'seat_lock_bonus_minutes' => 0,
@@ -45,8 +50,8 @@ class LoyaltyTier
             ],
             [
                 'code' => self::FREQUENT,
-                'label' => __('ขาประจำ'),
-                'tagline' => __('กลับมาอีกแล้ว ดีใจที่ได้เจอกัน'),
+                'label' => __('นักสำรวจระดับเงิน'),
+                'tagline' => __('สิทธิพิเศษสำหรับสมาชิกที่เดินทางกับเราสม่ำเสมอ'),
                 'min_trips' => 2,
                 'point_multiplier' => 1.1,
                 'seat_lock_bonus_minutes' => 5,
@@ -56,8 +61,8 @@ class LoyaltyTier
             ],
             [
                 'code' => self::COMRADE,
-                'label' => __('สหายนักเดิน'),
-                'tagline' => __('ไปด้วยกันมาหลายเส้นทางแล้ว'),
+                'label' => __('นักสำรวจระดับทอง'),
+                'tagline' => __('สิทธิ์จองก่อนและส่วนลดมัดจำที่มากขึ้น'),
                 'min_trips' => 5,
                 'point_multiplier' => 1.25,
                 'seat_lock_bonus_minutes' => 10,
@@ -67,8 +72,8 @@ class LoyaltyTier
             ],
             [
                 'code' => self::INSIDER,
-                'label' => __('คนกันเอง'),
-                'tagline' => __('สนิทกับเราจนเป็นครอบครัวเดียวกัน'),
+                'label' => __('นักสำรวจระดับแพลทินัม'),
+                'tagline' => __('สิทธิประโยชน์สูงสุดของสมาชิก'),
                 'min_trips' => 10,
                 'point_multiplier' => 1.5,
                 'seat_lock_bonus_minutes' => 15,
@@ -128,6 +133,18 @@ class LoyaltyTier
         $index = array_search($code, self::codes(), true);
 
         return $index === false ? 0 : $index;
+    }
+
+    /** เลขระดับสำหรับแสดงผล (1 = เริ่มต้น) — คู่กับ count() เป็น "ระดับ 2 จาก 4". */
+    public static function level(?string $code): int
+    {
+        return self::rank($code) + 1;
+    }
+
+    /** จำนวนระดับทั้งหมด. */
+    public static function count(): int
+    {
+        return count(self::all());
     }
 
     /** ค่าของสิทธิ์หนึ่งข้อสำหรับระดับที่ระบุ. */

@@ -22,11 +22,11 @@
           <div class="relative p-6 sm:p-8">
             <div class="flex justify-between items-start mb-6">
               <div>
-                <p class="text-white/80 text-[13px] font-bold uppercase tracking-wide mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ระดับสมาชิก') }}</p>
+                <p class="text-white/80 text-[13px] font-bold uppercase tracking-wide mb-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ $t('ระดับสมาชิก') }}<span v-if="account?.tier_level && account?.tier_count"> · {{ $t('{level} จาก {count}', { level: account.tier_level, count: account.tier_count }) }}</span></p>
                 <p class="text-3xl font-bold" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account?.tier_label }}</p>
                 <p v-if="account?.tier_tagline" class="text-white/75 text-sm mt-1" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ account.tier_tagline }}</p>
               </div>
-              <span class="material-symbols-rounded text-[48px] opacity-90" style="font-variation-settings:'FILL' 1;">landscape</span>
+              <span class="material-symbols-rounded text-[48px] opacity-90" style="font-variation-settings:'FILL' 1;">explore</span>
             </div>
             
             <div class="flex flex-wrap gap-8 mb-4">
@@ -87,6 +87,8 @@
             :class="step.code === account.tier ? 'bg-[#F4F7F6]' : ''">
             <div class="flex items-center justify-between gap-3 mb-1">
               <div class="flex items-center gap-2 min-w-0">
+                <span v-if="step.level" class="w-6 h-6 shrink-0 rounded-full text-[11px] font-bold text-white flex items-center justify-center"
+                  :class="tierDot[step.code] || 'bg-[var(--color-accent)]'">{{ step.level }}</span>
                 <span class="font-bold text-[#1a1c1c]">{{ step.label }}</span>
                 <TierBadge v-if="step.code === account.tier" :tier="step.code" :label="$t('ระดับของคุณ')" size="sm" />
               </div>
@@ -295,10 +297,17 @@ const tabs = [
   { key: 'history', label: $t('ประวัติแต้ม'), icon: 'history' },
 ];
 
+// สีประจำระดับบนบันไดระดับ — ชุดเดียวกับพื้นบัตรด้านบน (ระดับแรกใช้สีหลักของเว็บ)
+const tierDot = {
+  frequent: 'bg-[#4B5563]',
+  comrade: 'bg-[#8A5A12]',
+  insider: 'bg-[#16191E]',
+};
+
 const tierBg = computed(() => ({
-  frequent: 'bg-[#0F6B5C]',
-  comrade: 'bg-[#1D4E86]',
-  insider: 'bg-[#8A5A12]',
+  frequent: 'bg-[#4B5563]',
+  comrade: 'bg-[#8A5A12]',
+  insider: 'bg-[#16191E]',
 }[account.value?.tier] || 'bg-[var(--color-accent)]'));
 
 /**

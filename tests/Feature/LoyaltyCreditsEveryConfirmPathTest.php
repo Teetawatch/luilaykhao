@@ -204,10 +204,10 @@ class LoyaltyCreditsEveryConfirmPathTest extends TestCase
 
         $account = LoyaltyAccount::forUser($customer->id);
         $this->assertSame(LoyaltyTier::FREQUENT, $account->tier);
-        $this->assertSame('ขาประจำ', LoyaltyTier::label($account->tier));
+        $this->assertSame('นักสำรวจระดับเงิน', LoyaltyTier::label($account->tier));
 
         // ป้ายต้องเดินทางไปกับผู้ใช้ในที่ที่คนอื่นเห็นด้วย
-        $this->assertSame('ขาประจำ', $customer->fresh()->tierBadge()['tier_label']);
+        $this->assertSame('นักสำรวจระดับเงิน', $customer->fresh()->tierBadge()['tier_label']);
     }
 
     public function test_a_free_booking_still_counts_as_a_trip(): void

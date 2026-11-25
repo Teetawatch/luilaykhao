@@ -108,9 +108,9 @@
             font-size: 12px;
             font-weight: 700;
         }
-        .tier--frequent { background: #E8F0EF; color: #0F6B5C; }
-        .tier--comrade  { background: #E7EEF7; color: #1D4E86; }
-        .tier--insider  { background: #F6EDDC; color: #8A5A12; }
+        .tier--frequent { background: #EEF1F4; color: #4B5563; }
+        .tier--comrade  { background: #F6EDDC; color: #8A5A12; }
+        .tier--insider  { background: #1F2329; color: #E6E8EC; }
         .bio { font-size: 15px; color: rgba(255,255,255,0.72); margin-top: 4px; }
 
         /* ---- สถิติ ---- */
@@ -273,7 +273,7 @@
                 <div>
                     <div class="name">{{ $profile['name'] }}</div>
                     @if (($profile['tier'] ?? 'friend') !== 'friend')
-                        <span class="tier tier--{{ $profile['tier'] }}">⛰ {{ $profile['tier_label'] }}</span>
+                        <span class="tier tier--{{ $profile['tier'] }}">🧭 {{ $profile['tier_label'] }}</span>
                     @endif
                     @if ($profile['bio'])
                         <div class="bio">{{ $profile['bio'] }}</div>

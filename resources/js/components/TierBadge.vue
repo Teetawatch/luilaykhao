@@ -5,7 +5,7 @@
     :class="[sizeClasses, colours]"
     :title="label"
   >
-    <span class="material-symbols-rounded" :class="iconSize" style="font-variation-settings:'FILL' 1">landscape</span>
+    <span class="material-symbols-rounded" :class="iconSize" style="font-variation-settings:'FILL' 1">explore</span>
     <span v-if="!iconOnly">{{ label }}</span>
   </span>
 </template>
@@ -28,10 +28,11 @@ const props = defineProps({
   iconOnly: { type: Boolean, default: false },
 });
 
+// เงิน / ทอง / แพลทินัม — แพลทินัมเป็นป้ายทึบสีเข้ม ให้ต่างจากเงินชัด ๆ แม้ตัวเล็ก
 const palette = {
-  frequent: 'bg-[#E8F0EF] text-[#0F6B5C] border border-[#CFE2DE]',
-  comrade: 'bg-[#E7EEF7] text-[#1D4E86] border border-[#CBDCF0]',
-  insider: 'bg-[#F6EDDC] text-[#8A5A12] border border-[#EAD8B4]',
+  frequent: 'bg-[#EEF1F4] text-[#4B5563] border border-[#D9DFE5]',
+  comrade: 'bg-[#F6EDDC] text-[#8A5A12] border border-[#EAD8B4]',
+  insider: 'bg-[#1F2329] text-[#E6E8EC] border border-[#1F2329]',
 };
 
 const colours = computed(() => palette[props.tier] || palette.frequent);
