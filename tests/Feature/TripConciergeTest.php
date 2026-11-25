@@ -222,4 +222,18 @@ class TripConciergeTest extends TestCase
                 && $messages[2]['content'] === 'แล้วมีรอบอื่นไหม';
         });
     }
+
+    /** แคตตาล็อกในแคชต้องเป็น array ล้วน — อ่านแบบ prod (serializable_classes = false) ได้ */
+    public function test_cached_catalog_survives_a_class_free_round_trip(): void
+    {
+        $this->makeTrip();
+        $this->fakeAnswer('ภูกระดึงเหมาะกับงบนี้ครับ', ['phu-kradueng']);
+
+        $this->postJson('/api/v1/concierge', ['message' => 'งบ 4000 ไปไหนดี'])->assertOk();
+
+        $cached = unserialize(serialize(Cache::get('concierge-catalog')), ['allowed_classes' => false]);
+
+        $this->assertIsList($cached);
+        $this->assertSame('phu-kradueng', $cached[0]['slug']);
+    }
 }

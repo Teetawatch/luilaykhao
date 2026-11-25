@@ -108,4 +108,21 @@ class TripMapTest extends TestCase
             $months,
         );
     }
+
+    /**
+     * prod ตั้ง cache.serializable_classes = false — Collection ที่เก็บในแคชอ่าน
+     * กลับมาเป็น __PHP_Incomplete_Class แล้วแอปเห็น "ยังไม่มีทริปบนแผนที่".
+     * เทสต์ใช้ cache แบบ array (ไม่ serialize) จึงต้องจำลองการอ่านเองตรงนี้
+     */
+    public function test_cached_payload_survives_a_class_free_round_trip(): void
+    {
+        $this->makeTrip(['title' => 'มีพิกัด']);
+
+        $this->getJson('/api/v1/trips/map')->assertOk();
+
+        $cached = unserialize(serialize(Cache::get('trips-map:th')), ['allowed_classes' => false]);
+
+        $this->assertIsList($cached);
+        $this->assertSame('มีพิกัด', $cached[0]['title']);
+    }
 }

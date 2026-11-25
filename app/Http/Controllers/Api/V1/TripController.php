@@ -241,7 +241,11 @@ class TripController extends Controller
                             ->all(),
                     ];
                 })
-                ->values();
+                // array ธรรมดาเท่านั้น — cache.serializable_classes = false ทำให้
+                // Collection ที่เก็บไว้อ่านกลับมาเป็น __PHP_Incomplete_Class
+                // แล้วหมุดหายหมดทั้งแผนที่ตั้งแต่ request ที่สอง
+                ->values()
+                ->all();
         });
 
         return $this->success($trips);

@@ -71,7 +71,9 @@ class TripConciergeService
      */
     private function catalog()
     {
-        return Cache::remember('concierge-catalog', now()->addMinutes(self::CATALOG_CACHE_MINUTES), function () {
+        // เก็บเป็น array ธรรมดา แล้วค่อยห่อ Collection หลังอ่าน — Collection ใน
+        // แคชอ่านกลับมาเป็น __PHP_Incomplete_Class (cache.serializable_classes)
+        return collect(Cache::remember('concierge-catalog', now()->addMinutes(self::CATALOG_CACHE_MINUTES), function () {
             return Trip::where('status', 'active')
                 ->with(['schedules' => function ($q) {
                     $q->where('status', 'open')
@@ -108,8 +110,9 @@ class TripConciergeService
                             ->sum(fn ($schedule) => max(0, $schedule->total_seats - $schedule->booked_seats)),
                     ];
                 })
-                ->values();
-        });
+                ->values()
+                ->all();
+        }));
     }
 
     /**
