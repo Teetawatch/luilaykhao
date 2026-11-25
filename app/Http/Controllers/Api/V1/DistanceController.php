@@ -228,31 +228,18 @@ class DistanceController extends Controller
     }
 
     /**
-     * เส้นทางขับรถตามถนนจริง จากตำแหน่งรถไปยังจุดของลูกค้า (วาดเส้นบนแผนที่)
+     * เส้นจากรถถึงลูกค้าของแอปรุ่นก่อน 2026-11-20 — ตอบว่างเสมอ ไม่เรียก Google
      * GET /api/v1/tracking/route?from_lat=&from_lng=&to_lat=&to_lng=
+     *
+     * รุ่นเก่าถามเส้นนี้ทุก ~25 วิต่อลูกค้าหนึ่งคน (พิกัดแต่ละคนต่างกัน แคชแทบไม่ช่วย)
+     * และใช้แค่ polyline วาดเส้น — ETA คิดในเครื่องจากเส้นตรง. polyline ว่าง = แอป
+     * วาดเส้นตรงจางแทน (ทางเดียวกับตอนไม่มีคีย์). คงไว้เป็น 200 ไม่ลบ route ทิ้ง
+     * จนกว่ารุ่นเก่าจะหมด (`php artisan app:versions`). รุ่นใหม่ใช้
+     * tracking/schedules/{id}/eta ที่อ่านจากแคชของ VehicleEtaService
      */
-    public function route(Request $request): JsonResponse
+    public function route(): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'from_lat' => ['required', 'numeric', 'between:-90,90'],
-            'from_lng' => ['required', 'numeric', 'between:-180,180'],
-            'to_lat' => ['required', 'numeric', 'between:-90,90'],
-            'to_lng' => ['required', 'numeric', 'between:-180,180'],
-        ]);
-
-        if ($validator->fails()) {
-            return $this->error('ข้อมูลไม่ถูกต้อง', 422, $validator->errors());
-        }
-
-        $result = $this->distanceService->getRoute(
-            (float) $request->from_lat,
-            (float) $request->from_lng,
-            (float) $request->to_lat,
-            (float) $request->to_lng,
-        );
-
-        // ไม่มีคีย์/หาเส้นทางไม่ได้ → คืน 200 พร้อม polyline ว่าง เพื่อให้แอป fallback เส้นตรง
-        return $this->success($result ?? ['polyline' => '', 'distance' => 0, 'duration' => 0]);
+        return $this->success(['polyline' => '', 'distance' => 0, 'duration' => 0]);
     }
 
     /**

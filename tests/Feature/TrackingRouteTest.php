@@ -4,9 +4,14 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
+/**
+ * tracking/route — เส้นรถ→ลูกค้าของแอปรุ่นก่อน 2026-11-20 ที่ถามทุก ~25 วิต่อคน.
+ * ตอนนี้ตอบว่างเสมอ (แอปวาดเส้นตรงแทน) และต้องไม่เรียก Google แม้มีคีย์
+ */
 class TrackingRouteTest extends TestCase
 {
     use RefreshDatabase;
@@ -17,40 +22,26 @@ class TrackingRouteTest extends TestCase
         Cache::flush();
     }
 
-    public function test_route_returns_road_polyline_from_directions_api(): void
+    public function test_old_app_route_answers_empty_without_calling_google(): void
     {
         config(['services.google_maps.api_key' => 'test-key']);
-
-        Http::fake([
-            'routes.googleapis.com/*' => Http::response([
-                'routes' => [[
-                    'distanceMeters' => 12345,
-                    'duration' => '900s',
-                    'polyline' => ['encodedPolyline' => '_p~iF~ps|U_ulLnnqC_mqNvxq`@'],
-                    'legs' => [['distanceMeters' => 12345, 'duration' => '900s']],
-                ]],
-            ], 200),
-        ]);
+        Http::fake();
 
         $this->getJson('/api/v1/tracking/route?from_lat=13.75&from_lng=100.50&to_lat=13.80&to_lng=100.55')
             ->assertOk()
-            ->assertJsonPath('data.polyline', '_p~iF~ps|U_ulLnnqC_mqNvxq`@')
-            ->assertJsonPath('data.distance', 12345)
-            ->assertJsonPath('data.duration', 900);
+            ->assertJsonPath('data.polyline', '')
+            ->assertJsonPath('data.distance', 0)
+            ->assertJsonPath('data.duration', 0);
+
+        Http::assertNothingSent();
+        $this->assertSame(0, DB::table('maps_api_usage')->count());
     }
 
-    public function test_route_falls_back_to_empty_polyline_without_api_key(): void
+    public function test_old_app_route_still_answers_without_query(): void
     {
-        config(['services.google_maps.api_key' => '']);
-
-        $this->getJson('/api/v1/tracking/route?from_lat=13.75&from_lng=100.50&to_lat=13.80&to_lng=100.55')
+        // แอปเก่าเช็กแค่ status 200 + polyline ว่าง = วาดเส้นตรง — ห้ามกลายเป็น 422/404
+        $this->getJson('/api/v1/tracking/route')
             ->assertOk()
             ->assertJsonPath('data.polyline', '');
-    }
-
-    public function test_route_validates_coordinates(): void
-    {
-        $this->getJson('/api/v1/tracking/route?from_lat=999&from_lng=100.50&to_lat=13.80&to_lng=100.55')
-            ->assertStatus(422);
     }
 }

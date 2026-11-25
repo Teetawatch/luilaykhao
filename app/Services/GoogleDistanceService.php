@@ -27,41 +27,6 @@ class GoogleDistanceService
     }
 
     /**
-     * เส้นทางขับรถจากต้นทางไปปลายทาง (วาดเส้นบนแผนที่) — ไม่คิดจราจร (Essentials)
-     *
-     * แอปรุ่นเก่ายังถามเส้นนี้ทุก ~25 วิต่อลูกค้าหนึ่งคน แคชจึงปัดพิกัดหยาบ (~100 ม.)
-     * และเก็บ 5 นาที รุ่นใหม่ใช้เส้นทางร่วมจาก [VehicleEtaService] แทนแล้ว
-     *
-     * @return array{polyline:string, distance:int, duration:int}|null
-     */
-    public function getRoute(
-        float $originLat,
-        float $originLng,
-        float $destLat,
-        float $destLng
-    ): ?array {
-        if (! $this->routes->configured()) {
-            return null;
-        }
-
-        $cacheKey = 'route:v2:'.round($originLat, 3).','.round($originLng, 3)
-                  .':'.round($destLat, 3).','.round($destLng, 3);
-
-        return $this->remember($cacheKey, 300, MapsUsageMeter::ROUTES_ESSENTIALS, function () use ($originLat, $originLng, $destLat, $destLng) {
-            $route = $this->routes->route(
-                ['lat' => $originLat, 'lng' => $originLng],
-                ['lat' => $destLat, 'lng' => $destLng],
-            );
-
-            return $route ? [
-                'polyline' => $route['polyline'],
-                'distance' => $route['distance'],
-                'duration' => $route['duration'],
-            ] : null;
-        });
-    }
-
-    /**
      * เส้นทางขับรถหลายจุดจอด (จุดแรก → จุดแวะ → จุดสุดท้าย) ของรอบทริป
      *
      * เส้นทางของรอบแทบไม่เปลี่ยน แคช 24 ชม. ผูก key กับพิกัดทุกจุด แก้จุดรับเมื่อไหร่

@@ -887,7 +887,8 @@ Route::prefix('v1')->group(function () {
         Route::get('current', [VehicleTrackingController::class, 'currentLocations']);
         Route::get('current/{vehicleId}', [VehicleTrackingController::class, 'currentLocation']);
         Route::get('history/{vehicleId}', [VehicleTrackingController::class, 'locationHistory']);
-        // แอปรุ่นเก่ายังถามเส้นนี้ทุก ~25 วิต่อคน — รุ่นใหม่ใช้ schedules/{id}/eta แทน
+        // แอปรุ่นเก่ายังถามเส้นนี้ทุก ~25 วิต่อคน — ตอบว่างเสมอ ไม่เรียก Google
+        // (รุ่นใหม่ใช้ schedules/{id}/eta แทน)
         Route::get('route', [DistanceController::class, 'route'])->middleware('throttle:maps');
         // ETA ร่วมที่คิดไว้แล้ว (อ่านแคช ไม่เรียก Google)
         Route::get('schedules/{scheduleId}/eta', [DistanceController::class, 'scheduleEta'])->middleware('throttle:120,1');
