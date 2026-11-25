@@ -351,6 +351,71 @@ class StaffPickupArrivalTest extends TestCase
         $this->assertStringContainsString('จอดตรงข้าม 7-11', $state['detail']);
     }
 
+    public function test_an_early_van_counts_down_to_the_pickup_time_then_counts_up(): void
+    {
+        $this->travelTo(Carbon::parse(now('Asia/Bangkok')->toDateString().' 05:20', 'Asia/Bangkok'));
+        [$schedule, $point, $booking, , $staff] = $this->scenario();
+        $point->update(['pickup_time' => '05:30']);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/staff/schedules/{$schedule->id}/pickup-points/{$point->id}/arrived")
+            ->assertOk();
+
+        $state = app(TripActivityService::class)->stateFor($booking->fresh()->load('schedule.vehicle', 'pickupPoint'));
+
+        // แบบแอปเรียกรถ: ทะเบียนตัวใหญ่แยกจาก "สี · รุ่น" และนาฬิกานับถึงเวลานัด
+        $this->assertSame('arrived', $state['stage']);
+        $this->assertSame('ฮก 8899', $state['plate']);
+        $this->assertSame('สีขาว', $state['vehicle_traits']);
+        $this->assertSame('รถถึงแล้ว · นัด 05:30', $state['wait_title']);
+        $this->assertNull($state['wait_from']);
+        // เวลาจริง ไม่ใช่เวลาไทยที่แปะป้าย UTC — เครื่องลูกค้าเอาไปเดินนาฬิกาเอง
+        $this->assertTrue(Carbon::parse($state['wait_until'])->eq(
+            Carbon::parse(now('Asia/Bangkok')->toDateString().' 05:30', 'Asia/Bangkok')
+        ));
+
+        // เลยเวลานัด — รถเริ่ม "รอคุณ" ตอนถึงเวลานัด ไม่ใช่ตอนรถมาถึงก่อนเวลา
+        $this->travelTo(Carbon::parse(now('Asia/Bangkok')->toDateString().' 05:34', 'Asia/Bangkok'));
+        $state = app(TripActivityService::class)->stateFor($booking->fresh()->load('schedule.vehicle', 'pickupPoint'));
+
+        $this->assertSame('รถรอคุณอยู่', $state['wait_title']);
+        $this->assertNull($state['wait_until']);
+        $this->assertTrue(Carbon::parse($state['wait_from'])->eq(
+            Carbon::parse(now('Asia/Bangkok')->toDateString().' 05:30', 'Asia/Bangkok')
+        ));
+    }
+
+    public function test_a_late_van_counts_up_from_when_it_actually_arrived(): void
+    {
+        $this->travelTo(Carbon::parse(now('Asia/Bangkok')->toDateString().' 05:40', 'Asia/Bangkok'));
+        [$schedule, $point, $booking, , $staff] = $this->scenario();
+        $point->update(['pickup_time' => '05:30']);
+
+        $this->actingAs($staff, 'sanctum')
+            ->postJson("/api/v1/staff/schedules/{$schedule->id}/pickup-points/{$point->id}/arrived")
+            ->assertOk();
+
+        $this->travelTo(now()->addMinutes(3));
+        $state = app(TripActivityService::class)->stateFor($booking->fresh()->load('schedule.vehicle', 'pickupPoint'));
+
+        $this->assertSame('รถรอคุณอยู่', $state['wait_title']);
+        $this->assertTrue(Carbon::parse($state['wait_from'])->eq(
+            Carbon::parse(now('Asia/Bangkok')->toDateString().' 05:40', 'Asia/Bangkok')
+        ));
+    }
+
+    public function test_the_arrival_layout_is_only_sent_while_the_van_waits(): void
+    {
+        [, , $booking] = $this->scenario();
+
+        $state = app(TripActivityService::class)->stateFor($booking->fresh()->load('schedule.vehicle', 'pickupPoint'));
+
+        $this->assertNotSame('arrived', $state['stage']);
+        $this->assertNull($state['plate']);
+        $this->assertNull($state['wait_from']);
+        $this->assertNull($state['wait_until']);
+    }
+
     public function test_the_lock_screen_card_believes_staff_when_there_is_no_gps(): void
     {
         [$schedule, $point, $booking, , $staff] = $this->scenario();

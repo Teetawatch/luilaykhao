@@ -278,6 +278,7 @@ class TripActivityService
             'schedule_id' => (int) $schedule->id,
             'vehicle_label' => $this->vehicleLabel($schedule),
             ...$this->vehicleCard($schedule, $stage, $etaMinutes),
+            ...$this->arrivalCard($booking, $viewer, $schedule, $stage, $pickupAt),
             'updated_at' => now()->toIso8601String(),
         ]);
     }
@@ -964,6 +965,7 @@ class TripActivityService
             : md5(json_encode([
                 $state['stage'], $state['eta_minutes'], $state['headline'], $state['detail'],
                 $state['vehicle_summary'] ?? null, $state['driver_photo_url'] ?? null,
+                $state['wait_title'] ?? null, $state['wait_from'] ?? null, $state['wait_until'] ?? null,
             ], JSON_UNESCAPED_UNICODE));
 
         $last = Cache::get($key);
@@ -1018,7 +1020,9 @@ class TripActivityService
         }
         // แอดมินสลับรถ/คนขับกลางวันเดินทาง — ข้อความอาจเหมือนเดิมทุกตัว แต่รูปกับ
         // ทะเบียนบนการ์ดผิดคันไปแล้ว รอ heartbeat คือให้ลูกค้ามองหารถผิดคัน
-        foreach (['vehicle_summary', 'vehicle_image_url', 'driver_photo_url'] as $key) {
+        // นาฬิการอบนการ์ดเดินเองในเครื่อง แต่จุดเริ่ม/จุดจบมาจากที่นี่ — สลับจาก
+        // "นับถอยหลังถึงเวลานัด" เป็น "รอคุณมาแล้ว" ต้องไปถึงเครื่องทันที
+        foreach (['vehicle_summary', 'vehicle_image_url', 'driver_photo_url', 'wait_title', 'wait_from', 'wait_until'] as $key) {
             if (($previous[$key] ?? null) !== ($state[$key] ?? null)) {
                 return true;
             }
@@ -1067,6 +1071,11 @@ class TripActivityService
             'vehicleImageUrl' => $state['vehicle_image_url'] ?? null,
             'driverPhotoUrl' => $state['driver_photo_url'] ?? null,
             'driverName' => $state['driver_name'] ?? null,
+            'plate' => $state['plate'] ?? null,
+            'vehicleTraits' => $state['vehicle_traits'] ?? null,
+            'waitTitle' => $state['wait_title'] ?? null,
+            'waitFrom' => $state['wait_from'] ?? null,
+            'waitUntil' => $state['wait_until'] ?? null,
             'updatedAt' => $state['updated_at'],
         ];
     }
@@ -1093,6 +1102,11 @@ class TripActivityService
             'vehicleImageUrl' => null,
             'driverPhotoUrl' => null,
             'driverName' => null,
+            'plate' => null,
+            'vehicleTraits' => null,
+            'waitTitle' => null,
+            'waitFrom' => null,
+            'waitUntil' => null,
             'updatedAt' => now()->toIso8601String(),
         ];
     }
@@ -1960,6 +1974,90 @@ class TripActivityService
             'driver_photo_url' => MediaDisk::url($vehicle->driver_photo),
             'driver_name' => $driverName !== '' ? $driverName : null,
         ];
+    }
+
+    /** นาฬิการอบนการ์ดนับได้ไกลสุดเท่านี้ (นาที) — เกินนี้เลขที่เดินอยู่ไม่ได้ช่วยใครแล้ว */
+    private const WAIT_TIMER_MAX_MINUTES = 60;
+
+    private const NO_ARRIVAL_CARD = [
+        'plate' => null,
+        'vehicle_traits' => null,
+        'wait_title' => null,
+        'wait_from' => null,
+        'wait_until' => null,
+    ];
+
+    /**
+     * การ์ดตอน "รถมาถึงแล้ว" แบบแอปเรียกรถ — บรรทัดเล็ก + นาฬิกาเดินเอง แล้วป้าย
+     * ทะเบียนตัวใหญ่ ตามด้วย "สีขาว · Toyota Commuter"
+     *
+     * นาฬิกามีสองแบบ และเครื่องเดินเองทุกวินาทีโดยไม่ต้องรอ push:
+     *  - รถมาก่อนเวลานัด → wait_until = เวลานัดของจุดนี้ (นับถอยหลัง)
+     *  - เลยเวลานัดแล้ว/ไม่ได้ตั้งเวลานัด → wait_from = นับขึ้นตั้งแต่ "รถเริ่มรอคุณ"
+     *    คือเวลาที่ช้ากว่าระหว่างรถถึงกับเวลานัด — มาก่อนเวลานัด ลูกค้ายังไม่สาย
+     *    จึงไม่นับช่วงนั้นเป็น "รอคุณ"
+     * ทั้งคู่เป็นเวลาจริง (มี timezone) ไม่ใช่เวลาไทยในคอลัมน์ UTC
+     *
+     * @return array{plate: ?string, vehicle_traits: ?string, wait_title: ?string, wait_from: ?string, wait_until: ?string}
+     */
+    private function arrivalCard(Booking $booking, TripActivityViewer $viewer, TripSchedule $schedule, string $stage, ?Carbon $pickupAt): array
+    {
+        $vehicle = $schedule->vehicle;
+        $plate = trim((string) $vehicle?->license_plate);
+        if ($stage !== 'arrived' || $plate === '') {
+            return self::NO_ARRIVAL_CARD;
+        }
+
+        $traits = array_values(array_filter(
+            explode(' · ', (string) $this->vehicleSummary($vehicle)),
+            fn (string $part) => $part !== '' && $part !== $plate,
+        ));
+
+        $now = now();
+        // pickupAt เป็นเวลาไทยที่ถูกอ่านเป็น UTC — แปลงเป็นเวลาจริงก่อนส่งให้นาฬิกาในเครื่อง
+        $pickupInstant = $pickupAt ? Carbon::parse($pickupAt->format('Y-m-d H:i:s'), self::TIMEZONE)->utc() : null;
+        $arrivedAt = $this->arrivedAt($booking, $viewer, $schedule);
+
+        $title = 'รถมาถึงแล้ว';
+        $from = null;
+        $until = null;
+
+        if ($pickupInstant && $pickupInstant->gt($now)) {
+            $title = 'รถถึงแล้ว · นัด '.$pickupAt->format('H:i');
+            if ($now->diffInMinutes($pickupInstant) <= self::WAIT_TIMER_MAX_MINUTES) {
+                $until = $pickupInstant;
+            }
+        } else {
+            $start = collect([$arrivedAt, $pickupInstant])->filter()->max();
+            if ($start && $start->diffInMinutes($now) <= self::WAIT_TIMER_MAX_MINUTES) {
+                $title = 'รถรอคุณอยู่';
+                $from = $start;
+            }
+        }
+
+        return [
+            'plate' => $plate,
+            'vehicle_traits' => $traits ? implode(' · ', $traits) : null,
+            'wait_title' => $title,
+            'wait_from' => $from?->toIso8601String(),
+            'wait_until' => $until?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * รถถึงจุดนี้ตั้งแต่เมื่อไหร่ — สตาฟกดไว้ก็ใช้เวลานั้น ไม่งั้นจำครั้งแรกที่ GPS
+     * บอกว่าถึง (ไม่มีแถวไหนเก็บไว้ให้) ใช้ Cache::add จึงไม่เลื่อนทุกนาที
+     */
+    private function arrivedAt(Booking $booking, TripActivityViewer $viewer, TripSchedule $schedule): Carbon
+    {
+        if ($marked = $this->arrivedPickupPoint($viewer, $schedule)?->arrived_at) {
+            return Carbon::parse($marked)->utc();
+        }
+
+        $key = "trip_activity_arrived:{$schedule->id}:".($viewer->routePointId() ?? 'b'.$booking->id.':'.$viewer->dropoffKey());
+        Cache::add($key, now()->timestamp, now()->addHours(3));
+
+        return Carbon::createFromTimestamp((int) Cache::get($key, now()->timestamp))->utc();
     }
 
     /**
