@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\ForceMajeureSeatHold;
+use App\Models\PublicHoliday;
 use App\Models\Review;
 use App\Models\SaleCampaign;
 use App\Models\ScheduleItineraryItem;
@@ -66,7 +67,9 @@ class AppServiceProvider extends ServiceProvider
         // ผ่าน syncBookedSeats จึงติดมาด้วย)
         // ที่นั่งที่ถูกกันไว้ (คิวรอได้สิทธิ์ / เหตุสุดวิสัย) และตัวเลือกรถก็อยู่บนการ์ดด้วย
         foreach ([Trip::class, TripSchedule::class, SchedulePickupPoint::class, SaleCampaign::class, Review::class,
-            ScheduleVehicleOption::class, WaitlistEntry::class, ForceMajeureSeatHold::class] as $model) {
+            ScheduleVehicleOption::class, WaitlistEntry::class, ForceMajeureSeatHold::class,
+            // วันหยุดอยู่ในหน้า "วันหยุดยาว" (LongWeekendService) ซึ่งแคชชุดเดียวกัน
+            PublicHoliday::class] as $model) {
             $model::saved(fn () => TripListCache::flush());
             $model::deleted(fn () => TripListCache::flush());
         }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PublicHoliday;
 use App\Models\TripSchedule;
 use App\Support\AppLocale;
 use App\Support\ThaiDate;
@@ -76,6 +77,8 @@ class TripCalendarService
             'is_current_month' => $target->isSameMonth($today),
             'months' => $this->monthOptions($today, $target),
             'days' => $days,
+            // วันหยุดราชการของเดือน — ปฏิทินในแอปติดป้ายวันหยุด (public_holidays)
+            'holidays' => $this->holidaysBetween($target->startOfMonth(), $to),
             'summary' => $this->summary($days),
             'hot' => $this->hot($today),
             'hot_days' => self::HOT_DAYS,
@@ -131,11 +134,11 @@ class TripCalendarService
     }
 
     /**
-     * รอบที่ขายอยู่ในช่วงวันที่กำหนด
+     * รอบที่ขายอยู่ในช่วงวันที่กำหนด (LongWeekendService ใช้ชุดเดียวกัน)
      *
      * @return Collection<int, TripSchedule>
      */
-    private function schedulesBetween(CarbonImmutable $from, CarbonImmutable $to): Collection
+    public function schedulesBetween(CarbonImmutable $from, CarbonImmutable $to): Collection
     {
         return TripSchedule::query()
             ->with(['trip:id,title,slug,status,location,region,duration_days,price_per_person,cover_image,destination_type,type,difficulty'])
@@ -200,11 +203,11 @@ class TripCalendarService
     }
 
     /**
-     * หนึ่งรอบในรูปแบบที่หน้าเว็บวาดได้เลย
+     * หนึ่งรอบในรูปแบบที่หน้าเว็บวาดได้เลย — หน้าวันหยุดยาวในแอปใช้รูปเดียวกัน
      *
      * @return array<string, mixed>
      */
-    private function round(TripSchedule $schedule, ?CarbonImmutable $today = null): array
+    public function round(TripSchedule $schedule, ?CarbonImmutable $today = null): array
     {
         $trip = $schedule->trip;
         $price = round((float) $schedule->effective_price, 2);
@@ -253,6 +256,22 @@ class TripCalendarService
             // คนที่มาจากลิงก์ในไลน์ส่วนใหญ่ยังไม่เคยอ่านว่าทริปนี้คืออะไร
             'url' => '/trips/'.$trip->slug.'?schedule='.$schedule->id,
         ];
+    }
+
+    /**
+     * @return array<int, array{date: string, name: string}>
+     */
+    private function holidaysBetween(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        return PublicHoliday::active()
+            ->whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<=', $to->toDateString())
+            ->orderBy('date')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (PublicHoliday $h) => ['date' => $h->date->toDateString(), 'name' => $h->label()])
+            ->values()
+            ->all();
     }
 
     private function statusLabel(TripSchedule $schedule, int $seats, bool $isFull): string

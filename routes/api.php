@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\AdminExtendedController;
 use App\Http\Controllers\Api\V1\AdminFinanceController;
 use App\Http\Controllers\Api\V1\AdminForceMajeureController;
 use App\Http\Controllers\Api\V1\AdminGiftVoucherController;
+use App\Http\Controllers\Api\V1\AdminHolidayController;
 use App\Http\Controllers\Api\V1\AdminInstallmentController;
 use App\Http\Controllers\Api\V1\AdminIntakeController;
 use App\Http\Controllers\Api\V1\AdminOnsiteMoneyController;
@@ -70,6 +71,7 @@ use App\Http\Controllers\Api\V1\HomeWidgetController;
 use App\Http\Controllers\Api\V1\IncidentController;
 use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\LiveActivityController;
+use App\Http\Controllers\Api\V1\LongWeekendController;
 use App\Http\Controllers\Api\V1\LostItemController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\MapsUsageController;
@@ -107,6 +109,7 @@ use App\Http\Controllers\Api\V1\ScheduleRallyController;
 use App\Http\Controllers\Api\V1\ScheduleRoomController;
 use App\Http\Controllers\Api\V1\SeatController;
 use App\Http\Controllers\Api\V1\SeatHandoverController;
+use App\Http\Controllers\Api\V1\SharedExpenseController;
 use App\Http\Controllers\Api\V1\ShoppingListController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SplitPaymentController;
@@ -184,6 +187,8 @@ Route::prefix('v1')->group(function () {
         Route::get('trips/calendar', [TripCalendarController::class, 'index']);
         // ทริปไฟไหม้ทั้งหมด (เมนูลัดหน้าแรกของแอป) — นิยามเดียวกับโซนบนปฏิทิน
         Route::get('trips/hot', [TripCalendarController::class, 'hot']);
+        // หยุดยาวครั้งหน้า + รอบที่ไปกลับทัน (ต้องอยู่ก่อน trips/{slug})
+        Route::get('trips/long-weekends', [LongWeekendController::class, 'index']);
         Route::get('trips/urgent-popup', [TripController::class, 'urgentPopup']);
         Route::get('trips/{slug}', [TripController::class, 'show']);
         Route::get('trips/{slug}/related', [TripController::class, 'related']);
@@ -603,6 +608,14 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/collections/{collectionId}/paid', [ChatCollectionController::class, 'setPaid']);
         Route::post('schedules/{id}/chat/collections/{collectionId}/close', [ChatCollectionController::class, 'close']);
         Route::post('schedules/{id}/chat/collections/{collectionId}/reopen', [ChatCollectionController::class, 'reopen']);
+        // หารค่าใช้จ่ายกับเพื่อนร่วมทริป (ลูกทริปหารกันเอง ไม่ใช่ทีมงานเก็บเงิน) — SharedExpenseService
+        Route::get('schedules/{id}/shared-expenses', [SharedExpenseController::class, 'index']);
+        Route::post('schedules/{id}/shared-expenses', [SharedExpenseController::class, 'store'])->middleware('throttle:30,1');
+        Route::put('schedules/{id}/shared-expenses/{expenseId}', [SharedExpenseController::class, 'update'])->whereNumber('expenseId')->middleware('throttle:60,1');
+        Route::delete('schedules/{id}/shared-expenses/{expenseId}', [SharedExpenseController::class, 'destroy'])->whereNumber('expenseId');
+        Route::post('schedules/{id}/shared-expenses/settlements', [SharedExpenseController::class, 'settle'])->middleware('throttle:30,1');
+        Route::delete('schedules/{id}/shared-expenses/settlements/{settlementId}', [SharedExpenseController::class, 'unsettle'])->whereNumber('settlementId');
+        Route::put('me/receive-promptpay', [SharedExpenseController::class, 'promptPay'])->middleware('throttle:20,1');
         // ของหาย / ลืมของในทริป — อยู่ต่อหลังห้องแชทถูกลบ (สิทธิ์อิงคนที่ไปทริปจริง)
         Route::get('lost-items', [LostItemController::class, 'mine']);
         Route::get('schedules/{id}/lost-items', [LostItemController::class, 'index']);
@@ -919,6 +932,13 @@ Route::prefix('v1')->group(function () {
         Route::post('trip-posts/{postId}/hide', [TripPostController::class, 'adminHide']);
         Route::post('trip-posts/{postId}/unhide', [TripPostController::class, 'adminUnhide']);
         Route::delete('trip-posts/{postId}', [TripPostController::class, 'adminDestroy']);
+
+        // วันหยุดราชการ (หน้าวันหยุดยาวของลูกค้า) — ส่วนใหญ่ดึงเองจากปฏิทิน Google
+        Route::get('holidays', [AdminHolidayController::class, 'index']);
+        Route::post('holidays', [AdminHolidayController::class, 'store']);
+        Route::post('holidays/sync', [AdminHolidayController::class, 'sync'])->middleware('throttle:10,1');
+        Route::put('holidays/{id}', [AdminHolidayController::class, 'update'])->whereNumber('id');
+        Route::delete('holidays/{id}', [AdminHolidayController::class, 'destroy'])->whereNumber('id');
 
         // สถานที่ (ภูเขา/เกาะ/อุทยาน) — เนื้อหาที่อยู่ต่อได้แม้ทริปปิดขาย
         Route::get('places', [AdminPlaceController::class, 'index']);
