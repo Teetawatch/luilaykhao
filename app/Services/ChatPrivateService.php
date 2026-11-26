@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\ChatPrivateSignal;
+use App\Jobs\SendChatPrivatePushJob;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatPrivateMessage;
 use App\Models\ChatPrivateThread;
@@ -416,13 +417,54 @@ class ChatPrivateService
     /**
      * แจ้งอีกฝั่ง — ลูกทริปส่ง: ทีมงานทุกคนของรอบ, ทีมงานส่ง: ลูกทริปเจ้าของเธรด
      * (และทีมงานคนอื่น ๆ ไม่ต้องรู้ เพราะคำถามมีคนตอบแล้ว)
+     *
+     * เป็นภาษาของคนรับ (ChatPushTranslator) — คนที่ไม่ต้องแปลส่งทันทีในคำขอนี้
+     * คนที่ต้องรอคำแปลส่งต่อในคิว (SendChatPrivatePushJob) คนส่งจะได้ไม่ต้องรอ
      */
     private function notify(ChatPrivateMessage $message, ChatPrivateThread $thread, TripSchedule $schedule, User $customer, User $sender): void
     {
-        $tripTitle = $schedule->trip?->title ?? 'ทริปของคุณ';
-        $preview = Str::limit($message->preview(), 120);
-        $senderName = $sender->nickname ?: ($sender->name ?: 'ทีมงาน');
+        $recipients = $message->fromCustomer()
+            ? $this->team($schedule)->pluck('id')->map(fn ($id) => (int) $id)->reject(fn (int $id) => $id === $sender->id)
+            : collect([(int) $customer->id]);
+
+        foreach (app(ChatPushTranslator::class)->group($message, $recipients, $schedule) as $group) {
+            if ($group['translate']) {
+                SendChatPrivatePushJob::dispatch((int) $message->id, (int) $sender->id, $group['lang'], $group['ids']);
+
+                continue;
+            }
+
+            $this->pushGroup($message, $schedule, $customer, $sender, $group['lang'], $group['ids'], null);
+        }
+    }
+
+    /**
+     * ส่ง push ของข้อความนี้ถึงคนกลุ่มหนึ่งที่อ่านภาษาเดียวกัน — $translated =
+     * ข้อความที่แปลแล้ว (null = ต้นฉบับ)
+     *
+     * @param  array<int, int>  $userIds
+     */
+    public function pushGroup(
+        ChatPrivateMessage $message,
+        TripSchedule $schedule,
+        User $customer,
+        User $sender,
+        string $lang,
+        array $userIds,
+        ?string $translated,
+    ): void {
+        $text = app(ChatPushTranslator::class);
         $tag = self::pushTag((int) $schedule->id, (int) $customer->id);
+
+        [$title, $body] = $text->inLanguage($lang, function () use ($message, $schedule, $sender, $text, $translated) {
+            $tripTitle = $schedule->trip?->tr('title') ?? __('ทริปของคุณ');
+            $preview = $text->preview($message, $translated);
+            $senderName = $sender->nickname ?: ($sender->name ?: __('ทีมงาน'));
+
+            return $message->fromCustomer()
+                ? [__('🔒 :name ถามทีมงานแบบส่วนตัว', ['name' => $senderName]), "{$preview} · {$tripTitle}"]
+                : [__('🔒 ทีมงานตอบกลับ'), "{$senderName}: {$preview} · {$tripTitle}"];
+        });
 
         $data = [
             'type' => 'chat_private',
@@ -434,19 +476,9 @@ class ChatPrivateService
         ];
         $display = ['tag' => $tag, 'thread' => $tag, 'android_channel' => SendChatPushJob::ANDROID_CHANNEL];
 
-        if ($message->fromCustomer()) {
-            $recipients = $this->team($schedule)->pluck('id')
-                ->map(fn ($id) => (int) $id)
-                ->reject(fn (int $id) => $id === $sender->id);
-
-            foreach ($recipients as $staffId) {
-                $this->push($staffId, "🔒 {$senderName} ถามทีมงานแบบส่วนตัว", "{$preview} · {$tripTitle}", $data, $display);
-            }
-
-            return;
+        foreach ($userIds as $userId) {
+            $this->push((int) $userId, $title, $body, $data, $display);
         }
-
-        $this->push((int) $customer->id, '🔒 ทีมงานตอบกลับ', "{$senderName}: {$preview} · {$tripTitle}", $data, $display);
     }
 
     /** tag ของแจ้งเตือนเธรดนี้ — ใบใหม่ทับใบเก่าในถาด แอปใช้ค่าเดียวกันล้างตอนเปิดเธรด */

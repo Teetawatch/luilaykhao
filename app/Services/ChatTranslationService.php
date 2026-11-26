@@ -284,6 +284,36 @@ class ChatTranslationService
         return array_values(array_filter($langs, fn (string $lang) => self::needsTranslation($body, $lang)));
     }
 
+    /**
+     * คำแปลภาษา $lang ของข้อความนี้แบบใช้ร่วมกับงานอื่น (push ของแชท) — มีแล้ว =
+     * done, งานแปลอัตโนมัติ/ย้อนหลังกำลังแปลอยู่ = pending (ให้ผู้เรียกรอ ไม่เรียก
+     * โมเดลซ้ำ), ไม่มีใครแปล = แปลเองเดี๋ยวนี้ (กินโควตาเหมือนแปลอัตโนมัติ)
+     *
+     * @return array{status: string, text: ?string}
+     */
+    public function sharedTranslation(Model $message, string $lang): array
+    {
+        $body = trim((string) $message->getAttribute('body'));
+        $row = $this->rows($message)->where('lang', $lang)->first();
+
+        if ($row && $row->body_hash === sha1($body)) {
+            return ['status' => 'done', 'text' => $row->same_language ? $body : $row->text];
+        }
+
+        $key = self::inFlightKey(self::kindOf($message), (int) $message->id, $lang);
+        if (! Cache::add($key, 1, now()->addMinutes(2))) {
+            return ['status' => 'pending', 'text' => null];
+        }
+
+        try {
+            return ['status' => 'done', 'text' => $this->translate($message, $lang, metered: true)['text']];
+        } catch (\Exception) {
+            return ['status' => 'failed', 'text' => null];
+        } finally {
+            Cache::forget($key);
+        }
+    }
+
     /** ข้อความใหม่/ที่ถูกแก้ — เข้าคิวแปลถ้าห้องนี้แปลอัตโนมัติ */
     public function queueFor(Model $message): void
     {

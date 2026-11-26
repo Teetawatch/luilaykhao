@@ -43,7 +43,9 @@ class AutoTranslateChatMessageJob implements ShouldQueue
             return;
         }
 
-        if ($targets !== [] && $translations->translateInto($message, $targets, claim: true) > 0) {
+        if ($targets !== []) {
+            $translations->translateInto($message, $targets, claim: true);
+            // ส่งคำแปลที่มีทั้งหมด — รวมภาษาที่งาน push แปลไปก่อน (งานนี้จึงข้ามไป)
             ChatTranslationBroadcast::send($message);
         }
     }

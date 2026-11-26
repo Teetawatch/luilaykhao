@@ -6,14 +6,15 @@ use App\Models\ChatMessage;
 use App\Models\ChatRead;
 use App\Models\ChatRoomPreference;
 use App\Models\UserBlock;
+use App\Services\ChatPushTranslator;
 use App\Services\ChatService;
 use App\Services\FcmService;
+use App\Support\ChatTranslationBroadcast;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * แจ้งเตือนข้อความใหม่ในห้องแชททริป
@@ -64,8 +65,10 @@ class SendChatPushJob implements ShouldQueue
         return "chat_push_alert:{$scheduleId}:{$userId}";
     }
 
-    public function handle(ChatService $chatService, FcmService $fcm): void
+    public function handle(ChatService $chatService, FcmService $fcm, ?ChatPushTranslator $pushText = null): void
     {
+        $pushText ??= app(ChatPushTranslator::class);
+
         $message = ChatMessage::with('schedule.trip', 'user')->find($this->messageId);
         if (! $message || ! $message->schedule) {
             return;
@@ -77,15 +80,6 @@ class SendChatPushJob implements ShouldQueue
         }
 
         $scheduleId = (int) $message->schedule_id;
-        $tripTitle = $message->schedule->trip?->title ?? 'ทริปของคุณ';
-        $senderName = $message->user?->nickname
-            ?: ($message->user?->name ?? 'ทีมงาน');
-        $preview = match (true) {
-            filled($message->body) => Str::limit($message->body, 120),
-            (bool) $message->audio_path => ChatMessage::audioPreview($message->audio_duration_ms),
-            (bool) $message->image_path => '📷 ส่งรูปภาพ',
-            default => '',
-        };
 
         $mentioned = collect($this->mentionedUserIds)->map(fn ($id) => (int) $id);
         $fromTeam = in_array($message->sender_role, ['staff', 'admin'], true);
@@ -116,31 +110,66 @@ class SendChatPushJob implements ShouldQueue
 
         $unread = $this->unreadCounts($message, $recipientIds);
 
-        foreach ($recipientIds as $userId) {
-            $unreadCount = $unread[$userId] ?? 0;
+        // อ่านถึงข้อความนี้ไปแล้ว — เปิดห้องค้างไว้และเห็นมันขึ้นมาเอง
+        $recipientIds = $recipientIds->filter(fn (int $id) => ($unread[$id] ?? 0) > 0)->values();
 
-            // อ่านถึงข้อความนี้ไปแล้ว — เปิดห้องค้างไว้และเห็นมันขึ้นมาเอง
-            if ($unreadCount === 0) {
-                continue;
+        // แบ่งตามภาษาของคนรับ — คนอ่านไทย (หรือข้อความเป็นภาษาเขาอยู่แล้ว) ส่งก่อน
+        // ทันที คนที่ต้องรอคำแปลส่งตามหลัง (ChatPushTranslator)
+        foreach ($pushText->group($message, $recipientIds, $message->schedule) as $group) {
+            $translated = $group['translate'] ? $pushText->translatedBody($message, $group['lang']) : null;
+            if ($translated !== null) {
+                ChatTranslationBroadcast::send($message);
             }
+
+            [$tripTitle, $senderName, $preview] = $pushText->inLanguage($group['lang'], fn () => [
+                $message->schedule->trip?->tr('title') ?? __('ทริปของคุณ'),
+                $message->user?->nickname ?: ($message->user?->name ?? __('ทีมงาน')),
+                $pushText->preview($message, $translated),
+            ]);
+
+            $this->sendGroup($fcm, $pushText, $message, $group, $unread, $mentioned, $tripTitle, $senderName, $preview);
+        }
+    }
+
+    /**
+     * @param  array{lang: string, translate: bool, ids: array<int, int>}  $group
+     * @param  array<int, int>  $unread
+     * @param  Collection<int, int>  $mentioned
+     */
+    private function sendGroup(
+        FcmService $fcm,
+        ChatPushTranslator $pushText,
+        ChatMessage $message,
+        array $group,
+        array $unread,
+        Collection $mentioned,
+        string $tripTitle,
+        string $senderName,
+        string $preview,
+    ): void {
+        $scheduleId = (int) $message->schedule_id;
+
+        foreach ($group['ids'] as $userId) {
+            $unreadCount = $unread[$userId] ?? 0;
 
             // Mentioned members get a more salient "you were mentioned" push
             // instead of the regular new-message one.
             $isMention = $mentioned->contains($userId);
             $quiet = ! $isMention && ! $this->callToAction && ! $this->claimAlert($scheduleId, $userId);
 
-            $title = $isMention ? "📣 $tripTitle" : "💬 $tripTitle";
-            if (! $isMention && $unreadCount > 1) {
-                $title .= " · {$unreadCount} ข้อความใหม่";
-            }
+            [$title, $body] = $pushText->inLanguage($group['lang'], fn () => [
+                ($isMention ? "📣 $tripTitle" : "💬 $tripTitle")
+                    .(! $isMention && $unreadCount > 1 ? ' · '.__(':count ข้อความใหม่', ['count' => $unreadCount]) : ''),
+                $isMention
+                    ? __(':name กล่าวถึงคุณ: :preview', ['name' => $senderName, 'preview' => $preview])
+                    : "$senderName: $preview",
+            ]);
 
             try {
                 $fcm->sendToUser(
                     $userId,
                     $title,
-                    $isMention
-                        ? "$senderName กล่าวถึงคุณ: $preview"
-                        : "$senderName: $preview",
+                    $body,
                     [
                         'type' => 'chat_message',
                         'route' => 'chat',

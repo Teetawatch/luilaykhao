@@ -1544,5 +1544,15 @@
     "ลาเพิ่ม 1 วัน หยุดยาว :days วัน": "Take 1 day off for a :days-day break",
     "ลาเพิ่ม :day วันเดียว ได้หยุด :days วัน (:range)": "Take :day off to get :days days in a row (:range)",
     "กำลังหยุดอยู่": "Happening now",
-    "เริ่มพรุ่งนี้": "Starts tomorrow"
+    "เริ่มพรุ่งนี้": "Starts tomorrow",
+    "🎤 ข้อความเสียง :time": "🎤 Voice message :time",
+    "🎤 ข้อความเสียง": "🎤 Voice message",
+    "📷 ส่งรูปภาพ": "📷 Sent a photo",
+    "📷 รูปภาพ": "📷 Photo",
+    ":count ข้อความใหม่": ":count new messages",
+    ":name กล่าวถึงคุณ: :preview": ":name mentioned you: :preview",
+    "🔒 :name ถามทีมงานแบบส่วนตัว": "🔒 :name asked the team privately",
+    "🔒 ทีมงานตอบกลับ": "🔒 The team replied",
+    "💬 ข้อความช่วยเหลือใหม่": "💬 New support message",
+    "💬 ทีมงานลุยเลเขา": "💬 Luilaykhao team"
 }
