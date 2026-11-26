@@ -1308,6 +1308,7 @@ class AdminExtendedController extends Controller
             'id' => $r->id,
             'name' => $r->name,
             'description' => $r->description,
+            'image' => $r->image,
             'type' => $r->type,
             'points_required' => $r->points_required,
             'discount_value' => $r->discount_value,
@@ -1323,6 +1324,8 @@ class AdminExtendedController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            // รูปประจำของรางวัล — URL จากคลังสื่อ (admin/upload-image)
+            'image' => ['nullable', 'string', 'max:2048'],
             // free_item เดิมสร้างได้แต่ใช้ไม่ได้จริง (ไม่มี flow ส่งมอบของ) จึงตัดออก
             // จนกว่าจะมีระบบให้สตาฟยืนยันการส่งมอบที่จุดขึ้นรถ
             'type' => ['required', Rule::in(LoyaltyReward::TYPES)],
@@ -1344,6 +1347,7 @@ class AdminExtendedController extends Controller
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'image' => ['nullable', 'string', 'max:2048'],
             'type' => ['sometimes', Rule::in(LoyaltyReward::TYPES)],
             'points_required' => ['sometimes', 'integer', 'min:1'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],

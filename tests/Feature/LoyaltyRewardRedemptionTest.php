@@ -12,6 +12,7 @@ use App\Services\BookingService;
 use App\Services\LoyaltyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -204,6 +205,40 @@ class LoyaltyRewardRedemptionTest extends TestCase
         )->pluck('value_label');
 
         $this->assertContains('เช่าอุปกรณ์ฟรี มูลค่าไม่เกิน 300 บาท', $labels);
+    }
+
+    public function test_admin_sets_a_reward_picture_and_the_catalogue_shows_it(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $url = 'https://cdn.example/media/tent.jpg';
+
+        $id = $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/loyalty/rewards', [
+                'name' => 'เต็นท์ฟรี', 'type' => LoyaltyReward::TYPE_FREE_RENTAL,
+                'points_required' => 70, 'discount_value' => 300, 'image' => $url,
+            ])
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->getJson('/api/v1/admin/loyalty/rewards')
+            ->assertOk()
+            ->assertJsonPath('data.0.image', $url);
+
+        $rewards = collect(
+            $this->actingAs($this->userWithPoints(0), 'sanctum')
+                ->getJson('/api/v1/loyalty/rewards')
+                ->assertOk()
+                ->json('data')
+        );
+        $this->assertSame($url, $rewards->firstWhere('id', $id)['image']);
+
+        // ลบรูปออก = กลับไปใช้ไอคอนตามชนิด
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/loyalty/rewards/{$id}", ['image' => null])
+            ->assertOk();
+        $this->assertNull(LoyaltyReward::find($id)->image);
     }
 
     public function test_a_birthday_coupon_lists_its_own_value_in_my_coupons(): void

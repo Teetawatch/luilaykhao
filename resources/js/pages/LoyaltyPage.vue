@@ -133,11 +133,14 @@
               v-for="r in rewards"
               :key="r.id"
               class="bg-white rounded-[20px] p-5 md:p-6 flex flex-col border border-[#E8EEEF] hover:border-[var(--color-accent)]/30 transition-all group">
+              <div v-if="r.image" class="-mx-5 -mt-5 md:-mx-6 md:-mt-6 mb-4 overflow-hidden rounded-t-[20px] aspect-[16/9] bg-[#F4F7F6]">
+                <img :src="r.image" :alt="r.name" loading="lazy" class="w-full h-full object-cover" />
+              </div>
               <div class="flex justify-between items-start mb-4">
-                <div class="w-12 h-12 bg-[#F9FAFA] rounded-[12px] flex items-center justify-center border border-[#E8EEEF] group-hover:scale-105 transition-transform">
+                <div v-if="!r.image" class="w-12 h-12 bg-[#F9FAFA] rounded-[12px] flex items-center justify-center border border-[#E8EEEF] group-hover:scale-105 transition-transform">
                   <span class="material-symbols-rounded text-[28px] text-[var(--color-accent)]">{{ rewardIcon(r.type) }}</span>
                 </div>
-                <span class="text-[12px] font-bold bg-[#E3F2F2] text-[var(--color-accent)] rounded-[8px] px-3 py-1.5"
+                <span class="ml-auto text-[12px] font-bold bg-[#E3F2F2] text-[var(--color-accent)] rounded-[8px] px-3 py-1.5"
                   style="font-family:'DB Heavent', 'Anuphan',sans-serif;"> {{ $t('ใช้ {points_required} แต้ม', { points_required: r.points_required.toLocaleString() }) }} </span>
               </div>
               <h3 class="text-[16px] font-bold text-[#1a1c1c] mb-1.5" style="font-family:'DB Heavent', 'Anuphan',sans-serif;">{{ r.name }}</h3>

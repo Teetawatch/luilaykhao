@@ -322,6 +322,8 @@ class LoyaltyController extends Controller
             'id' => $r->id,
             'name' => $r->name,
             'description' => $r->description,
+            // รูปประจำของรางวัล (null = แอป/เว็บใช้ไอคอนตามชนิดแทน)
+            'image' => $r->image ?: null,
             'type' => $r->type,
             // ข้อความอธิบายมูลค่า — ความหมายของ discount_value ต่างกันตามชนิด
             // เขียนที่นี่ที่เดียวเพื่อไม่ให้เว็บกับแอปตีความเองแล้วพูดไม่ตรงกัน

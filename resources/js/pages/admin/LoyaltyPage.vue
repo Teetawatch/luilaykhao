@@ -88,8 +88,14 @@
             <tbody>
               <tr v-for="r in rewards" :key="r.id">
                 <td>
-                  <strong class="text-[var(--color-text-dark)]">{{ r.name }}</strong>
-                  <p v-if="r.description" class="text-[11px] text-[var(--color-text-muted)] mt-1 mb-0">{{ r.description }}</p>
+                  <div class="reward-name-cell">
+                    <img v-if="r.image" :src="r.image" class="reward-thumb" alt="" loading="lazy" />
+                    <span v-else class="reward-thumb reward-thumb-empty material-symbols-rounded">image</span>
+                    <div>
+                      <strong class="text-[var(--color-text-dark)]">{{ r.name }}</strong>
+                      <p v-if="r.description" class="text-[11px] text-[var(--color-text-muted)] mt-1 mb-0">{{ r.description }}</p>
+                    </div>
+                  </div>
                 </td>
                 <td><span class="type-badge" :class="`type-${r.type}`">{{ typeLabels[r.type] }}</span></td>
                 <td><strong>{{ r.points_required?.toLocaleString() }}</strong></td>
@@ -137,6 +143,23 @@
             <div class="form-group full-width">
               <label>คำอธิบาย</label>
               <textarea v-model="form.description" rows="2" class="form-input"></textarea>
+            </div>
+            <div class="form-group full-width">
+              <label>รูปของรางวัล</label>
+              <div class="reward-image-field">
+                <div v-if="form.image" class="reward-image-preview">
+                  <img :src="form.image" alt="" />
+                  <button type="button" class="reward-image-remove" @click="form.image = ''" title="เอารูปออก">
+                    <span class="material-symbols-rounded">close</span>
+                  </button>
+                </div>
+                <button v-else type="button" class="reward-image-drop" :disabled="uploading" @click="imageInput?.click()">
+                  <span class="material-symbols-rounded" :class="{ 'animate-spin': uploading }">{{ uploading ? 'sync' : 'add_photo_alternate' }}</span>
+                  <span>{{ uploading ? 'กำลังอัปโหลด...' : 'เลือกรูป' }}</span>
+                </button>
+                <input ref="imageInput" type="file" hidden accept="image/jpeg,image/png,image/webp" @change="uploadImage" />
+              </div>
+              <p class="field-hint">แนะนำรูปแนวนอน 16:9 (เช่น 1200×675) เห็นของจริงชัด ๆ — ไม่ใส่ แอปจะใช้ไอคอนตามประเภทแทน</p>
             </div>
             <div class="form-group">
               <label>ประเภท *</label>
@@ -190,9 +213,11 @@ const loading = ref(false);
 const showModal = ref(false);
 const saving = ref(false);
 const editingId = ref(null);
+const uploading = ref(false);
+const imageInput = ref(null);
 
 const form = reactive({
-  name: '', description: '', type: 'discount_fixed',
+  name: '', description: '', image: '', type: 'discount_fixed',
   points_required: 100, discount_value: null, stock: null, is_active: true,
 });
 
@@ -252,14 +277,14 @@ async function loadData() {
 
 function openCreate() {
   editingId.value = null;
-  Object.assign(form, { name: '', description: '', type: 'discount_fixed', points_required: 100, discount_value: null, stock: null, is_active: true });
+  Object.assign(form, { name: '', description: '', image: '', type: 'discount_fixed', points_required: 100, discount_value: null, stock: null, is_active: true });
   showModal.value = true;
 }
 
 function openEdit(r) {
   editingId.value = r.id;
   Object.assign(form, {
-    name: r.name, description: r.description || '', type: r.type,
+    name: r.name, description: r.description || '', image: r.image || '', type: r.type,
     points_required: r.points_required, discount_value: r.discount_value,
     stock: r.stock, is_active: r.is_active,
   });
@@ -270,7 +295,7 @@ async function saveReward() {
   if (!form.name || !form.points_required) return;
   saving.value = true;
   try {
-    const payload = { ...form };
+    const payload = { ...form, image: form.image || null };
     if (!payload.stock && payload.stock !== 0) payload.stock = null;
     if (editingId.value) {
       await api.put(`/admin/loyalty/rewards/${editingId.value}`, payload);
@@ -283,6 +308,28 @@ async function saveReward() {
     alert(e?.response?.data?.message || 'บันทึกไม่สำเร็จ');
   } finally {
     saving.value = false;
+  }
+}
+
+async function uploadImage(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    alert('รูปต้องมีขนาดไม่เกิน 10MB');
+    event.target.value = '';
+    return;
+  }
+  uploading.value = true;
+  try {
+    const data = new FormData();
+    data.append('file', file);
+    const res = await api.post('/admin/upload-image', data);
+    form.image = res.data.data.url;
+  } catch (e) {
+    alert(e?.response?.data?.message || 'อัปโหลดรูปไม่สำเร็จ');
+  } finally {
+    uploading.value = false;
+    event.target.value = '';
   }
 }
 
@@ -436,6 +483,37 @@ onMounted(loadData);
 .type-free_item        { background: #faf5ff; color: #9333ea; border: 1px solid #e9d5ff; }
 
 .field-hint { font-size: 11px; color: #6b7280; margin-top: 4px; line-height: 1.4; }
+
+/* ─── Reward image ─── */
+.reward-name-cell { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+.reward-thumb {
+  width: 64px; height: 36px; flex-shrink: 0;
+  border-radius: 8px; object-fit: cover;
+  border: 1px solid var(--color-sand-dark);
+}
+.reward-thumb-empty {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--color-text-muted); background: var(--color-sand);
+}
+.reward-image-field { max-width: 360px; }
+.reward-image-preview { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-sand-dark); }
+.reward-image-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.reward-image-remove {
+  position: absolute; top: 8px; right: 8px;
+  width: 30px; height: 30px; border-radius: 999px; border: none;
+  background: #fff; color: #111827; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.reward-image-remove .material-symbols-rounded { font-size: 18px; }
+.reward-image-drop {
+  width: 100%; aspect-ratio: 16 / 9;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  border: 1.5px dashed var(--color-sand-dark); border-radius: 12px;
+  background: var(--color-white); color: var(--color-text-muted);
+  font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.reward-image-drop:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.reward-image-drop .material-symbols-rounded { font-size: 28px; }
 
 /* ─── Shared ─── */
 .table-card {

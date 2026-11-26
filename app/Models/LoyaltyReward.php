@@ -27,7 +27,7 @@ class LoyaltyReward extends Model
     ];
 
     protected $fillable = [
-        'name', 'description', 'type', 'points_required',
+        'name', 'description', 'image', 'type', 'points_required',
         'discount_value', 'is_active', 'stock',
     ];
 

@@ -28,6 +28,7 @@ use App\Models\Driver;
 use App\Models\GalleryImage;
 use App\Models\HeroSlide;
 use App\Models\InstallmentPayment;
+use App\Models\LoyaltyReward;
 use App\Models\Review;
 use App\Models\SchedulePickupPoint;
 use App\Models\ScheduleStaffAssignment;
@@ -4785,6 +4786,11 @@ class AdminController extends Controller
                     $inUseFilenames->push($extractFilename($img));
                 }
             }
+        }
+
+        // รูปของรางวัลแลกแต้ม — ลบจากคลังแล้วการ์ดของรางวัลในแอปจะว่าง
+        foreach (LoyaltyReward::whereNotNull('image')->pluck('image') as $image) {
+            $inUseFilenames->push($extractFilename($image));
         }
 
         // Collect from Reviews
