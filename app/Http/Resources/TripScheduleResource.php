@@ -87,6 +87,9 @@ class TripScheduleResource extends JsonResource
             // รถออกคืนก่อนวันทริป — หน้าจอต้องพูดวันขึ้นรถจริงออกมาเป็นบรรทัดของ
             // ตัวเอง ไม่งั้นคนอ่านช่วงวันทริปแล้วมาผิดวันเต็ม ๆ (null = ออกวันทริป)
             'departs_before_trip_day' => $this->departsBeforeTripDay(),
+            // รถออกไปแล้ว (ถึง departs_at หรือต้นวันเดินทางเมื่อไม่ได้ตั้งเวลา) —
+            // แอป/เว็บปิดการจองรอบนี้ทันที ไม่ต้องรอให้วันเดินทางผ่านไป
+            'has_departed' => $this->hasDeparted(),
             'early_departure_label' => $this->earlyDepartureLabelThai(),
             'return_date' => $this->return_date?->toDateString(),
             'review_available_at' => ($this->return_date || $this->departure_date)

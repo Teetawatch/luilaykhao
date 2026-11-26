@@ -132,10 +132,12 @@ class BookingModificationTest extends TestCase
     {
         $user = User::factory()->create();
         $trip = $this->makeTrip();
-        $source = $this->makeSchedule($trip, now()->toDateString()); // เดินทางวันนี้
+        $source = $this->makeSchedule($trip, now()->addWeek()->toDateString());
         $target = $this->makeSchedule($trip, now()->addMonth()->toDateString());
 
+        // จองไว้ก่อน แล้วรอบเลื่อนมาเป็นวันนี้ — รอบที่ออกแล้วจองใหม่ไม่ได้
         $booking = $this->makeSeatBooking($user, $source, ['A1']);
+        $source->update(['departure_date' => now()->toDateString()]); // เดินทางวันนี้
 
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/bookings/{$booking->booking_ref}/reschedule", [

@@ -38,7 +38,7 @@ class WaitlistService
                 throw new \Exception('รอบเดินทางนี้ถูกยกเลิกแล้ว');
             }
 
-            if ($schedule->effectiveDepartsAt()->isPast()) {
+            if ($schedule->hasDeparted()) {
                 throw new \Exception('รอบเดินทางนี้ผ่านมาแล้ว');
             }
 
@@ -155,6 +155,11 @@ class WaitlistService
             // รอบที่ยกเลิกแล้วไม่มีที่ให้แจก — ใบที่ถูกเลื่อนเพราะเหตุสุดวิสัยย้ายออก
             // ทีละใบจะทำให้ตัวเลขที่นั่ง "ว่าง" ขึ้น แต่ไม่มีใครจองรอบนี้ได้จริง
             if (! $schedule || $schedule->status === 'cancelled') {
+                return [];
+            }
+
+            // รถออกไปแล้ว — ใบที่ยกเลิกวันเดินทางคืนที่นั่งให้ก็จริง แต่ไม่มีใครจองได้อีก
+            if ($schedule->hasDeparted()) {
                 return [];
             }
 

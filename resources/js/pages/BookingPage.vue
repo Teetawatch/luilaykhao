@@ -1904,7 +1904,7 @@ import EmergencyRelationPicker from '../components/EmergencyRelationPicker.vue';
 import Swal from 'sweetalert2';
 import { useSwal } from '../lib/swal';
 import { useToast } from '../lib/toast';
-import { bookableSeats, joinTripAvailableSeats, joinTripFull, joinTripSeatLabel } from '../lib/scheduleHelpers';
+import { bookableSeats, hasScheduleDeparted, joinTripAvailableSeats, joinTripFull, joinTripSeatLabel } from '../lib/scheduleHelpers';
 import { toBangkokDate } from '../lib/bangkokDate';
 import { beginCheckout } from '../lib/analytics';
 import { storedPartnerRef } from '../lib/partnerRef';
@@ -3305,6 +3305,16 @@ onMounted(async () => {
   try {
     const res = await api.get(`/schedules/${route.params.scheduleId}`);
     schedule.value = res.data.data;
+    // ลิงก์หน้าจองที่ค้างไว้/แชร์ต่อกันมาหลังรถออกแล้ว — บอกตั้งแต่เปิดหน้า
+    // ไม่ใช่ให้กรอกข้อมูลจนจบแล้วค่อยโดนเซิร์ฟเวอร์ปฏิเสธ
+    if (hasScheduleDeparted(schedule.value)) {
+      const slug = schedule.value?.trip?.slug;
+      swal.error(
+        $t('รอบนี้ออกเดินทางไปแล้ว'),
+        $t('รอบนี้ออกเดินทางไปแล้ว ไม่สามารถจองได้ กรุณาเลือกรอบอื่น'),
+      ).then(() => router.push(slug ? `/trips/${slug}` : '/trips'));
+      return;
+    }
     // Reaching this form is the start of checkout. Fired here rather than on
     // submit so the drop-off between "opened the form" and "created a booking"
     // is visible — that gap is the one worth watching.

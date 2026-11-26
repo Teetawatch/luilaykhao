@@ -139,6 +139,7 @@
     "รอบนี้เดินทางโดยเครื่องบิน ที่นั่งจัดโดยสายการบิน ไม่ต้องเลือกที่นั่งเอง": "This date flies — the airline assigns seats",
     "ไม่มีที่นั่ง :seats ในผังที่นั่งของรถคันนี้ กรุณาโหลดผังใหม่แล้วเลือกอีกครั้ง": "Seat :seats isn't on this vehicle's seat map. Please reload the map and choose again",
     "รอบนี้ยังไม่เปิดจองสำหรับคุณ": "Booking isn't open for you yet on this date",
+    "รอบนี้ออกเดินทางไปแล้ว ไม่สามารถจองได้ กรุณาเลือกรอบอื่น": "This date has already departed and can no longer be booked. Please choose another date.",
     "ล็อคที่นั่งสำเร็จ": "Seats held",
     "ไม่สามารถล็อคที่นั่งได้": "Couldn't hold the seats",
     "กรุณาระบุที่นั่งที่ต้องการปลดล็อค": "Please choose seats to release",

@@ -106,9 +106,8 @@ class SiteNav
                 $onSale = self::publishedTrips()
                     ->whereHas('schedules', fn ($q) => $q
                         ->where('status', 'open')
-                        // Thai wall-clock: a round departing today is still on
-                        // sale here even when UTC has already rolled over.
-                        ->whereDate('departure_date', '>=', now('Asia/Bangkok')->toDateString())
+                        // ขายถึงเวลารถออก (เวลาไทย) ไม่ใช่ถึงสิ้นวันเดินทาง
+                        ->notDeparted()
                     )
                     ->get();
 

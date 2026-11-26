@@ -45,9 +45,8 @@ final class PageTrip
         if (! $trip->relationLoaded('openRounds')) {
             $rounds = $trip->schedules()
                 ->where('status', 'open')
-                // Thai wall-clock: a round leaving today is still on sale even
-                // once UTC has rolled over into tomorrow.
-                ->whereDate('departure_date', '>=', now('Asia/Bangkok')->toDateString())
+                // ขายถึงเวลารถออก (เวลาไทย) — รอบที่ออกไปแล้วเมื่อเช้าไม่ใช่ของที่ยังขาย
+                ->notDeparted()
                 ->orderBy('departure_date')
                 ->get();
 

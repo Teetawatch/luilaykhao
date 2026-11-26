@@ -42,6 +42,9 @@ class TripSchedule extends Model
 
     public const REVIEW_AVAILABLE_TIMEZONE = 'Asia/Bangkok';
 
+    /** นาฬิกาที่ใช้ตัดสินว่ารถออกไปแล้วหรือยัง (ดู hasDeparted()) */
+    public const BOOKING_TIMEZONE = 'Asia/Bangkok';
+
     /**
      * ระบบสถานะการันตีออกเดินทาง (Trip Status) — จำนวนที่นั่งที่จองแล้วเป็นตัวกำหนด
      * ว่ารอบนี้จะได้ออกเดินทางแน่นอนหรือยัง (สอดคล้องกับ MIN_SEATS ใน
@@ -177,6 +180,42 @@ class TripSchedule extends Model
     }
 
     /**
+     * รถออกไปแล้วหรือยัง — ถึงเวลา departs_at แล้ว หรือ (ไม่ได้ตั้งเวลาออก) ถึงต้นวัน
+     * departure_date แล้ว รอบที่ออกไปแล้วปิดรับจองทันที ไม่ใช่รอจนหมดวันเดินทาง
+     *
+     * departs_at เก็บเวลาไทยในคอลัมน์ชนิด UTC จึงเทียบกับนาฬิกาไทยแบบตัวเลขตรง ๆ
+     * ห้ามใช้ isPast()/isFuture() ที่เทียบกับ now() (UTC) — จะช้าไป 7 ชั่วโมง
+     * กฎเดียวกับ scopeNotDeparted() และ `has_departed` ที่แอป/เว็บใช้
+     */
+    public function hasDeparted(): bool
+    {
+        $now = now(self::BOOKING_TIMEZONE);
+
+        if ($this->departs_at) {
+            return $this->departs_at->format('Y-m-d H:i:s') <= $now->format('Y-m-d H:i:s');
+        }
+
+        return $this->departure_date !== null
+            && $this->departure_date->toDateString() <= $now->toDateString();
+    }
+
+    /**
+     * Scope: รอบที่รถยังไม่ออก — ตัวกรองของทุกหน้าที่ลูกค้าเลือกรอบไปจอง
+     * (เงื่อนไขเดียวกับ hasDeparted() ในรูป SQL)
+     */
+    public function scopeNotDeparted($query)
+    {
+        $now = now(self::BOOKING_TIMEZONE);
+
+        return $query->where(function ($q) use ($now) {
+            $q->where(fn ($q) => $q->whereNotNull('departs_at')
+                ->where('departs_at', '>', $now->format('Y-m-d H:i:s')))
+                ->orWhere(fn ($q) => $q->whereNull('departs_at')
+                    ->whereDate('departure_date', '>', $now->toDateString()));
+        });
+    }
+
+    /**
      * รอบนี้ "ออกก่อนวันทริป" ไหม — รถหลายรอบออกคืนก่อนเพื่อไปถึงตีนเขาตอนเช้า
      *
      * ลูกค้าที่อ่านแค่ช่วงวันเดินทางจะมาผิดวันเต็ม ๆ หน้าไหนที่พิมพ์วันออกเดินทาง
@@ -271,9 +310,8 @@ class TripSchedule extends Model
             return false;
         }
 
-        // เทียบด้วยวัน ไม่ใช่ departs_at — departs_at เก็บเวลาไทยในคอลัมน์ชนิด UTC
-        // การเทียบตรง ๆ จะเพี้ยนไป 7 ชั่วโมง
-        if ($this->departure_date && $this->departure_date->toDateString() < now('Asia/Bangkok')->toDateString()) {
+        // รถออกไปแล้ว = ปิดรับ แม้ยังอยู่ในวันเดินทาง (hasDeparted() เทียบเวลาไทยให้)
+        if ($this->hasDeparted()) {
             return false;
         }
 
@@ -933,9 +971,7 @@ class TripSchedule extends Model
             return false;
         }
 
-        $departsAt = $this->effectiveDepartsAt();
-
-        return $departsAt === null || $departsAt->isFuture();
+        return ! $this->hasDeparted();
     }
 
     /**
@@ -973,9 +1009,7 @@ class TripSchedule extends Model
             return false;
         }
 
-        $departsAt = $this->effectiveDepartsAt();
-
-        return $departsAt === null || $departsAt->isFuture();
+        return ! $this->hasDeparted();
     }
 
     /**

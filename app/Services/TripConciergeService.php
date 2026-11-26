@@ -77,7 +77,7 @@ class TripConciergeService
             return Trip::where('status', 'active')
                 ->with(['schedules' => function ($q) {
                     $q->where('status', 'open')
-                        ->where('departure_date', '>=', now('Asia/Bangkok')->startOfDay())
+                        ->notDeparted()
                         ->orderBy('departure_date');
                 }])
                 ->get()

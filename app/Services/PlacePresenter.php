@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Models\Place;
 use App\Models\Trip;
-use App\Support\MediaDisk;
 use App\Support\AppLocale;
+use App\Support\MediaDisk;
 
 /**
  * รูปร่าง JSON ของสถานที่ที่ใช้ร่วมกันทุก endpoint (list / detail / ปฏิทินฤดูกาล)
@@ -48,7 +48,7 @@ class PlacePresenter
     {
         $place->loadMissing(['trips' => fn ($q) => $q->where('status', 'active')
             ->with(['schedules' => fn ($s) => $s
-                ->where('departure_date', '>=', now('Asia/Bangkok')->startOfDay())
+                ->notDeparted()
                 ->orderBy('departure_date')])]);
 
         return array_merge(self::card($place), [

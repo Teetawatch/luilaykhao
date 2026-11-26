@@ -147,6 +147,8 @@ class TripCalendarService
             ->whereDate('departure_date', '<=', $to->toDateString())
             ->whereIn('status', ['open', 'full'])
             ->where('is_charter', false)
+            // รอบวันนี้ที่รถออกไปแล้วต้องหายจากปฏิทิน ไม่ใช่ค้างให้กดจองจนหมดวัน
+            ->notDeparted()
             ->orderBy('departure_date')
             ->orderBy('id')
             ->get()
@@ -233,6 +235,7 @@ class TripCalendarService
             // บอกวันขึ้นรถจริง ไม่งั้นคนอ่านวันทริปแล้วมาผิดวัน
             'departs_at' => $schedule->departs_at?->format('Y-m-d H:i:s'),
             'departs_before_trip_day' => $schedule->departsBeforeTripDay(),
+            'has_departed' => $schedule->hasDeparted(),
             'return_date' => $schedule->return_date?->toDateString(),
             'date_label' => AppLocale::dateRange($schedule->departure_date, $schedule->return_date),
             'price' => $price,

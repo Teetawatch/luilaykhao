@@ -38,10 +38,13 @@ class TripRecapTest extends TestCase
 
         $departure = $departure ?? now()->subDays(3)->toDateString();
 
+        // จองตอนที่รอบยังไม่ออก แล้วค่อยย้ายวันไปเป็นอดีต — รอบที่รถออกไปแล้ว
+        // BookingService ไม่รับจองใหม่
+        $future = now()->addMonth()->toDateString();
         $schedule = TripSchedule::create([
             'trip_id' => $trip->id,
-            'departure_date' => $departure,
-            'return_date' => $departure,
+            'departure_date' => $future,
+            'return_date' => $future,
             'total_seats' => 10,
             'booked_seats' => 0,
             'transport_type' => 'van',
@@ -50,14 +53,18 @@ class TripRecapTest extends TestCase
 
         $user = User::factory()->create();
 
-        return app(BookingService::class)->createBooking(
+        $booking = app(BookingService::class)->createBooking(
             userId: $user->id,
             scheduleId: $schedule->id,
             passengers: [
                 ['title' => 'Mr.', 'name' => 'A', 'phone' => '0812345678', 'email' => 'a@example.test'],
                 ['title' => 'Ms.', 'name' => 'B', 'phone' => '0812345679', 'email' => 'b@example.test'],
             ],
-        )->fresh();
+        );
+
+        $schedule->update(['departure_date' => $departure, 'return_date' => $departure]);
+
+        return $booking->fresh();
     }
 
     public function test_recap_returns_trip_stats_for_owner(): void

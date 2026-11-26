@@ -80,6 +80,11 @@ class SeatController extends Controller
             return $this->error('รอบนี้ยังไม่เปิดจองสำหรับคุณ', 422);
         }
 
+        // รถออกไปแล้ว — ไม่ให้ล็อกที่นั่งไว้เปล่า ๆ (BookingService ก็ปฏิเสธอยู่ดี)
+        if ($schedule->hasDeparted() && ! $request->user()?->hasRole('admin')) {
+            return $this->error(__('รอบนี้ออกเดินทางไปแล้ว ไม่สามารถจองได้ กรุณาเลือกรอบอื่น'), 422);
+        }
+
         $ttlSeconds = SeatLockService::lockTtlSeconds(count($seatIds), $userId);
         $result = $this->seatLockService->lockMultiple($scheduleId, $seatIds, $userId, [
             'pickup_point_id' => $request->input('pickup_point_id'),

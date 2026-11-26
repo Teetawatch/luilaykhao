@@ -103,9 +103,9 @@ class TripController extends Controller
             ->whereIn('bookings.status', ['confirmed', 'completed']);
 
         $query->with(['schedules' => function ($q) {
-            $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
+            $q->notDeparted()->with('pickupPoints');
         }])->withCount(['schedules' => function ($q) {
-            $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
+            $q->where('status', 'open')->notDeparted();
         }]);
 
         // การเรียงต้องทำที่นี่ ไม่ใช่ฝั่งหน้าเว็บ ไม่งั้น "ราคาน้อยไปมาก" จะเรียงแค่ทริปในหน้าปัจจุบัน
@@ -200,7 +200,7 @@ class TripController extends Controller
                 ->whereNotNull('longitude')
                 ->with(['schedules' => function ($q) {
                     $q->where('status', 'open')
-                        ->where('departure_date', '>=', now('Asia/Bangkok')->startOfDay())
+                        ->notDeparted()
                         ->orderBy('departure_date');
                 }])
                 ->get()
@@ -261,7 +261,7 @@ class TripController extends Controller
         $trips = Trip::where('status', 'active')
             ->where('is_featured', true)
             ->with(['photos', 'schedules' => function ($q) {
-                $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
+                $q->notDeparted()->with('pickupPoints');
             }])
             ->orderByDesc('created_at')
             ->get();
@@ -344,7 +344,7 @@ class TripController extends Controller
         $trips = Trip::where('status', 'active')
             ->with(['photos', 'schedules' => function ($q) {
                 $q->where('status', 'open')
-                    ->where('departure_date', '>=', now()->startOfDay())
+                    ->notDeparted()
                     ->with('pickupPoints');
             }])
             ->get();
@@ -373,9 +373,9 @@ class TripController extends Controller
             ->whereHas('schedules', fn ($q) => $q
                 ->where('flash_sale_enabled', true)
                 ->where('status', 'open')
-                ->where('departure_date', '>=', now()->startOfDay()))
+                ->notDeparted())
             ->with(['photos', 'schedules' => function ($q) {
-                $q->where('departure_date', '>=', now()->startOfDay())->with('pickupPoints');
+                $q->notDeparted()->with('pickupPoints');
             }])
             ->get();
 
@@ -402,7 +402,7 @@ class TripController extends Controller
         $trip = Trip::where('slug', $slug)
             ->with(['photos', 'schedules' => function ($q) {
                 $q->where('status', 'open')
-                    ->where('departure_date', '>=', now()->startOfDay())
+                    ->notDeparted()
                     // ชุดเดียวกับ schedules() — รอบที่ฝังมากับหน้าทริปจึงใช้แทนการเรียก
                     // /schedules ซ้ำได้ (แอป/เว็บดูจาก key vehicle ว่าเซิร์ฟเวอร์ส่งครบแล้ว)
                     ->with(['vehicle', 'pickupPoints', 'vehicleOptions'])
@@ -425,7 +425,7 @@ class TripController extends Controller
         $trip->schedules->each(fn ($s) => $this->weatherService->attach($s, $trip));
 
         return $this->success(new TripResource($trip->loadCount(['schedules' => function ($q) {
-            $q->where('status', 'open')->where('departure_date', '>=', now()->startOfDay());
+            $q->where('status', 'open')->notDeparted();
         }])));
     }
 
@@ -464,8 +464,8 @@ class TripController extends Controller
             // คะแนนเท่ากันเรียงตาม id — ลำดับเดียวกับที่ sortByDesc เดิมได้จากแถวที่ดึงมา
             ->orderBy('trips.id')
             ->limit(6)
-            ->with(['photos', 'schedules' => function ($q) use ($today) {
-                $q->where('departure_date', '>=', $today)->with('pickupPoints');
+            ->with(['photos', 'schedules' => function ($q) {
+                $q->notDeparted()->with('pickupPoints');
             }])
             ->get();
 
@@ -510,7 +510,7 @@ class TripController extends Controller
 
         $schedules = $trip->schedules()
             ->where('status', 'open')
-            ->where('departure_date', '>=', now()->startOfDay())
+            ->notDeparted()
             ->with(['vehicle', 'pickupPoints', 'vehicleOptions'])
             // ที่นั่งที่กันไว้ (คิวรอที่ได้สิทธิ์ / คนที่ถูกเลื่อนเพราะเหตุสุดวิสัย) ต้องไม่ถูก
             // นับเป็นของว่าง — ตัวเดียวกับหน้ารายละเอียดทริป

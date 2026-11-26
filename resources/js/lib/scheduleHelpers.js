@@ -13,8 +13,25 @@ export function hasAvailableSeats(schedule) {
   return bookableSeats(schedule) > 0;
 }
 
+// รถออกไปแล้ว = ปิดรับจองตั้งแต่เวลารถออก ไม่ใช่รอให้หมดวันเดินทาง
+// เชื่อ `has_departed` ของเซิร์ฟเวอร์ก่อน แล้วคิดซ้ำด้วยกฎเดียวกับ
+// TripSchedule::hasDeparted() เผื่อหน้าที่เปิดทิ้งไว้นาน: ถึง departs_at แล้ว
+// หรือไม่ได้ตั้งเวลาออก = ตั้งแต่ต้นวัน departure_date — เทียบนาฬิกาไทยเสมอ
+// เพราะ departs_at คือเวลาไทยที่ไม่มีโซน
+export function hasScheduleDeparted(schedule, now = new Date()) {
+  if (!schedule) return false;
+  if (schedule.has_departed) return true;
+  const thaiNow = new Date(now.getTime() + 7 * 3600 * 1000)
+    .toISOString().slice(0, 19).replace('T', ' ');
+  const departsAt = String(schedule.departs_at || '').slice(0, 19).replace('T', ' ');
+  if (departsAt.length >= 16) return departsAt <= thaiNow;
+  const date = String(schedule.departure_date || '').slice(0, 10);
+  return date.length === 10 && date <= thaiNow.slice(0, 10);
+}
+
 export function isScheduleBookable(schedule) {
   if (schedule?.is_charter) return false;
+  if (hasScheduleDeparted(schedule)) return false;
   if (hasAvailableSeats(schedule)) return true;
   // ที่นั่งบนรถหมดแล้ว แต่ยังจอยทริปได้ถ้าโควตาจอยยังเหลือ
   return Boolean(schedule?.join_trip_enabled) && !joinTripFull(schedule);
@@ -84,6 +101,7 @@ export function scheduleAvailabilityDotClass(schedule) {
 
 export function scheduleAvailabilityLabel(schedule) {
   if (schedule?.is_charter) return $t('รอบเหมา');
+  if (hasScheduleDeparted(schedule)) return $t('ออกเดินทางแล้ว');
   if (hasAvailableSeats(schedule)) return $t('ว่าง {bookableSeats} ที่', { bookableSeats: bookableSeats(schedule) });
   // ที่นั่งบนรถเต็ม แต่ถ้าจอยทริปยังเปิดและยังมีโควตาก็ยังจองได้อยู่
   if (schedule?.join_trip_enabled && !joinTripFull(schedule)) {

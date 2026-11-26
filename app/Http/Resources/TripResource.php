@@ -252,12 +252,11 @@ class TripResource extends JsonResource
             return null;
         }
 
-        $today = now()->startOfDay();
         $open = $this->schedules->filter(
             fn ($s) => $s->status === 'open'
                 && $s->available_seats > 0
                 && $s->departure_date
-                && $s->departure_date->gte($today)
+                && ! $s->hasDeparted()
         );
 
         if ($open->isEmpty()) {
@@ -278,13 +277,12 @@ class TripResource extends JsonResource
             return null;
         }
 
-        $today = now()->startOfDay();
         $schedule = $this->schedules
             ->filter(
                 fn ($s) => $s->status === 'open'
                     && $s->available_seats > 0
                     && $s->departure_date
-                    && $s->departure_date->gte($today)
+                    && ! $s->hasDeparted()
             )
             ->sortBy(fn ($s) => $s->available_seats)
             ->first();

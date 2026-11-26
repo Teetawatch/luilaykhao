@@ -268,7 +268,8 @@ class TripCalendarTest extends TestCase
         $trip = $this->trip();
         $ids = [];
         foreach (range(1, 10) as $i) {
-            $ids[] = $this->schedule($trip, ['departure_date' => '2026-09-'.(15 + $i % 10)])->id;
+            // เริ่มพรุ่งนี้ — รอบวันนี้ที่ไม่ได้ตั้งเวลาออกถือว่าออกไปแล้วตั้งแต่ 00:00
+            $ids[] = $this->schedule($trip, ['departure_date' => '2026-09-'.(16 + $i % 10)])->id;
         }
         $this->schedule($trip, ['departure_date' => '2026-10-30']);
 

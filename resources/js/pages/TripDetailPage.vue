@@ -1125,7 +1125,7 @@
                   </router-link>
                   <button v-else disabled
                     class="w-full py-4 rounded-full font-extrabold text-lg bg-gray-100 text-gray-400 cursor-not-allowed text-center border border-gray-200">
-                    {{ selectedSchedule?.is_charter ? $t('รอบเดินทางนี้เป็นรอบเหมา') : (!isScheduleBookable(selectedSchedule)) ? $t('รอบเดินทางนี้เต็มแล้ว') : joinTripFull(selectedSchedule) && !hasAvailableSeats(selectedSchedule) ? $t('จอยทริปรอบนี้เต็มแล้ว') : selectedSchedule?.join_trip_enabled && !hasAvailableSeats(selectedSchedule) && !isJoinTrip ? $t('กรุณาเปิด Enjoy Trip') : !selectedRegion && isTrekking ? $t('กรุณาเลือกภูมิภาค') : !selectedPickup && isTrekking ? $t('กรุณาเลือกจุดขึ้นรถ') : $t('กรุณาเลือกวันเดินทาง') }}
+                    {{ selectedSchedule?.is_charter ? $t('รอบเดินทางนี้เป็นรอบเหมา') : hasScheduleDeparted(selectedSchedule) ? $t('รอบนี้ออกเดินทางไปแล้ว') : (!isScheduleBookable(selectedSchedule)) ? $t('รอบเดินทางนี้เต็มแล้ว') : joinTripFull(selectedSchedule) && !hasAvailableSeats(selectedSchedule) ? $t('จอยทริปรอบนี้เต็มแล้ว') : selectedSchedule?.join_trip_enabled && !hasAvailableSeats(selectedSchedule) && !isJoinTrip ? $t('กรุณาเปิด Enjoy Trip') : !selectedRegion && isTrekking ? $t('กรุณาเลือกภูมิภาค') : !selectedPickup && isTrekking ? $t('กรุณาเลือกจุดขึ้นรถ') : $t('กรุณาเลือกวันเดินทาง') }}
                   </button>
                   <p class="text-xs font-medium text-[var(--color-text-muted)] mt-4 text-center flex items-center justify-center gap-1.5">
                     <span class="material-symbols-rounded text-[16px]">verified_user</span>
@@ -2073,6 +2073,7 @@ import { useWishlistStore } from '../stores/wishlist';
 import {
   hasAvailableSeats,
   isScheduleBookable,
+  hasScheduleDeparted,
   joinTripFull,
   joinTripSeats,
   joinTripSeatLabel,
