@@ -143,11 +143,13 @@ class ChatService
 
     /**
      * ผู้ชมคนนี้น่าจะเป็นลูกค้าต่างชาติไหม — แอปขึ้นป้าย "ทีมงานพูดไทย" ให้ทำใจ
-     * ไว้ก่อนว่าสตาฟสื่อสารภาษาไทยเป็นหลัก และชี้ไปที่ปุ่มแปลข้อความ
+     * ไว้ก่อนว่าสตาฟสื่อสารภาษาไทยเป็นหลัก และระบบแปลอัตโนมัติใช้เดาภาษาที่อ่าน
      *
      * ไม่ดูภาษาของเครื่อง: คนไทยจำนวนมากตั้งมือถือเป็นภาษาอังกฤษ ดูจากสิ่งที่
-     * ลูกค้าบอกเราเอง — ภาษาแอป, สัญชาติในบัญชี, หรือมีผู้เดินทางสัญชาติอื่น
-     * ในใบจองของรอบนี้ที่เขาเป็นเจ้าของ/สมาชิก
+     * ลูกค้าบอกเราเอง — ภาษาแอป, สัญชาติในบัญชี, หรือสัญชาติของ "ที่นั่งของเขาเอง"
+     * ในใบจองรอบนี้ (TripActivityViewer::seatsOf: สมาชิก = ที่นั่งที่ถือ, เจ้าของ =
+     * ที่นั่งที่สมาชิกคนอื่นไม่ได้ถือ) — คนไทยที่จองให้เพื่อนต่างชาติซึ่งรับที่นั่ง
+     * ไปแล้วจึงไม่ถูกนับเป็นต่างชาติ เพื่อนที่ไม่ได้สมัครบัญชียังแยกไม่ออก
      */
     public function viewerLikelyForeign(User $user, TripSchedule $schedule): bool
     {
@@ -161,19 +163,29 @@ class ChatService
             return true;
         }
 
-        return BookingPassenger::query()
-            ->whereNotNull('nationality')
-            ->where('nationality', '!=', '')
-            ->where('nationality', '!=', Countries::HOME)
-            ->whereHas('booking', fn (Builder $q) => $q
-                ->where('schedule_id', $schedule->id)
-                ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
-                ->where(fn (Builder $q) => $q
+        $bookings = Booking::query()
+            ->where('schedule_id', $schedule->id)
+            ->whereIn('status', TripSchedule::ACTIVE_BOOKING_STATUSES)
+            ->where(fn (Builder $q) => $q
+                ->where('user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $m) => $m
                     ->where('user_id', $user->id)
-                    ->orWhereHas('members', fn (Builder $m) => $m
-                        ->where('user_id', $user->id)
-                        ->where('status', BookingMember::STATUS_ACTIVE))))
-            ->exists();
+                    ->where('status', BookingMember::STATUS_ACTIVE)))
+            ->with(['passengers:id,booking_id,nationality', 'members'])
+            ->get();
+
+        // สมาชิกที่ยังไม่ได้รับที่นั่ง = น่าจะเป็นหนึ่งในผู้เดินทาง ดูทั้งใบ; เจ้าของที่ทุก
+        // ที่นั่งมีคนถือไปแล้ว = ไม่ได้ไปเอง (จองให้คนอื่น) ไม่มีสัญญาณจากใบนี้
+        return $bookings->contains(fn (Booking $booking) => TripActivityViewer::seatsOf(
+            $booking,
+            (int) $user->id,
+            fallback: (int) $booking->user_id !== (int) $user->id,
+        )
+            ->contains(function (BookingPassenger $p) {
+                $code = strtoupper(trim((string) $p->nationality));
+
+                return $code !== '' && $code !== Countries::HOME;
+            }));
     }
 
     /**

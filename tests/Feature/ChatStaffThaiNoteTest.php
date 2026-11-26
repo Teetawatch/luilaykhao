@@ -112,4 +112,44 @@ class ChatStaffThaiNoteTest extends TestCase
 
         $this->assertFalse($this->note($staff));
     }
+
+    public function test_a_thai_owner_whose_foreign_friend_took_their_seat_is_not_foreign(): void
+    {
+        $owner = User::factory()->create();
+        $booking = $this->booking($owner, ['TH', 'DE']);
+        $friend = User::factory()->create();
+        BookingMember::create([
+            'booking_id' => $booking->id, 'user_id' => $friend->id, 'status' => BookingMember::STATUS_ACTIVE,
+            'passenger_id' => $booking->passengers()->where('nationality', 'DE')->value('id'),
+        ]);
+
+        $this->assertFalse($this->note($owner));
+        $this->assertTrue($this->note($friend));
+    }
+
+    public function test_a_member_on_their_own_thai_seat_is_not_foreign(): void
+    {
+        $owner = User::factory()->create();
+        $booking = $this->booking($owner, ['DE', 'TH']);
+        $thai = User::factory()->create();
+        BookingMember::create([
+            'booking_id' => $booking->id, 'user_id' => $thai->id, 'status' => BookingMember::STATUS_ACTIVE,
+            'passenger_id' => $booking->passengers()->where('nationality', 'TH')->value('id'),
+        ]);
+
+        $this->assertFalse($this->note($thai));
+        $this->assertTrue($this->note($owner));
+    }
+
+    public function test_an_owner_who_is_not_travelling_gives_no_signal(): void
+    {
+        $owner = User::factory()->create();
+        $booking = $this->booking($owner, ['DE']);
+        BookingMember::create([
+            'booking_id' => $booking->id, 'user_id' => User::factory()->create()->id, 'status' => BookingMember::STATUS_ACTIVE,
+            'passenger_id' => $booking->passengers()->value('id'),
+        ]);
+
+        $this->assertFalse($this->note($owner));
+    }
 }

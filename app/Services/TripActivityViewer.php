@@ -105,10 +105,27 @@ final class TripActivityViewer
     }
 
     /**
+     * ที่นั่งของผู้ใช้คนนี้ในใบจอง — สมาชิก: ที่นั่งที่ตัวเองถือ, เจ้าของ: ที่นั่งที่
+     * สมาชิกคนอื่นไม่ได้ถือ (ไม่มีให้แยก = ทั้งใบ) ใช้ร่วมกับ
+     * ChatService::viewerLikelyForeign ให้สองฟีเจอร์นับ "ที่นั่งของฉัน" เหมือนกัน
+     *
+     * $fallback = false: แยกไม่ได้ (สมาชิกไม่ได้ถือที่นั่ง / เจ้าของที่ทุกที่นั่งมีคน
+     * ถือไปแล้ว) ให้คืนว่าง แทนที่จะคืนทั้งใบอย่างการ์ดหน้าจอล็อก
+     *
+     * @return Collection<int, BookingPassenger>
+     */
+    public static function seatsOf(Booking $booking, ?int $userId, bool $fallback = true): Collection
+    {
+        $passengers = $booking->relationLoaded('passengers') ? $booking->passengers : $booking->passengers()->get();
+
+        return $passengers->isEmpty() ? $passengers : self::group($booking, $passengers, $userId, $fallback);
+    }
+
+    /**
      * @param  Collection<int, BookingPassenger>  $passengers
      * @return Collection<int, BookingPassenger>
      */
-    private static function group(Booking $booking, Collection $passengers, ?int $userId): Collection
+    private static function group(Booking $booking, Collection $passengers, ?int $userId, bool $fallback = true): Collection
     {
         $members = ($booking->relationLoaded('members')
             ? $booking->members
@@ -121,7 +138,7 @@ final class TripActivityViewer
             $seat = $members->firstWhere('user_id', $userId)?->passenger_id;
             $own = $seat ? $passengers->where('id', (int) $seat) : collect();
 
-            return $own->isNotEmpty() ? $own : $passengers;
+            return $own->isNotEmpty() || ! $fallback ? $own : $passengers;
         }
 
         $claimed = $members
@@ -132,7 +149,7 @@ final class TripActivityViewer
 
         $mine = $passengers->reject(fn (BookingPassenger $p) => in_array((int) $p->id, $claimed, true));
 
-        return $mine->isNotEmpty() ? $mine : $passengers;
+        return $mine->isNotEmpty() || ! $fallback ? $mine : $passengers;
     }
 
     /**
