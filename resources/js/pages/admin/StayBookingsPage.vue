@@ -215,8 +215,8 @@ const BEAM_METHOD = {
 };
 
 const OCR_LABEL = {
-  pending: 'กำลังอ่าน',
-  verified: 'ระบบอ่านแล้วยอดตรง',
+  pending: 'รอตรวจยอด',
+  verified: 'ระบบอ่านแล้วยอดตรง (เดิม)',
   failed: 'ระบบอ่านไม่ผ่าน — ต้องตรวจเอง',
   manually_approved: 'ทีมงานอนุมัติ',
   rejected: 'ไม่ผ่าน',

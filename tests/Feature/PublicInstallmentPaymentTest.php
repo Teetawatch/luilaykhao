@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\VerifySlipJob;
+use App\Jobs\NotifySlipReviewJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\InstallmentPayment;
@@ -82,7 +82,7 @@ class PublicInstallmentPaymentTest extends TestCase
         $this->get('/pay/doesnotexist1')->assertNotFound();
     }
 
-    public function test_public_submit_marks_next_installment_paid_and_dispatches_ocr(): void
+    public function test_public_submit_marks_next_installment_paid_and_asks_staff_to_check_the_slip(): void
     {
         Mail::fake();
         Queue::fake();
@@ -106,7 +106,7 @@ class PublicInstallmentPaymentTest extends TestCase
         Storage::disk(MediaDisk::slipDisk())->assertExists($installment->slip_path);
         $this->assertEquals(2000.0, (float) $booking->fresh()->paid_amount);
 
-        Queue::assertPushed(VerifySlipJob::class);
+        Queue::assertPushed(NotifySlipReviewJob::class);
     }
 
     public function test_submit_requires_slip_image(): void

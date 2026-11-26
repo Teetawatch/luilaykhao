@@ -2,11 +2,12 @@
 
 namespace App\Services;
 
-use App\Jobs\VerifySlipJob;
+use App\Jobs\NotifySlipReviewJob;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\BookingSplitShare;
 use App\Models\SmartNotification;
+use App\Support\SlipStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -210,7 +211,7 @@ class SplitPaymentService
                 'payment_ref' => $paymentRef,
                 'slip_path' => $slipPath,
                 'transfer_datetime' => $transferDt,
-                'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+                'slip_ocr_status' => $slipPath ? SlipStatus::PENDING : null,
                 'paid_at' => now(),
             ]);
 
@@ -229,7 +230,7 @@ class SplitPaymentService
         });
 
         if ($slipPath) {
-            VerifySlipJob::dispatch('split', $share->id, $slipPath, (float) $share->amount);
+            NotifySlipReviewJob::dispatch("ส่วนแบ่งกลุ่มของ {$booking->booking_ref}", $booking->booking_ref);
         }
 
         $this->notifySharePaid($booking, $share, $allPaid);

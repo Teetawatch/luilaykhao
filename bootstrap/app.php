@@ -98,13 +98,6 @@ return Application::configure(basePath: dirname(__DIR__))
             return Limit::perMinute(30)->by($key);
         });
 
-        // Slip OCR scan — อ่านวันที่/เวลาจากสลิป (ลูกค้าอาจเปลี่ยนรูปหลายครั้ง)
-        RateLimiter::for('slip-scan', function (Request $request) {
-            $key = ($request->user()?->id ?? $request->ip());
-
-            return Limit::perMinute(15)->by($key);
-        });
-
         // Seat lock — ป้องกัน lock spam
         RateLimiter::for('seat-lock', function (Request $request) {
             $key = ($request->user()?->id ?? $request->ip());

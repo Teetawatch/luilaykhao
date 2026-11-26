@@ -2,14 +2,12 @@
 
 namespace App\Services;
 
-use App\Jobs\VerifySlipJob;
+use App\Jobs\NotifySlipReviewJob;
 use App\Models\Booking;
-use App\Models\SmartNotification;
-use App\Models\User;
 use App\Support\MediaDisk;
+use App\Support\SlipStatus;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * รับเงินก้อนแรกด้วย "สลิป" — ลูกค้าโอนเองแล้วแนบรูปมา
@@ -20,14 +18,13 @@ use Illuminate\Support\Facades\Log;
  * ยืนยันสลิปยอดไม่ตรงอยู่โดยไม่มีใครรู้
  *
  * ตรรกะว่า "รับเงินแล้วการจองต้องเป็นอย่างไร" ยังอยู่ใน BookingSettlementService
- * ที่นี่เหลือแค่ส่วนที่เป็นของทางสลิปจริง ๆ: ตรวจยอดด้วย OCR แล้วตัดสินใจว่าจะ
- * ยืนยันทันที หรือกันไว้ให้แอดมินตรวจ
+ * ที่นี่เหลือแค่ส่วนที่เป็นของทางสลิปจริง ๆ: เก็บรูป ยืนยันที่นั่ง แล้วแจ้งทีมงาน
+ * ให้ตรวจยอดตามหลัง (ไม่มี OCR แล้วตั้งแต่ 2026-11-26)
  */
 class SlipChargeService
 {
     public function __construct(
         private readonly BookingSettlementService $settlement,
-        private readonly SlipOcrService $slipOcr,
     ) {}
 
     /**
@@ -37,7 +34,7 @@ class SlipChargeService
      *     transfer_datetime?: mixed,
      *     installment_count?: int|null,
      * }  $opts
-     * @return array{status: 'confirmed'|'pending_review', booking: Booking, amount: float}
+     * @return array{status: 'confirmed', booking: Booking, amount: float}
      *
      * @throws PaymentNotAvailableException เมื่อรอบนี้จ่ายแบบที่เลือกไม่ได้
      */
@@ -55,25 +52,6 @@ class SlipChargeService
             ? $slip->store('slips/'.date('Y/m'), MediaDisk::slipDisk())
             : null;
 
-        // ตรวจยอดก่อน — ยอดไม่ตรงให้ค้างรอแอดมิน ไม่ยืนยันที่นั่ง
-        $review = $this->needsReview($slipPath, $dueNow);
-
-        // เลือกมัดจำ/ผ่อน/แบ่งจ่ายไว้ แต่สลิปคือยอดเต็มทั้งใบ — ลูกค้าจ่ายครบแล้วจริง
-        // บันทึกเป็นจ่ายเต็ม ไม่ใช่กันไว้ว่า "ยอดไม่ตรง" แล้วรอแอดมินอนุมัติเป็นมัดจำ
-        // (ใบจองจะค้างยอดคงเหลือที่ลูกค้าจ่ายไปแล้ว และโดนทวงซ้ำ)
-        if ($review['hold'] && $paymentType !== 'full' && ($fullDue = $this->fullAmountPaid($booking, $review['ocr_amount']))) {
-            Log::info('Slip covers the full amount — recording as full payment', [
-                'booking_ref' => $booking->booking_ref,
-                'chosen' => $paymentType,
-                'slip_amount' => $review['ocr_amount'],
-            ]);
-
-            $paymentType = 'full';
-            $dueNow = $fullDue;
-            $installmentCount = null;
-            $review['hold'] = false;
-        }
-
         $paymentRef = match ($paymentType) {
             'installment' => 'PAY-INST-'.strtoupper(uniqid()),
             'split' => 'PAY-SPLIT-'.strtoupper(uniqid()),
@@ -87,124 +65,25 @@ class SlipChargeService
             'payment_ref' => $paymentRef,
             'slip_path' => $slipPath,
             'transfer_datetime' => $opts['transfer_datetime'] ?? null,
-            'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+            'slip_ocr_status' => $slipPath ? SlipStatus::PENDING : null,
         ];
 
-        DB::transaction(function () use ($booking, $paymentType, $recordOpts, $review, $paymentMethod, $paymentRef, $dueNow) {
+        DB::transaction(function () use ($booking, $paymentType, $recordOpts, $paymentMethod, $paymentRef, $dueNow) {
             $this->settlement->record($booking, $paymentType, $recordOpts);
-
-            if (! $review['hold']) {
-                $this->settlement->confirm($booking, $paymentType, $paymentMethod, $paymentRef, $dueNow);
-            }
+            $this->settlement->confirm($booking, $paymentType, $paymentMethod, $paymentRef, $dueNow);
         });
 
-        if ($review['hold']) {
-            $this->holdForReview($booking, $review['raw']);
-
-            return ['status' => 'pending_review', 'booking' => $booking->fresh(), 'amount' => $dueNow];
-        }
-
+        // ไม่มี OCR แล้ว — ยืนยันที่นั่งทันที (แบบเดียวกับตอน OCR อ่านสลิปไม่ออก) แล้ว
+        // ให้ทีมงานตรวจยอดตามหลัง ผ่อนจ่ายตรวจที่ระดับงวดแรก
         if ($slipPath) {
-            // งวดผ่อนตรวจสลิปที่ระดับ "งวด" ไม่ใช่ระดับการจอง
-            if ($paymentType === 'installment') {
-                $firstInstallment = $booking->fresh()->installmentPayments()->where('installment_no', 1)->first();
-                if ($firstInstallment) {
-                    VerifySlipJob::dispatch('installment', $firstInstallment->id, $slipPath, $dueNow);
-                }
-            } else {
-                VerifySlipJob::dispatch('booking', $booking->id, $slipPath, $dueNow);
-            }
+            NotifySlipReviewJob::dispatch(
+                $paymentType === 'installment' ? "งวดที่ 1 ของ {$booking->booking_ref}" : $booking->booking_ref,
+                $booking->booking_ref,
+            );
         }
 
         $this->settlement->announce($booking, $paymentType);
 
         return ['status' => 'confirmed', 'booking' => $booking->fresh(), 'amount' => $dueNow];
-    }
-
-    /**
-     * "กันกลาง": ตรวจสลิปแบบซิงโครนัสเพื่อตัดสินใจว่าต้องส่งให้แอดมินตรวจก่อนไหม
-     * คืน hold=true เฉพาะเมื่อ OCR อ่านสลิปได้จริงแล้วพบว่า "ยอดไม่ตรง" หรือสลิปเป็น
-     * รายการที่ล้มเหลว เท่านั้น กรณีอ่านไม่ได้/ไม่ชัดเจน (เช่น ไม่มี API key, timeout)
-     * คืน hold=false เพื่อคงพฤติกรรมเดิม — ยืนยันทันทีแล้ว flag ให้แอดมินผ่าน VerifySlipJob
-     *
-     * @return array{hold: bool, raw: array|null, ocr_amount: float|null}
-     */
-    private function needsReview(?string $slipPath, float $expectedAmount): array
-    {
-        if (! $slipPath) {
-            return ['hold' => false, 'raw' => null, 'ocr_amount' => null];
-        }
-
-        $result = $this->slipOcr->verify($slipPath, $expectedAmount);
-        $reason = $result['reason'] ?? '';
-        $hold = in_array($reason, ['amount_mismatch', 'slip_status_failed'], true);
-
-        // ยอดที่ OCR อ่านได้ — เชื่อเฉพาะสลิปที่อ่านได้ว่า "สำเร็จ" แล้วยอดแค่ไม่ตรง
-        $amount = $result['raw']['amount'] ?? null;
-
-        return [
-            'hold' => $hold,
-            'raw' => $result['raw'] ?? null,
-            'ocr_amount' => $reason === 'amount_mismatch' && is_numeric($amount) ? (float) $amount : null,
-        ];
-    }
-
-    /**
-     * ยอดเต็มของใบจอง ถ้ายอดในสลิปตรงกับยอดเต็ม — null เมื่อไม่ตรง หรือรอบนี้
-     * จ่ายเต็มไม่ได้
-     */
-    private function fullAmountPaid(Booking $booking, ?float $ocrAmount): ?float
-    {
-        if ($ocrAmount === null) {
-            return null;
-        }
-
-        try {
-            $full = $this->settlement->quote($booking, 'full');
-        } catch (PaymentNotAvailableException) {
-            return null;
-        }
-
-        return SlipOcrService::amountMatches($ocrAmount, $full) ? $full : null;
-    }
-
-    /**
-     * ค้าง booking ไว้ให้แอดมินตรวจสอบ — สถานะยังเป็น pending (ที่นั่งยังถูก hold และ
-     * timer ยกเลิกอัตโนมัติจะข้ามให้เพราะ slip_ocr_status ถูกตั้งค่าแล้ว) ไม่ยืนยันการจอง
-     * และไม่ส่งอีเมล/SMS "ยืนยันแล้ว" — แจ้งแอดมินให้ตรวจ และแจ้งลูกค้าว่ากำลังตรวจสอบ
-     */
-    private function holdForReview(Booking $booking, ?array $ocrRaw): void
-    {
-        $booking->update([
-            'slip_ocr_status' => SlipOcrService::STATUS_FAILED,
-            'slip_ocr_result' => $ocrRaw,
-        ]);
-
-        $this->notifyReviewAdmins($booking->booking_ref, 'amount_mismatch');
-
-        SmartNotification::send(
-            $booking->user_id,
-            'payment_under_review',
-            'กำลังตรวจสอบการชำระเงิน',
-            "ได้รับสลิปของการจอง {$booking->booking_ref} แล้ว ทีมงานกำลังตรวจสอบยอดโอนและจะยืนยันการจองให้โดยเร็ว",
-            ['booking_ref' => $booking->booking_ref, 'route' => 'booking'],
-        );
-    }
-
-    private function notifyReviewAdmins(string $bookingRef, string $reason): void
-    {
-        try {
-            User::role(['admin', 'operator'])->each(function (User $admin) use ($bookingRef, $reason) {
-                SmartNotification::send(
-                    $admin->id,
-                    'slip_ocr_failed',
-                    'สลิปต้องตรวจสอบ',
-                    "ยอดโอนไม่ตรงอัตโนมัติ: {$bookingRef} (สาเหตุ: {$reason}) กรุณาตรวจสอบและอนุมัติด้วยตนเอง",
-                    ['booking_ref' => $bookingRef, 'route' => 'admin.bookings'],
-                );
-            });
-        } catch (\Exception $e) {
-            Log::warning('notifySlipReviewAdmins failed — '.$e->getMessage());
-        }
     }
 }

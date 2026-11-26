@@ -8,6 +8,7 @@ use App\Models\GiftVoucherTransaction;
 use App\Models\SmartNotification;
 use App\Models\User;
 use App\Support\MediaDisk;
+use App\Support\SlipStatus;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,6 @@ use Illuminate\Support\Facades\Log;
 class GiftVoucherService
 {
     public function __construct(
-        private SlipOcrService $slipOcr,
         private PromptPayService $promptPay,
         private MailService $mail,
     ) {}
@@ -150,7 +150,7 @@ class GiftVoucherService
 
             $locked->update([
                 'slip_path' => $path,
-                'slip_ocr_status' => SlipOcrService::STATUS_PENDING,
+                'slip_ocr_status' => SlipStatus::PENDING,
                 'slip_ocr_result' => null,
                 'status' => GiftVoucher::STATUS_UNDER_REVIEW,
                 'payment_ref' => 'GVPAY-'.strtoupper(uniqid()),
@@ -164,17 +164,8 @@ class GiftVoucherService
             throw new \Exception('ได้รับสลิปของบัตรนี้แล้ว ทีมงานกำลังตรวจสอบอยู่ครับ');
         }
 
-        $result = $this->slipOcr->verify($path, (float) $claimed->amount);
-        $claimed->update([
-            'slip_ocr_status' => $result['status'],
-            'slip_ocr_result' => $result['raw'] ?? null,
-        ]);
-
-        if ($result['status'] === SlipOcrService::STATUS_VERIFIED) {
-            return $this->activate($claimed);
-        }
-
-        $this->notifyAdminsToReview($claimed, (string) ($result['reason'] ?? 'unknown'));
+        // ไม่มี OCR แล้ว — บัตรรอทีมงานตรวจยอดแล้วกดเปิดใช้ (/admin/gift-vouchers)
+        $this->notifyAdminsToReview($claimed);
 
         if ($claimed->purchaser_user_id) {
             SmartNotification::send(
@@ -210,7 +201,7 @@ class GiftVoucherService
                 'balance' => $locked->amount,
                 'paid_at' => now(),
                 'expires_at' => now()->addDays((int) config('gift_voucher.validity_days', 365)),
-                'slip_ocr_status' => $reviewer ? SlipOcrService::STATUS_APPROVED : $locked->slip_ocr_status,
+                'slip_ocr_status' => $reviewer ? SlipStatus::APPROVED : $locked->slip_ocr_status,
                 'reviewed_by_id' => $reviewer?->id,
                 'reviewed_at' => $reviewer ? now() : null,
                 'review_note' => $note,
@@ -241,7 +232,7 @@ class GiftVoucherService
 
             $locked->update([
                 'status' => GiftVoucher::STATUS_REJECTED,
-                'slip_ocr_status' => SlipOcrService::STATUS_REJECTED,
+                'slip_ocr_status' => SlipStatus::REJECTED,
                 'reviewed_by_id' => $reviewer->id,
                 'reviewed_at' => now(),
                 'review_note' => $note,
@@ -524,15 +515,15 @@ class GiftVoucherService
         $this->mail->sendGiftVoucherIssuedEmail($voucher);
     }
 
-    private function notifyAdminsToReview(GiftVoucher $voucher, string $reason): void
+    private function notifyAdminsToReview(GiftVoucher $voucher): void
     {
         try {
-            User::role(['admin', 'operator'])->each(function (User $admin) use ($voucher, $reason) {
+            User::role(['admin', 'operator'])->each(function (User $admin) use ($voucher) {
                 SmartNotification::send(
                     $admin->id,
                     'gift_voucher_slip_review',
-                    'สลิปบัตรของขวัญต้องตรวจสอบ',
-                    'บัตร '.$voucher->displayCode().' ฿'.number_format((float) $voucher->amount)." (สาเหตุ: {$reason}) กรุณาตรวจและอนุมัติ",
+                    'สลิปบัตรของขวัญรอตรวจสอบ',
+                    'บัตร '.$voucher->displayCode().' ฿'.number_format((float) $voucher->amount).' แนบสลิปแล้ว กรุณาตรวจยอดและเปิดใช้บัตร',
                     ['voucher_id' => $voucher->id, 'route' => 'admin.gift_vouchers'],
                 );
             });

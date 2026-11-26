@@ -16,8 +16,8 @@ use App\Models\User;
 use App\Services\BookingService;
 use App\Services\GiftVoucherService;
 use App\Services\ScheduleFinanceService;
-use App\Services\SlipOcrService;
 use App\Support\MediaDisk;
+use App\Support\SlipStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -47,17 +47,6 @@ class GiftVoucherTest extends TestCase
         $admin->assignRole('admin');
 
         return $admin;
-    }
-
-    private function fakeOcr(string $status, string $reason): void
-    {
-        $this->mock(SlipOcrService::class, function ($mock) use ($status, $reason) {
-            $mock->shouldReceive('verify')->andReturn([
-                'status' => $status,
-                'reason' => $reason,
-                'raw' => ['status' => 'success', 'amount' => 1000],
-            ]);
-        });
     }
 
     private function activeVoucher(array $overrides = []): GiftVoucher
@@ -165,16 +154,17 @@ class GiftVoucherTest extends TestCase
         $this->actingAs($buyer, 'sanctum')->postJson('/api/v1/gift-vouchers', ['amount' => 500, 'design' => 'pink'])->assertUnprocessable();
     }
 
-    public function test_a_slip_the_ocr_verifies_activates_the_voucher_immediately(): void
+    public function test_an_approved_slip_activates_the_voucher_and_sends_the_code(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_VERIFIED, 'auto_verified');
         $buyer = User::factory()->create(['email' => 'buyer@example.com']);
         $id = $this->actingAs($buyer, 'sanctum')->postJson('/api/v1/gift-vouchers', ['amount' => 1000])->json('data.voucher.id');
 
-        $response = $this->actingAs($buyer, 'sanctum')->post("/api/v1/gift-vouchers/{$id}/slip", [
+        $this->actingAs($buyer, 'sanctum')->post("/api/v1/gift-vouchers/{$id}/slip", [
             'slip_image' => UploadedFile::fake()->image('slip.jpg'),
-        ], ['Accept' => 'application/json'])->assertOk();
+        ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('data.status', 'under_review');
+        $this->actingAs($this->admin(), 'sanctum')->postJson("/api/v1/admin/gift-vouchers/{$id}/approve")->assertOk();
 
+        $response = $this->actingAs($buyer, 'sanctum')->getJson("/api/v1/gift-vouchers/{$id}")->assertOk();
         $response->assertJsonPath('data.status', 'active')
             ->assertJsonPath('data.balance', 1000);
         $this->assertNotNull($response->json('data.code'));
@@ -188,9 +178,8 @@ class GiftVoucherTest extends TestCase
         $this->assertDatabaseHas('smart_notifications', ['user_id' => $buyer->id, 'type' => 'gift_voucher_active']);
     }
 
-    public function test_an_unreadable_slip_waits_for_the_team_and_an_admin_can_approve_it(): void
+    public function test_a_slip_waits_for_the_team_and_an_admin_can_approve_it(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_FAILED, 'ocr_failed');
         $buyer = User::factory()->create();
         $admin = $this->admin();
         $id = $this->actingAs($buyer, 'sanctum')->postJson('/api/v1/gift-vouchers', ['amount' => 1000])->json('data.voucher.id');
@@ -221,12 +210,11 @@ class GiftVoucherTest extends TestCase
         // อนุมัติซ้ำไม่เติมยอดซ้ำ
         $this->actingAs($admin, 'sanctum')->postJson("/api/v1/admin/gift-vouchers/{$id}/approve")->assertUnprocessable();
         $this->assertSame(1, GiftVoucherTransaction::where('gift_voucher_id', $id)->where('type', 'purchase')->count());
-        $this->assertSame(SlipOcrService::STATUS_APPROVED, GiftVoucher::find($id)->slip_ocr_status);
+        $this->assertSame(SlipStatus::APPROVED, GiftVoucher::find($id)->slip_ocr_status);
     }
 
     public function test_a_rejected_slip_tells_the_buyer_and_can_be_sent_again(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_FAILED, 'amount_mismatch');
         $buyer = User::factory()->create();
         $admin = $this->admin();
         $id = $this->actingAs($buyer, 'sanctum')->postJson('/api/v1/gift-vouchers', ['amount' => 1000])->json('data.voucher.id');
@@ -267,7 +255,6 @@ class GiftVoucherTest extends TestCase
 
     public function test_buyer_can_cancel_an_unpaid_voucher_but_not_one_under_review(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_FAILED, 'ocr_failed');
         $buyer = User::factory()->create();
         $unpaid = $this->actingAs($buyer, 'sanctum')->postJson('/api/v1/gift-vouchers', ['amount' => 1000])->json('data.voucher.id');
         $sent = $this->actingAs($buyer, 'sanctum')->postJson('/api/v1/gift-vouchers', ['amount' => 1000])->json('data.voucher.id');
@@ -679,13 +666,13 @@ class GiftVoucherTest extends TestCase
 
     public function test_voucher_notifications_do_not_crash_without_fcm(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_VERIFIED, 'auto_verified');
         $buyer = User::factory()->create();
         $id = $this->actingAs($buyer, 'sanctum')->postJson('/api/v1/gift-vouchers', ['amount' => 1000, 'for_self' => true])->json('data.voucher.id');
 
         $this->actingAs($buyer, 'sanctum')->post("/api/v1/gift-vouchers/{$id}/slip", [
             'slip_image' => UploadedFile::fake()->image('slip.jpg'),
         ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('data.for_self', true);
+        $this->actingAs($this->admin(), 'sanctum')->postJson("/api/v1/admin/gift-vouchers/{$id}/approve")->assertOk();
 
         $this->assertSame(1, SmartNotification::where('type', 'gift_voucher_active')->count());
         $wallet = $this->actingAs($buyer, 'sanctum')->getJson('/api/v1/gift-vouchers')->json('data');

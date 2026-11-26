@@ -19,8 +19,8 @@ use App\Services\BeamPaymentService;
 use App\Services\BookingDocumentService;
 use App\Services\BookingService;
 use App\Services\IntakeBookingService;
-use App\Services\SlipOcrService;
 use App\Support\MediaDisk;
+use App\Support\SlipStatus;
 use App\Support\TripDocumentRequirements;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -559,20 +559,12 @@ class IntakeSelfBookingTest extends TestCase
         $this->assertNull($booking->balance_amount);
     }
 
-    public function test_a_full_amount_slip_sent_with_deposit_picked_is_recorded_as_paid_in_full(): void
+    public function test_a_slip_confirms_the_picked_plan_and_waits_for_the_team(): void
     {
         $intake = $this->completeGroup();
         $this->book($intake);
 
-        // ลูกค้าติ๊ก "มัดจำ" ค้างไว้ แต่โอนยอดเต็ม 7,000 มา
-        $this->mock(SlipOcrService::class, function ($mock) {
-            $mock->shouldReceive('verify')->andReturn([
-                'status' => SlipOcrService::STATUS_FAILED,
-                'reason' => 'amount_mismatch',
-                'raw' => ['status' => 'success', 'amount' => 7000],
-            ]);
-        });
-
+        // ไม่มี OCR แล้ว — บันทึกตามแผนที่ลูกค้าเลือก ทีมงานตรวจยอดตามหลัง
         $this->post("/g/{$intake->token}/pay", [
             'payment_type' => 'deposit',
             'slip_image' => UploadedFile::fake()->image('slip.jpg'),
@@ -580,32 +572,8 @@ class IntakeSelfBookingTest extends TestCase
 
         $booking = Booking::firstOrFail();
         $this->assertSame('confirmed', $booking->status);
-        $this->assertSame('full', $booking->payment_type);
-        $this->assertEquals(7000.0, (float) $booking->paid_amount);
-        $this->assertEquals(0.0, (float) $booking->balance_amount);
-    }
-
-    public function test_a_slip_matching_neither_deposit_nor_full_is_still_held(): void
-    {
-        $intake = $this->completeGroup();
-        $this->book($intake);
-
-        $this->mock(SlipOcrService::class, function ($mock) {
-            $mock->shouldReceive('verify')->andReturn([
-                'status' => SlipOcrService::STATUS_FAILED,
-                'reason' => 'amount_mismatch',
-                'raw' => ['status' => 'success', 'amount' => 4500],
-            ]);
-        });
-
-        $this->post("/g/{$intake->token}/pay", [
-            'payment_type' => 'deposit',
-            'slip_image' => UploadedFile::fake()->image('slip.jpg'),
-        ]);
-
-        $booking = Booking::firstOrFail();
-        $this->assertSame('pending', $booking->status);
-        $this->assertSame(SlipOcrService::STATUS_FAILED, $booking->slip_ocr_status);
+        $this->assertSame('deposit', $booking->payment_type);
+        $this->assertSame(SlipStatus::PENDING, $booking->slip_ocr_status);
     }
 
     public function test_the_picked_plan_is_the_value_sent_with_the_slip(): void
@@ -619,28 +587,6 @@ class IntakeSelfBookingTest extends TestCase
             ->assertSee('name="payment_type" form="intake-pay-form" value="full"', false)
             ->assertSee('name="payment_type" form="intake-pay-form" value="deposit"', false)
             ->assertDontSee('type="hidden" name="payment_type"', false);
-    }
-
-    public function test_a_slip_whose_amount_does_not_match_is_held_for_the_team(): void
-    {
-        $intake = $this->completeGroup();
-        $this->book($intake);
-
-        // OCR อ่านได้ว่ายอดไม่ตรง — กติกา "กันกลาง" เดียวกับแอป
-        $this->mock(SlipOcrService::class, function ($mock) {
-            $mock->shouldReceive('verify')->andReturn(['reason' => 'amount_mismatch', 'raw' => ['amount' => 10]]);
-        });
-
-        $this->post("/g/{$intake->token}/pay", [
-            'payment_type' => 'full',
-            'slip_image' => UploadedFile::fake()->image('slip.jpg'),
-        ]);
-
-        $booking = Booking::firstOrFail();
-        $this->assertSame('pending', $booking->status);
-        $this->assertNotNull($booking->slip_ocr_status);
-
-        $this->get("/g/{$intake->token}/pay")->assertOk()->assertSee('กำลังตรวจสอบยอดโอน');
     }
 
     public function test_an_admin_held_booking_pulled_from_the_group_can_be_paid_from_the_group_link(): void

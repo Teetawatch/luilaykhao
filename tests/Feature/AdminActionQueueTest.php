@@ -8,7 +8,7 @@ use App\Models\SosAlert;
 use App\Models\Trip;
 use App\Models\TripSchedule;
 use App\Models\User;
-use App\Services\SlipOcrService;
+use App\Support\SlipStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -93,7 +93,7 @@ class AdminActionQueueTest extends TestCase
         $schedule = $this->makeSchedule();
 
         // สลิปที่ OCR อ่านไม่ผ่าน — ต้องมีคนเปิดดูรูปเอง
-        $this->makeBooking($schedule, ['slip_ocr_status' => SlipOcrService::STATUS_FAILED]);
+        $this->makeBooking($schedule, ['slip_ocr_status' => SlipStatus::FAILED]);
         // คำขอจุดรับใหม่รออนุมัติ
         $this->makeBooking($schedule, [
             'custom_pickup_status' => Booking::CUSTOM_PICKUP_PENDING,
@@ -129,7 +129,7 @@ class AdminActionQueueTest extends TestCase
     public function test_resolved_and_approved_work_drops_out_of_the_queue(): void
     {
         $schedule = $this->makeSchedule();
-        $this->makeBooking($schedule, ['slip_ocr_status' => SlipOcrService::STATUS_APPROVED]);
+        $this->makeBooking($schedule, ['slip_ocr_status' => SlipStatus::APPROVED]);
         $this->makeBooking($schedule, ['custom_pickup_status' => Booking::CUSTOM_PICKUP_APPROVED]);
         Contact::create([
             'name' => 'อ่านแล้ว', 'phone' => '0800000000',
@@ -147,7 +147,7 @@ class AdminActionQueueTest extends TestCase
     public function test_each_group_carries_a_preview_and_a_link_to_where_it_is_handled(): void
     {
         $schedule = $this->makeSchedule();
-        $booking = $this->makeBooking($schedule, ['slip_ocr_status' => SlipOcrService::STATUS_FAILED]);
+        $booking = $this->makeBooking($schedule, ['slip_ocr_status' => SlipStatus::FAILED]);
 
         $payload = $this->actingAs($this->admin, 'sanctum')
             ->getJson('/api/v1/admin/action-queue')

@@ -14,6 +14,7 @@ use App\Models\StayRoomType;
 use App\Models\User;
 use App\Support\MediaDisk;
 use App\Support\PaymentGateway;
+use App\Support\SlipStatus;
 use App\Support\ThaiDate;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonPeriod;
@@ -42,7 +43,6 @@ class StayBookingService
 
     public function __construct(
         private StayAvailabilityService $availability,
-        private SlipOcrService $slipOcr,
         private PromptPayService $promptPay,
     ) {}
 
@@ -198,7 +198,7 @@ class StayBookingService
 
             $locked->update([
                 'slip_path' => $path,
-                'slip_ocr_status' => SlipOcrService::STATUS_PENDING,
+                'slip_ocr_status' => SlipStatus::PENDING,
                 'slip_ocr_result' => null,
                 'status' => StayBooking::STATUS_PAYMENT_REVIEW,
                 'payment_ref' => 'STPAY-'.strtoupper(uniqid()),
@@ -213,19 +213,10 @@ class StayBookingService
             throw new \Exception('ได้รับสลิปแล้ว ทีมงานกำลังตรวจสอบอยู่ครับ');
         }
 
-        $result = $this->slipOcr->verify($path, (float) $claimed->total_amount);
-        $claimed->update([
-            'slip_ocr_status' => $result['status'],
-            'slip_ocr_result' => $result['raw'] ?? null,
-        ]);
-
-        if ($result['status'] === SlipOcrService::STATUS_VERIFIED) {
-            return $this->confirmPayment($claimed);
-        }
-
+        // ไม่มี OCR แล้ว — รอทีมงานตรวจยอดแล้วยืนยัน (/admin/stay-bookings)
         $claimed->loadMissing('stay');
-        $this->notifyTeam($claimed, 'stay_slip_review', 'สลิปค่าที่พักต้องตรวจสอบ',
-            "{$claimed->ref} · {$claimed->stay->name} ฿".number_format((float) $claimed->total_amount).' (สาเหตุ: '.($result['reason'] ?? 'unknown').')');
+        $this->notifyTeam($claimed, 'stay_slip_review', 'สลิปค่าที่พักรอตรวจสอบ',
+            "{$claimed->ref} · {$claimed->stay->name} ฿".number_format((float) $claimed->total_amount).' แนบสลิปแล้ว กรุณาตรวจยอดและยืนยัน');
         $this->notifyCustomer($claimed, 'stay_payment_review', 'ได้รับสลิปค่าที่พักแล้ว',
             'ทีมงานกำลังตรวจยอดโอน จะยืนยันห้องให้เร็วที่สุดครับ');
 
@@ -420,7 +411,7 @@ class StayBookingService
                 'paid_at' => now(),
                 'paid_amount' => $gateway['paid_amount'] ?? $locked->total_amount,
                 'payment_reviewed_by_id' => $reviewer?->id,
-                'slip_ocr_status' => $reviewer ? SlipOcrService::STATUS_APPROVED : $locked->slip_ocr_status,
+                'slip_ocr_status' => $reviewer ? SlipStatus::APPROVED : $locked->slip_ocr_status,
                 'payment_method' => $gateway['payment_method'] ?? $locked->payment_method ?? 'promptpay',
                 'payment_ref' => $gateway['payment_ref'] ?? $locked->payment_ref,
             ]);
@@ -454,7 +445,7 @@ class StayBookingService
 
             $locked->update([
                 'status' => StayBooking::STATUS_AWAITING_PAYMENT,
-                'slip_ocr_status' => SlipOcrService::STATUS_REJECTED,
+                'slip_ocr_status' => SlipStatus::REJECTED,
                 'payment_reviewed_by_id' => $reviewer->id,
                 'payment_note' => mb_substr($note, 0, 300),
                 'payment_due_at' => now()->addHours((int) config('stays.request_payment_hours', 24)),

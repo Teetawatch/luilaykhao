@@ -2235,8 +2235,8 @@ function closeSlip() {
 
 function ocrLabel(status) {
   const labels = {
-    pending: '⏳ กำลังตรวจสอบ',
-    verified: '✅ ผ่านอัตโนมัติ',
+    pending: '⏳ รอตรวจยอด',
+    verified: '✅ ผ่านอัตโนมัติ (เดิม)',
     failed: '❌ ต้องตรวจสอบ',
     manually_approved: '✅ อนุมัติแล้ว',
     rejected: '🚫 ปฏิเสธแล้ว',

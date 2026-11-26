@@ -675,7 +675,6 @@ Route::prefix('v1')->group(function () {
         Route::post('payments/charge-installment', [PaymentController::class, 'chargeInstallment'])->middleware('throttle:payment');
         Route::post('payments/charge-balance', [PaymentController::class, 'chargeBalance'])->middleware('throttle:payment');
         Route::post('payments/charge-extra', [PaymentController::class, 'chargeExtra'])->middleware('throttle:payment');
-        Route::post('payments/scan-slip', [PaymentController::class, 'scanSlip'])->middleware('throttle:slip-scan');
 
         // Beam Checkout — ออก QR/ลิงก์จ่าย แล้วให้ webhook เป็นคนยืนยันการจอง
         // ต้องประกาศก่อน payments/{booking_ref} ไม่งั้น 'beam' จะถูกอ่านเป็นเลขการจอง
@@ -1114,7 +1113,6 @@ Route::prefix('v1')->group(function () {
         Route::post('bookings/{ref}/trip-brief', [AdminController::class, 'sendTripBrief']);
         Route::post('bookings/{ref}/slip/approve', [AdminController::class, 'approveSlip']);
         Route::post('bookings/{ref}/slip/reject', [AdminController::class, 'rejectSlip']);
-        Route::post('bookings/{ref}/slip/reverify', [AdminController::class, 'reverifySlip']);
         Route::get('schedules/{id}/manifest', [AdminController::class, 'manifest']);
 
         // On-trip incident reports (accident / injury) — ops view + close case

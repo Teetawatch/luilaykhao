@@ -127,7 +127,7 @@ class ClaudeJson
      * ถ้าส่งไป จึงต้องคัดออกก่อน
      *
      * เทียบเป็น prefix เพราะ config อาจใส่ชื่อเต็มพร้อมวันที่ (เช่น
-     * claude-haiku-4-5-20251001) แบบเดียวกับที่ SlipOcrService ใช้
+     * claude-haiku-4-5-20251001)
      */
     public static function supportsEffort(string $model): bool
     {

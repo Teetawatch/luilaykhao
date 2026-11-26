@@ -17,7 +17,6 @@ use App\Services\PaymentNotAvailableException;
 use App\Services\PromptPayService;
 use App\Services\QrCodeService;
 use App\Services\SlipChargeService;
-use App\Services\SlipOcrService;
 use App\Support\MediaDisk;
 use App\Support\PaymentQuote;
 use App\Traits\ApiResponse;
@@ -97,13 +96,6 @@ class PaymentController extends Controller
                     ? (int) $request->input('installment_count')
                     : null,
             ]);
-
-            if ($result['status'] === 'pending_review') {
-                return $this->success([
-                    'status' => 'pending_review',
-                    'booking' => new BookingResource($result['booking']->load(['seats', 'schedule.trip', 'passengers'])),
-                ], 'ได้รับสลิปแล้ว — อยู่ระหว่างตรวจสอบยอดโอน ทีมงานจะยืนยันการจองให้เร็วที่สุด');
-            }
 
             $booking = $booking->fresh()->load(match ($paymentType) {
                 'installment' => ['seats', 'installmentPayments'],
@@ -497,30 +489,5 @@ class PaymentController extends Controller
                 'paid_at' => $ip->paid_at?->toISOString(),
             ]),
         ]);
-    }
-
-    /**
-     * Read a freshly attached slip and return the transfer date/time so the
-     * payment form can auto-fill them. Best-effort: a failed read is not an
-     * error the customer needs to act on — they can still type it manually.
-     */
-    public function scanSlip(Request $request, SlipOcrService $ocrService): JsonResponse
-    {
-        $request->validate([
-            'slip_image' => ['required', 'image', 'max:5120'],
-        ]);
-
-        $result = $ocrService->scan($request->file('slip_image'));
-
-        if ($result === null || ($result['date'] === null && $result['time'] === null)) {
-            return $this->error('ไม่สามารถอ่านวันที่และเวลาจากสลิปได้ กรุณากรอกเอง', 422);
-        }
-
-        return $this->success([
-            'date' => $result['date'],
-            'time' => $result['time'],
-            'amount' => $result['amount'],
-            'bank' => $result['bank'],
-        ], 'อ่านข้อมูลจากสลิปสำเร็จ');
     }
 }

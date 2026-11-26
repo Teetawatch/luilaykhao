@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
-use App\Jobs\VerifySlipJob;
+use App\Jobs\NotifySlipReviewJob;
 use App\Models\Booking;
 use App\Models\BookingExtraPayment;
 use App\Models\SmartNotification;
+use App\Support\SlipStatus;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * ใช้ร่วมกันระหว่างทางแนบสลิป (PaymentController::chargeExtra) และ Beam
  * (BeamPaymentService::settle) — ทั้งสองทางต้องให้ผลเหมือนกันเป๊ะ
  *
- * เหมือนยอดคงเหลือของมัดจำ: ลง paid_amount ทันที แล้วให้ VerifySlipJob อ่านสลิป
+ * เหมือนยอดคงเหลือของมัดจำ: ลง paid_amount ทันที แล้วแจ้งทีมงานให้ตรวจสลิป (NotifySlipReviewJob)
  * ตามหลัง ยอดไม่ตรงค่อยเตือนแอดมิน ไม่กันลูกค้าไว้ระหว่างรอ
  */
 class ExtraPaymentService
@@ -47,13 +48,13 @@ class ExtraPaymentService
                 'payment_ref' => 'PAY-EXT-'.strtoupper(uniqid()),
                 'slip_path' => $slipPath,
                 'transfer_datetime' => $transferDt,
-                'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+                'slip_ocr_status' => $slipPath ? SlipStatus::PENDING : null,
                 'paid_at' => now(),
             ]);
         });
 
         if ($slipPath) {
-            VerifySlipJob::dispatch('extra', $payment->id, $slipPath, $amount);
+            NotifySlipReviewJob::dispatch("ยอดเพิ่มเติมของ {$booking->booking_ref}", $booking->booking_ref);
         }
 
         // อุปกรณ์ที่ลูกค้าสั่งเช่าเองจ่ายผ่านยอดเพิ่มเติม — ปิดก้อนที่รอจ่ายเมื่อไม่ค้างแล้ว

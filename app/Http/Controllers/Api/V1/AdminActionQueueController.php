@@ -17,8 +17,8 @@ use App\Services\RefundService;
 use App\Services\ScheduleFinanceService;
 use App\Services\SeatLayoutGuard;
 use App\Services\ShoppingListService;
-use App\Services\SlipOcrService;
 use App\Services\VehicleLocationService;
+use App\Support\SlipStatus;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -39,7 +39,7 @@ class AdminActionQueueController extends Controller
     use ApiResponse;
 
     /** สลิปที่ต้องให้คนตรวจ — OCR อ่านไม่ผ่านหรือยังอ่านไม่เสร็จ */
-    private const SLIP_NEEDS_REVIEW = [SlipOcrService::STATUS_PENDING, SlipOcrService::STATUS_FAILED];
+    private const SLIP_NEEDS_REVIEW = [SlipStatus::PENDING, SlipStatus::FAILED];
 
     public function index(): JsonResponse
     {

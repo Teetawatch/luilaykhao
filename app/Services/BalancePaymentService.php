@@ -2,9 +2,10 @@
 
 namespace App\Services;
 
-use App\Jobs\VerifySlipJob;
+use App\Jobs\NotifySlipReviewJob;
 use App\Models\Booking;
 use App\Models\SmartNotification;
+use App\Support\SlipStatus;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -47,12 +48,12 @@ class BalancePaymentService
                 'balance_payment_ref' => $paymentRef,
                 'balance_slip_path' => $slipPath,
                 'balance_transfer_datetime' => $transferDt,
-                'balance_slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+                'balance_slip_ocr_status' => $slipPath ? SlipStatus::PENDING : null,
             ]);
         });
 
         if ($slipPath) {
-            VerifySlipJob::dispatch('balance', $booking->id, $slipPath, $balanceAmount);
+            NotifySlipReviewJob::dispatch("ยอดคงเหลือของ {$booking->booking_ref}", $booking->booking_ref);
         }
 
         $fresh = $booking->fresh()->load(['seats', 'schedule.trip', 'passengers']);

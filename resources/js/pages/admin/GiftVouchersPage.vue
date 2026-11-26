@@ -133,8 +133,8 @@
             <img :src="detail.slip_url" alt="สลิป" />
           </a>
           <div class="slip-ocr">
-            <b>ผลอ่านสลิปอัตโนมัติ</b>
-            <span>สถานะ: {{ detail.slip_ocr_status || '-' }}</span>
+            <b>{{ detail.slip_ocr ? 'ผลอ่านสลิปอัตโนมัติ (เดิม)' : 'ตรวจยอดโอนจากรูปสลิป' }}</b>
+            <span>สถานะ: {{ detail.slip_ocr_status === 'pending' ? 'รอตรวจยอด' : (detail.slip_ocr_status || '-') }}</span>
             <span v-if="detail.slip_ocr">ยอดที่อ่านได้: {{ detail.slip_ocr.amount != null ? '฿' + money(detail.slip_ocr.amount) : '-' }}</span>
             <span v-if="detail.slip_ocr?.bank">ธนาคาร: {{ detail.slip_ocr.bank }}</span>
             <span v-if="detail.slip_ocr?.date">โอนเมื่อ: {{ detail.slip_ocr.date }} {{ detail.slip_ocr.time || '' }}</span>

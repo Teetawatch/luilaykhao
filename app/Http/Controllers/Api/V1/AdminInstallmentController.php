@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Models\TripSchedule;
-use App\Services\SlipOcrService;
 use App\Support\MediaDisk;
+use App\Support\SlipStatus;
 use App\Traits\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -243,8 +243,8 @@ class AdminInstallmentController extends Controller
             'slip_ocr' => $this->ocrDetail($ocrResult, (float) $installment->amount),
             // สลิปที่ OCR ยังไม่ผ่าน/ยังไม่ตรวจ = งานที่รอแอดมินตัดสินใจด้วยตา
             'needs_review' => (bool) $slipPath && in_array($ocrStatus, [
-                SlipOcrService::STATUS_PENDING,
-                SlipOcrService::STATUS_FAILED,
+                SlipStatus::PENDING,
+                SlipStatus::FAILED,
                 null,
             ], true),
         ];

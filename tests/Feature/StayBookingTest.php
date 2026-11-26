@@ -10,9 +10,9 @@ use App\Models\StayExperience;
 use App\Models\StayRoomType;
 use App\Models\Trip;
 use App\Models\User;
-use App\Services\SlipOcrService;
 use App\Services\StayBookingService;
 use App\Support\MediaDisk;
+use App\Support\SlipStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -104,11 +104,13 @@ class StayBookingTest extends TestCase
         return $this->actingAs($user, 'sanctum')->postJson("/api/v1/stays/{$stay->slug}/bookings", $payload);
     }
 
-    private function fakeOcr(string $status): void
+    /** ลูกค้าแนบสลิป แล้วทีมงานตรวจยอดและยืนยัน (ไม่มี OCR ตรวจให้แล้ว) */
+    private function paySlip(User $user, string $ref): void
     {
-        $this->mock(SlipOcrService::class, function ($mock) use ($status) {
-            $mock->shouldReceive('verify')->andReturn(['status' => $status, 'reason' => 'test', 'raw' => ['amount' => 1]]);
-        });
+        $this->slip($user, $ref)->assertOk()->assertJsonPath('data.status', StayBooking::STATUS_PAYMENT_REVIEW);
+        $this->actingAs($this->admin(), 'sanctum')
+            ->postJson("/api/v1/admin/stay-bookings/{$ref}/confirm-payment")
+            ->assertOk();
     }
 
     private function slip(User $user, string $ref)
@@ -211,9 +213,8 @@ class StayBookingTest extends TestCase
         $this->assertSame(StayBooking::STATUS_EXPIRED, StayBooking::where('ref', $first->json('data.ref'))->value('status'));
     }
 
-    public function test_verified_slip_confirms_and_tells_host(): void
+    public function test_confirmed_slip_opens_host_contact_and_tells_host(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_VERIFIED);
         $host = User::factory()->create();
         $stay = $this->stay(['host_user_id' => $host->id]);
         $room = $this->room($stay);
@@ -228,16 +229,17 @@ class StayBookingTest extends TestCase
         $this->actingAs($user, 'sanctum')->getJson("/api/v1/stay-bookings/{$ref}/payment")
             ->assertOk()->assertJsonPath('data.amount', 2000);
 
-        $this->slip($user, $ref)->assertOk()->assertJsonPath('data.status', StayBooking::STATUS_CONFIRMED)
+        $this->paySlip($user, $ref);
+        $this->actingAs($user, 'sanctum')->getJson("/api/v1/stay-bookings/{$ref}")
+            ->assertJsonPath('data.status', StayBooking::STATUS_CONFIRMED)
             ->assertJsonPath('data.stay.host_phone', '0811111111');
 
         $this->assertTrue(SmartNotification::where('user_id', $host->id)->where('type', 'stay_host_new_booking')->exists());
         $this->assertTrue(SmartNotification::where('user_id', $user->id)->where('type', 'stay_booking_confirmed')->exists());
     }
 
-    public function test_unreadable_slip_waits_for_admin_who_can_approve_or_reject(): void
+    public function test_a_slip_waits_for_admin_who_can_approve_or_reject(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_FAILED);
         $admin = $this->admin();
         $stay = $this->stay();
         $room = $this->room($stay);
@@ -253,7 +255,7 @@ class StayBookingTest extends TestCase
         $this->slip($user, $ref)->assertOk();
         $this->actingAs($admin, 'sanctum')->postJson("/api/v1/admin/stay-bookings/{$ref}/confirm-payment")
             ->assertOk()->assertJsonPath('data.status', StayBooking::STATUS_CONFIRMED)
-            ->assertJsonPath('data.slip_ocr_status', SlipOcrService::STATUS_APPROVED);
+            ->assertJsonPath('data.slip_ocr_status', SlipStatus::APPROVED);
     }
 
     // ── ส่งคำขอ + หน้าเจ้าของ ─────────────────────────────────────────
@@ -352,14 +354,13 @@ class StayBookingTest extends TestCase
 
     public function test_customer_cancel_refunds_by_policy_and_needs_account(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_VERIFIED);
         $stay = $this->stay(['cancellation_policy' => 'moderate']);
         $room = $this->room($stay);
         $user = User::factory()->create();
         // 4 วันก่อนเข้าพัก = moderate คืน 50%
         $in = now('Asia/Bangkok')->startOfDay()->addDays(4);
         $ref = $this->book($user, $stay, $this->payload($room, $in, 1))->json('data.ref');
-        $this->slip($user, $ref)->assertOk();
+        $this->paySlip($user, $ref);
         $total = (float) StayBooking::where('ref', $ref)->value('total_amount');
 
         $preview = $this->actingAs($user, 'sanctum')->getJson("/api/v1/stay-bookings/{$ref}/cancel-preview")->assertOk();
@@ -390,13 +391,12 @@ class StayBookingTest extends TestCase
 
     public function test_staff_cancel_refunds_in_full_and_host_gets_nothing(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_VERIFIED);
         $admin = $this->admin();
         $stay = $this->stay();
         $room = $this->room($stay);
         $user = User::factory()->create();
         $ref = $this->book($user, $stay, $this->payload($room, $this->monday()))->json('data.ref');
-        $this->slip($user, $ref);
+        $this->paySlip($user, $ref);
 
         $this->actingAs($admin, 'sanctum')->postJson("/api/v1/admin/stay-bookings/{$ref}/cancel", ['reason' => 'น้ำป่าไหลหลาก'])
             ->assertOk()
@@ -413,7 +413,6 @@ class StayBookingTest extends TestCase
 
     public function test_finished_stay_completes_invites_review_and_pays_host(): void
     {
-        $this->fakeOcr(SlipOcrService::STATUS_VERIFIED);
         $admin = $this->admin();
         $admin->assignRole('finance');
         $host = User::factory()->create();
@@ -422,7 +421,7 @@ class StayBookingTest extends TestCase
         $user = User::factory()->create();
         $in = $this->monday(1);
         $ref = $this->book($user, $stay, $this->payload($room, $in))->json('data.ref');
-        $this->slip($user, $ref);
+        $this->paySlip($user, $ref);
 
         // รีวิวก่อนเข้าพักไม่ได้
         $this->actingAs($user, 'sanctum')->postJson("/api/v1/stay-bookings/{$ref}/review", ['rating' => 5])->assertStatus(422);

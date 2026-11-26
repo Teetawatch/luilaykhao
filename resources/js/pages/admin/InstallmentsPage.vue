@@ -276,9 +276,6 @@
                               class="btn-danger compact xs"
                               @click.stop="rejectSlip(row, inst)"
                             >ปฏิเสธ</button>
-                            <button class="btn-secondary compact xs" @click.stop="reverifySlip(row, inst)">
-                              ตรวจสลิปใหม่
-                            </button>
                           </div>
                         </div>
 
@@ -371,7 +368,7 @@ const summaryCards = computed(() => [
     tone: 'tone-amber',
     value: summary.value.needs_review_bookings ?? 0,
     label: 'มีสลิปรอตรวจ',
-    hint: 'OCR ยังไม่ผ่านหรือยังไม่ได้ตรวจ',
+    hint: 'แนบสลิปแล้ว ทีมงานยังไม่ได้ตรวจยอด',
   },
   {
     filter: 'completed',
@@ -484,19 +481,6 @@ async function rejectSlip(row, inst) {
   }
 }
 
-async function reverifySlip(row, inst) {
-  try {
-    await api.post(`/admin/bookings/${row.booking_ref}/slip/reverify`, {
-      slip_type: 'installment',
-      installment_no: inst.installment_no,
-    });
-    toast.info('ส่งสลิปเข้าคิวตรวจใหม่แล้ว');
-    await refreshRow(row.booking_ref);
-  } catch (e) {
-    toast.error(e.response?.data?.message || 'ส่งตรวจสลิปใหม่ไม่สำเร็จ');
-  }
-}
-
 async function sendPaymentLink(row) {
   const ok = await swal.confirm({
     title: 'ส่งลิงก์ชำระค่างวด?',
@@ -573,8 +557,8 @@ function methodLabel(method) {
 
 function ocrLabel(status) {
   return {
-    pending: '⏳ กำลังตรวจสอบ',
-    verified: '✅ ผ่านอัตโนมัติ',
+    pending: '⏳ รอตรวจยอด',
+    verified: '✅ ผ่านอัตโนมัติ (เดิม)',
     failed: '❌ ต้องตรวจสอบ',
     manually_approved: '✅ อนุมัติด้วยตนเอง',
     rejected: '🚫 ปฏิเสธแล้ว',

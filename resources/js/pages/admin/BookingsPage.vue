@@ -696,11 +696,6 @@
                   class="btn-danger compact"
                   @click="rejectSlip(detailBooking.booking_ref, 'main')"
                 >ปฏิเสธ</button>
-                <button
-                  v-if="['failed','rejected'].includes(detailBooking.slip_ocr_status)"
-                  class="btn-secondary compact"
-                  @click="reverifySlip(detailBooking.booking_ref, 'main')"
-                >ตรวจสอบใหม่</button>
               </div>
             </div>
 
@@ -4564,11 +4559,11 @@ onMounted(() => {
   fetchData();
 });
 
-// ── Slip OCR ──────────────────────────────────────────────────────
+// ── สลิป (ไม่มี OCR แล้ว — ทีมงานตรวจเองทุกใบ; verified/failed เป็นผลเดิมของแถวเก่า) ──
 function ocrLabel(status) {
   const labels = {
-    pending: '⏳ กำลังตรวจสอบ',
-    verified: '✅ ผ่านอัตโนมัติ',
+    pending: '⏳ รอตรวจยอด',
+    verified: '✅ ผ่านอัตโนมัติ (เดิม)',
     failed: '❌ ต้องตรวจสอบ',
     manually_approved: '✅ อนุมัติแล้ว',
     rejected: '🚫 ปฏิเสธแล้ว',
@@ -4600,16 +4595,6 @@ async function rejectSlip(bookingRef, slipType, installmentNo = null) {
     toast.success('ปฏิเสธสลิปแล้ว');
   } catch (e) {
     toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการปฏิเสธสลิป');
-  }
-}
-
-async function reverifySlip(bookingRef, slipType) {
-  try {
-    await api.post(`/admin/bookings/${bookingRef}/slip/reverify`, { slip_type: slipType });
-    await openDetail({ booking_ref: bookingRef });
-    toast.info('ส่งสลิปตรวจสอบใหม่แล้ว');
-  } catch (e) {
-    toast.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการตรวจสอบสลิป');
   }
 }
 </script>

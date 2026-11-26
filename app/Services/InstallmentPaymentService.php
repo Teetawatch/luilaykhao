@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
-use App\Jobs\VerifySlipJob;
+use App\Jobs\NotifySlipReviewJob;
 use App\Models\Booking;
 use App\Models\InstallmentPayment;
 use App\Models\SmartNotification;
+use App\Support\SlipStatus;
 
 /**
  * Logic การชำระค่างวดถัดไป ใช้ร่วมกันระหว่าง PaymentController (ในแอป)
@@ -48,11 +49,11 @@ class InstallmentPaymentService
             'paid_at' => now(),
             'slip_path' => $slipPath,
             'transfer_datetime' => $transferDt,
-            'slip_ocr_status' => $slipPath ? SlipOcrService::STATUS_PENDING : null,
+            'slip_ocr_status' => $slipPath ? SlipStatus::PENDING : null,
         ]);
 
         if ($slipPath) {
-            VerifySlipJob::dispatch('installment', $installment->id, $slipPath, (float) $installment->amount);
+            NotifySlipReviewJob::dispatch("งวดที่ {$installment->installment_no} ของ {$booking->booking_ref}", $booking->booking_ref);
         }
 
         $totalPaid = (float) $booking->paid_amount + (float) $installment->amount;

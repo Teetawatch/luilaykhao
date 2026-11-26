@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\VerifySlipJob;
+use App\Jobs\NotifySlipReviewJob;
 use App\Models\Booking;
 use App\Models\BookingMember;
 use App\Models\BookingPassenger;
@@ -235,7 +235,7 @@ class SplitPaymentTest extends TestCase
         $this->assertEquals(2000.0, (float) $booking->balance_amount);
         $this->assertNull($booking->balance_paid_at);
 
-        Queue::assertPushed(VerifySlipJob::class);
+        Queue::assertPushed(NotifySlipReviewJob::class);
 
         // เจ้าของได้รับแจ้งว่ามีคนจ่าย
         $this->assertDatabaseHas('smart_notifications', [
@@ -469,7 +469,7 @@ class SplitPaymentTest extends TestCase
         $share->refresh();
         $this->assertTrue($share->isPaid());
         Storage::disk(MediaDisk::slipDisk())->assertExists($share->slip_path);
-        Queue::assertPushed(VerifySlipJob::class);
+        Queue::assertPushed(NotifySlipReviewJob::class);
 
         // เปิดซ้ำเห็นหน้าชำระแล้ว
         $this->get('/pay-share/'.$share->pay_token)

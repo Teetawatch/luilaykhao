@@ -82,7 +82,7 @@ class OutstandingPaymentService
             $dueDate = $next->due_date?->toDateString();
             $installmentNo = $next->installment_no;
             $label = "งวดที่ {$next->installment_no}/{$booking->installment_count}";
-            // สลิปถูกแนบแล้วแต่ยังไม่ผ่านการตรวจ (VerifySlipJob ทำงานแบบ async)
+            // สลิปถูกแนบแล้วแต่ทีมงานยังไม่ได้ตรวจยอด
             // สตาฟหน้างานต้องเห็นสถานะนี้ ไม่งั้นจะทวงซ้ำคนที่เพิ่งจ่ายไป
             $slipPending = filled($next->slip_path);
 

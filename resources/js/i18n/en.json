@@ -2842,5 +2842,7 @@
   "ใช้ได้กับทุกแอปธนาคารที่รองรับพร้อมเพย์": "Works with any banking app that supports PromptPay",
   "ใช้ได้อีก {time}": "Valid for {time}",
   "ข้อความต้นฉบับ · ดูคำแปล": "Original · See translation",
-  "แปลอัตโนมัติ · ดูต้นฉบับ": "Auto-translated · See original"
+  "แปลอัตโนมัติ · ดูต้นฉบับ": "Auto-translated · See original",
+  "แนบสลิปแล้ว": "Slip attached",
+  "กดปุ่มยืนยันด้านล่าง ทีมงานจะตรวจยอดโอนให้": "Tap confirm below — our team will check the transfer"
 }

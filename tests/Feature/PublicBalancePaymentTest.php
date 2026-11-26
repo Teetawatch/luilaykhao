@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\VerifySlipJob;
+use App\Jobs\NotifySlipReviewJob;
 use App\Models\Booking;
 use App\Models\BookingPassenger;
 use App\Models\Trip;
@@ -72,7 +72,7 @@ class PublicBalancePaymentTest extends TestCase
             ->assertSee('data:image/svg+xml');
     }
 
-    public function test_public_submit_settles_balance_and_dispatches_ocr(): void
+    public function test_public_submit_settles_balance_and_asks_staff_to_check_the_slip(): void
     {
         Mail::fake();
         Queue::fake();
@@ -94,7 +94,7 @@ class PublicBalancePaymentTest extends TestCase
         $this->assertNotNull($booking->balance_slip_path);
         Storage::disk(MediaDisk::slipDisk())->assertExists($booking->balance_slip_path);
 
-        Queue::assertPushed(VerifySlipJob::class);
+        Queue::assertPushed(NotifySlipReviewJob::class);
 
         // หลังจ่ายครบ หน้าแสดงสถานะชำระครบ
         $this->get('/pay/'.$token)->assertOk()->assertSee('ชำระครบแล้ว');

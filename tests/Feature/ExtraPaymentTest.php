@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\VerifySlipJob;
+use App\Jobs\NotifySlipReviewJob;
 use App\Models\Booking;
 use App\Models\BookingExtraPayment;
 use App\Models\BookingPassenger;
@@ -249,7 +249,7 @@ class ExtraPaymentTest extends TestCase
         $payment = BookingExtraPayment::where('booking_id', $booking->id)->sole();
         $this->assertEquals(600.0, (float) $payment->amount);
         $this->assertNotNull($payment->slip_path);
-        Queue::assertPushed(VerifySlipJob::class);
+        Queue::assertPushed(NotifySlipReviewJob::class);
     }
 
     public function test_the_amount_comes_from_the_server_not_the_client(): void
