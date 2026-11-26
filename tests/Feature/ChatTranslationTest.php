@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 class ChatTranslationTest extends TestCase
@@ -331,5 +332,22 @@ class ChatTranslationTest extends TestCase
         $this->actingAs($this->member($schedule), 'sanctum')
             ->postJson($this->url($message), ['lang' => 'en'])
             ->assertOk();
+    }
+
+    public function test_a_momentary_overload_is_retried_once(): void
+    {
+        Sleep::fake();
+        $schedule = $this->makeSchedule();
+        $message = $this->message($schedule, User::factory()->create());
+        Http::fake(['api.anthropic.com/*' => Http::sequence()
+            ->push(['error' => 'overloaded'], 529)
+            ->push($this->answer('Van leaves at 5.'))]);
+
+        $this->actingAs($this->member($schedule), 'sanctum')
+            ->postJson($this->url($message), ['lang' => 'en'])
+            ->assertOk()
+            ->assertJsonPath('data.text', 'Van leaves at 5.');
+
+        Http::assertSentCount(2);
     }
 }

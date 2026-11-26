@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
  * แปลข้อความแชท — ใช้ร่วมกันสามแบบ (KINDS): ห้องรวมของทริป, แชทส่วนตัวกับ
@@ -633,15 +634,18 @@ PROMPT;
                 context: 'ChatTranslation',
                 onUsage: fn (array $usage, string $model) => app(ChatTranslationMeter::class)->record($model, $usage),
             );
-        } catch (\Exception) {
+        } catch (\Exception $e) {
             // ClaudeJson พูดถึง "ผู้ช่วย" — ในแชทผู้ใช้กดแปล ไม่ได้ถามผู้ช่วย
-            throw new \Exception('แปลไม่สำเร็จ ลองใหม่อีกครั้งในสักครู่');
+            // (สาเหตุจริงอยู่ใน log "ChatTranslation: …" และใน getPrevious())
+            throw new \Exception('แปลไม่สำเร็จ ลองใหม่อีกครั้งในสักครู่', 0, $e);
         }
 
         $translation = trim((string) ($answer['translation'] ?? ''));
         $same = (bool) ($answer['same_language'] ?? false);
 
         if ($translation === '' && ! $same) {
+            Log::warning('ChatTranslation: empty translation', ['lang' => $lang, 'answer' => $answer]);
+
             throw new \Exception('แปลไม่สำเร็จ ลองใหม่อีกครั้งในสักครู่');
         }
 

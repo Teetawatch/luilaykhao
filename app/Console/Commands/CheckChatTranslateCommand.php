@@ -64,7 +64,8 @@ class CheckChatTranslateCommand extends Command
                     $this->line("  <info>→ {$lang}</info>     {$text}");
                 } catch (\Throwable $e) {
                     $failed++;
-                    $this->line("  <error>→ {$lang} ✗</error>   {$e->getMessage()}");
+                    $cause = $e->getPrevious()?->getMessage();
+                    $this->line("  <error>→ {$lang} ✗</error>   {$e->getMessage()}".($cause ? "  <fg=gray>({$cause})</>" : ''));
                 }
             }
             $this->line('');
@@ -74,7 +75,7 @@ class CheckChatTranslateCommand extends Command
         $this->line(sprintf('  ค่าใช้จ่ายรอบนี้ ≈ ฿%s (นับเข้างบเดือนแล้ว)', number_format($spentThb, 4)));
 
         if ($failed > 0) {
-            $this->error("✗ แปลไม่สำเร็จ {$failed} ครั้ง — ดูรายละเอียดใน storage/logs (ChatTranslation)");
+            $this->error("✗ แปลไม่สำเร็จ {$failed} ครั้ง — สาเหตุจริง: grep 'ChatTranslation' storage/logs/laravel*.log | tail -20");
 
             return self::FAILURE;
         }

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -61,7 +63,12 @@ class ClaudeJson
         }
 
         try {
+            // 429 / 529 (overloaded) / 5xx / เน็ตหลุด มักหายในครู่เดียว — ลองซ้ำอีกครั้ง
+            // ก่อนยอมแพ้ (Anthropic ไม่คิดเงินคำขอที่ตอบ error) 400 ไม่ลองซ้ำ
             $response = Http::timeout(60)
+                ->retry(2, 800, fn ($e) => $e instanceof ConnectionException
+                    || ($e instanceof RequestException && ($e->response->status() === 429 || $e->response->serverError())),
+                    throw: false)
                 ->withHeaders([
                     'x-api-key' => $apiKey,
                     'anthropic-version' => '2023-06-01',
@@ -95,6 +102,8 @@ class ClaudeJson
 
         // safety classifier ปฏิเสธคำถาม — ต้องเช็คก่อนอ่าน content เพราะ content ว่าง
         if ($response->json('stop_reason') === 'refusal') {
+            Log::warning("{$context}: refused", ['stop_details' => $response->json('stop_details')]);
+
             throw new \Exception('ขอโทษครับ คำถามนี้ผู้ช่วยตอบให้ไม่ได้ ลองถามเรื่องทริปแทนนะครับ');
         }
 
@@ -104,7 +113,8 @@ class ClaudeJson
         $parsed = json_decode($text, true);
 
         if (! is_array($parsed)) {
-            Log::warning("{$context}: unparseable response", ['text' => $text]);
+            // stop_reason = max_tokens แปลว่าคิด/ตอบยาวจนชนเพดานก่อนปิด JSON
+            Log::warning("{$context}: unparseable response", ['stop_reason' => $response->json('stop_reason'), 'text' => $text]);
 
             throw new \Exception('ตอนนี้ผู้ช่วยตอบไม่ได้ ลองใหม่อีกครั้งในสักครู่');
         }
