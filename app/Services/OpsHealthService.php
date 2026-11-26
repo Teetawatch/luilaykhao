@@ -140,6 +140,7 @@ class OpsHealthService
         $checks[] = $this->logSizeCheck();
         $checks[] = $this->smsCheck();
         $checks[] = $this->mapsBudgetCheck();
+        $checks[] = $this->chatTranslateBudgetCheck();
         $checks[] = $this->realtimeCheck();
         $checks[] = $this->heartbeatCheck();
         $checks[] = $this->alertingCheck();
@@ -393,6 +394,38 @@ class OpsHealthService
         }
 
         return $this->result('maps_budget', $label, self::OK, $detail);
+    }
+
+    /**
+     * งบค่าแปลแชทเดือนนี้ (config/chat_translation.php) — ถึง auto_stop_percent
+     * แปลอัตโนมัติหยุดเอง ครบเพดานปุ่มกดแปลก็หยุด เตือนก่อนถึงตาม alert_percent
+     */
+    private function chatTranslateBudgetCheck(): array
+    {
+        $label = 'งบค่าแปลแชท (Claude)';
+
+        if (blank(config('services.anthropic.key'))) {
+            return $this->result('chat_translate_budget', $label, self::OK, 'ไม่ได้ตั้งคีย์ — ไม่มีการแปล ไม่มีค่าใช้จ่าย');
+        }
+
+        $meter = app(ChatTranslationMeter::class);
+        $percent = $meter->percentOfCap();
+        $detail = sprintf('ใช้ไป %s/%s บาท (%s%%) ของเดือนนี้', number_format($meter->monthSpendThb(), 2), number_format($meter->capThb()), $percent);
+
+        if ($percent >= 100) {
+            return $this->result('chat_translate_budget', $label, self::FAIL, $detail.' — ครบเพดานแล้ว แปลอัตโนมัติและปุ่มกดแปลหยุดจนขึ้นเดือนใหม่');
+        }
+        if ($meter->autoPaused()) {
+            return $this->result('chat_translate_budget', $label, self::FAIL, $detail.' — พักแปลอัตโนมัติแล้ว (ปุ่มกดแปลยังใช้ได้) เพิ่มเพดานได้ที่ CHAT_TRANSLATE_MONTHLY_CAP_THB');
+        }
+        if ($percent >= (int) config('chat_translation.alert_percent', 80)) {
+            return $this->result('chat_translate_budget', $label, self::FAIL, $detail.' — ใกล้ถึงเกณฑ์พักแปลอัตโนมัติ ตรวจหน้าแอดมิน "แชทช่วยเหลือ"');
+        }
+        if ($percent >= 50) {
+            return $this->result('chat_translate_budget', $label, self::WARN, $detail);
+        }
+
+        return $this->result('chat_translate_budget', $label, self::OK, $detail);
     }
 
     private function realtimeCheck(): array

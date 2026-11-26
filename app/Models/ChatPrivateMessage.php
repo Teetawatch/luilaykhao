@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\MediaDisk;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * ข้อความในเธรดถามทีมงานแบบส่วนตัว — ตัวอักษร รูป หรือเสียง (อย่างใดอย่างหนึ่ง)
@@ -35,6 +36,12 @@ class ChatPrivateMessage extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** คำแปลอัตโนมัติ ภาษาละแถว — ดู ChatTranslationService */
+    public function translations(): MorphMany
+    {
+        return $this->morphMany(ConversationMessageTranslation::class, 'translatable');
     }
 
     public function getImageUrlAttribute(): ?string

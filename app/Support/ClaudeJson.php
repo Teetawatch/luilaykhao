@@ -33,6 +33,7 @@ class ClaudeJson
         string $effort = 'low',
         int $maxTokens = 2048,
         string $context = 'ClaudeJson',
+        ?callable $onUsage = null,
     ): array {
         $payload = [
             'model' => $model,
@@ -82,6 +83,16 @@ class ClaudeJson
             throw new \Exception('ตอนนี้ผู้ช่วยตอบไม่ได้ ลองใหม่อีกครั้งในสักครู่');
         }
 
+        // คำตอบที่สำเร็จคิดเงินเสมอ (รวมที่ถูกปฏิเสธ/อ่าน JSON ไม่ออก) — ให้ผู้เรียก
+        // ที่ต้องคุมงบ (ChatTranslationMeter) นับก่อนจะ throw ด้านล่าง
+        if ($onUsage !== null && is_array($response->json('usage'))) {
+            try {
+                $onUsage($response->json('usage'), (string) ($response->json('model') ?: $model));
+            } catch (\Throwable $e) {
+                Log::warning("{$context}: usage callback failed", ['message' => $e->getMessage()]);
+            }
+        }
+
         // safety classifier ปฏิเสธคำถาม — ต้องเช็คก่อนอ่าน content เพราะ content ว่าง
         if ($response->json('stop_reason') === 'refusal') {
             throw new \Exception('ขอโทษครับ คำถามนี้ผู้ช่วยตอบให้ไม่ได้ ลองถามเรื่องทริปแทนนะครับ');
@@ -113,6 +124,9 @@ class ClaudeJson
         foreach ([
             'claude-opus-5', 'claude-opus-4-5', 'claude-opus-4-6', 'claude-opus-4-7', 'claude-opus-4-8',
             'claude-sonnet-4-6', 'claude-sonnet-5', 'claude-fable-5',
+            // Haiku 5.x คิดก่อนตอบเป็นค่าเริ่มต้น (effort medium) — ต้องส่ง effort
+            // ไปเอง ไม่งั้นงานสั้น ๆ อย่างแปลข้อความเสียค่า thinking โดยไม่จำเป็น
+            'claude-haiku-5',
         ] as $prefix) {
             if (str_starts_with($model, $prefix)) {
                 return true;

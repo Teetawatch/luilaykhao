@@ -2840,5 +2840,7 @@
   "แสดง QR ชำระ ฿{money}": "Show QR · pay ฿{money}",
   "แอปธนาคาร": "Banking app",
   "ใช้ได้กับทุกแอปธนาคารที่รองรับพร้อมเพย์": "Works with any banking app that supports PromptPay",
-  "ใช้ได้อีก {time}": "Valid for {time}"
+  "ใช้ได้อีก {time}": "Valid for {time}",
+  "ข้อความต้นฉบับ · ดูคำแปล": "Original · See translation",
+  "แปลอัตโนมัติ · ดูต้นฉบับ": "Auto-translated · See original"
 }

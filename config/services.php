@@ -128,7 +128,14 @@ return [
         // ผูกกับเงินและกำหนดการจริงของลูกค้า ตอบผิดแล้วเสียหายกว่าการแนะนำทริปผิด
         'assistant_model' => env('ANTHROPIC_ASSISTANT_MODEL', 'claude-opus-5'),
         // รุ่นที่ใช้แปลข้อความแชท (กดแปลทีละข้อความ) — haiku พอและเร็ว ผู้ใช้รอดูผลอยู่
-        'translate_model' => env('ANTHROPIC_TRANSLATE_MODEL', 'claude-haiku-4-5'),
+        // Haiku 5.5 ถูกกว่า 4.5 ราว 10 เท่า ($0.10/$0.50 ต่อล้าน token) — ClaudeJson ส่ง
+        // effort low ให้เอง งบเดือนอยู่ที่ config/chat_translation.php
+        'translate_model' => env('ANTHROPIC_TRANSLATE_MODEL', 'claude-haiku-5-5'),
+        // แชททริปแปลอัตโนมัติ (แบบ Grab) — ห้องที่มีคนอ่านภาษาอื่นนอกจากไทยเท่านั้น
+        // ที่แปล phpunit ปิดไว้ เทสต์แชทอื่นจะได้ไม่ยิงงานแปล
+        'chat_auto_translate' => (bool) env('CHAT_AUTO_TRANSLATE', true),
+        // เพดานเรียกโมเดลของการแปลอัตโนมัติต่อห้องต่อวัน เกินแล้วกลับไปกดแปลเอง
+        'chat_auto_translate_daily_per_room' => (int) env('CHAT_AUTO_TRANSLATE_DAILY_PER_ROOM', 500),
         // รุ่นที่แปลเนื้อหาทริป/จุดรับ/หมวดหมู่ตอนแอดมินบันทึก (งานในคิว ไม่มีใครรอ)
         // — haiku แปลข้อความท่องเที่ยวได้ดีและถูก ทริปหนึ่งไม่ถึงบาทต่อการแปล
         'content_translate_model' => env('ANTHROPIC_CONTENT_TRANSLATE_MODEL', 'claude-haiku-4-5'),

@@ -45,6 +45,8 @@ class User extends Authenticatable
             'hiking_baseline_updated_at' => 'datetime',
             'marketing_push_enabled' => 'boolean',
             'public_profile_enabled' => 'boolean',
+            // แชทแปลอัตโนมัติ — ปิดแล้วห้องไม่แปลเผื่อคนนี้ (ยังกดแปลทีละข้อความได้)
+            'chat_auto_translate' => 'boolean',
             'is_shadow' => 'boolean',
             'claim_token_sent_at' => 'datetime',
             // วันที่ LINE ตอบว่าส่งหาคนนี้ไม่ได้ (บล็อก OA / ยังไม่ได้เพิ่มเพื่อน)

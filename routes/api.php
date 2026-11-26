@@ -520,6 +520,8 @@ Route::prefix('v1')->group(function () {
         Route::delete('schedules/{id}/chat/messages/{messageId}/pin', [ChatController::class, 'unpin']);
         Route::post('schedules/{id}/chat/messages/{messageId}/react', [ChatController::class, 'react']);
         Route::post('schedules/{id}/chat/messages/{messageId}/translate', [ChatTranslationController::class, 'store'])->middleware('throttle:chat-translate');
+        Route::post('schedules/{id}/chat/translations', [ChatTranslationController::class, 'batch'])->middleware('throttle:chat-translate-batch');
+        Route::put('me/chat-translation', [ChatTranslationController::class, 'settings'])->middleware('throttle:30,1');
         Route::post('schedules/{id}/chat/messages/{messageId}/ack-request', [ChatAckController::class, 'request']);
         Route::delete('schedules/{id}/chat/messages/{messageId}/ack-request', [ChatAckController::class, 'cancel']);
         Route::post('schedules/{id}/chat/messages/{messageId}/ack', [ChatAckController::class, 'ack'])->middleware('throttle:60,1');
@@ -561,6 +563,7 @@ Route::prefix('v1')->group(function () {
         Route::post('schedules/{id}/chat/private/messages', [ChatPrivateController::class, 'store'])->middleware('throttle:chat');
         Route::delete('schedules/{id}/chat/private/messages/{messageId}', [ChatPrivateController::class, 'destroy']);
         Route::post('schedules/{id}/chat/private/read', [ChatPrivateController::class, 'read'])->middleware('throttle:60,1');
+        Route::post('schedules/{id}/chat/private/translations', [ChatPrivateController::class, 'translations'])->middleware('throttle:chat-translate-batch');
 
         Route::get('schedules/{id}/chat/supplies', [ChatSupplyController::class, 'index']);
         Route::post('schedules/{id}/chat/supplies', [ChatSupplyController::class, 'store'])->middleware('throttle:20,1');
@@ -641,6 +644,7 @@ Route::prefix('v1')->group(function () {
         Route::post('support/messages', [SupportController::class, 'send'])->middleware('throttle:chat');
         Route::post('support/read', [SupportController::class, 'markRead']);
         Route::get('support/unread-count', [SupportController::class, 'unreadCount']);
+        Route::post('support/translations', [SupportController::class, 'translations'])->middleware('throttle:chat-translate-batch');
 
         // Operator announcements per schedule. Read side is open to any member;
         // write side is gated to staff/operators inside the controller (canModerate),
@@ -960,11 +964,14 @@ Route::prefix('v1')->group(function () {
         // ศูนย์ช่วยเหลือ — กล่องข้อความรวมของทีมงาน
         Route::get('support/conversations', [SupportController::class, 'adminIndex']);
         Route::get('support/conversations/unread-count', [SupportController::class, 'adminUnreadTotal']);
+        // งบค่าแปลแชทเดือนนี้ (ทุกแชท) — การ์ดบนหน้า /admin/support
+        Route::get('support/translation-usage', [SupportController::class, 'adminTranslationUsage']);
         Route::get('support/conversations/{id}', [SupportController::class, 'adminShow']);
         Route::post('support/conversations/{id}/read', [SupportController::class, 'adminMarkRead']);
         Route::post('support/conversations/{id}/messages', [SupportController::class, 'adminReply'])->middleware('throttle:chat');
         Route::post('support/conversations/{id}/close', [SupportController::class, 'adminClose']);
         Route::post('support/conversations/{id}/reopen', [SupportController::class, 'adminReopen']);
+        Route::post('support/conversations/{id}/translations', [SupportController::class, 'adminTranslations'])->middleware('throttle:chat-translate-batch');
 
         // Trips CRUD
         Route::get('trips', [AdminController::class, 'trips']);

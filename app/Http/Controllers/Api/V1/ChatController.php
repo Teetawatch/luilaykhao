@@ -29,6 +29,7 @@ use App\Services\ChatRestStopService;
 use App\Services\ChatService;
 use App\Services\ChatSupplyService;
 use App\Services\ChatTodoService;
+use App\Services\ChatTranslationService;
 use App\Services\ContentFilterService;
 use App\Services\ModerationService;
 use App\Services\PickupPromptService;
@@ -197,6 +198,7 @@ class ChatController extends Controller
             'dropoffRound',
             'wellnessCheck.answers',
             'porterRound.bags',
+            'translations',
         ];
     }
 
@@ -284,6 +286,8 @@ class ChatController extends Controller
         // ประกาศที่ต้องกดรับทราบเด้งแบบมีเสียงถึงทุกคนที่ไม่ได้ปิดห้อง (เหมือนโหวต)
         SendChatPushJob::dispatch($message->id, $user->id, $mentions, $requestAck);
         $this->queueAutoAnswer($message);
+        // ห้องที่มีคนอ่านภาษาอื่น — แปลไว้ให้ก่อนที่เขาจะเห็น (ห้องไทยล้วนไม่ทำอะไร)
+        app(ChatTranslationService::class)->queueFor($message);
 
         return $this->success($this->chatService->presentMessage($message, $user->id), 'ส่งข้อความสำเร็จ', 201);
     }
@@ -864,6 +868,13 @@ class ChatController extends Controller
             // ลูกค้าต่างชาติ: ป้าย "ทีมงานพูดไทย" + ชี้ปุ่มแปล (ทีมงานเองไม่ต้องเห็น)
             'staff_speak_thai_note' => ! $this->chatService->canModerate($user, $schedule)
                 && $this->chatService->viewerLikelyForeign($user, $schedule),
+            // แปลอัตโนมัติ: ภาษาที่คนนี้อ่าน (เลือกเองหรือที่เซิร์ฟเวอร์เดา) + เปิด/ปิด
+            'auto_translate' => [
+                'available' => ChatTranslationService::autoEnabled(),
+                'enabled' => $user->chat_auto_translate !== false,
+                'lang' => app(ChatTranslationService::class)->preferredLanguage($user, $schedule),
+                'chosen' => isset(ChatTranslationService::LANGUAGES[(string) $user->chat_translate_lang]),
+            ],
             // คำขอแวะห้องน้ำ: ตัวเลขรวม (ทีมงานใช้ขึ้นแถบ) + ฉันขอค้างอยู่ไหม — ไม่มีชื่อใคร
             'stop_requests' => $this->restStops->requestSummary($schedule),
             'my_stop_request' => $this->restStops->hasPendingRequest($user, $schedule),

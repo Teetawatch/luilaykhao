@@ -172,6 +172,18 @@ return Application::configure(basePath: dirname(__DIR__))
             ];
         });
 
+        // ขอคำแปลอัตโนมัติของข้อความที่กำลังแสดง (ทีละ ≤50, แปลจริงทีละ ≤30) —
+        // แอปเรียกตอนเปิดห้อง/เลื่อนขึ้น/ข้อความใหม่ที่ยังไม่มีคำแปล ค่า API ยังติด
+        // โควตาห้องต่อวันอีกชั้น
+        RateLimiter::for('chat-translate-batch', function (Request $request) {
+            $key = 'chat-translate-batch:'.($request->user()?->id ?? $request->ip());
+
+            return [
+                Limit::perMinute(20)->by($key.':m'),
+                Limit::perDay(600)->by($key.':d'),
+            ];
+        });
+
         // General API — fallback สำหรับ public endpoints
         RateLimiter::for('api', function (Request $request) {
             return $request->user()

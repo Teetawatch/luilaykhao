@@ -24,6 +24,9 @@ class ChatPrivateSignal implements ShouldBroadcast
 
     public const READ = 'chat.private.read';
 
+    /** คำแปลอัตโนมัติของข้อความพร้อมแล้ว {message_id, body, translations} */
+    public const TRANSLATED = 'chat.private.translated';
+
     /**
      * @param  array<string, mixed>  $payload
      */

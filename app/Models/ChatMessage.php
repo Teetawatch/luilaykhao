@@ -119,6 +119,12 @@ class ChatMessage extends Model
         return $this->belongsTo(User::class, 'ack_requested_by_id');
     }
 
+    /** คำแปลของข้อความนี้ ภาษาละแถว — ดู ChatTranslationService */
+    public function translations(): HasMany
+    {
+        return $this->hasMany(ChatMessageTranslation::class, 'message_id');
+    }
+
     public function reactions(): HasMany
     {
         return $this->hasMany(ChatReaction::class, 'message_id');

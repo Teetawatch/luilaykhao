@@ -6,6 +6,7 @@ use App\Events\ChatPrivateSignal;
 use App\Jobs\SendChatPushJob;
 use App\Models\ChatPrivateMessage;
 use App\Models\ChatPrivateThread;
+use App\Models\ConversationMessageTranslation;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Support\MediaDisk;
@@ -109,6 +110,9 @@ class ChatPrivateService
 
         $this->notify($message, $thread, $schedule, $customer, $sender);
 
+        // อีกฝั่งอ่านภาษาอื่น (ลูกทริปต่างชาติ ↔ ทีมงานไทย) — แปลให้ในคิว
+        app(ChatTranslationService::class)->queueFor($message);
+
         return $message;
     }
 
@@ -120,7 +124,7 @@ class ChatPrivateService
     public function messages(ChatPrivateThread $thread, ?int $viewerId, int $beforeId = 0, int $afterId = 0, int $perPage = 30): array
     {
         $query = ChatPrivateMessage::where('thread_id', $thread->id)
-            ->with('user:id,name,nickname,avatar');
+            ->with(['user:id,name,nickname,avatar', 'translations']);
 
         if ($afterId > 0) {
             $rows = $query->where('id', '>', $afterId)->orderBy('id')->limit($perPage)->get();
@@ -183,6 +187,9 @@ class ChatPrivateService
             'audio_path' => null,
             'audio_duration_ms' => null,
         ])->save();
+
+        // คำแปลคือเนื้อหาเดิมอีกภาษา — ลบข้อความแล้วต้องไม่เหลือค้าง
+        app(ChatTranslationService::class)->forget($message);
 
         $thread = $message->thread;
 
@@ -340,6 +347,8 @@ class ChatPrivateService
             'is_mine' => $viewerId !== null && (int) $message->user_id === $viewerId,
             'is_deleted' => $deleted,
             'user' => $message->user ? $this->person($message->user) : null,
+            // คำแปลอัตโนมัติ {lang: {text, source_lang}} (เฉพาะเมื่อ eager load มา)
+            'translations' => app(ChatTranslationService::class)->presentTranslations($message),
             'created_at' => $message->created_at?->toISOString(),
         ];
     }
@@ -395,6 +404,9 @@ class ChatPrivateService
             Log::warning('ChatPrivateService: ลบไฟล์ของเธรดส่วนตัวไม่สำเร็จ', ['error' => $e->getMessage()]);
         }
 
+        ConversationMessageTranslation::where('translatable_type', (new ChatPrivateMessage)->getMorphClass())
+            ->whereIn('translatable_id', ChatPrivateMessage::whereIn('thread_id', $threadIds)->select('id'))
+            ->delete();
         ChatPrivateMessage::whereIn('thread_id', $threadIds)->delete();
         ChatPrivateThread::whereIn('id', $threadIds)->delete();
 

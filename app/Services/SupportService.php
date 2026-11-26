@@ -127,6 +127,8 @@ class SupportService
             'image_url' => $message->image_url,
             'created_at' => $message->created_at?->toISOString(),
             'is_mine' => $viewerRole !== null && $message->sender_role === $viewerRole,
+            // คำแปลอัตโนมัติ {lang: {text, source_lang}} (เฉพาะเมื่อ eager load มา)
+            'translations' => app(ChatTranslationService::class)->presentTranslations($message),
             'sender' => $message->sender_role === 'system' || ! $author ? null : [
                 'id' => $author->id,
                 'name' => $author->name,

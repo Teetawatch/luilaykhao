@@ -8,11 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendSupportPushJob;
 use App\Models\SupportConversation;
 use App\Models\SupportMessage;
+use App\Services\ChatTranslationMeter;
+use App\Services\ChatTranslationService;
 use App\Services\SupportService;
 use App\Support\MediaDisk;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * ศูนย์ช่วยเหลือในแอป (async support inbox)
@@ -25,6 +28,7 @@ class SupportController extends Controller
 
     public function __construct(
         private SupportService $support,
+        private ChatTranslationService $translations,
     ) {}
 
     // ───────────────────────── ฝั่งลูกค้า ─────────────────────────
@@ -206,6 +210,8 @@ class SupportController extends Controller
         broadcast(new SupportInboxUpdated($conversation->fresh()));
 
         SendSupportPushJob::dispatch($message->id);
+        // ลูกค้าต่างชาติ ↔ ทีมงานไทย — แปลให้ในคิว (ลูกค้าอ่านไทยก็ไม่ทำอะไร)
+        $this->translations->queueFor($message);
 
         return $message;
     }
@@ -221,7 +227,7 @@ class SupportController extends Controller
 
         if ($afterId > 0) {
             $messages = $conversation->messages()
-                ->with('user:id,name,nickname,avatar')
+                ->with(['user:id,name,nickname,avatar', 'translations'])
                 ->where('id', '>', $afterId)
                 ->orderBy('id')
                 ->limit($perPage)
@@ -234,7 +240,7 @@ class SupportController extends Controller
         }
 
         $messages = $conversation->messages()
-            ->with('user:id,name,nickname,avatar')
+            ->with(['user:id,name,nickname,avatar', 'translations'])
             ->when($beforeId > 0, fn ($q) => $q->where('id', '<', $beforeId))
             ->orderByDesc('id')
             ->limit($perPage)
@@ -257,6 +263,7 @@ class SupportController extends Controller
             'unread_count' => $viewerRole === 'admin'
                 ? $this->support->unreadForAdmin($conversation)
                 : $this->support->unreadForCustomer($conversation),
+            'auto_translate' => $this->autoTranslateMeta($conversation, $viewerRole),
         ];
 
         if ($withUser) {
@@ -272,6 +279,74 @@ class SupportController extends Controller
         }
 
         return $meta;
+    }
+
+    /**
+     * แปลอัตโนมัติของห้องนี้ — ลูกค้า: ภาษาที่เขาอ่าน, ทีมงาน: ไทยเสมอ (หน้าแอดมิน
+     * เป็นภาษาไทย) พร้อมภาษาของลูกค้าให้รู้ว่ากำลังคุยกับใคร
+     */
+    private function autoTranslateMeta(SupportConversation $conversation, string $viewerRole): array
+    {
+        $customer = $conversation->relationLoaded('user') ? $conversation->user : $conversation->user()->first();
+        $customerLang = $customer ? $this->translations->preferredLanguage($customer) : 'th';
+
+        if ($viewerRole === 'admin') {
+            return [
+                'available' => ChatTranslationService::autoEnabled(),
+                'enabled' => true,
+                'lang' => 'th',
+                'customer_lang' => $customerLang,
+            ];
+        }
+
+        return [
+            'available' => ChatTranslationService::autoEnabled(),
+            'enabled' => $customer?->chat_auto_translate !== false,
+            'lang' => $customerLang,
+            'chosen' => isset(ChatTranslationService::LANGUAGES[(string) $customer?->chat_translate_lang]),
+        ];
+    }
+
+    /** คำแปลของข้อความที่ลูกค้ากำลังแสดง (ดู ChatTranslationService::backlogFrom) */
+    public function translations(Request $request): JsonResponse
+    {
+        $conversation = $this->support->conversationFor($request->user());
+
+        return $this->backlog($request, $conversation);
+    }
+
+    /** ค่าแปลแชทเดือนนี้เทียบเพดาน (ห้องรวม + แชทส่วนตัว + ซัพพอร์ต) */
+    public function adminTranslationUsage(ChatTranslationMeter $meter): JsonResponse
+    {
+        return $this->success($meter->summary());
+    }
+
+    /** คำแปลของข้อความที่ทีมงานกำลังแสดง */
+    public function adminTranslations(Request $request, int $conversationId): JsonResponse
+    {
+        return $this->backlog($request, SupportConversation::findOrFail($conversationId));
+    }
+
+    private function backlog(Request $request, SupportConversation $conversation): JsonResponse
+    {
+        $validated = $request->validate([
+            'lang' => ['required', 'string', Rule::in(array_keys(ChatTranslationService::LANGUAGES))],
+            'message_ids' => ['required', 'array', 'max:50'],
+            'message_ids.*' => ['integer'],
+        ]);
+
+        $result = $this->translations->backlogFrom(
+            SupportMessage::where('conversation_id', $conversation->id),
+            'support',
+            $validated['lang'],
+            array_values(array_unique(array_map('intval', $validated['message_ids']))),
+        );
+
+        return $this->success([
+            'lang' => $validated['lang'],
+            'translations' => (object) $result['translations'],
+            'pending' => $result['pending'],
+        ]);
     }
 
     private function adminSummary(SupportConversation $conversation): array

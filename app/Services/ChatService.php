@@ -456,6 +456,9 @@ class ChatService
         $message->load(['user', 'replyTo.user', 'reactions']);
         broadcast(new ChatMessageUpdated($message));
 
+        // เนื้อหาใหม่ต้องแปลใหม่ — คำแปลเก่าไม่ตรง hash แล้วจึงไม่ถูกส่งออกไปอีก
+        app(ChatTranslationService::class)->queueFor($message);
+
         return $message;
     }
 
@@ -684,6 +687,9 @@ class ChatService
             // "รับทราบ" ใต้ประกาศ — null = ไม่ได้ขอ
             'ack' => app(ChatAckService::class)->present($message, $currentUserId),
             'is_pinned' => $message->pinned_at !== null,
+            // คำแปลอัตโนมัติที่มีแล้ว {lang: {text, source_lang}} — แอปหยิบภาษาของตัวเอง
+            // (เฉพาะเมื่อ eager load มา; ข้อความที่ยังไม่แปลได้ทีหลังทาง chat.message.translated)
+            'translations' => app(ChatTranslationService::class)->presentTranslations($message),
             'created_at' => $message->created_at?->toISOString(),
         ];
     }

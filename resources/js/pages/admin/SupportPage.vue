@@ -9,6 +9,24 @@
         </button>
       </div>
 
+      <!-- งบค่าแปลแชทเดือนนี้ (ห้องรวม + แชทส่วนตัว + ซัพพอร์ต) -->
+      <div
+        v-if="translateUsage"
+        class="translate-usage"
+        :class="{ warn: translateUsage.percent >= 80, paused: translateUsage.auto_paused }"
+        :title="`เพดาน ${translateUsage.cap_thb.toLocaleString()} บาท/เดือน · ถึง ${translateUsage.auto_stop_percent}% พักแปลอัตโนมัติ · ครบ 100% ปุ่มกดแปลหยุด · ใช้คำแปลซ้ำ ${translateUsage.reused.toLocaleString()} ครั้ง (ไม่เสียเงิน)`"
+      >
+        <div class="translate-usage-row">
+          <span><i class="fas fa-language"></i> ค่าแปลแชทเดือนนี้</span>
+          <strong>฿{{ formatThb(translateUsage.spent_thb) }} / {{ translateUsage.cap_thb.toLocaleString() }}</strong>
+        </div>
+        <div class="translate-usage-bar"><span :style="{ width: Math.min(100, translateUsage.percent) + '%' }"></span></div>
+        <div class="translate-usage-note">
+          <template v-if="translateUsage.auto_paused">พักแปลอัตโนมัติแล้ว (ปุ่มกดแปลยังใช้ได้จนครบเพดาน)</template>
+          <template v-else>วันนี้ ฿{{ formatThb(translateUsage.today_thb) }} · แปล {{ translateUsage.calls.toLocaleString() }} ครั้ง · ใช้ซ้ำ {{ translateUsage.reused.toLocaleString() }}</template>
+        </div>
+      </div>
+
       <div class="sidebar-search">
         <i class="fas fa-search"></i>
         <input v-model="search" type="text" placeholder="ค้นหาชื่อลูกค้า..." />
@@ -87,6 +105,9 @@
                 <span v-if="activeConv?.user?.phone"><i class="fas fa-phone"></i> {{ activeConv.user.phone }}</span>
                 <span v-if="activeConv?.user?.email"> · <i class="fas fa-envelope"></i> {{ activeConv.user.email }}</span>
               </span>
+              <span v-if="customerLangLabel" class="lang-pill" title="ข้อความของลูกค้าแสดงเป็นภาษาไทยให้แล้ว ตอบเป็นภาษาไทยได้เลย ระบบแปลให้ลูกค้าเอง">
+                <i class="fas fa-language"></i> ลูกค้าอ่าน{{ customerLangLabel }} · ตอบเป็นไทยได้เลย ระบบแปลให้
+              </span>
             </div>
           </div>
           <div class="header-actions">
@@ -122,7 +143,16 @@
                   <div v-if="m.image_url" class="msg-image" @click="lightbox = m.image_url">
                     <img :src="m.image_url" alt="รูปภาพ" />
                   </div>
-                  <div v-if="m.body" class="msg-body">{{ m.body }}</div>
+                  <div v-if="m.body" class="msg-body">{{ translator.display(m) }}</div>
+                  <button
+                    v-if="m.body && translator.translationOf(m)"
+                    type="button"
+                    class="msg-translated"
+                    @click="translator.toggle(m.id)"
+                  >
+                    <i class="fas fa-language"></i>
+                    {{ translator.state.original[m.id] ? 'ข้อความต้นฉบับ · ดูคำแปล' : 'แปลอัตโนมัติ · ดูต้นฉบับ' }}
+                  </button>
                   <div class="msg-time">{{ formatTime(m.created_at) }}</div>
                 </div>
               </div>
@@ -169,6 +199,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../../lib/axios';
+import { useChatAutoTranslate } from '../../lib/chatAutoTranslate';
 
 const conversations = ref([]);
 const loadingList = ref(false);
@@ -188,6 +219,32 @@ const imagePreview = ref(null);
 const lightbox = ref(null);
 let currentChannel = null;
 let listRefreshTimer = null;
+
+// แปลอัตโนมัติ — ทีมงานอ่านทุกข้อความของลูกค้าเป็นภาษาไทย (ลูกค้าต่างชาติ)
+const translator = useChatAutoTranslate({
+  messages,
+  isMine: (m) => m.sender_role === 'admin',
+  fetch: async (lang, ids) => {
+    const res = await api.post(`/admin/support/conversations/${activeId.value}/translations`, { lang, message_ids: ids });
+    return res.data.data;
+  },
+});
+
+const translateUsage = ref(null);
+async function loadTranslateUsage() {
+  try {
+    const res = await api.get('/admin/support/translation-usage');
+    translateUsage.value = res.data.data;
+  } catch {
+    translateUsage.value = null; // ไม่สำคัญต่อการตอบลูกค้า — ไม่มีก็ไม่แสดง
+  }
+}
+function formatThb(n) {
+  return Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const LANG_LABELS = { en: 'ภาษาอังกฤษ', zh: 'ภาษาจีน' };
+const customerLangLabel = computed(() => LANG_LABELS[activeConv.value?.auto_translate?.customer_lang] || '');
 
 const openCount = computed(() => conversations.value.filter((c) => c.status === 'open' && c.unread_count > 0).length);
 
@@ -286,6 +343,8 @@ async function loadMessages() {
     });
     messages.value = res.data.data?.messages || [];
     if (res.data.data?.conversation) activeConv.value = res.data.data.conversation;
+    translator.applyMeta(activeConv.value?.auto_translate);
+    translator.collect(messages.value);
     scrollToBottom();
   } finally {
     loadingMessages.value = false;
@@ -374,6 +433,8 @@ function subscribe(conversationId) {
       scrollToBottom();
       api.post(`/admin/support/conversations/${conversationId}/read`).catch(() => {});
     })
+    // คำแปลอัตโนมัติของข้อความลูกค้าพร้อมแล้ว (มาหลังข้อความไม่กี่วินาที)
+    .listen('.support.message.translated', (data) => translator.onSignal(data))
     .subscribed(() => { wsConnected.value = true; })
     .error(() => { wsConnected.value = false; });
 }
@@ -402,9 +463,11 @@ function scrollToBottom() {
 
 onMounted(() => {
   loadConversations();
+  loadTranslateUsage();
   subscribeInbox();
 });
 onBeforeUnmount(() => {
+  translator.dispose();
   leaveChannel();
   clearPendingImage();
   clearTimeout(listRefreshTimer);
@@ -436,6 +499,14 @@ onBeforeUnmount(() => {
   padding: 16px;
   border-bottom: 1px solid #f0f0f0;
 }
+.translate-usage { margin: 0 12px 10px; padding: 9px 11px; border: 1px solid #eceff1; border-radius: 10px; background: #fafbfa; font-size: 12px; color: #4b5563; }
+.translate-usage-row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.translate-usage-row strong { color: #1f2937; font-size: 12.5px; white-space: nowrap; }
+.translate-usage-bar { height: 5px; margin: 7px 0 5px; border-radius: 999px; background: #e5e7eb; overflow: hidden; }
+.translate-usage-bar span { display: block; height: 100%; background: #2D7A4F; border-radius: 999px; }
+.translate-usage.warn .translate-usage-bar span { background: #d97706; }
+.translate-usage.paused .translate-usage-bar span { background: #dc2626; }
+.translate-usage-note { font-size: 11px; color: #6b7280; }
 .chat-sidebar-header h2 { font-size: 16px; font-weight: 800; margin: 0; color: #1f2937; }
 .refresh-btn { border: none; background: #f3f4f6; border-radius: 8px; padding: 8px 10px; cursor: pointer; color: #4b5563; }
 .refresh-btn:hover { background: #e5e7eb; }
@@ -586,6 +657,9 @@ onBeforeUnmount(() => {
 .msg-image img { display: block; max-width: 240px; max-height: 240px; width: 100%; object-fit: cover; transition: transform 0.2s; }
 .msg-image:hover img { transform: scale(1.02); }
 .msg-body { font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.msg-translated { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; padding: 0; border: 0; background: none; font-size: 11px; font-weight: 600; color: #6b7280; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.msg-translated i { font-size: 12px; }
+.lang-pill { display: flex; width: fit-content; max-width: 100%; align-items: center; gap: 5px; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: #eef6f1; color: #2D7A4F; font-size: 11px; font-weight: 600; }
 .msg-time { font-size: 10px; opacity: 0.65; margin-top: 4px; text-align: right; }
 
 /* ─── Composer ─────────────────────────────────────── */

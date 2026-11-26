@@ -36,9 +36,14 @@
             </div>
 
             <template v-for="(m, i) in messages" :key="m.id">
-              <p v-if="m.sender_role === 'system'" class="text-center text-xs text-text-muted font-medium py-2">
-                {{ m.body }}
-              </p>
+              <div v-if="m.sender_role === 'system'" class="text-center text-xs text-text-muted font-medium py-2">
+                <p>{{ translator.display(m) }}</p>
+                <button v-if="translator.translationOf(m)" type="button" @click="translator.toggle(m.id)"
+                  class="mt-1 inline-flex items-center gap-1 text-[11px] font-bold underline underline-offset-2">
+                  <span class="material-symbols-rounded text-[14px]">translate</span>
+                  {{ translator.state.original[m.id] ? $t('ข้อความต้นฉบับ · ดูคำแปล') : $t('แปลอัตโนมัติ · ดูต้นฉบับ') }}
+                </button>
+              </div>
               <div v-else class="flex gap-2" :class="m.is_mine ? 'justify-end' : 'justify-start'">
                 <div v-if="!m.is_mine" class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 self-end"
                   :class="{ 'opacity-0': !showAvatar(i) }">
@@ -49,7 +54,12 @@
                   <button v-if="m.image_url" type="button" @click="lightbox = m.image_url" class="block mb-1.5">
                     <img :src="m.image_url" :alt="$t('รูปที่แนบมา')" class="rounded-xl max-h-64 w-auto" />
                   </button>
-                  <p v-if="m.body" class="text-sm leading-relaxed whitespace-pre-line break-words">{{ m.body }}</p>
+                  <p v-if="m.body" class="text-sm leading-relaxed whitespace-pre-line break-words">{{ translator.display(m) }}</p>
+                  <button v-if="m.body && translator.translationOf(m)" type="button" @click="translator.toggle(m.id)"
+                    class="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-text-muted underline underline-offset-2">
+                    <span class="material-symbols-rounded text-[14px]">translate</span>
+                    {{ translator.state.original[m.id] ? $t('ข้อความต้นฉบับ · ดูคำแปล') : $t('แปลอัตโนมัติ · ดูต้นฉบับ') }}
+                  </button>
                   <p class="text-[10px] mt-1 font-medium" :class="m.is_mine ? 'text-white/60' : 'text-text-muted'">
                     {{ formatTime(m.created_at) }}
                   </p>
@@ -110,6 +120,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import api from '../lib/axios';
 import { useToast } from '../lib/toast';
 import { supportHours, supportPhone, supportPhoneHref } from '../lib/contact';
+import { useChatAutoTranslate } from '../lib/chatAutoTranslate';
 
 const toast = useToast();
 
@@ -127,6 +138,16 @@ const lightbox = ref(null);
 
 let channel = null;
 let pollTimer = null;
+
+// แปลอัตโนมัติ — ลูกค้าต่างชาติอ่านคำตอบของทีมงานเป็นภาษาตัวเอง (ภาษาจากบัญชี/เว็บ /en)
+const translator = useChatAutoTranslate({
+  messages,
+  isMine: (m) => m.sender_role === 'customer',
+  fetch: async (lang, ids) => {
+    const res = await api.post('/support/translations', { lang, message_ids: ids });
+    return res.data.data;
+  },
+});
 
 const starters = [
   $t('สอบถามเรื่องการจองของฉัน'),
@@ -166,6 +187,8 @@ async function load() {
     conversationId.value = conv.data.data?.id ?? null;
     messages.value = msgs.data.data?.messages || [];
     hasMore.value = Boolean(msgs.data.data?.has_more);
+    translator.applyMeta(conv.data.data?.auto_translate);
+    translator.collect(messages.value);
     scrollToBottom();
     markRead();
   } catch {
@@ -182,8 +205,10 @@ async function loadOlder() {
   const keepHeight = threadEl.value?.scrollHeight ?? 0;
   try {
     const res = await api.get('/support/messages', { params: { per_page: 30, before_id: oldest.id } });
-    messages.value = [...(res.data.data?.messages || []), ...messages.value];
+    const older = res.data.data?.messages || [];
+    messages.value = [...older, ...messages.value];
     hasMore.value = Boolean(res.data.data?.has_more);
+    translator.collect(older);
     // คงตำแหน่งที่อ่านอยู่ไว้ ไม่ให้เนื้อหาที่เพิ่งเติมดันจอ
     nextTick(() => {
       if (threadEl.value) threadEl.value.scrollTop = threadEl.value.scrollHeight - keepHeight;
@@ -258,7 +283,8 @@ function subscribe() {
       messages.value.push({ ...data, is_mine: false });
       scrollToBottom();
       markRead();
-    });
+    })
+    .listen('.support.message.translated', (data) => translator.onSignal(data));
 }
 
 // สำรองไว้เมื่อ WebSocket ต่อไม่ติด — ดึงเฉพาะข้อความที่ใหม่กว่าอันล่าสุด
@@ -273,6 +299,7 @@ function startPolling() {
       );
       if (!fresh.length) return;
       messages.value.push(...fresh);
+      translator.collect(fresh);
       scrollToBottom();
       markRead();
     } catch {}
@@ -286,6 +313,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  translator.dispose();
   clearInterval(pollTimer);
   clearPendingImage();
   if (channel && window.Echo && conversationId.value) {

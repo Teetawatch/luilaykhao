@@ -8,10 +8,12 @@ use App\Models\ChatPrivateMessage;
 use App\Models\TripSchedule;
 use App\Models\User;
 use App\Services\ChatPrivateService;
+use App\Services\ChatTranslationService;
 use App\Services\ContentFilterService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * ถามทีมงานแบบส่วนตัว — ลูกทริปใช้เธรดของตัวเอง (ไม่ต้องส่ง user_id) ทีมงานระบุ
@@ -67,6 +69,46 @@ class ChatPrivateController extends Controller
             // ลูกทริปเห็นว่าใครจะได้อ่าน — ไม่มีสตาฟประจำรอบ แอปบอกให้ทักศูนย์ช่วยเหลือแทน
             'staff' => $this->private->teamContacts($schedule),
             'viewer_role' => $asStaff ? 'staff' : 'customer',
+            // แปลอัตโนมัติ: ภาษาที่ผู้ชมอ่าน (ค่าเดียวกับห้องรวม ตั้งที่ me/chat-translation)
+            'auto_translate' => [
+                'available' => ChatTranslationService::autoEnabled(),
+                'enabled' => $request->user()->chat_auto_translate !== false,
+                'lang' => app(ChatTranslationService::class)->preferredLanguage($request->user(), $schedule),
+                'chosen' => isset(ChatTranslationService::LANGUAGES[(string) $request->user()->chat_translate_lang]),
+            ],
+        ]);
+    }
+
+    /** คำแปลของข้อความที่กำลังแสดงในเธรด (ดู ChatTranslationService::backlogFrom) */
+    public function translations(Request $request, int $scheduleId): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_id' => ['nullable', 'integer'],
+            'lang' => ['required', 'string', Rule::in(array_keys(ChatTranslationService::LANGUAGES))],
+            'message_ids' => ['required', 'array', 'max:50'],
+            'message_ids.*' => ['integer'],
+        ]);
+
+        $schedule = TripSchedule::findOrFail($scheduleId);
+        [$customer, , $error] = $this->resolveCustomer($request, $schedule);
+        if ($error) {
+            return $error;
+        }
+
+        $thread = $this->private->thread($schedule, $customer->id);
+        $result = $thread
+            ? app(ChatTranslationService::class)->backlogFrom(
+                ChatPrivateMessage::where('thread_id', $thread->id),
+                'private',
+                $validated['lang'],
+                array_values(array_unique(array_map('intval', $validated['message_ids']))),
+            )
+            : ['translations' => [], 'pending' => []];
+
+        return $this->success([
+            'lang' => $validated['lang'],
+            'translations' => (object) $result['translations'],
+            'pending' => $result['pending'],
         ]);
     }
 

@@ -136,11 +136,12 @@ class ChatTranslationTest extends TestCase
             ->assertJsonPath('data.cached', false);
 
         Http::assertSent(function (HttpRequest $request) use ($message) {
-            return $request['model'] === 'claude-haiku-4-5'
+            return $request['model'] === 'claude-haiku-5-5'
                 && $request['messages'][0]['content'] === $message->body
                 && str_contains($request['system'][0]['text'], 'English')
-                // Haiku 4.5 ตอบ 400 ถ้าส่ง effort ไป
-                && ! isset($request['output_config']['effort']);
+                // Haiku 5.5 คิดก่อนตอบเป็นค่าเริ่มต้น — แปลข้อความสั้น ๆ ต้องส่ง effort low เอง
+                && ($request['output_config']['effort'] ?? null) === 'low'
+                && ! isset($request['temperature']);
         });
     }
 
