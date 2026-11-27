@@ -128,6 +128,7 @@ use App\Http\Controllers\Api\V1\TripCalendarController;
 use App\Http\Controllers\Api\V1\TripController;
 use App\Http\Controllers\Api\V1\TripMemberLocationController;
 use App\Http\Controllers\Api\V1\TripPostController;
+use App\Http\Controllers\Api\V1\TripPrepController;
 use App\Http\Controllers\Api\V1\TripProgressController;
 use App\Http\Controllers\Api\V1\TripReadinessController;
 use App\Http\Controllers\Api\V1\TripTrackController;
@@ -417,6 +418,8 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/{ref}/tracking', [VehicleTrackingController::class, 'bookingTracking']);
         // ความคืบหน้าตามกำหนดการที่ทีมงานกดยืนยัน (ไม่ใช้ GPS ลูกค้า)
         Route::get('bookings/{ref}/progress', [TripProgressController::class, 'show']);
+        // เตรียมตัวก่อนเดินทาง — เหลืออะไรต้องทำเอง (จ่าย เอกสาร พาสปอร์ต แบบฟอร์ม ไปครบไหม)
+        Route::get('bookings/{ref}/prep', [TripPrepController::class, 'show']);
 
         // Gifts / ซื้อทริปเป็นของขวัญ (ผู้รับกรอกโค้ดเพื่อรับการจองมาเป็นของตัวเอง)
         // เหมาทริป / จัดทริปส่วนตัว — ขอ → ใบเสนอราคา → ตอบรับ → ทีมงานเปิดการจอง

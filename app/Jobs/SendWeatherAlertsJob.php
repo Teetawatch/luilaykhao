@@ -27,7 +27,7 @@ class SendWeatherAlertsJob implements ShouldQueue
 
     public function handle(WeatherService $weather): void
     {
-        $date = now()->addDay()->toDateString();
+        $date = now('Asia/Bangkok')->addDay()->toDateString();
 
         $bookings = Booking::where('status', 'confirmed')
             ->whereNotNull('user_id')

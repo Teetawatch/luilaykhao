@@ -51,8 +51,8 @@ class SendWeatherAlertsJobTest extends TestCase
 
         $schedule = TripSchedule::create([
             'trip_id' => $trip->id,
-            'departure_date' => now()->addDay()->toDateString(),
-            'return_date' => now()->addDay()->toDateString(),
+            'departure_date' => now('Asia/Bangkok')->addDay()->toDateString(),
+            'return_date' => now('Asia/Bangkok')->addDay()->toDateString(),
             'total_seats' => 10,
             'booked_seats' => 0,
             'transport_type' => 'van',
@@ -83,7 +83,7 @@ class SendWeatherAlertsJobTest extends TestCase
 
     private function fakeForecast(int $code, float $pop, float $rain): void
     {
-        $date = now()->addDay()->toDateString();
+        $date = now('Asia/Bangkok')->addDay()->toDateString();
         Http::fake([
             '*/data/2.5/forecast*' => Http::response([
                 'city' => ['timezone' => 25200],
