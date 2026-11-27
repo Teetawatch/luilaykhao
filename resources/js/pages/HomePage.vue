@@ -149,7 +149,8 @@
 
         <!-- จุดบอกตำแหน่ง -->
         <!-- ซ่อนบนมือถือ (ต่ำกว่า 640px) เหมือนลูกศร — จอเล็กใช้นิ้วปัดซ้าย/ขวาแทน (onHeroTouchEnd) -->
-        <div class="absolute bottom-24 md:bottom-32 inset-x-0 z-20 hidden sm:flex justify-center gap-2.5" :class="{ 'lg:hidden': showHeroRail }">
+        <!-- จอใหญ่ที่มีรายการด้านขวาไม่ต้องมีจุด — ซ่อนตั้งแต่ก่อนรายการจางเข้า ไม่งั้นจุดโผล่แล้วหายวาบหนึ่ง -->
+        <div class="absolute bottom-24 md:bottom-32 inset-x-0 z-20 hidden sm:flex justify-center gap-2.5" :class="{ 'lg:hidden': hasTripSlides }">
           <button
             v-for="(slide, index) in heroSlides"
             :key="`dot-${slide.key}`"
@@ -182,7 +183,7 @@
                 :aria-current="index === currentSlide ? 'true' : undefined"
                 @click="goSlide(index)"
               >
-                <img :src="slide.thumb || slide.image" alt="" class="hero-rail-thumb" loading="lazy" />
+                <img :src="slide.thumb || slide.image" alt="" class="hero-rail-thumb" decoding="async" />
                 <span class="min-w-0 flex-1 text-left">
                   <span class="block truncate text-[14px] font-bold text-white">{{ slide.railTitle || slide.title }}</span>
                   <span class="block truncate text-[12.5px] font-medium text-white/70">{{ slide.railMeta }}</span>
@@ -534,6 +535,30 @@ function readShellHeroImages() {
 }
 
 const shellHeroImages = readShellHeroImages();
+
+/**
+ * ทริปแนะนำที่เซิร์ฟเวอร์ส่งมากับ HTML (script#llk-home-featured, ดู App\Support\HomeFeaturedShell)
+ * null = ไม่มี (เข้าเว็บจากหน้าอื่น / HTML เก่าในแคช) ต้องไปถาม API เอง
+ */
+function readShellFeatured() {
+  const raw = typeof document !== 'undefined'
+    ? document.getElementById('llk-home-featured')?.textContent
+    : null;
+  if (raw == null) return null;
+  try {
+    const trips = JSON.parse(raw);
+    return Array.isArray(trips) ? trips : null;
+  } catch {
+    return null;
+  }
+}
+
+// ทริปแนะนำชุดล่าสุดที่หน้านี้รู้ — กลับมาหน้าแรกอีกรอบ (ในเว็บเดิม) วาดได้ทันทีไม่ต้องรอ
+// เก่าเกิน FEATURED_FRESH_MS ก็ยังวาดชุดเดิมก่อน แล้วถาม API ใหม่เบื้องหลัง (key สไลด์เดิม ไม่กระพริบ)
+// ตรงกับอายุแคช TripListCache ฝั่งเซิร์ฟเวอร์
+const FEATURED_FRESH_MS = 60_000;
+let knownFeatured = readShellFeatured();
+let knownFeaturedAt = knownFeatured ? Date.now() : 0;
 const heroImages = ref(shellHeroImages?.length ? shellHeroImages : STATIC_HERO_IMAGES);
 const HERO_SLIDE_INTERVAL_MS = 6000;
 const currentSlide = ref(0);
@@ -547,7 +572,13 @@ const brandStats = ref({ travellers: 0, rating: 0, reviews: 0 });
 // เหตุผลที่หยุดเลื่อนอยู่ตอนนี้ ('hover' = เมาส์ชี้ปุ่ม, 'focus' = ใช้คีย์บอร์ดอยู่ในสไลด์)
 const pauseReasons = new Set();
 
-const featuredTrips = ref([]);
+const featuredTrips = ref(knownFeatured || []);
+// รู้แล้วว่ามีทริปแนะนำอะไร (จาก shell หรือ /trips/featured ตอบแล้ว สำเร็จหรือไม่ก็ตาม) —
+// ก่อนหน้านั้นฮีโร่มีแค่สไลด์แบรนด์สไลด์เดียว เคยโชว์ชุดรูปสำรองหลายสไลด์ + จุดบอกหน้า
+// แล้วสลับเป็นชุดทริปตอนข้อมูลมา สไลด์เลยกระพริบ
+const featuredSettled = ref(knownFeatured !== null);
+// รูปย่อในรายการด้านขวาโหลดเสร็จแล้ว (หรือรอครบเวลาแล้ว) — รายการค่อยจางเข้ามา
+const railReady = ref(false);
 const loading = ref(true);
 
 const helpOptions = [
@@ -659,7 +690,12 @@ const brandProof = computed(() => {
 });
 
 // รายการด้านขวามีความหมายเมื่อมีทริปแนะนำ — สไลด์แบรนด์ล้วนชื่อซ้ำกันหมด
-const showHeroRail = computed(() => heroSlides.value.some((s) => s.key.startsWith('trip-')));
+const hasTripSlides = computed(() => heroSlides.value.some((s) => s.key.startsWith('trip-')));
+const showHeroRail = computed(() => hasTripSlides.value && railReady.value);
+
+function railThumbUrls(trips) {
+  return heroTrips(trips).map((t) => tripCardImage(t) || t.cover_image);
+}
 
 const heroSlides = computed(() => {
   const brand = {
@@ -671,9 +707,8 @@ const heroSlides = computed(() => {
     railTitle: $t('ลุยเลเขา'),
     railMeta: BRAND_COPY.title,
   };
-  const tripSlides = featuredTrips.value
-    .filter((t) => t.slug && (t.cover_image || tripCardImage(t)))
-    .slice(0, 5)
+  if (!featuredSettled.value) return [brand];
+  const tripSlides = heroTrips(featuredTrips.value)
     .map((t) => {
       const rounds = openRounds(t);
       const price = Number(t.min_price);
@@ -701,8 +736,30 @@ const heroSlides = computed(() => {
       };
     });
   if (tripSlides.length) return [brand, ...tripSlides];
-  return heroImages.value.map((img, i) => ({ ...brand, key: `brand-${i}`, image: img }));
+  // สไลด์แรกต้องใช้ key 'brand' เหมือนเดิม — key เปลี่ยน = Vue สร้างสไลด์ที่กำลังโชว์อยู่ใหม่ทั้งก้อน
+  return heroImages.value.map((img, i) => ({ ...brand, key: i === 0 ? 'brand' : `brand-${i}`, image: img }));
 });
+
+function heroTrips(trips) {
+  return trips.filter((t) => t.slug && (t.cover_image || tripCardImage(t))).slice(0, 5);
+}
+
+// โหลดรูปย่อของรายการด้านขวาให้เสร็จก่อนโชว์ — ไม่งั้นรายการโผล่มาเป็นกล่องว่างแล้วรูปค่อยเด้งตาม
+// รอไม่เกิน HERO_RAIL_PRELOAD_MS เน็ตช้าก็โชว์ไปก่อน รูปที่เหลือตามมาเอง
+const HERO_RAIL_PRELOAD_MS = 1500;
+
+function preloadImages(urls) {
+  const loads = urls.map((url) => new Promise((resolve) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = img.onerror = () => resolve();
+    img.src = url;
+  }));
+  return Promise.race([
+    Promise.all(loads),
+    new Promise((resolve) => setTimeout(resolve, HERO_RAIL_PRELOAD_MS)),
+  ]);
+}
 
 function goSlide(index) {
   const n = heroSlides.value.length;
@@ -945,9 +1002,44 @@ onMounted(async () => {
     startSliderIfIdle();
   })();
 
+  // ทริปแนะนำ: มากับ shell แล้วก็วาดเลย (สไลด์ทริปอยู่ตั้งแต่ render แรก) แค่รอรูปย่อของรายการด้านขวา
+  // ไม่มีก็ถามแยก ไม่รอ /trips ชุด 100 ทริปที่ช้ากว่ามาก (เคยอยู่ใน Promise.all เดียวกัน)
+  (async () => {
+    if (featuredSettled.value) {
+      startSliderIfIdle();
+      await preloadImages(railThumbUrls(featuredTrips.value));
+      if (!unmounted) railReady.value = true;
+      if (Date.now() - knownFeaturedAt < FEATURED_FRESH_MS) return;
+      try {
+        const featuredRes = await api.get('/trips/featured');
+        knownFeatured = featuredRes.data.data || [];
+        knownFeaturedAt = Date.now();
+        if (!unmounted) featuredTrips.value = knownFeatured;
+      } catch {
+        // ใช้ชุดเดิมต่อ
+      }
+      return;
+    }
+
+    let trips = [];
+    try {
+      const featuredRes = await api.get('/trips/featured');
+      trips = featuredRes.data.data || [];
+      knownFeatured = trips;
+      knownFeaturedAt = Date.now();
+      await preloadImages(railThumbUrls(trips));
+    } catch {
+      // ไม่มีทริปแนะนำ = ใช้สไลด์แบรนด์จากรูปสไลด์ต่อ
+    }
+    if (unmounted) return;
+    featuredTrips.value = trips;
+    featuredSettled.value = true;
+    railReady.value = true;
+    startSliderIfIdle();
+  })();
+
   try {
-    const [featuredRes, reviewsRes, statsRes, allTripsRes, categoriesRes] = await Promise.all([
-      api.get('/trips/featured'),
+    const [reviewsRes, statsRes, allTripsRes, categoriesRes] = await Promise.all([
       api.get('/reviews', { params: { per_page: 30 } }),
       api.get('/stats'),
       api.get('/trips', { params: { per_page: 100 } }),
@@ -955,8 +1047,6 @@ onMounted(async () => {
     ]);
     // ชุดเดียว 100 ทริป (เรียงตามความนิยม) ป้อนทุก section: ตารางรอบ แท็บแพ็กเกจ ปลายทาง และช่องค้นหา
     allTrips.value = allTripsRes.data.data || [];
-    featuredTrips.value = featuredRes.data.data || [];
-    startSliderIfIdle();
     reviews.value = (reviewsRes.data.data || []).map((r) => ({ ...r, media: reviewMedia(r) }));
     tripCategories.value = categoriesRes.data.data || [];
     
@@ -1162,6 +1252,15 @@ onMounted(async () => {
   background-color: rgba(10, 24, 18, 0.38);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  /* มาทีหลังสไลด์แรกเสมอ (รอ /trips/featured) — จางเข้าแทนการโผล่ขึ้นทันที */
+  animation: heroRailIn 0.5s ease both;
+}
+@keyframes heroRailIn {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-rail { animation: none; }
 }
 .hero-rail-item {
   position: relative;

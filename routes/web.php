@@ -33,6 +33,7 @@ use App\Models\Stay;
 use App\Models\Tag;
 use App\Models\Trip;
 use App\Support\CalendarShell;
+use App\Support\HomeFeaturedShell;
 use App\Support\MediaDisk;
 use App\Support\PageTrip;
 use App\Support\SeoMeta;
@@ -493,5 +494,9 @@ Route::get('/{any?}', function (?string $any = null) {
         // Absent rather than null: the shell switches on @isset.
         'shellTrip' => $trip,
         'shellCalendar' => $calendar,
-    ]));
+    ]) + array_filter([
+        // ทริปแนะนำบนสไลด์หน้าแรก — [] = ไม่มีทริปแนะนำ (ต้องส่ง), null = นอกหน้าแรก
+        // หรือหาไม่ได้ ให้เว็บไปถาม API เอง จึงกรองแค่ null
+        'homeFeatured' => $trip || $calendar ? null : HomeFeaturedShell::forPath($path),
+    ], fn ($value) => $value !== null));
 })->where('any', '.*');

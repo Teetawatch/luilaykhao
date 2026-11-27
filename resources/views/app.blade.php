@@ -57,6 +57,17 @@
         <link rel="preload" as="image" href="{{ $heroImageUrls[0] }}" fetchpriority="high">
     @endif
 
+    {{-- ทริปแนะนำบนสไลด์หน้าแรก (เฉพาะ / และ /en) ด้วยเหตุผลเดียวกัน — ถ้ารอ API
+         รายการ "ทริปแนะนำ" ด้านขวาจะโผล่ตามมาทีหลังสไลด์แรก ดู App\Support\HomeFeaturedShell
+         JSON_HEX_TAG กันชื่อทริปที่มี "</script>" ปิดแท็กนี้ก่อนเวลา --}}
+    @isset($homeFeatured)
+    <script type="application/json" id="llk-home-featured">{!! json_encode($homeFeatured, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) !!}</script>
+    {{-- รูปย่อในรายการด้านขวา — รายการมีแค่จอ lg ขึ้นไป มือถือจึงไม่ต้องโหลด --}}
+    @foreach (\App\Support\HomeFeaturedShell::railThumbs($homeFeatured) as $thumb)
+    <link rel="preload" as="image" href="{{ $thumb }}" media="(min-width: 1024px)" fetchpriority="low">
+    @endforeach
+    @endisset
+
     {{-- ลิงก์ร้านแอปส่งมากับ shell แบบเดียวกับข้อมูลติดต่อ (ดู lib/appLinks.js) --}}
     <meta name="llk:app-ios-url" content="{{ \App\Support\AppLinks::ios() }}">
     <meta name="llk:app-android-url" content="{{ \App\Support\AppLinks::android() }}">
