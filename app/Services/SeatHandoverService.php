@@ -1066,6 +1066,8 @@ class SeatHandoverService
         return [
             'title' => $user->title,
             'name' => $user->name,
+            'first_name' => $user->nameParts()[0],
+            'last_name' => $user->nameParts()[1],
             'nickname' => $user->nickname,
             'nationality' => $user->nationality ?: 'TH',
             'id_card' => $user->id_card,
@@ -1079,6 +1081,8 @@ class SeatHandoverService
             'emergency_relation' => $user->emergency_relation,
             'emergency_phone' => $user->emergency_phone,
             'name_en' => $user->name_en,
+            'first_name_en' => $user->nameEnParts()[0],
+            'last_name_en' => $user->nameEnParts()[1],
             'passport_no' => $user->passport_no,
             'passport_expires_at' => $user->passport_expires_at?->toDateString(),
         ];

@@ -363,6 +363,7 @@ Route::prefix('v1')->group(function () {
         Route::post('me/medals/{id}/kudos', [MedalController::class, 'kudos'])->whereNumber('id')->middleware('throttle:60,1');
         // ชาเลนจ์รายเดือน/รายปี + สรุปทั้งปี
         Route::get('me/challenges', [MedalController::class, 'challenges']);
+        Route::post('me/challenges/claim', [MedalController::class, 'claimChallenge'])->middleware('throttle:promotion');
         Route::get('me/year-review', [MedalController::class, 'yearReview']);
 
         // โปรไฟล์นักเดินทางสาธารณะ — เจ้าตัวเปิด/ปิดและตั้งคำแนะนำตัวเอง

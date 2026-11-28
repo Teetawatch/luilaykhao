@@ -7,9 +7,11 @@ use App\Models\Booking;
 use App\Models\Trip;
 use App\Services\TravelDocumentService;
 use App\Support\Countries;
+use App\Support\PersonName;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 /**
  * เอกสารเดินทางของการจอง — ช่องทางในแอปสำหรับกรอก/แก้พาสปอร์ตหลังจองแล้ว
@@ -51,10 +53,23 @@ class TravelDocumentController extends Controller
             return $this->error('ทริปนี้ไม่ต้องกรอกพาสปอร์ตล่วงหน้า', 422);
         }
 
+        // ชื่อ/นามสกุลภาษาอังกฤษแยกช่อง (แอปรุ่นใหม่) → ประกอบเป็นชื่อเต็มก่อนตรวจ
+        $passengers = $request->input('passengers');
+        if (is_array($passengers)) {
+            $request->merge(['passengers' => array_map(
+                fn ($row) => is_array($row)
+                    ? PersonName::composeParts(Arr::except($row, ['name', 'first_name', 'last_name']))
+                    : $row,
+                $passengers,
+            )]);
+        }
+
         $validated = $request->validate([
             'passengers' => ['required', 'array', 'min:1'],
             'passengers.*.id' => ['required', 'integer'],
             'passengers.*.name_en' => ['nullable', 'string', 'max:100'],
+            'passengers.*.first_name_en' => ['nullable', 'string', 'max:60'],
+            'passengers.*.last_name_en' => ['nullable', 'string', 'max:60'],
             'passengers.*.passport_no' => ['nullable', 'string', 'max:20'],
             'passengers.*.passport_expires_at' => ['nullable', 'date'],
             'passengers.*.travel_document' => ['nullable', 'in:'.Trip::DOC_PASSPORT.','.Trip::DOC_BORDER_PASS],
@@ -64,6 +79,8 @@ class TravelDocumentController extends Controller
         foreach ($validated['passengers'] as $row) {
             $rows[(int) $row['id']] = [
                 'name_en' => $row['name_en'] ?? '',
+                'first_name_en' => $row['first_name_en'] ?? null,
+                'last_name_en' => $row['last_name_en'] ?? null,
                 'passport_no' => $row['passport_no'] ?? '',
                 'passport_expires_at' => $row['passport_expires_at'] ?? '',
                 'travel_document' => $row['travel_document'] ?? null,
@@ -102,6 +119,9 @@ class TravelDocumentController extends Controller
                 'id' => $passenger->id,
                 'name' => $passenger->name,
                 'name_en' => $passenger->name_en,
+                // ชื่อ/นามสกุลตามพาสปอร์ตแยกช่อง (แถวเก่าแยกจากช่องว่างแรก)
+                'first_name_en' => $passenger->nameEnParts()[0],
+                'last_name_en' => $passenger->nameEnParts()[1],
                 'nationality' => $passenger->nationality,
                 'passport_no' => $passenger->passport_no,
                 'passport_expires_at' => $passenger->passport_expires_at?->toDateString(),

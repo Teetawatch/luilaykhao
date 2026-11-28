@@ -31,9 +31,11 @@ class ChallengeService
     /**
      * metric: trips | distance (กม.) | climb (ม.) | regions (ภาค/ประเทศที่ไม่ซ้ำ)
      * icon: ชื่อ Material Symbols (แอปแมปเป็น IconData)
+     * points: แต้มสะสมที่กดรับได้เมื่อสำเร็จ (ระบบแต้มเฟส 2 — MissionService::claimChallenge)
      */
     public const MONTHLY = [
         'month_trip' => [
+            'points' => 20,
             'title' => 'ลุยประจำเดือน',
             'description' => 'เดินทริปให้จบอย่างน้อย 1 ทริปภายในเดือนนี้',
             'metric' => 'trips',
@@ -41,6 +43,7 @@ class ChallengeService
             'icon' => 'event_available',
         ],
         'month_climb' => [
+            'points' => 30,
             'title' => 'ไต่ให้ถึง 1,000 เมตร',
             'description' => 'ไต่ความสูงสะสมให้ครบ 1,000 ม. ภายในเดือนนี้',
             'metric' => 'climb',
@@ -51,6 +54,7 @@ class ChallengeService
 
     public const YEARLY = [
         'year_distance' => [
+            'points' => 80,
             'title' => '100 กิโลเมตรแห่งปี',
             'description' => 'เดินสะสมให้ครบ 100 กม. ภายในปีนี้',
             'metric' => 'distance',
@@ -58,6 +62,7 @@ class ChallengeService
             'icon' => 'hiking',
         ],
         'year_climb' => [
+            'points' => 80,
             'title' => 'ไต่ 5,000 เมตร',
             'description' => 'ไต่ความสูงสะสมให้ครบ 5,000 ม. ภายในปีนี้ (เกือบสองเท่าดอยอินทนนท์)',
             'metric' => 'climb',
@@ -65,6 +70,7 @@ class ChallengeService
             'icon' => 'landscape',
         ],
         'year_trips' => [
+            'points' => 120,
             'title' => '6 ทริปใน 1 ปี',
             'description' => 'เดินทริปให้จบ 6 ทริปภายในปีนี้',
             'metric' => 'trips',
@@ -72,6 +78,7 @@ class ChallengeService
             'icon' => 'flag',
         ],
         'year_regions' => [
+            'points' => 80,
             'title' => 'นักสำรวจ 3 ภูมิภาค',
             'description' => 'เดินทริปให้ครบ 3 ภาค (หรือประเทศ) ที่ไม่ซ้ำกันภายในปีนี้',
             'metric' => 'regions',
@@ -218,6 +225,10 @@ class ChallengeService
                 $completions,
             );
             $first = $completions[0];
+            $points = array_sum(array_map(fn (ChallengeCompletion $c) => $this->claimablePoints($c), $completions));
+            $cta = $points > 0
+                ? 'แตะเพื่อรับ '.number_format($points).' แต้ม'
+                : 'แตะเพื่อดูชาเลนจ์ถัดไป';
 
             try {
                 SmartNotification::send(
@@ -227,8 +238,8 @@ class ChallengeService
                         ? '🏆 สำเร็จชาเลนจ์ "'.$titles[0].'"'
                         : '🏆 สำเร็จ '.count($titles).' ชาเลนจ์รวดเดียว!',
                     count($titles) === 1
-                        ? 'ชาเลนจ์ของ'.$this->periodLabel($first->period).' สำเร็จแล้ว เก่งมาก! แตะเพื่อดูชาเลนจ์ถัดไป'
-                        : implode(' · ', $titles).' — แตะเพื่อดูชาเลนจ์ถัดไป',
+                        ? 'ชาเลนจ์ของ'.$this->periodLabel($first->period).' สำเร็จแล้ว เก่งมาก! '.$cta
+                        : implode(' · ', $titles).' — '.$cta,
                     [
                         'challenge_key' => $first->challenge_key,
                         'period' => $first->period,
@@ -314,8 +325,9 @@ class ChallengeService
 
             $out[] = [
                 'key' => $key,
-                'title' => $def['title'],
-                'description' => $def['description'],
+                'period' => $period,
+                'title' => __($def['title']),
+                'description' => __($def['description']),
                 'metric' => $def['metric'],
                 'icon' => $def['icon'],
                 'current' => $current,
@@ -324,6 +336,10 @@ class ChallengeService
                 'progress' => round(min(1, $current / $def['target']), 3),
                 'completed' => $completion !== null || $current >= $def['target'],
                 'completed_on' => $completion?->completed_on?->toDateString(),
+                // แต้มของชาเลนจ์นี้ / กดรับได้ตอนนี้ / รับไปแล้ว
+                'points' => (int) ($def['points'] ?? 0),
+                'points_claimable' => $completion !== null && $this->claimablePoints($completion) > 0,
+                'points_claimed' => $completion?->points_claimed_at !== null,
             ];
         }
 
@@ -341,13 +357,31 @@ class ChallengeService
 
         return [
             'key' => $completion->challenge_key,
-            'title' => $def['title'],
+            'title' => __($def['title']),
             'icon' => $def['icon'],
             'period' => $completion->period,
             'period_label' => $this->periodLabel($completion->period),
             'completed_on' => $completion->completed_on->toDateString(),
             'completed_label' => ThaiDate::full($completion->completed_on),
         ];
+    }
+
+    /**
+     * แต้มที่ชาเลนจ์ที่สำเร็จแล้วนี้ยังกดรับได้ — 0 เมื่อรับไปแล้ว หรือสำเร็จก่อนวันที่
+     * ระบบเริ่มให้แต้ม (loyalty.missions.challenge_points_since)
+     */
+    public function claimablePoints(ChallengeCompletion $completion): int
+    {
+        if (! config('loyalty.missions.enabled', true) || $completion->points_claimed_at !== null) {
+            return 0;
+        }
+
+        $since = (string) config('loyalty.missions.challenge_points_since', '2026-11-01');
+        if ($completion->completed_on->toDateString() < $since) {
+            return 0;
+        }
+
+        return (int) ($this->definition($completion->challenge_key)['points'] ?? 0);
     }
 
     /** @return array<string, mixed>|null */

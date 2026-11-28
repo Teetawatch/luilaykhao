@@ -154,6 +154,213 @@ class LoyaltyService
         });
     }
 
+    // ── ใช้แต้มลดค่าทริป (เฟส 2) ─────────────────────────────────────────────
+
+    /**
+     * กติกาการใช้แต้มลดค่าทริป — ส่งให้แอปคิดตัวเลขเดียวกันได้เอง (loyalty/account)
+     *
+     * @return array{enabled: bool, baht_per_point: float, min_points: int, max_percent: int}
+     */
+    public function payRules(): array
+    {
+        $rules = (array) config('loyalty.pay', []);
+
+        return [
+            'enabled' => (bool) ($rules['enabled'] ?? true),
+            'baht_per_point' => max(0.01, (float) ($rules['baht_per_point'] ?? 1)),
+            'min_points' => max(1, (int) ($rules['min_points'] ?? 10)),
+            // ต่ำกว่า 100 เสมอ — ใบจองที่แต้มจ่ายหมดจะไม่มีขั้นชำระเงินให้ยืนยันเลย
+            'max_percent' => max(0, min(90, (int) ($rules['max_percent'] ?? 50))),
+        ];
+    }
+
+    public function pointsToBaht(int $points): float
+    {
+        return round($points * $this->payRules()['baht_per_point'], 2);
+    }
+
+    /**
+     * แต้มที่ใช้ได้มากที่สุดกับยอดนี้ — ไม่เกินเพดาน % ไม่เกินที่มี และไม่ถึงขั้นต่ำ = 0
+     * แอปคิดสูตรเดียวกัน (pointsToApply) ตัวเลขบนจอจึงตรงกับยอดที่ถูกหักจริง
+     */
+    public function maxPayablePoints(int $userId, float $amount): int
+    {
+        $rules = $this->payRules();
+
+        if (! $rules['enabled'] || $amount <= 0 || $rules['max_percent'] <= 0) {
+            return 0;
+        }
+
+        $capBaht = floor($amount * $rules['max_percent'] / 100);
+        $cap = (int) floor($capBaht / $rules['baht_per_point']);
+        $balance = (int) (LoyaltyAccount::where('user_id', $userId)->value('points') ?? 0);
+        $points = max(0, min($cap, $balance));
+
+        return $points >= $rules['min_points'] ? $points : 0;
+    }
+
+    /**
+     * ตัดแต้มตอนสร้างใบจอง — เรียกใน transaction เดียวกับการสร้างใบจอง แต้มไม่พอ
+     * (กดจองพร้อมกันสองเครื่อง) โยน \Exception ใบจองจึงไม่เกิด
+     *
+     * ล็อตที่ถูกตัดถูกจดไว้ใน meta พร้อมวันหมดอายุเดิม ไว้คืนกลับตอนยกเลิก
+     */
+    public function spendForBooking(Booking $booking, int $points): void
+    {
+        if ($points <= 0 || ! $booking->user_id) {
+            return;
+        }
+
+        DB::transaction(function () use ($booking, $points) {
+            LoyaltyAccount::forUser($booking->user_id);
+            $account = LoyaltyAccount::where('user_id', $booking->user_id)->lockForUpdate()->first();
+
+            if ((int) $account->points < $points) {
+                throw new \Exception(__('แต้มไม่เพียงพอ (มีอยู่ :points แต้ม)', ['points' => number_format((int) $account->points)]));
+            }
+
+            $taken = $this->consumeLots($booking->user_id, $points);
+            $untracked = $points - array_sum(array_column($taken, 'points'));
+            if ($untracked > 0) {
+                $taken[] = ['points' => $untracked, 'expires_at' => null];
+            }
+
+            $account->points -= $points;
+            $account->save();
+
+            LoyaltyTransaction::create([
+                'user_id' => $booking->user_id,
+                'type' => 'redeem',
+                'points' => -$points,
+                'points_remaining' => 0,
+                'description' => 'ใช้แต้มลดค่าทริป '.$booking->booking_ref,
+                'reference_type' => Booking::class,
+                'reference_id' => $booking->id,
+                'balance_after' => $account->points,
+                'meta' => ['lots' => array_map(fn ($lot) => [
+                    'points' => (int) $lot['points'],
+                    'expires_at' => $lot['expires_at']?->toISOString(),
+                ], $taken)],
+            ]);
+        });
+    }
+
+    /**
+     * คืนแต้มที่ใช้ลดค่าทริปของใบจองที่ถูกยกเลิก/คืนเงิน — คืนเต็มจำนวนเข้าบัญชีที่
+     * จ่ายไปจริง (ใบจองเปลี่ยนมือได้) เป็นล็อตเดิมพร้อมวันหมดอายุเดิม ล็อตที่หมด
+     * อายุไปแล้วหรือเหลือไม่ถึง 30 วันได้ต่อเป็น 30 วันนับจากวันนี้ ให้มีเวลาใช้
+     * ทำซ้ำได้ไม่คืนเกิน (ล็อตคืนที่อ้างแถวใช้แต้มเป็นตัวกัน) คืนจำนวนแต้มที่คืน
+     */
+    public function restoreForBooking(Booking $booking): int
+    {
+        if ((int) $booking->points_used <= 0 || ! $booking->exists) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($booking) {
+            $spend = LoyaltyTransaction::where('reference_type', Booking::class)
+                ->where('reference_id', $booking->id)
+                ->where('type', 'redeem')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $spend) {
+                return 0;
+            }
+
+            // ล็อตที่คืนเป็นแถว earn (ใช้/หมดอายุได้เหมือนแต้มทั่วไป) อ้างถึงแถวที่ใช้แต้ม
+            // ไม่ใช่ใบจอง — แถว earn ที่อ้างใบจองคือ "แต้มที่ได้จากทริปนี้" ซึ่ง
+            // awardForBooking/reverseForBooking ใช้เป็นตัวกันซ้ำอยู่
+            $alreadyRestored = LoyaltyTransaction::where('reference_type', LoyaltyTransaction::class)
+                ->where('reference_id', $spend->id)
+                ->where('type', 'earn')
+                ->exists();
+
+            if ($alreadyRestored) {
+                return 0;
+            }
+
+            $userId = (int) $spend->user_id;
+            $owed = -(int) $spend->points;
+            $lots = (array) ($spend->meta['lots'] ?? []);
+            if ($lots === []) {
+                $lots = [['points' => $owed, 'expires_at' => null]];
+            }
+
+            $floor = now()->addDays(self::EXPIRY_WARNING_DAYS);
+            $account = LoyaltyAccount::forUser($userId);
+
+            foreach ($lots as $lot) {
+                $points = (int) ($lot['points'] ?? 0);
+                if ($points <= 0) {
+                    continue;
+                }
+
+                $expiresAt = filled($lot['expires_at'] ?? null)
+                    ? Carbon::parse($lot['expires_at'])
+                    : now()->addMonths(self::POINTS_VALID_MONTHS);
+                if ($expiresAt->lessThan($floor)) {
+                    $expiresAt = $floor->copy();
+                }
+
+                $account->points += $points;
+
+                LoyaltyTransaction::create([
+                    'user_id' => $userId,
+                    'type' => 'earn',
+                    'points' => $points,
+                    'points_remaining' => $points,
+                    'description' => 'คืนแต้มจากการจอง '.$booking->booking_ref.' ที่ถูกยกเลิก',
+                    'reference_type' => LoyaltyTransaction::class,
+                    'reference_id' => $spend->id,
+                    'balance_after' => $account->points,
+                    'expires_at' => $expiresAt,
+                ]);
+            }
+
+            $account->save();
+
+            return $owed;
+        });
+    }
+
+    /**
+     * หักแต้มคืน (เช่น ภารกิจที่ใบจองถูกยกเลิก) — หักเท่าที่ยังเหลือ ไม่ติดลบ ไม่โยน
+     * ข้อผิดพลาด ต่างจาก spend() ที่ต้องมีแต้มพอ คืนจำนวนที่หักได้จริง
+     */
+    public function deduct(int $userId, int $points, string $description, ?Model $reference = null): int
+    {
+        if ($points <= 0) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($userId, $points, $description, $reference) {
+            LoyaltyAccount::forUser($userId);
+            $account = LoyaltyAccount::where('user_id', $userId)->lockForUpdate()->first();
+            $take = min($points, max(0, (int) $account->points));
+
+            if ($take > 0) {
+                $this->consumeLots($userId, $take);
+                $account->points -= $take;
+            }
+            $account->lifetime_points = max(0, (int) $account->lifetime_points - $points);
+            $account->save();
+
+            LoyaltyTransaction::create([
+                'user_id' => $userId,
+                'type' => 'adjust',
+                'points' => -$take,
+                'points_remaining' => 0,
+                'description' => $description,
+                'reference_type' => $reference ? $reference::class : null,
+                'reference_id' => $reference?->getKey(),
+                'balance_after' => $account->points,
+            ]);
+
+            return $take;
+        });
+    }
+
     /**
      * ถอนเครดิตของการจองที่ถูกยกเลิก/คืนเงิน — ทริปที่ไม่ได้ไปต้องไม่นับเป็นระดับ
      *
@@ -310,6 +517,33 @@ class LoyaltyService
             'points' => (int) $lots->sum('points_remaining'),
             'at' => $lots->min('expires_at'),
         ];
+    }
+
+    /**
+     * แต้มที่ยังใช้ได้ รวมเป็นก้อนตามเดือนที่หมดอายุ (ใกล้สุดก่อน) สำหรับไทม์ไลน์ใน
+     * หน้าแต้มสะสม — "เดือน มี.ค. 2570 หมด 40 แต้ม" แต้มยุคก่อนมีล็อต (ยอดในบัญชีเกิน
+     * ผลรวมล็อต) ไม่มีวันหมดอายุที่บอกได้ จึงไม่อยู่ในรายการ
+     *
+     * @return array<int, array{month: string, points: int, expires_at: string}>
+     */
+    public function expiryTimeline(int $userId, int $limit = 12): array
+    {
+        return LoyaltyTransaction::where('user_id', $userId)
+            ->where('type', 'earn')
+            ->where('points_remaining', '>', 0)
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '>', now())
+            ->orderBy('expires_at')
+            ->get(['points_remaining', 'expires_at'])
+            ->groupBy(fn (LoyaltyTransaction $lot) => $lot->expires_at->copy()->timezone('Asia/Bangkok')->format('Y-m'))
+            ->map(fn ($lots, $month) => [
+                'month' => (string) $month,
+                'points' => (int) $lots->sum('points_remaining'),
+                'expires_at' => $lots->min('expires_at')->toISOString(),
+            ])
+            ->values()
+            ->take($limit)
+            ->all();
     }
 
     /**

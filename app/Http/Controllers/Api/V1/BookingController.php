@@ -85,6 +85,7 @@ class BookingController extends Controller
                 termsConsent: $termsConsent,
                 giftVoucherCode: $request->gift_voucher_code,
                 coinsToUse: (int) $request->input('coins_to_use', 0),
+                pointsToUse: (int) $request->input('points_to_use', 0),
             );
 
             if ($request->filled('partner_code')) {

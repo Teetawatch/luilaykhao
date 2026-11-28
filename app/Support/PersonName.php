@@ -18,6 +18,40 @@ final class PersonName
         return self::normalize(self::normalize($first).' '.self::normalize($last));
     }
 
+    /** คู่ช่อง [ชื่อเต็ม, ชื่อ, นามสกุล] ที่ลูกค้ากรอกแยกได้ — ไทย และอังกฤษตามพาสปอร์ต */
+    public const PART_COLUMNS = [
+        ['name', 'first_name', 'last_name'],
+        ['name_en', 'first_name_en', 'last_name_en'],
+    ];
+
+    /**
+     * ข้อมูลฟอร์มที่ส่งชื่อ/นามสกุลแยกช่องมา → เติมชื่อเต็มจากสองช่องนั้นก่อนตรวจ
+     * (กฎ ThaiName / name_en จึงตรวจชื่อเต็มเหมือนเดิม) ช่องที่ไม่ได้ส่งมาเลยปล่อย
+     * ไว้ตามเดิม — แอปรุ่นเก่าส่งแค่ชื่อเต็ม
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function composeParts(array $data): array
+    {
+        foreach (self::PART_COLUMNS as [$full, $first, $last]) {
+            if (! array_key_exists($first, $data) && ! array_key_exists($last, $data)) {
+                continue;
+            }
+
+            $firstValue = self::normalize(is_string($data[$first] ?? null) ? $data[$first] : '');
+            $lastValue = self::normalize(is_string($data[$last] ?? null) ? $data[$last] : '');
+            $data[$first] = $firstValue !== '' ? $firstValue : null;
+            $data[$last] = $lastValue !== '' ? $lastValue : null;
+
+            if ($firstValue !== '' || $lastValue !== '') {
+                $data[$full] = self::join($firstValue, $lastValue);
+            }
+        }
+
+        return $data;
+    }
+
     /**
      * แยกชื่อเต็มที่เก็บช่องเดียว — คำแรกเป็นชื่อ ที่เหลือเป็นนามสกุล
      * (นามสกุลไทยบางคนมีช่องว่างข้างใน จึงไม่ตัดจากท้าย) ใช้เฉพาะเมื่อไม่มีชื่อ/

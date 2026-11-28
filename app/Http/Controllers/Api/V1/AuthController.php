@@ -14,6 +14,7 @@ use App\Support\AccountLinks;
 use App\Support\AppLinks;
 use App\Support\ClientChannel;
 use App\Support\MediaDisk;
+use App\Support\PersonName;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -137,8 +138,13 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
+        // ชื่อ/นามสกุลแยกช่อง (แอปรุ่นใหม่) → ชื่อเต็มประกอบให้ก่อนตรวจ
+        $request->merge(PersonName::composeParts($request->only(['name', 'first_name', 'last_name'])));
+
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', 'max:120'],
+            'last_name' => ['nullable', 'required_with:first_name', 'string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['nullable', 'string', 'min:6', 'confirmed'],
             'avatar' => ['nullable', 'image', 'max:5120'], // 5MB
@@ -156,6 +162,10 @@ class AuthController extends Controller
 
         if (isset($validated['name'])) {
             $user->name = $validated['name'];
+        }
+        if (array_key_exists('first_name', $validated) || array_key_exists('last_name', $validated)) {
+            $user->first_name = $validated['first_name'] ?? null;
+            $user->last_name = $validated['last_name'] ?? null;
         }
         if (isset($validated['phone'])) {
             $user->phone = $validated['phone'];
@@ -725,6 +735,12 @@ class AuthController extends Controller
         return [
             'id' => $user->id,
             'name' => $user->name,
+            // ชื่อ/นามสกุลแยกช่อง — โปรไฟล์ที่ยังไม่เคยกรอกแยก แยกจากช่องว่างแรกให้
+            'first_name' => $user->nameParts()[0],
+            'last_name' => $user->nameParts()[1],
+            'name_en' => $user->name_en,
+            'first_name_en' => $user->nameEnParts()[0],
+            'last_name_en' => $user->nameEnParts()[1],
             'email' => $user->email,
             'phone' => $user->phone,
             'avatar_url' => $user->avatar ? $user->avatar_url : null,

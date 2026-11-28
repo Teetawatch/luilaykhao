@@ -12,6 +12,7 @@ use App\Services\CoinService;
 use App\Services\CustomerIntakeService;
 use App\Services\GiftVoucherService;
 use App\Services\LoyaltyService;
+use App\Services\MissionService;
 use App\Services\PartnerService;
 use App\Services\PromotionService;
 use App\Support\ClientChannel;
@@ -128,6 +129,14 @@ class BookingObserver
             if ((int) $booking->coins_used > 0) {
                 $this->coinService->restoreForBooking($booking);
             }
+
+            // แต้มสะสมที่ใช้ลดค่าทริปก็คืนเต็มจำนวนเหมือนกัน (เป็นล็อตเดิมพร้อมวันหมดอายุเดิม)
+            if ((int) $booking->points_used > 0) {
+                $this->loyaltyService->restoreForBooking($booking);
+            }
+
+            // ภารกิจที่ใบจองนี้ทำให้สำเร็จ (เช่น กลับมาจองภายใน 60 วัน) หักแต้มคืน
+            app(MissionService::class)->revokeForBooking($booking);
 
             // คอมพาร์ทเนอร์คิดจากทริปที่เดินทางจริงเท่านั้น
             if ($booking->partner_id) {

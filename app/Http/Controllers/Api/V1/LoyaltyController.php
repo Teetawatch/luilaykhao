@@ -56,6 +56,10 @@ class LoyaltyController extends Controller
             'points_valid_months' => LoyaltyService::POINTS_VALID_MONTHS,
             'expiring_points' => $expiring['points'],
             'expiring_at' => $expiring['at']?->toISOString(),
+            // ไทม์ไลน์แต้มหมดอายุ — ก้อนแต้มที่ยังเหลือ รวมตามเดือนที่หมดอายุ (ใกล้สุดก่อน)
+            'expiry_timeline' => $this->loyaltyService->expiryTimeline($request->user()->id),
+            // ใช้แต้มลดค่าทริปตอนจอง — แอปคิดยอดที่หักจากกติกาเดียวกับหลังบ้าน
+            'pay_with_points' => $this->loyaltyService->payRules(),
             'tier' => $account->tier,
             'tier_label' => $tier['label'],
             'tier_tagline' => $tier['tagline'],
@@ -169,6 +173,9 @@ class LoyaltyController extends Controller
                 'reward_type' => $r->rewardType(),
                 'discount_value' => $r->rewardValue(),
                 'value_label' => $this->valueLabel($r->rewardType(), $r->rewardValue()),
+                // รูปของรางวัลที่แลกมา — แท็บคูปองโชว์รูปเดียวกับหน้าของรางวัล
+                // (คูปองวันเกิดไม่มีของรางวัลผูก = null แอปวาดไอคอนแทน)
+                'image' => $r->reward?->image ?: null,
                 'points_used' => $r->points_used,
                 'is_used' => $r->is_used,
                 'expires_at' => $r->expires_at?->toISOString(),

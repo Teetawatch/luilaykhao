@@ -1375,11 +1375,19 @@ class AdminExtendedController extends Controller
             ->pluck('count', 'tier')
             ->toArray();
 
-        // แต้มที่เพื่อนโอนให้เป็นล็อต earn ฝั่งผู้รับ แต่ไม่ใช่แต้มที่ออกใหม่ — นับซ้ำไม่ได้
+        // แต้มที่เพื่อนโอนให้ และแต้มที่คืนจากใบจองที่ยกเลิก (อ้างแถวใช้แต้ม) เป็นล็อต earn
+        // แต่ไม่ใช่แต้มที่ออกใหม่ — นับซ้ำไม่ได้
+        $notIssued = [LoyaltyPointTransfer::class, LoyaltyTransaction::class];
         $totalPointsIssued = LoyaltyTransaction::where('type', 'earn')
-            ->where(fn ($q) => $q->whereNull('reference_type')->orWhere('reference_type', '!=', LoyaltyPointTransfer::class))
+            ->where(fn ($q) => $q->whereNull('reference_type')->orWhereNotIn('reference_type', $notIssued))
             ->sum('points');
-        $totalPointsRedeemed = abs(LoyaltyTransaction::where('type', 'redeem')->sum('points'));
+        $restored = (int) LoyaltyTransaction::where('type', 'earn')
+            ->where('reference_type', LoyaltyTransaction::class)
+            ->sum('points');
+        $totalPointsRedeemed = max(0, abs((int) LoyaltyTransaction::where('type', 'redeem')->sum('points')) - $restored);
+        $pointsPaidForTrips = max(0, abs((int) LoyaltyTransaction::where('type', 'redeem')
+            ->where('reference_type', Booking::class)
+            ->sum('points')) - $restored);
 
         return $this->success([
             'total_accounts' => $totalAccounts,
@@ -1390,6 +1398,8 @@ class AdminExtendedController extends Controller
             ],
             'total_points_issued' => (int) $totalPointsIssued,
             'total_points_redeemed' => (int) $totalPointsRedeemed,
+            // ส่วนหนึ่งของยอดแลก: แต้มที่ใช้ลดค่าทริปตอนจอง (หักส่วนที่คืนจากการยกเลิกแล้ว)
+            'points_paid_for_trips' => (int) $pointsPaidForTrips,
         ]);
     }
 }

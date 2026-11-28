@@ -214,6 +214,42 @@ class SeatHandoverTest extends TestCase
         $this->assertTrue(SmartNotification::where('user_id', $this->friend->id)->where('type', 'seat_handover_removed')->exists());
     }
 
+    public function test_claim_takes_first_and_last_name_in_separate_boxes(): void
+    {
+        $recipient = User::factory()->create(['first_name' => 'มานะ', 'last_name' => 'ขยันดี']);
+        $token = $this->createLink($this->owner, $this->friendSeat);
+
+        $this->actingAs($recipient, 'sanctum')
+            ->getJson("/api/v1/seat-handovers/{$token}")
+            ->assertJsonPath('data.prefill.first_name', 'มานะ')
+            ->assertJsonPath('data.prefill.last_name', 'ขยันดี');
+
+        $payload = $this->claimPayload(['first_name' => 'มานี', 'last_name' => 'มีนา']);
+        unset($payload['name']);
+
+        $this->actingAs($recipient, 'sanctum')
+            ->postJson("/api/v1/seat-handovers/{$token}/claim", $payload)
+            ->assertOk();
+
+        $seat = $this->friendSeat->fresh();
+        $this->assertSame('มานี มีนา', $seat->name);
+        $this->assertSame('มานี', $seat->first_name);
+        $this->assertSame('มีนา', $seat->last_name);
+    }
+
+    public function test_claim_with_a_first_name_needs_a_last_name(): void
+    {
+        $recipient = User::factory()->create();
+        $token = $this->createLink($this->owner, $this->friendSeat);
+        $payload = $this->claimPayload(['first_name' => 'มานี']);
+        unset($payload['name']);
+
+        $this->actingAs($recipient, 'sanctum')
+            ->postJson("/api/v1/seat-handovers/{$token}/claim", $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('last_name');
+    }
+
     public function test_handover_works_the_night_before_a_trip_with_no_departure_time(): void
     {
         // รอบไม่ได้ตั้งเวลารถออก — ส่งต่อได้ถึงสิ้นวันก่อนเดินทาง

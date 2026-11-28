@@ -7,12 +7,14 @@ use App\Models\TripMedal;
 use App\Services\ChallengeService;
 use App\Services\MedalKudosService;
 use App\Services\MedalService;
+use App\Services\MissionService;
 use App\Services\YearReviewService;
 use App\Support\MedalDesign;
 use App\Support\MedalGeometry;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 /**
@@ -101,9 +103,44 @@ class MedalController extends Controller
         }
     }
 
-    public function challenges(Request $request, ChallengeService $challenges): JsonResponse
+    /**
+     * ชาเลนจ์รายเดือน/ปี + ภารกิจรับแต้ม (ระบบแต้มเฟส 2) ในหน้าเดียว
+     * claimable_points = แต้มที่กดรับได้ตอนนี้ทั้งหมด
+     */
+    public function challenges(Request $request, ChallengeService $challenges, MissionService $missions): JsonResponse
     {
-        return $this->success($challenges->forUser($request->user()->id));
+        $user = $request->user();
+        $board = $challenges->forUser($user->id);
+        $list = $missions->forUser($user);
+
+        return $this->success([
+            ...$board,
+            'missions' => array_map(
+                fn (array $m) => Arr::except($m, ['title_th', 'reference_id']),
+                $list,
+            ),
+            'claimable_points' => $missions->claimablePoints($user, $list, $board),
+        ]);
+    }
+
+    /** กดรับแต้มของภารกิจ (kind=mission, scope) หรือชาเลนจ์ (kind=challenge, scope = period) */
+    public function claimChallenge(Request $request, MissionService $missions): JsonResponse
+    {
+        $validated = $request->validate([
+            'kind' => ['required', 'in:mission,challenge'],
+            'key' => ['required', 'string', 'max:40'],
+            'scope' => ['required', 'string', 'max:60'],
+        ]);
+
+        try {
+            $result = $validated['kind'] === 'mission'
+                ? $missions->claimMission($request->user(), $validated['key'], $validated['scope'])
+                : $missions->claimChallenge($request->user(), $validated['key'], $validated['scope']);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        return $this->success($result, __('รับ :points แต้มแล้ว', ['points' => number_format($result['points'])]));
     }
 
     public function yearReview(Request $request, YearReviewService $reviews): JsonResponse

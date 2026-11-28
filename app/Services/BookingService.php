@@ -46,6 +46,7 @@ class BookingService
         private GiftVoucherService $giftVoucherService,
         private SeatLayoutGuard $seatLayoutGuard,
         private CoinService $coinService,
+        private LoyaltyService $loyaltyService,
     ) {}
 
     public function createBooking(
@@ -73,6 +74,8 @@ class BookingService
         ?TermsConsent $termsConsent = null,
         ?string $giftVoucherCode = null,
         int $coinsToUse = 0,
+        // แต้มสะสมที่ขอใช้ลดค่าทริป (ระบบแต้มเฟส 2) — ปัดลงตามเพดานใน LoyaltyService
+        int $pointsToUse = 0,
         // ช่องทางที่จอง — ว่างไว้ = ให้ BookingObserver อ่านจาก request เอง
         ?string $source = null,
     ): Booking {
@@ -103,7 +106,7 @@ class BookingService
         // ทุกฐานข้อมูล ไม่ใช่แค่บน MySQL ที่เทียบแบบไม่สนตัวพิมพ์ให้
         $promotionCode = filled($promotionCode) ? Promotion::normalizeCode($promotionCode) : null;
 
-        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, $skipPayment, $giftVoucherCode, $coinsToUse, $source, &$coveredByVoucher, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
+        $booking = DB::transaction(function () use ($userId, $scheduleId, $passengers, $seatIds, $pickupPointId, $pickupRegion, $isGroup, $groupName, $groupNotes, $promotionCode, $isJoinTrip, $selectedAddons, $selectedRentals, $customPickup, $verifySeatLocks, $isGift, $giftFromName, $giftMessage, $vehicleOptionId, $termsConsent, $skipPayment, $giftVoucherCode, $coinsToUse, $pointsToUse, $source, &$coveredByVoucher, &$scheduleBecameFull, &$availableAfterBooking, &$bookedBeforeBooking, &$bookedAfterBooking) {
             $schedule = TripSchedule::with('trip')->lockForUpdate()->findOrFail($scheduleId);
             $schedule->syncBookedSeats();
 
@@ -521,6 +524,20 @@ class BookingService
                 }
             }
 
+            // แต้มสะสม — ส่วนลดเหมือน Coin (ต้นทุนการตลาด) หักต่อจาก Coin ก่อนบัตร
+            // ของขวัญ เพดาน % คิดจากยอดที่เหลือตอนนี้ แอปคิดสูตรเดียวกันจาก
+            // loyalty/account.pay_with_points ขอเกินเพดาน/เกินที่มีถูกปัดลงเงียบ ๆ
+            $pointsUsed = 0;
+            $pointsDiscount = 0.0;
+            if ($pointsToUse > 0 && ! $skipPayment && $userId) {
+                $pointsUsed = min($pointsToUse, $this->loyaltyService->maxPayablePoints($userId, (float) $totalAmount));
+                if ($pointsUsed > 0) {
+                    $pointsDiscount = $this->loyaltyService->pointsToBaht($pointsUsed);
+                    $totalAmount = round((float) $totalAmount - $pointsDiscount, 2);
+                    $discountAmount = round((float) $discountAmount + $pointsDiscount, 2);
+                }
+            }
+
             // บัตรของขวัญ — หักหลังส่วนลดทุกชนิด เพราะบัตรคือ "เงินที่จ่ายมาแล้ว" ไม่ใช่
             // ส่วนลด total_amount ที่เหลือคือยอดที่ยังต้องจ่ายเป็นเงิน PaymentQuote
             // (มัดจำ/งวด/แบ่งจ่าย) จึงคิดต่อจากยอดนี้ได้เองโดยไม่ต้องรู้จักบัตร
@@ -578,6 +595,8 @@ class BookingService
                 'promotion_code' => ($promotionId || $redemption) ? $promotionCode : null,
                 'discount_amount' => $discountAmount,
                 'coins_used' => $coinsUsed,
+                'points_used' => $pointsUsed,
+                'points_discount' => $pointsDiscount,
                 'gift_voucher_id' => $voucher?->id,
                 'voucher_amount' => $voucherAmount,
                 'sale_campaign_id' => $saleCampaign?->id,
@@ -614,6 +633,11 @@ class BookingService
             // โยนข้อผิดพลาด ใบจองทั้งใบจึงไม่เกิด
             if ($coinsUsed > 0) {
                 $this->coinService->spendForBooking($booking, $coinsUsed);
+            }
+
+            // ตัดแต้มใน transaction เดียวกัน — แต้มไม่พอ (ใช้ไปจากอีกเครื่อง) ใบจองไม่เกิด
+            if ($pointsUsed > 0) {
+                $this->loyaltyService->spendForBooking($booking, $pointsUsed);
             }
 
             // หักยอดจากบัตรใน transaction เดียวกัน — บัตรใบเดียวกดจองพร้อมกันสองหน้าต่าง

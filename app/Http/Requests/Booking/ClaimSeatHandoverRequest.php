@@ -8,6 +8,7 @@ use App\Rules\ThaiIdCard;
 use App\Rules\ThaiName;
 use App\Services\SeatHandoverService;
 use App\Support\Countries;
+use App\Support\PersonName;
 use App\Support\ThaiDate;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
@@ -55,6 +56,10 @@ class ClaimSeatHandoverRequest extends FormRequest
             $merge['passport_no'] = strtoupper(preg_replace('/\s/', '', $this->input('passport_no')));
         }
 
+        // ชื่อ/นามสกุลแยกช่อง → ชื่อเต็มก่อนตรวจ (กฎ ThaiName ตรวจชื่อเต็มเหมือนตอนจอง)
+        $names = $this->only(array_merge(...PersonName::PART_COLUMNS));
+        $merge = array_merge($merge, PersonName::composeParts($names));
+
         $this->merge($merge);
     }
 
@@ -68,6 +73,10 @@ class ClaimSeatHandoverRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:50', ...($womenOnly ? [Rule::in(SeatHandoverService::WOMEN_ONLY_TITLES)] : [])],
             'name' => ['required', 'string', 'max:255', ...($isThai ? [new ThaiName] : [])],
+            'first_name' => ['nullable', 'string', 'max:120'],
+            'last_name' => ['nullable', 'required_with:first_name', 'string', 'max:120'],
+            'first_name_en' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z\s.\'-]+$/'],
+            'last_name_en' => ['nullable', 'required_with:first_name_en', 'string', 'max:120', 'regex:/^[A-Za-z\s.\'-]+$/'],
             'nickname' => ['required', 'string', 'max:100'],
             'nationality' => ['required', 'string', 'size:2'],
             'id_card' => [$isThai ? 'required' : 'nullable', 'nullable', 'string', 'max:20', ...($isThai ? [new ThaiIdCard] : [])],
@@ -100,6 +109,10 @@ class ClaimSeatHandoverRequest extends FormRequest
             'title.in' => "ทริปนี้เป็นทริปสำหรับผู้หญิงเท่านั้น กรุณาเลือกคำนำหน้าชื่อเป็น 'นาง' หรือ 'นางสาว'",
             'name.required' => 'กรุณากรอกชื่อ-นามสกุล',
             'nickname.required' => 'กรุณากรอกชื่อเล่น',
+            'last_name.required_with' => 'กรุณากรอกนามสกุล',
+            'last_name_en.required_with' => 'กรุณากรอกนามสกุลภาษาอังกฤษตามพาสปอร์ต',
+            'first_name_en.regex' => 'ชื่อภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น',
+            'last_name_en.regex' => 'นามสกุลภาษาอังกฤษต้องเป็นตัวอักษรภาษาอังกฤษเท่านั้น',
             'id_card.required' => 'กรุณากรอกเลขบัตรประชาชน 13 หลัก',
             'birth_date.required' => 'กรุณาระบุวัน/เดือน/ปีเกิด',
             'birth_date.before' => 'วัน/เดือน/ปีเกิดไม่ถูกต้อง',

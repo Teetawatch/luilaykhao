@@ -252,6 +252,9 @@ class BookingResource extends JsonResource
             'voucher_amount' => (float) $this->voucher_amount,
             // Coin ที่ใช้ลดค่าทริป (1 Coin = 1 บาท) — รวมอยู่ใน discount_amount แล้ว
             'coins_used' => (int) $this->coins_used,
+            // แต้มสะสมที่ใช้ลดค่าทริป และยอดบาทที่ลดให้ — รวมอยู่ใน discount_amount แล้ว
+            'points_used' => (int) $this->points_used,
+            'points_discount' => (float) $this->points_discount,
             'gift_voucher' => $this->when((float) $this->voucher_amount > 0, fn () => [
                 'amount' => (float) $this->voucher_amount,
                 'restored_amount' => (float) $this->voucher_restored_amount,

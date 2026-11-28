@@ -264,6 +264,28 @@ class LoyaltyRewardRedemptionTest extends TestCase
         $this->assertSame(LoyaltyReward::TYPE_DISCOUNT_FIXED, $coupon['reward_type']);
         $this->assertEquals(200, $coupon['discount_value']);
         $this->assertSame('ลด 200 บาท', $coupon['value_label']);
+        $this->assertNull($coupon['image']);
+    }
+
+    public function test_my_coupons_carry_the_reward_picture(): void
+    {
+        $user = User::factory()->create();
+        $reward = LoyaltyReward::create([
+            'name' => 'เต็นท์ฟรี', 'type' => LoyaltyReward::TYPE_FREE_RENTAL,
+            'points_required' => 70, 'discount_value' => 300,
+            'image' => 'https://cdn.example/media/tent.jpg', 'is_active' => true,
+        ]);
+        LoyaltyRedemption::create([
+            'user_id' => $user->id,
+            'reward_id' => $reward->id,
+            'points_used' => 70,
+            'coupon_code' => 'TRD-TENT0001',
+            'expires_at' => now()->addDays(30),
+        ]);
+
+        $this->actingAs($user)->getJson('/api/v1/loyalty/coupons')
+            ->assertOk()
+            ->assertJsonPath('data.0.image', 'https://cdn.example/media/tent.jpg');
     }
 
     public function test_the_account_carries_what_the_member_card_prints(): void

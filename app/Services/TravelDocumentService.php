@@ -130,6 +130,8 @@ class TravelDocumentService
                 $updates[$passenger->id] = [
                     'travel_document' => Trip::DOC_BORDER_PASS,
                     'name_en' => null,
+                    'first_name_en' => null,
+                    'last_name_en' => null,
                     'passport_no' => null,
                     'passport_expires_at' => null,
                 ];
@@ -154,6 +156,11 @@ class TravelDocumentService
 
             $updates[$passenger->id] = [
                 'name_en' => strtoupper($nameEn),
+                // แยกช่องมา = เก็บสองช่องด้วย (HasNameParts ประกอบชื่อเต็มจากสองช่องนี้)
+                ...(filled($row['first_name_en'] ?? null) || filled($row['last_name_en'] ?? null) ? [
+                    'first_name_en' => strtoupper(trim((string) ($row['first_name_en'] ?? ''))),
+                    'last_name_en' => strtoupper(trim((string) ($row['last_name_en'] ?? ''))),
+                ] : []),
                 'passport_no' => strtoupper($passportNo),
                 'passport_expires_at' => $expiresAt,
                 ...($trip?->offersBorderPass() ? ['travel_document' => Trip::DOC_PASSPORT] : []),
@@ -245,8 +252,11 @@ class TravelDocumentService
             return;
         }
 
+        [$firstEn, $lastEn] = $own->nameEnParts();
         $user->update([
             'name_en' => $own->name_en,
+            'first_name_en' => $firstEn !== '' ? $firstEn : null,
+            'last_name_en' => $lastEn !== '' ? $lastEn : null,
             'passport_no' => $own->passport_no,
             'passport_expires_at' => $own->passport_expires_at?->toDateString(),
         ]);

@@ -102,28 +102,10 @@ class CreateBookingRequest extends FormRequest
         }
 
         $this->merge([
-            'passengers' => array_map(function ($passenger) {
-                if (! is_array($passenger)) {
-                    return $passenger;
-                }
-
-                foreach ([['name', 'first_name', 'last_name'], ['name_en', 'first_name_en', 'last_name_en']] as [$full, $first, $last]) {
-                    if (! array_key_exists($first, $passenger) && ! array_key_exists($last, $passenger)) {
-                        continue;
-                    }
-
-                    $firstValue = PersonName::normalize(is_string($passenger[$first] ?? null) ? $passenger[$first] : '');
-                    $lastValue = PersonName::normalize(is_string($passenger[$last] ?? null) ? $passenger[$last] : '');
-                    $passenger[$first] = $firstValue !== '' ? $firstValue : null;
-                    $passenger[$last] = $lastValue !== '' ? $lastValue : null;
-
-                    if ($firstValue !== '' || $lastValue !== '') {
-                        $passenger[$full] = PersonName::join($firstValue, $lastValue);
-                    }
-                }
-
-                return $passenger;
-            }, $passengers),
+            'passengers' => array_map(
+                fn ($passenger) => is_array($passenger) ? PersonName::composeParts($passenger) : $passenger,
+                $passengers,
+            ),
         ]);
     }
 
@@ -271,6 +253,8 @@ class CreateBookingRequest extends FormRequest
             'gift_voucher_code' => ['nullable', 'string', 'max:30'],
             // Coin จากการรีวิวที่ขอใช้ — หลังบ้านปัดลงตามเพดานและยอดที่มีเอง
             'coins_to_use' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            // แต้มสะสมที่ขอใช้ลดค่าทริป — หลังบ้านปัดลงตามเพดาน % และแต้มที่มีเอง
+            'points_to_use' => ['nullable', 'integer', 'min:0', 'max:1000000'],
             // โค้ดพาร์ทเนอร์จากลิงก์ที่ลูกค้าเปิดเข้ามา/พิมพ์เอง — ผิดก็แค่ไม่ผูก ไม่ทำให้จองไม่ผ่าน
             'partner_code' => ['nullable', 'string', 'max:30'],
             'partner_source' => ['nullable', 'string', 'in:link,code'],

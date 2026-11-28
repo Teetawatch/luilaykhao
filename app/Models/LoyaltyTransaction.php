@@ -9,13 +9,14 @@ class LoyaltyTransaction extends Model
 {
     protected $fillable = [
         'user_id', 'type', 'points', 'points_remaining', 'description',
-        'reference_type', 'reference_id', 'balance_after', 'expires_at',
+        'reference_type', 'reference_id', 'balance_after', 'expires_at', 'meta',
     ];
 
     protected function casts(): array
     {
         return [
             'expires_at' => 'datetime',
+            'meta' => 'array',
         ];
     }
 
